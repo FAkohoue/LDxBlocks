@@ -50,12 +50,15 @@ ld_blocks <- run_Big_LD_all_chr(
 head(ld_blocks)
 ```
 ## Core Functions
-Function | Description
-run_Big_LD_all_chr() | Main wrapper to run LD block detection chromosome by chromosome
-Big_LD() | Core LD segmentation function with kinship adjustment
-CLQD() | Clique detection based on rV² matrix
-compute_rV2() | Computes kinship-adjusted squared correlation matrix (rV²)
-get_V_inv_sqrt() | Computes the inverse square root of the kinship matrix (V⁻¹ᐟ²)
+
+| Function           | Description                                                              |
+|--------------------|--------------------------------------------------------------------------|
+| run_Big_LD_all_chr | Main wrapper to run LD block detection chromosome by chromosome          |
+| Big_LD             | Core LD segmentation function with kinship adjustment                    |
+| CLQD               | Clique detection based on rV² matrix                                     |
+| compute_rV2        | Computes kinship-adjusted squared correlation matrix (rV²)               |
+| get_V_inv_sqrt     | Computes the inverse square root of the kinship matrix (V⁻¹ᐟ²)           |
+
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
