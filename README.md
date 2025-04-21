@@ -25,8 +25,9 @@ install.packages("devtools")
 
 # Install LDxBlocks from GitHub
 devtools::install_github("fakohoue/LDxBlocks")
-
+```
 ## Quick Start
+```
 library(LDxBlocks)
 
 # Example genotype matrix and SNP info
@@ -47,7 +48,7 @@ ld_blocks <- run_Big_LD_all_chr(
 
 # View result
 head(ld_blocks)
-
+```
 ## Core Functions
 Function | Description
 run_Big_LD_all_chr() | Main wrapper to run LD block detection chromosome by chromosome
