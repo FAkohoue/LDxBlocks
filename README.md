@@ -24,7 +24,7 @@ To install the development version from GitHub:
 install.packages("devtools")
 
 # Install LDxBlocks from GitHub
-devtools::install_github("fakohoue/LDxBlocks")
+devtools::install_github("FAkohoue/LDxBlocks")
 ```
 ## Quick Start
 ```
