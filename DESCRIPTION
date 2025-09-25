@@ -1,17 +1,29 @@
 Package: LDxBlocks
 Type: Package
-Title: What the Package Does (Title Case)
+Title: LD Block Detection with Kinship-Adjusted Correlations (rV²) and Auto-Tuning
 Version: 0.1.0
 Authors@R: c(
-    person(
-      "Jane", "Doe",
-      email = "jane@example.com",
-      role = c("aut", "cre")
-    )
-  )
-Description: More about what it does (maybe more than one line).
-    Continuation lines should be indented.
-License: What license is it under?
+    person("Félicien", "Akohoue", role = c("aut","cre"), email = "akohoue.f@gmail.com")
+)
+Description: Detect LD blocks using clique decomposition on kinship-adjusted LD (rV²),
+    with an automatic parameter tuner minimizing unassigned GWAS markers.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.2
+Depends: R (>= 4.1)
+Imports:
+    data.table,
+    dplyr,
+    igraph,
+    AGHmatrix,
+    ASRgenomics,
+    stats,
+    utils
+Suggests:
+    future.apply,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
