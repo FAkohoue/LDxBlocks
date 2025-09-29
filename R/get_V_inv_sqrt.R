@@ -1,73 +1,47 @@
-#' @title Compute the Inverse Square Root of a Kinship Matrix
-#'
-#' @name get_V_inv_sqrt
-#' @alias get_V_inv_sqrt
+#' Compute the Inverse Square Root (Whitening) of a Kinship Matrix
 #'
 #' @description
-#' Computes the inverse square root of a symmetric positive-definite matrix, commonly used to adjust genotype data for kinship.
-#' This transformation removes individual-level covariance from genotype matrices prior to downstream analyses such as kinship-adjusted LD estimation (\eqn{rV^2}) or linear mixed model fitting.
+#' Returns a matrix \eqn{A} that whitens a positive-definite matrix \eqn{V}:
+#' \deqn{A\, V\, A^\top = I.}
+#' This is used to decorrelate centered genotype data prior to kinship-adjusted LD
+#' estimation (\eqn{rV^2}) or mixed-model transforms.
 #'
-#' @param V A symmetric, numeric matrix of dimension \eqn{n \times n}. Typically a kinship matrix derived from additive genetic relatedness (e.g., using the VanRaden method).
-#' @param rV2method Character string specifying the matrix decomposition method to use. Options are:
+#' @param V A symmetric, numeric matrix of dimension \eqn{n \times n} (typically a kinship matrix).
+#' @param rV2method Character string specifying the decomposition:
 #'   \itemize{
-#'     \item \code{"chol"}: Cholesky decomposition (default), fast and numerically stable.
-#'     \item \code{"eigen"}: Eigenvalue decomposition, more general but potentially slower.
+#'     \item \code{"chol"} (default): Cholesky factorization. If \eqn{V = R^\top R} (R from \code{chol}),
+#'           this returns \eqn{A = R^{-1}} (via \code{backsolve}). Fast and stable.
+#'     \item \code{"eigen"}: Eigen decomposition. If \eqn{V = Q \Lambda Q^\top}, returns
+#'           \eqn{A = Q\,\Lambda^{-1/2}\,Q^\top}. Eigenvalues are thresholded at \code{1e-6}.
 #'   }
 #'
 #' @details
-#' The function returns \eqn{V^{-1/2}}, satisfying:
-#' \deqn{V^{-1/2} \cdot V \cdot V^{-1/2} = I}
+#' The Cholesky-based \eqn{A} is not symmetric but satisfies \eqn{A\,V\,A^\top=I} and is standard for
+#' whitening vectors by left-multiplication (\eqn{X^* = A X}). The eigen-based \eqn{A} is symmetric
+#' and also satisfies \eqn{A\,V\,A^\top=I}.
 #'
-#' This matrix is used to transform centered genotype matrices prior to LD calculations involving kinship-adjusted squared correlation (rV²) or mixed model inference.
-#'
-#' \strong{Cholesky Decomposition ("chol"):}
-#' \itemize{
-#'   \item Computes the Cholesky factor \eqn{L} such that \eqn{V = L L^\top}.
-#'   \item Then returns \eqn{V^{-1/2} = L^{-1}}.
-#' }
-#'
-#' \strong{Eigen Decomposition ("eigen"):}
-#' \itemize{
-#'   \item Computes \eqn{V = Q \Lambda Q^\top}, where \eqn{\Lambda} is diagonal.
-#'   \item Then returns \eqn{V^{-1/2} = Q \Lambda^{-1/2} Q^\top}.
-#'   \item Small eigenvalues (less than 1e-6) are stabilized to avoid numerical artifacts.
-#' }
-#'
-#' @return A numeric matrix of the same dimension as \code{V}, representing the inverse square root \eqn{V^{-1/2}}.
+#' @return A numeric matrix \eqn{A} of the same dimension as \code{V} such that \eqn{A\,V\,A^\top=I}.
 #'
 #' @examples
-#' # Simulate genotype and kinship matrix
+#' \donttest{
 #' set.seed(1)
 #' G <- matrix(rnorm(100 * 20), nrow = 100, ncol = 20)
-#' G_centered <- scale(G, center = TRUE, scale = FALSE)
-#' kinship <- crossprod(G_centered) / ncol(G)
-#'
-#' # Compute V^(-1/2) using Cholesky (default)
-#' V_inv_sqrt_chol <- get_V_inv_sqrt(kinship, rV2method = "chol")
-#'
-#' # Compute V^(-1/2) using Eigen decomposition
-#' V_inv_sqrt_eig <- get_V_inv_sqrt(kinship, rV2method = "eigen")
-#'
-#' # Use result to adjust genotype matrix
-#' G_adjusted <- V_inv_sqrt_chol %*% G_centered
+#' Gc <- scale(G, center = TRUE, scale = FALSE)
+#' kin <- crossprod(Gc) / ncol(G)  # simple kinship
+#' A_chol <- get_V_inv_sqrt(kin, rV2method = "chol")
+#' A_eig  <- get_V_inv_sqrt(kin, rV2method = "eigen")
+#' }
 #'
 #' @seealso \code{\link{compute_rV2}}, \code{\link{CLQD}}, \code{\link{Big_LD}}, \code{\link{eigen}}, \code{\link{chol}}
-#'
-#' @author
-#' Félicien Akohoue
-#'
-#' @keywords matrix decomposition kinship normalization LD
-#'
 #' @export
-#' 
 get_V_inv_sqrt <- function(V, rV2method = c("chol", "eigen")) {
   rV2method <- match.arg(rV2method)
   if (rV2method == "chol") {
-    L <- chol(V)
-    return(backsolve(L, diag(nrow(V))))  # Fast V^{-1/2}
+    R <- chol(V)                                # V = R^T R (R upper-triangular)
+    return(backsolve(R, diag(nrow(V))))         # A = R^{-1}; A V A^T = I
   } else {
-    eig <- eigen(V, symmetric = TRUE)
-    vals <- pmax(eig$values, 1e-6)  # stabilize small eigenvalues
-    return(eig$vectors %*% diag(1 / sqrt(vals)) %*% t(eig$vectors))  # General V^{-1/2}
+    eig  <- eigen(V, symmetric = TRUE)
+    vals <- pmax(eig$values, 1e-6)              # stabilize tiny eigenvalues
+    return(eig$vectors %*% diag(1 / sqrt(vals)) %*% t(eig$vectors))  # A = Q Λ^{-1/2} Q^T
   }
 }

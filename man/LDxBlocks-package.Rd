@@ -6,24 +6,35 @@
 \alias{LDxBlocks-package}
 \title{LDxBlocks: Genome-wide LD Block Detection using Kinship-Adjusted LD}
 \description{
-The `LDxBlocks` package provides functions to detect linkage disequilibrium (LD) blocks 
-from genome-wide SNP data, incorporating kinship structure using adjusted rV² correlations.
-
+The \code{LDxBlocks} package provides functions to detect linkage disequilibrium (LD) blocks
+from genome-wide SNP data, incorporating kinship structure using adjusted \eqn{rV^2} correlations.
+}
+\details{
 The main function for users is \code{\link{run_Big_LD_all_chr}}, which performs chromosome-wise
 LD block detection and outputs genomic intervals representing LD blocks.
 }
 \section{Key Functions}{
 
 \describe{
-  \item{\code{\link{run_Big_LD_all_chr}}}{Main wrapper function to run Big_LD by chromosome}
-  \item{\code{\link{Big_LD}}}{Core LD block segmentation logic with kinship correction}
-  \item{\code{\link{CLQD}}}{Clique detection from rV² matrix}
-  \item{\code{\link{compute_rV2}}}{Computes kinship-adjusted rV² LD matrix}
-  \item{\code{\link{get_V_inv_sqrt}}}{Computes inverse square root of kinship matrix}
+\item{\code{\link{run_Big_LD_all_chr}}}{Main wrapper to run \code{Big_LD} by chromosome.}
+\item{\code{\link{tune_LD_params}}}{Auto-tunes \code{Big_LD} parameters via grid search to minimize unassigned/forced GWAS marker assignments and produce final LD blocks.}
+\item{\code{\link{Big_LD}}}{Core LD block segmentation logic with kinship correction.}
+\item{\code{\link{CLQD}}}{Clique detection from \eqn{rV^2} matrix.}
+\item{\code{\link{compute_rV2}}}{Computes kinship-adjusted \eqn{rV^2} LD matrix.}
+\item{\code{\link{get_V_inv_sqrt}}}{Computes inverse square root of a kinship matrix.}
 }
 }
 
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/FAkohoue/LDxBlocks}
+  \item Report bugs at \url{https://github.com/FAkohoue/LDxBlocks/issues}
+}
+
+}
 \author{
-Félicien Akohoue
+\strong{Maintainer}: Félicien Akohoue \email{akohoue.f@gmail.com}
+
 }
 \keyword{package}
