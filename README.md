@@ -26,12 +26,12 @@ Traditional LD block detection can be biased in structured populations due to ki
 
 | Function                    | Description                                                              |
 |-----------------------------|--------------------------------------------------------------------------|
-| \code{run_Big_LD_all_chr()} | Main wrapper to run LD block detection chromosome by chromosome          |
-| \code{Big_LD()}             | Core LD segmentation function with kinship adjustment                    |
-| \code{CLQD()}               | Clique detection based on rV² matrix                                     |
-| \code{compute_rV2()}        | Computes kinship-adjusted squared correlation matrix (rV²)               |
-| \code{get_V_inv_sqrt()}     | Computes the inverse square root of the kinship matrix V⁻¹ᐟ²             |
-| \code{tune_LD_params()}     | Auto-tunes parameters to minimize unassigned/forced GWAS marker mappings |
+| `run_Big_LD_all_chr()` | Main wrapper to run LD block detection chromosome by chromosome          |
+| `Big_LD()`             | Core LD segmentation function with kinship adjustment                    |
+| `CLQD()`               | Clique detection based on rV² matrix                                     |
+| `compute_rV2()`        | Computes kinship-adjusted squared correlation matrix (rV²)               |
+| `get_V_inv_sqrt()`     | Computes the inverse square root of the kinship matrix V⁻¹ᐟ²             |
+| `tune_LD_params()`     | Auto-tunes parameters to minimize unassigned/forced GWAS marker mappings |
 
 ## Installation
 
@@ -55,7 +55,7 @@ library(LDxBlocks)
 
 ## Quick Start
 
-This section simulates a small genotype matrix, SNP metadata, and runs \code{run_Big_LD_all_chr()}.
+This section simulates a small genotype matrix, SNP metadata, and runs `run_Big_LD_all_chr()`.
 
 ```r
 
@@ -129,7 +129,7 @@ if (!is.null(blocks) && nrow(blocks) > 0) {
 ```
 ## Optional: Parameter Tuning
 
-\code{tune_LD_params()} grid-searches over Big-LD parameters, selecting the combo that (in order) minimizes unassigned GWAS markers, forced assignments, block count, and deviation from a target median block size band.
+`tune_LD_params()` grid-searches over Big-LD parameters, selecting the combo that (in order) minimizes unassigned GWAS markers, forced assignments, block count, and deviation from a target median block size band.
 
 **Note:** Tuning can be compute-intensive. Below we use a tiny grid so it runs quickly. Consider enabling parallelization for larger grids.
 
@@ -203,11 +203,11 @@ head(tune_out$score_table[order(tune_out$score_table$n_unassigned,
 
 ## Reproducibility Knobs
 
-- \code{digits}: rounding precision used inside computations to reduce floating-point jitter (typical 6–8).
+- `digits`: rounding precision used inside computations to reduce floating-point jitter (typical 6–8).
 
-- \code{seed}: if set, makes any stochastic operations/tie-breakers reproducible.
+- `seed`: if set, makes any stochastic operations/tie-breakers reproducible.
 
-- \code{verbose}: print progress and diagnostics.
+- `verbose`: print progress and diagnostics.
 
 ## Session Info
 
@@ -221,7 +221,7 @@ sessionInfo()
 
 - Runtime scales with SNP count per chromosome; consider pre-filtering on MAF and/or restricting chromosomes while tuning.
 
-- For large cohorts, set up parallelization (\code{future} + \code{future.apply}) and adjust \code{grid} size.
+- For large cohorts, set up parallelization (`future` + `future.apply`) and adjust `grid` size.
 
 ## License
 
