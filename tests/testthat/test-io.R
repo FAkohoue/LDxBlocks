@@ -1,0 +1,319 @@
+## tests/testthat/test-io.R
+## ─────────────────────────────────────────────────────────────────────────────
+## Tests for the read_geno() / read_chunk() / close_backend() I/O layer.
+## Each format is tested by writing a minimal file to a tempfile, reading it
+## with read_geno(), and verifying the backend's properties and read_chunk()
+## output — independent of inst/extdata so they pass even without built data.
+## ─────────────────────────────────────────────────────────────────────────────
+
+library(testthat)
+library(LDxBlocks)
+
+# ── Helper: tiny synthetic genotype matrix ────────────────────────────────────
+make_tiny <- function(n = 12, p = 8, seed = 7) {
+  set.seed(seed)
+  G <- matrix(sample(0:2, n * p, replace = TRUE), n, p)
+  rownames(G) <- paste0("s", seq_len(n))
+  colnames(G) <- paste0("rs", seq_len(p))
+  G
+}
+
+# ── Format: matrix ────────────────────────────────────────────────────────────
+test_that("matrix backend: n_samples, n_snps, type are correct", {
+  G    <- make_tiny()
+  info <- data.frame(SNP = colnames(G), CHR = "1",
+                     POS = seq(1000, by = 2000, length.out = 8))
+  be   <- read_geno(G, format = "matrix", snp_info = info)
+  expect_equal(be$type,      "matrix")
+  expect_equal(be$n_samples, 12L)
+  expect_equal(be$n_snps,    8L)
+  expect_equal(be$sample_ids, paste0("s", 1:12))
+  close_backend(be)
+})
+
+test_that("matrix backend: read_chunk returns correct values", {
+  G    <- make_tiny()
+  info <- data.frame(SNP = colnames(G), CHR = "1",
+                     POS = seq(1000, by = 2000, length.out = 8))
+  be    <- read_geno(G, format = "matrix", snp_info = info)
+  chunk <- read_chunk(be, 2:5)
+  expect_equal(dim(chunk),   c(12L, 4L))
+  expect_equal(chunk, G[, 2:5])
+  close_backend(be)
+})
+
+test_that("matrix backend: snp_info without REF/ALT gets NA columns added", {
+  G    <- make_tiny()
+  info <- data.frame(SNP = colnames(G), CHR = "2",
+                     POS = seq(1000, by = 1000, length.out = 8))
+  be   <- read_geno(G, format = "matrix", snp_info = info)
+  expect_true("REF" %in% names(be$snp_info))
+  expect_true("ALT" %in% names(be$snp_info))
+  expect_true(all(is.na(be$snp_info$REF)))
+  close_backend(be)
+})
+
+test_that("matrix backend: chromosome normalisation strips 'chr' prefix", {
+  G    <- make_tiny()
+  info <- data.frame(SNP = colnames(G), CHR = "chr3",
+                     POS = seq(1000, by = 1000, length.out = 8))
+  be   <- read_geno(G, format = "matrix", snp_info = info)
+  expect_equal(unique(be$snp_info$CHR), "3")
+  close_backend(be)
+})
+
+test_that("matrix backend: missing snp_info throws informative error", {
+  G <- make_tiny()
+  expect_error(read_geno(G, format = "matrix"), "snp_info must be supplied")
+})
+
+test_that("matrix backend: dimension mismatch throws error", {
+  G    <- make_tiny()
+  info <- data.frame(SNP = paste0("rs", 1:5), CHR = "1",
+                     POS = 1:5)   # only 5 rows vs 8 columns
+  expect_error(read_geno(G, format = "matrix", snp_info = info),
+               "ncol\\(mat\\)")
+})
+
+# ── Format: numeric dosage CSV ────────────────────────────────────────────────
+write_numeric_csv <- function(G, info, path) {
+  meta <- info[, c("SNP","CHR","POS","REF","ALT")]
+  df   <- cbind(meta, as.data.frame(t(G)))
+  write.csv(df, path, row.names = FALSE, quote = FALSE)
+}
+
+test_that("numeric CSV: basic read properties", {
+  G    <- make_tiny()
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000,by=2000,length.out=8),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  tmp  <- tempfile(fileext = ".csv")
+  write_numeric_csv(G, info, tmp)
+
+  be <- read_geno(tmp)
+  expect_equal(be$type,      "numeric")
+  expect_equal(be$n_snps,    8L)
+  expect_equal(be$n_samples, 12L)
+  expect_equal(sort(be$sample_ids), sort(paste0("s", 1:12)))
+  close_backend(be); unlink(tmp)
+})
+
+test_that("numeric CSV: read_chunk values match original matrix", {
+  G    <- make_tiny()
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000,by=2000,length.out=8),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  tmp  <- tempfile(fileext = ".csv")
+  write_numeric_csv(G, info, tmp)
+
+  be    <- read_geno(tmp)
+  chunk <- read_chunk(be, 1:4)
+  # sample order may differ; match by sample IDs
+  row_ord <- match(be$sample_ids, rownames(G))
+  expect_equal(chunk, G[row_ord, 1:4], ignore_attr = TRUE)
+  close_backend(be); unlink(tmp)
+})
+
+test_that("numeric CSV: NA values survive round-trip", {
+  G        <- make_tiny()
+  G[2, 3]  <- NA
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000,by=2000,length.out=8),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  tmp  <- tempfile(fileext = ".csv")
+  write_numeric_csv(G, info, tmp)
+  be <- read_geno(tmp)
+  chunk <- read_chunk(be, 3L)
+  # at least one NA in this column
+  expect_true(any(is.na(chunk)))
+  close_backend(be); unlink(tmp)
+})
+
+# ── Format: HapMap ────────────────────────────────────────────────────────────
+write_hapmap <- function(G, info, path) {
+  # G is individuals x SNPs; iterate over SNPs (columns)
+  hmp_decode_snp <- function(snp_dos, ref, alt) {
+    vapply(snp_dos, function(x) {
+      if (is.na(x)) return("NN")
+      switch(as.character(as.integer(x)),
+             "0" = paste0(ref, ref),
+             "1" = paste0(ref, alt),
+             "2" = paste0(alt, alt),
+             "NN")
+    }, character(1))
+  }
+  n_snp <- nrow(info); n_ind <- nrow(G)
+  calls <- matrix("NN", nrow = n_snp, ncol = n_ind)
+  for (si in seq_len(n_snp))
+    calls[si, ] <- hmp_decode_snp(G[, si], info$REF[si], info$ALT[si])
+
+  hdr <- data.frame(
+    "rs#"=info$SNP, alleles=paste0(info$REF,"/",info$ALT),
+    chrom=info$CHR, pos=info$POS,
+    strand="+", "assembly#"="NA", center="NA", protLSID="NA",
+    assayLSID="NA", panelLSID="NA", QCcode="NA",
+    check.names=FALSE, stringsAsFactors=FALSE
+  )
+  out <- cbind(hdr, as.data.frame(calls, stringsAsFactors=FALSE))
+  colnames(out)[12:ncol(out)] <- rownames(G)
+  write.table(out, path, sep="\t", row.names=FALSE, quote=FALSE)
+}
+
+test_that("HapMap: dosage decoding is correct for known calls", {
+  G    <- matrix(c(0L,1L,2L,NA_integer_), nrow=1, ncol=4)
+  rownames(G) <- "s1"
+  colnames(G) <- paste0("rs",1:4)
+  info <- data.frame(SNP=colnames(G), CHR="1", POS=1:4*1000,
+                     REF=c("A","G","C","T"), ALT=c("T","C","G","A"),
+                     stringsAsFactors=FALSE)
+  tmp  <- tempfile(fileext=".hmp.txt")
+  write_hapmap(G, info, tmp)
+  be    <- read_geno(tmp)
+  chunk <- read_chunk(be, 1:4)
+  # row "s1": dosage 0,1,2,NA for four SNPs
+  expect_equal(as.integer(chunk["s1",1]), 0L)
+  expect_equal(as.integer(chunk["s1",2]), 1L)
+  expect_equal(as.integer(chunk["s1",3]), 2L)
+  expect_true(is.na(chunk["s1",4]))
+  close_backend(be); unlink(tmp)
+})
+
+test_that("HapMap: backend properties match input", {
+  G    <- make_tiny()
+  info <- data.frame(SNP=colnames(G), CHR="2",
+                     POS=seq(1000,by=3000,length.out=8),
+                     REF="G", ALT="C", stringsAsFactors=FALSE)
+  tmp  <- tempfile(fileext=".hmp.txt")
+  write_hapmap(G, info, tmp)
+  be <- read_geno(tmp)
+  expect_equal(be$type,      "hapmap")
+  expect_equal(be$n_snps,    8L)
+  expect_equal(be$n_samples, 12L)
+  close_backend(be); unlink(tmp)
+})
+
+# ── Format: VCF ──────────────────────────────────────────────────────────────
+write_vcf <- function(G, info, path) {
+  gt_enc <- function(g) vapply(g, function(x) {
+    if(is.na(x)) return("./.")
+    c("0"="0/0","1"="0/1","2"="1/1")[as.character(x)]
+  }, character(1))
+  lines <- c("##fileformat=VCFv4.2",
+             paste(c("#CHROM","POS","ID","REF","ALT","QUAL","FILTER",
+                     "INFO","FORMAT",rownames(G)), collapse="\t"))
+  for(i in seq_len(nrow(info))) {
+    lines <- c(lines, paste(c(info$CHR[i], info$POS[i], info$SNP[i],
+                              info$REF[i], info$ALT[i], ".", "PASS", ".", "GT",
+                              gt_enc(G[,i])), collapse="\t"))
+  }
+  writeLines(lines, path)
+}
+
+test_that("VCF: unphased GT decoded correctly for all three dosages", {
+  G    <- matrix(c(0L,1L,2L), nrow=1, ncol=3)
+  rownames(G) <- "s1"; colnames(G) <- paste0("rs",1:3)
+  info <- data.frame(SNP=colnames(G), CHR="1", POS=c(1000,2000,3000),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  tmp  <- tempfile(fileext=".vcf")
+  write_vcf(G, info, tmp)
+  be    <- read_geno(tmp)
+  chunk <- read_chunk(be, 1:3)
+  expect_equal(as.integer(chunk["s1",1]), 0L)
+  expect_equal(as.integer(chunk["s1",2]), 1L)
+  expect_equal(as.integer(chunk["s1",3]), 2L)
+  close_backend(be); unlink(tmp)
+})
+
+test_that("VCF: missing ./. becomes NA", {
+  G    <- matrix(NA_integer_, nrow=1, ncol=2)
+  rownames(G) <- "s1"; colnames(G) <- paste0("rs",1:2)
+  info <- data.frame(SNP=colnames(G), CHR="1", POS=c(1000,2000),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  tmp  <- tempfile(fileext=".vcf")
+  write_vcf(G, info, tmp)
+  be    <- read_geno(tmp)
+  chunk <- read_chunk(be, 1:2)
+  expect_true(all(is.na(chunk["s1",])))
+  close_backend(be); unlink(tmp)
+})
+
+test_that("VCF: chr prefix is stripped from chromosome labels", {
+  G    <- make_tiny(4, 4)
+  info <- data.frame(SNP=colnames(G), CHR="chr5",
+                     POS=seq(1000,by=1000,length.out=4),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  tmp  <- tempfile(fileext=".vcf")
+  write_vcf(G, info, tmp)
+  be   <- read_geno(tmp)
+  expect_equal(unique(be$snp_info$CHR), "5")
+  close_backend(be); unlink(tmp)
+})
+
+test_that("VCF: backend properties correct", {
+  G    <- make_tiny()
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000,by=2000,length.out=8),
+                     REF="A", ALT="G", stringsAsFactors=FALSE)
+  tmp  <- tempfile(fileext=".vcf")
+  write_vcf(G, info, tmp)
+  be <- read_geno(tmp)
+  expect_equal(be$type,      "vcf")
+  expect_equal(be$n_snps,    8L)
+  expect_equal(be$n_samples, 12L)
+  close_backend(be); unlink(tmp)
+})
+
+# ── Auto-detection ────────────────────────────────────────────────────────────
+test_that("format auto-detection from extension works for all formats", {
+  G    <- make_tiny(6, 4)
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000,by=1000,length.out=4),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  # CSV
+  tmp_csv <- tempfile(fileext=".csv")
+  write_numeric_csv(G, info, tmp_csv)
+  be_csv <- read_geno(tmp_csv)
+  expect_equal(be_csv$type, "numeric")
+  close_backend(be_csv); unlink(tmp_csv)
+
+  # HapMap
+  tmp_hmp <- tempfile(fileext=".hmp.txt")
+  write_hapmap(G, info, tmp_hmp)
+  be_hmp <- read_geno(tmp_hmp)
+  expect_equal(be_hmp$type, "hapmap")
+  close_backend(be_hmp); unlink(tmp_hmp)
+
+  # VCF
+  tmp_vcf <- tempfile(fileext=".vcf")
+  write_vcf(G, info, tmp_vcf)
+  be_vcf <- read_geno(tmp_vcf)
+  expect_equal(be_vcf$type, "vcf")
+  close_backend(be_vcf); unlink(tmp_vcf)
+})
+
+test_that("unknown extension without format= throws informative error", {
+  tmp <- tempfile(fileext=".xyz")
+  writeLines("dummy", tmp)
+  expect_error(read_geno(tmp), "Cannot detect genotype format")
+  unlink(tmp)
+})
+
+# ── print / summary S3 methods ────────────────────────────────────────────────
+test_that("print.LDxBlocks_backend does not error", {
+  G    <- make_tiny()
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000,by=2000,length.out=8))
+  be <- read_geno(G, format="matrix", snp_info=info)
+  expect_output(print(be), "LDxBlocks backend")
+  expect_output(print(be), "matrix")
+  close_backend(be)
+})
+
+test_that("summary.LDxBlocks_backend shows per-chromosome SNP counts", {
+  G    <- make_tiny()
+  info <- data.frame(SNP=colnames(G), CHR=c(rep("1",4),rep("2",4)),
+                     POS=seq(1000,by=2000,length.out=8))
+  be <- read_geno(G, format="matrix", snp_info=info)
+  expect_output(summary(be), "Chromosomes")
+  close_backend(be)
+})

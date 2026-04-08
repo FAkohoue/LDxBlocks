@@ -1,0 +1,275 @@
+---
+title: "Large-Scale Analysis: GDS and PLINK BED Backends"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Large-Scale Analysis: GDS and PLINK BED Backends}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  message   = FALSE,
+  warning   = FALSE,
+  eval      = FALSE   # all chunks eval=FALSE: requires large files / optional pkgs
+)
+library(LDxBlocks)
+```
+
+All code chunks in this vignette have `eval = FALSE` because they require
+either optional packages (SeqArray, BEDMatrix) or large data files that are
+not shipped with the package. Copy and adapt them to your own data.
+
+---
+
+## The scale problem
+
+A 10 M-marker, 5,000-individual genotype matrix occupies roughly 200 GB as a
+dense R `double` matrix. Loading it into RAM before block detection is
+impractical on any workstation. LDxBlocks solves this through the
+`LDxBlocks_backend` abstraction: `run_Big_LD_all_chr()` calls
+`read_chunk(backend, col_idx)` to obtain exactly the SNP window it needs,
+leaving the rest of the genome on disk.
+
+Two file-backed backends handle this streaming access:
+
+| Backend | Format | Package required |
+|---------|--------|-----------------|
+| `"gds"` | SeqArray GDS | `BiocManager::install("SeqArray")` |
+| `"bed"` | PLINK binary BED | `install.packages("BEDMatrix")` |
+
+Both backends are read-only memory-mapped: at any point only the columns
+requested by the current `read_chunk()` call are in RAM.
+
+## Memory model
+
+Peak RAM with a file-backed backend:
+
+$$\text{RAM}_{\text{peak}} \approx n \times w \times 8 \text{ bytes}$$
+
+where $n$ = individuals and $w$ = `subSegmSize`. For $n = 5{,}000$ and the
+default `subSegmSize = 1500`:
+
+$$5{,}000 \times 1{,}500 \times 8 = 60 \text{ MB per window}$$
+
+Compare to the plain-matrix path: $5{,}000 \times 10{,}000{,}000 \times 8
+= 400 \text{ GB}$.
+
+---
+
+## GDS backend (SeqArray)
+
+### Installation
+
+```{r gds-install, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("SeqArray")
+```
+
+### Converting VCF to GDS
+
+Convert once; use for all subsequent analyses. The GDS format supports
+random-access compressed storage, making repeated window reads fast:
+
+```{r vcf-to-gds, eval=FALSE}
+library(SeqArray)
+seqVCF2GDS(
+  vcf.fn         = "mydata.vcf.gz",
+  out.fn         = "mydata.gds",
+  storage.option = "ZIP_RA",   # random-access LZ4 compression
+  parallel       = 4L
+)
+```
+
+### Block detection from GDS
+
+```{r gds-run, eval=FALSE}
+be_gds <- read_geno("mydata.gds")
+be_gds
+# LDxBlocks backend
+#   Type    : gds
+#   Samples : 5000
+#   SNPs    : 10241680
+#   Chr     : 1, 2, ..., 29
+
+blocks <- run_Big_LD_all_chr(
+  be_gds,
+  method       = "r2",
+  CLQcut       = 0.70,
+  leng         = 100L,      # reduce for dense WGS panels
+  subSegmSize  = 1500L,     # controls peak RAM
+  n_threads    = 16L,
+  min_snps_chr = 100L,      # skip scaffold chromosomes
+  verbose      = TRUE
+)
+
+close_backend(be_gds)
+```
+
+### What happens inside `read_chunk()` for GDS
+
+Each call executes:
+
+```r
+SeqArray::seqSetFilter(gds, variant.id = var_ids[col_idx], verbose = FALSE)
+dos <- t(SeqArray::seqGetData(gds, "$dosage"))
+SeqArray::seqResetFilter(gds, verbose = FALSE)
+```
+
+For `subSegmSize = 1500` and a 30-chromosome bovine genome with 10 M markers,
+this is approximately $\lceil 10{,}000{,}000 / 1{,}500 \rceil \approx 6{,}700$
+GDS reads total.
+
+---
+
+## PLINK BED backend (BEDMatrix)
+
+### Installation
+
+```{r bed-install, eval=FALSE}
+install.packages("BEDMatrix")
+```
+
+### Block detection from BED
+
+The `.bim` and `.fam` files must exist at the same path stem:
+
+```{r bed-run, eval=FALSE}
+be_bed <- read_geno("mydata.bed")   # reads .bim and .fam automatically
+be_bed
+# LDxBlocks backend
+#   Type    : bed
+#   Samples : 2847
+#   SNPs    : 658423
+#   Chr     : 1, 2, ..., 26
+
+blocks <- run_Big_LD_all_chr(
+  be_bed,
+  method    = "r2",
+  CLQcut    = 0.65,
+  n_threads = 8L,
+  verbose   = FALSE
+)
+
+close_backend(be_bed)
+```
+
+`BEDMatrix` memory-maps the `.bed` file at the OS level. Row and column
+indexing triggers page faults that load only the requested bytes from disk.
+
+---
+
+## Parameter selection for large panels
+
+### `subSegmSize`
+
+The single most important memory parameter. The C++ r² kernel allocates an
+$n \times w$ genotype window and a $w \times w$ LD matrix:
+
+| Individuals (n) | subSegmSize (w) | Window RAM | LD matrix RAM |
+|-----------------|-----------------|-----------|--------------|
+| 1,000 | 1,500 | 12 MB | 18 MB |
+| 5,000 | 1,500 | 60 MB | 18 MB |
+| 5,000 | 5,000 | 200 MB | 200 MB |
+| 20,000 | 1,500 | 240 MB | 18 MB |
+
+For very large $n$, keep `subSegmSize` at 1,500 or reduce it. For moderate
+$n$, increasing to 3,000–5,000 reduces GDS reads at the cost of more RAM.
+
+### `leng`
+
+The boundary-scan half-window in SNPs. `boundary_scan_cpp()` scans `2 * leng`
+columns per candidate cut position, with cost scaling as
+$O(p \times \text{leng}^2)$ per chromosome. For a 500 k-SNP chromosome with
+`leng = 200` this is ~20 billion element comparisons. Reduce `leng` to 50–100
+for very dense panels:
+
+```{r leng-tradeoff, eval=FALSE}
+# Dense WGS panel: reduce leng, increase subSegmSize
+blocks <- run_Big_LD_all_chr(
+  be_gds,
+  method      = "r2",
+  CLQcut      = 0.70,
+  leng        = 50L,      # narrower boundary scan
+  subSegmSize = 3000L,    # fewer GDS reads per chromosome
+  n_threads   = 16L
+)
+```
+
+### `n_threads`
+
+OpenMP thread scaling is efficient up to approximately 8–16 threads for
+typical window sizes. Benchmark on your hardware:
+
+```{r thread-bench, eval=FALSE}
+times <- sapply(c(1L, 2L, 4L, 8L, 16L), function(nt) {
+  system.time(
+    run_Big_LD_all_chr(be_gds, method = "r2", CLQcut = 0.7,
+                        n_threads = nt, verbose = FALSE)
+  )["elapsed"]
+})
+names(times) <- paste0(c(1,2,4,8,16), " threads")
+round(times, 1)
+```
+
+---
+
+## Haplotype analysis on large datasets
+
+For large panels, extract haplotypes one chromosome at a time to avoid
+loading the full genome matrix:
+
+```{r hap-large, eval=FALSE}
+be      <- read_geno("wgs_panel.gds")
+blocks  <- run_Big_LD_all_chr(be, method = "r2", CLQcut = 0.70,
+                               n_threads = 16L, verbose = FALSE)
+
+# Process chromosome 1 only
+chr1_idx    <- which(be$snp_info$CHR == "1")
+chr1_geno   <- read_chunk(be, chr1_idx)          # load chr1 only
+chr1_blocks <- blocks[blocks$CHR == "1", ]
+chr1_info   <- be$snp_info[chr1_idx, ]
+
+haps <- extract_haplotypes(chr1_geno, chr1_info, chr1_blocks, min_snps = 5)
+div  <- compute_haplotype_diversity(haps)
+feat <- build_haplotype_feature_matrix(haps, top_n = 5, scale_features = TRUE)
+
+close_backend(be)
+```
+
+---
+
+## Troubleshooting
+
+**GDS handle errors on Windows.** SeqArray GDS file handles are not
+fork-safe. Avoid FORK-based parallelism (`parallel::mclapply()`); use
+`n_threads > 1` (OpenMP within a single process) instead.
+
+**BEDMatrix and missing data.** BEDMatrix codes missing genotypes as `NA`.
+These are correctly handled by `compute_r2_cpp()` via mean imputation per
+column. No pre-imputation is required.
+
+**"fewer than min\_snps\_chr SNPs" messages.** Many reference genomes have
+hundreds of unplaced scaffolds with a handful of markers. Set
+`min_snps_chr = 100` or higher to skip them automatically.
+
+**Out-of-memory on boundary scan.** If `boundary_scan_cpp()` runs out of
+RAM on very large chromosomes, reduce `leng` to 30–50. This rarely affects
+block quality because large-block boundaries are evident even with a narrow
+scan window.
+
+**Very long chromosomes (> 2 M SNPs).** For panels with > 2 M SNPs per
+chromosome, set `subSegmSize = 500` and `leng = 30`. The algorithm will make
+more GDS reads but use far less RAM per step.
+
+---
+
+## References
+
+- Lawrence M et al. (2013) *PLOS Comput. Biol.* **9**(8):e1003118.
+  <https://doi.org/10.1371/journal.pcbi.1003118>
+- VanRaden PM (2008) *J. Dairy Sci.* **91**(11):4414–4423.
+  <https://doi.org/10.3168/jds.2007-0980>

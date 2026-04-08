@@ -2,11 +2,12 @@
 % Please edit documentation in R/Big_LD.R
 \name{Big_LD}
 \alias{Big_LD}
-\title{Estimation of LD Block Regions Using Kinship-Adjusted Correlation (\eqn{rV^2})}
+\title{LD Block Segmentation (r² or rV², C++ accelerated)}
 \usage{
 Big_LD(
   geno,
   SNPinfo,
+  method = c("r2", "rV2"),
   CLQcut = 0.5,
   clstgap = 40000,
   leng = 200,
@@ -15,101 +16,102 @@ Big_LD(
   appendrare = FALSE,
   checkLargest = FALSE,
   CLQmode = "Density",
-  rV2method = "chol",
+  kin_method = "chol",
   split = FALSE,
-  digits = 6,
+  digits = -1L,
+  n_threads = 1L,
   seed = NULL,
   verbose = FALSE
 )
 }
 \arguments{
-\item{geno}{Numeric matrix/data frame of additive genotypes (individuals x SNPs).}
+\item{geno}{Numeric matrix (individuals x SNPs), 0/1/2. Row names used
+as individual IDs; auto-generated if absent.}
 
-\item{SNPinfo}{Data frame with 2 columns: col1 = SNP ID (rsID), col2 = base-pair position.}
+\item{SNPinfo}{Data frame: col 1 = rsID, col 2 = bp position.}
 
-\item{CLQcut}{Numeric threshold for \eqn{rV^2} (0–1) used to define LD cliques. Default: 0.5.}
+\item{method}{Character. \code{"r2"} (default) or \code{"rV2"}.}
 
-\item{clstgap}{Integer. Maximum physical gap (bp) allowed within a clique.}
+\item{CLQcut}{Numeric in (0,1]. LD threshold for clique edges. Default 0.5.}
 
-\item{leng}{Integer. Window size for weak-LD boundary checks during segmentation. Default: 200.}
+\item{clstgap}{Integer. Max bp gap within clique (split=TRUE). Default 40000.}
 
-\item{subSegmSize}{Integer. Max SNPs in a sub-segment (segments above are split). Default: 1500.}
+\item{leng}{Integer. Boundary-scan half-window (SNPs). Default 200.}
 
-\item{MAFcut}{Numeric. Minor allele frequency threshold (exclude below unless \code{appendrare=TRUE}). Default: 0.05.}
+\item{subSegmSize}{Integer. Max SNPs per CLQD call. Default 1500.}
 
-\item{appendrare}{Logical. If TRUE, appends rare SNPs after block construction. Default: FALSE.}
+\item{MAFcut}{Numeric. Minor allele frequency minimum. Default 0.05.}
 
-\item{checkLargest}{Logical. Fast clique detection in large regions via dense-core decomposition. Default: FALSE.}
+\item{appendrare}{Logical. Append rare SNPs after block detection. Default FALSE.}
 
-\item{CLQmode}{Character. Clique prioritization: \code{"Density"} (default) or \code{"Maximal"}.}
+\item{checkLargest}{Logical. Dense-core pre-pass for large windows. Default FALSE.}
 
-\item{rV2method}{\code{"chol"} (default) or \code{"eigen"} for computing \eqn{V^{-1/2}}.}
+\item{CLQmode}{\code{"Density"} (default) or \code{"Maximal"}.}
 
-\item{split}{Logical. If TRUE, allow splitting cliques over long distances. Default: FALSE.}
+\item{kin_method}{Character. GRM whitening: \code{"chol"} (default) or
+\code{"eigen"}. Ignored when \code{method = "r2"}.}
 
-\item{digits}{Integer; decimals for rounding \eqn{rV^2} inside \code{compute_rV2()}. Default: \code{6}.}
+\item{split}{Logical. Split cliques at gaps > clstgap. Default FALSE.}
 
-\item{seed}{Integer or \code{NULL}. If non-\code{NULL}, \code{set.seed(seed)} is called. Default: \code{NULL}.}
+\item{digits}{Integer. LD rounding: \code{-1} (default, no rounding)
+or a positive integer.}
 
-\item{verbose}{Logical; if \code{TRUE}, print progress messages. Default: \code{FALSE}.}
+\item{n_threads}{Integer. OpenMP threads for C++ LD kernel. Default 1.}
+
+\item{seed}{Integer or NULL. Set for reproducibility.}
+
+\item{verbose}{Logical. Progress messages.}
 }
 \value{
-\code{data.frame} of detected LD blocks with columns:
-\describe{
-\item{start}{SNP index of block start (including monomorphic SNPs).}
-\item{end}{SNP index of block end.}
-\item{start.rsID, end.rsID}{SNP IDs at block boundaries.}
-\item{start.bp, end.bp}{Base-pair positions of block boundaries.}
-}
+data.frame with columns: start, end, start.rsID, end.rsID,
+  start.bp, end.bp.
 }
 \description{
-Detects linkage disequilibrium (LD) blocks in SNP genotype data using a Big-LD style approach
-with kinship-adjusted squared correlation (\eqn{rV^2}). Suitable for related or structured populations.
+Core per-chromosome LD block detection. Two LD metrics are supported:
+
+\describe{
+  \item{\code{method = "r2"} (default)}{Standard squared Pearson
+    correlation, computed by the C++ Armadillo kernel. No kinship matrix
+    is required. Suitable for large datasets (hundreds of thousands to
+    millions of markers) and unstructured or mildly structured populations.}
+  \item{\code{method = "rV2"}}{Kinship-adjusted squared correlation
+    (Kim et al. 2018). Requires computing and inverting a GRM via
+    AGHmatrix + ASRgenomics. Recommended for highly related populations
+    (livestock, inbred lines) with moderate marker counts (< 200 k per chr).}
+}
+
+For genome-wide analyses use \code{\link{run_Big_LD_all_chr}}.
+For automatic parameter tuning use \code{\link{tune_LD_params}}.
 }
 \examples{
 \donttest{
-## No test:
 set.seed(1)
-
-# Small synthetic data with two strong LD blocks
-m  <- 80          # individuals
-b1 <- 60          # SNPs in block 1
-b2 <- 60          # SNPs in block 2
-
+m <- 80; b1 <- 60; b2 <- 60
 make_block <- function(m, size, p, flip = 0.03) {
-  # Start from a common "founder" SNP and create near-duplicates
-  seed <- rbinom(m, 2, p)
-  M <- matrix(seed, nrow = m, ncol = size)
+  seed_snp <- rbinom(m, 2, p)
+  M <- matrix(seed_snp, nrow = m, ncol = size)
   for (j in seq_len(size)) {
-    idx <- sample.int(m, max(1, floor(flip * m)))
-    delta <- sample(c(-1, 1), length(idx), replace = TRUE)
-    M[idx, j] <- pmin(2, pmax(0, M[idx, j] + delta))  # keep in 0/1/2
+    idx <- sample.int(m, max(1L, floor(flip * m)))
+    M[idx, j] <- pmin(2L, pmax(0L, M[idx, j] + sample(c(-1L, 1L), length(idx), TRUE)))
   }
   M
 }
-
-G <- cbind(
-  make_block(m, b1, p = 0.30, flip = 0.03),
-  make_block(m, b2, p = 0.60, flip = 0.03)
-)
-
+G <- cbind(make_block(m, b1, 0.30), make_block(m, b2, 0.60))
 colnames(G) <- paste0("rs", seq_len(ncol(G)))
-rownames(G) <- paste0("ind", seq_len(nrow(G)))  # required so G.tuneup has names
-
-# Positions: two blocks separated by a large genomic gap
-pos <- c(
-  seq(1,    by = 1000, length.out = b1),
-  seq(5e6,  by = 1000, length.out = b2)
-)
+rownames(G) <- paste0("ind", seq_len(nrow(G)))
+pos <- c(seq(1, by = 1000, length.out = b1), seq(5e6, by = 1000, length.out = b2))
 SNPinfo <- data.frame(SNP = colnames(G), POS = pos)
-
-# Run with small windows so the example is quick & stable
-blocks <- Big_LD(G, SNPinfo, CLQcut = 0.6, leng = 30, subSegmSize = 120, verbose = FALSE)
+blocks <- Big_LD(G, SNPinfo, method = "r2", CLQcut = 0.6,
+                 leng = 30, subSegmSize = 120, verbose = FALSE)
 head(blocks)
-## End(No test)
 }
-
+}
+\references{
+Kim S-A et al. (2018) GENETICS 209(3):855-868.\cr
+VanRaden PM (2008) J. Dairy Sci. 91(11):4414-4423.
 }
 \seealso{
-\code{\link{CLQD}}, \code{\link{compute_rV2}}, \code{\link{get_V_inv_sqrt}}, \code{\link{run_Big_LD_all_chr}}
+\code{\link{run_Big_LD_all_chr}}, \code{\link{CLQD}},
+  \code{\link{compute_r2}}, \code{\link{compute_rV2}},
+  \code{\link{tune_LD_params}}
 }

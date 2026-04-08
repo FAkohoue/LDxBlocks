@@ -1,0 +1,114 @@
+url: https://FAkohoue.github.io/LDxBlocks/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  includes:
+    in_header: |
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    github:
+      icon: fab fa-github fa-lg
+      href: https://github.com/yourorg/LDxBlocks
+      aria-label: GitHub
+
+home:
+  title: "LDxBlocks — Genome-Wide LD Block Detection"
+  description: >
+    Fast, scalable LD block detection using r² or kinship-adjusted rV²,
+    with C++/Armadillo acceleration, multi-format I/O, haplotype analysis,
+    and genomic prediction feature engineering.
+  links:
+    - text: Browse source code
+      href: https://github.com/yourorg/LDxBlocks
+    - text: Report a bug
+      href: https://github.com/yourorg/LDxBlocks/issues
+
+articles:
+  - title: "Getting started"
+    navbar: ~
+    contents:
+      - LDxBlocks-intro
+  - title: "Methods"
+    navbar: "Methods"
+    contents:
+      - LDxBlocks-ld-metrics
+  - title: "Advanced"
+    navbar: "Advanced"
+    contents:
+      - LDxBlocks-large-scale
+
+reference:
+  - title: "Package"
+    desc: Package-level documentation and overview.
+    contents:
+      - LDxBlocks-package
+
+  - title: "Main pipeline"
+    desc: >
+      High-level functions for genome-wide LD block detection.
+      `run_Big_LD_all_chr()` is the recommended entry point for most users.
+    contents:
+      - run_Big_LD_all_chr
+      - Big_LD
+      - CLQD
+      - tune_LD_params
+
+  - title: "Genotype I/O"
+    desc: >
+      Read genotype data from six formats (numeric dosage CSV, HapMap,
+      VCF, GDS, PLINK BED, R matrix) through a unified backend interface.
+    contents:
+      - read_geno
+      - read_chunk
+      - close_backend
+      - print.LDxBlocks_backend
+      - summary.LDxBlocks_backend
+
+  - title: "LD computation"
+    desc: >
+      LD matrix computation functions: standard r² (fast, no kinship) and
+      kinship-adjusted rV² (for structured populations).
+    contents:
+      - compute_ld
+      - compute_r2
+      - compute_rV2
+      - prepare_geno
+      - get_V_inv_sqrt
+
+  - title: "Haplotype analysis"
+    desc: >
+      Extract phase-free haplotypes within LD blocks, compute diversity
+      metrics, and build feature matrices for genomic prediction.
+    contents:
+      - extract_haplotypes
+      - compute_haplotype_diversity
+      - build_haplotype_feature_matrix
+
+  - title: "Utilities"
+    desc: >
+      Summary statistics and visualisation for block tables.
+    contents:
+      - summarise_blocks
+      - plot_ld_blocks
+
+  - title: "Example data"
+    desc: >
+      Simulated datasets shipped with the package for examples and tests.
+      See `data-raw/generate_example_data.R` for the simulation code.
+    contents:
+      - ldx_geno
+      - ldx_snp_info
+      - ldx_blocks
+      - ldx_gwas
+
+news:
+  releases:
+    - text: "LDxBlocks 0.3.0"
+      href: https://github.com/yourorg/LDxBlocks/releases/tag/v0.3.0

@@ -2,7 +2,7 @@
 % Please edit documentation in R/CLQD.R
 \name{CLQD}
 \alias{CLQD}
-\title{Clique-based LD block detection using \eqn{rV^2}}
+\title{Clique-Based LD Block Detection}
 \usage{
 CLQD(
   subgeno,
@@ -14,36 +14,41 @@ CLQD(
   codechange = FALSE,
   checkLargest = FALSE,
   split = FALSE,
-  digits = 6,
-  verbose = TRUE
+  digits = -1L,
+  n_threads = 1L,
+  verbose = FALSE
 )
 }
 \arguments{
-\item{subgeno}{Numeric genotype matrix (individuals x SNPs).}
+\item{subgeno}{Numeric matrix (individuals x SNPs), 0/1/2 coded.}
 
-\item{subSNPinfo}{Data frame with SNP metadata (col1 = rsID, col2 = base-pair positions).}
+\item{subSNPinfo}{Data frame: col 1 = rsID, col 2 = bp position.}
 
-\item{adj_subgeno}{Kinship-adjusted centered genotype matrix (\eqn{V^{-1/2}} \%*\% centered G).}
+\item{adj_subgeno}{n x p matrix from \code{prepare_geno()}.}
 
-\item{CLQcut}{Threshold for \eqn{rV^2} (0–1).}
+\item{CLQcut}{Numeric in (0,1]. LD threshold for edges. Default 0.5.}
 
-\item{clstgap}{Maximum bp gap allowed within a clique.}
+\item{clstgap}{Integer. Max bp gap within clique (split=TRUE).}
 
-\item{CLQmode}{Clique priority mode: \code{"Density"} (default) or \code{"Maximal"}.}
+\item{CLQmode}{"Density" (default) or "Maximal".}
 
-\item{codechange}{Logical. Flip negative LD signs to maximize cliques.}
+\item{codechange}{Logical. Sign-flip heuristic. Default FALSE.}
 
-\item{checkLargest}{Logical. Use dense-core decomposition when SNPs > 500.}
+\item{checkLargest}{Logical. Dense-core pre-pass for >= 500 SNPs.}
 
-\item{split}{Logical. Apply distance-based clique splitting.}
+\item{split}{Logical. Split cliques over gaps. Default FALSE.}
 
-\item{digits}{Integer; rounding precision passed to \code{compute_rV2()}.}
+\item{digits}{Integer. Rounding for LD. -1 = none (default).}
 
-\item{verbose}{Logical; if \code{TRUE}, print progress messages.}
+\item{n_threads}{Integer. OpenMP threads. Default 1.}
+
+\item{verbose}{Logical.}
 }
 \value{
-Integer vector assigning each SNP to an LD block (NA = singleton).
+Integer vector length p: clique ID per SNP, NA = singleton.
 }
 \description{
-Partition SNPs into LD cliques based on kinship-adjusted squared correlations (\eqn{rV^2}).
+Partitions SNPs in a genomic window into LD cliques. The LD matrix is
+computed by the C++ Armadillo kernel; adjacency is built by
+\code{build_adj_matrix_cpp}; cliques are found by igraph.
 }

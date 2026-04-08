@@ -1,0 +1,23 @@
+# Authors and Citation
+
+## Authors
+
+- **Félicien Akohoue**. Author, maintainer.
+  [](https://orcid.org/0000-0002-2160-0182)
+
+## Citation
+
+Source:
+[`DESCRIPTION`](https://github.com/FAkohoue/LDxBlocks/blob/HEAD/DESCRIPTION)
+
+Akohoue F (2026). *LDxBlocks: Genome-Wide LD Block Detection and
+Haplotype Analysis (r² and rV², C++ Accelerated)*. R package version
+0.3.0, <https://github.com/FAkohoue/LDxBlocks>.
+
+    @Manual{,
+      title = {LDxBlocks: Genome-Wide LD Block Detection and Haplotype Analysis (r² and rV², C++ Accelerated)},
+      author = {Félicien Akohoue},
+      year = {2026},
+      note = {R package version 0.3.0},
+      url = {https://github.com/FAkohoue/LDxBlocks},
+    }
