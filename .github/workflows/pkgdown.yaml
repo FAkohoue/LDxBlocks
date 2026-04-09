@@ -1,65 +1,105 @@
 name: pkgdown
-
 on:
   push:
     branches: [main, master]
-    tags: ["v*"]
-  pull_request:
-    branches: [main, master]
-  release:
-    types: [published]
   workflow_dispatch:
-
 concurrency:
-  group: pkgdown-${{ github.ref }}
+  group: "pages-${{ github.ref }}"
   cancel-in-progress: true
-
+permissions:
+  contents: read
+  pages:    write
+  id-token: write
 jobs:
-  pkgdown:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: r-lib/actions/setup-pandoc@v2
-
-      - uses: r-lib/actions/setup-r@v2
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
+          fetch-depth: 0
+
+      - name: Install Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+        with:
+          pandoc-version: "3.1.11"
+
+      - name: Install R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "release"
           use-public-rspm: true
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y \
-            libhdf5-dev libcurl4-openssl-dev libssl-dev \
-            libxml2-dev libfontconfig1-dev libharfbuzz-dev \
-            libfribidi-dev libfreetype6-dev libpng-dev \
-            libtiff5-dev libjpeg-dev
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libcurl4-openssl-dev libssl-dev libxml2-dev \
+            libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
+            libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
+            zlib1g-dev libgit2-dev libhdf5-dev \
+            libopenblas-dev liblapack-dev
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::pkgdown
-          needs: website
+      - name: Install Bioconductor packages
+        shell: Rscript {0}
+        run: |
+          if (!requireNamespace("BiocManager", quietly = TRUE))
+            install.packages("BiocManager", repos = "https://cloud.r-project.org")
+          BiocManager::install(ask = FALSE, update = FALSE)
+          bioc_pkgs <- c("SeqArray", "gdsfmt")
+          to_install <- bioc_pkgs[!vapply(bioc_pkgs, requireNamespace,
+                                          logical(1L), quietly = TRUE)]
+          if (length(to_install))
+            BiocManager::install(to_install, ask = FALSE, update = FALSE)
+
+      - name: Install CRAN packages
+        shell: Rscript {0}
+        run: |
+          pkgs <- c(
+            "pkgdown", "knitr", "rmarkdown",
+            "data.table", "igraph", "dplyr", "testthat",
+            "Rcpp", "RcppArmadillo",
+            "AGHmatrix", "ASRgenomics", "BEDMatrix",
+            "ggplot2", "future.apply"
+          )
+          to_install <- pkgs[!vapply(pkgs, requireNamespace,
+                                     logical(1L), quietly = TRUE)]
+          if (length(to_install))
+            install.packages(to_install, repos = "https://cloud.r-project.org")
+
+      - name: Install local package
+        shell: Rscript {0}
+        run: |
+          install.packages(".",
+                           repos        = NULL,
+                           type         = "source",
+                           INSTALL_opts = "--no-docs --no-multiarch --no-build-vignettes")
 
       - name: Build pkgdown site
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        env:
+          PKGDOWN_DEV_MODE: release
         shell: Rscript {0}
+        run: |
+          pkgdown::build_site_github_pages(
+            new_process = FALSE,
+            install     = FALSE
+          )
 
-      - name: Deploy to GitHub pages
-        if: github.event_name != 'pull_request'
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          clean: false
-          branch: gh-pages
-          folder: docs
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url:  ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id:   deployment
+        uses: actions/deploy-pages@v4
