@@ -140,7 +140,7 @@ Install from GitHub with vignettes (recommended):
 
 ```r
 install.packages("remotes")
-remotes::install_github("yourorg/LDxBlocks",
+remotes::install_github("FAkohoue/LDxBlocks",
   build_vignettes = TRUE,
   dependencies    = TRUE
 )
@@ -149,7 +149,7 @@ remotes::install_github("yourorg/LDxBlocks",
 Install without vignettes for a faster build:
 
 ```r
-remotes::install_github("yourorg/LDxBlocks",
+remotes::install_github("FAkohoue/LDxBlocks",
   build_vignettes = FALSE,
   dependencies    = TRUE
 )
@@ -938,7 +938,7 @@ blocks <- run_Big_LD_all_chr(be, n_threads = n_thr)
 
 Full documentation, function reference, and tutorials are available at:
 
-<https://yourorg.github.io/LDxBlocks/>
+<https://FAkohoue.github.io/LDxBlocks/>
 
 To read the vignette after installation:
 
@@ -957,7 +957,7 @@ LDxBlocks Development Team (2025).
 LDxBlocks: Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic
 Prediction Features with Kinship-Adjusted Correlations.
 R package version 0.3.0.
-https://github.com/yourorg/LDxBlocks
+https://github.com/FAkohoue/LDxBlocks
 ```
 
 Please also cite the underlying methodological papers:
@@ -996,7 +996,7 @@ https://doi.org/10.1073/pnas.70.12.3321
 
 Bug reports, feature requests, and pull requests are welcome:
 
-<https://github.com/yourorg/LDxBlocks/issues>
+<https://github.com/FAkohoue/LDxBlocks/issues>
 
 Before opening a pull request, please:
 

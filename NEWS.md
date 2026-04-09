@@ -1,6 +1,4 @@
-# LDxBlocks News
-
-## LDxBlocks 0.3.0 (2025-04-07)
+# LDxBlocks 0.3.0
 
 ### Breaking changes
 

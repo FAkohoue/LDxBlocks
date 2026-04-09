@@ -122,7 +122,6 @@ pkgdown::build_home()
 #pkgdown::clean_site(force = TRUE)
 pkgdown::build_site()
 
-
 # 10. Build package
 devtools::build()
 

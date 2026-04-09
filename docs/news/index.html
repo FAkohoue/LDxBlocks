@@ -47,7 +47,96 @@
       <small>Source: <a href="https://github.com/FAkohoue/LDxBlocks/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
-  </main></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="ldxblocks-030">LDxBlocks 0.3.0<a class="anchor" aria-label="anchor" href="#ldxblocks-030"></a></h2>
+<div class="section level4">
+<h4 id="breaking-changes-0-3-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-3-0"></a></h4>
+<ul><li>
+<code><a href="../reference/read_geno.html">read_geno()</a></code>: removed <code>pheno_ids</code> parameter. Sample subsetting is the caller’s responsibility — use <code>be$sample_ids</code> to match externally.</li>
+<li>Removed <code>read_pheno()</code> and <code>align_geno_pheno()</code> entirely. Phenotype handling is not part of LD block detection and these functions had no algorithmic role.</li>
+<li>
+<code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: parameter <code>rV2method</code> renamed to <code>kin_method</code> for clarity.</li>
+<li>
+<code>digits</code> default changed from <code>6</code> to <code>-1</code> (no rounding) throughout. Rounding was a source of subtle threshold-comparison instability. Set <code>digits = 6</code> explicitly to restore previous behaviour.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="new-features-0-3-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0"></a></h4>
+<ul><li>
+<strong>Multi-format I/O</strong>: <code><a href="../reference/read_geno.html">read_geno()</a></code> now supports numeric dosage CSV, HapMap, VCF / bgzipped VCF, SeqArray GDS, PLINK BED/BIM/FAM, and plain R matrices through a unified <code>LDxBlocks_backend</code> S3 interface.</li>
+<li>
+<strong>GDS streaming backend</strong>: SeqArray GDS files are accessed via <code><a href="https://rdrr.io/pkg/SeqArray/man/seqSetFilter.html" class="external-link">seqSetFilter()</a></code> + <code>seqGetData("$dosage")</code> per window, keeping peak RAM proportional to one chromosome window rather than the full genome.</li>
+<li>
+<strong>PLINK BED backend</strong>: <code>BEDMatrix</code>-backed streaming access for binary PLINK files.</li>
+<li>
+<strong><code><a href="../reference/read_chunk.html">read_chunk()</a></code></strong>: unified genotype slice accessor — works identically for all six backend types.</li>
+<li>
+<strong><code><a href="../reference/close_backend.html">close_backend()</a></code></strong>: releases GDS file handles; no-op for in-memory backends.</li>
+<li>
+<strong><code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> now accepts <code>LDxBlocks_backend</code></strong> directly, removing the need to load the full genome matrix before calling it.</li>
+<li>
+<strong><code>min_snps_chr</code></strong> parameter in <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: skip chromosomes or scaffolds with fewer than this many SNPs (default 10).</li>
+<li>
+<strong>Example datasets</strong>: <code>ldx_geno</code>, <code>ldx_snp_info</code>, <code>ldx_blocks</code>, <code>ldx_gwas</code> — simulated with clear block structure for examples and tests.</li>
+<li>
+<strong>Flat-file examples</strong> in <code>inst/extdata/</code>: numeric CSV, HapMap, and VCF copies of the example data for format-reader tests.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="performance-improvements-0-3-0">Performance improvements<a class="anchor" aria-label="anchor" href="#performance-improvements-0-3-0"></a></h4>
+<ul><li>
+<strong><code>boundary_scan_cpp()</code></strong>: C++ replacement for the R inner loop in <code>cutsequence.modi()</code>. For a 50,000-SNP chromosome with <code>leng = 200</code>, eliminates ~150,000 small R-level matrix operations per chromosome.</li>
+<li>
+<strong><code>maf_filter_cpp()</code></strong>: combined MAF + monomorphic filter in one O(np) C++ pass; ~10× faster than the <code><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply()</a></code> equivalent.</li>
+<li>
+<strong><code>build_adj_matrix_cpp()</code></strong>: in-place C++ adjacency construction, avoiding the intermediate logical matrix from <code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse()</a></code>.</li>
+<li>
+<strong><code>compute_r2_sparse_cpp()</code></strong>: sparse r² within a bp distance window, returning only above-threshold pairs as a triplet (row, col, r²). Avoids the O(p²) dense matrix for large sub-segments where distant pairs are always below threshold.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="tests-0-3-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-3-0"></a></h4>
+<ul><li>Three test files: <code>test-basic.R</code> (smoke tests via example data), <code>test-cpp.R</code> (property-based C++ kernel tests), <code>test-io.R</code> (all I/O format tests via tempfiles).</li>
+</ul><hr></div>
+<div class="section level3">
+<h3 id="ldxblocks-0-3-0">LDxBlocks 0.2.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-0-3-0"></a></h3>
+<div class="section level4">
+<h4 id="new-features-0-3-0-1">New features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0-1"></a></h4>
+<ul><li>
+<strong>C++/Armadillo core</strong>: <code>compute_r2_cpp()</code>, <code>compute_rV2_cpp()</code>, <code>maf_filter_cpp()</code>, <code>build_adj_matrix_cpp()</code>, <code>col_r2_cpp()</code>, <code>compute_r2_sparse_cpp()</code>, <code>boundary_scan_cpp()</code> via RcppArmadillo.</li>
+<li>
+<strong>OpenMP parallelism</strong>: <code>n_threads</code> parameter for <code>compute_r2_cpp()</code>.</li>
+<li>
+<strong>Dual LD metric</strong>: <code>method = "r2"</code> (default) or <code>"rV2"</code> in <code><a href="../reference/Big_LD.html">Big_LD()</a></code> and <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>.</li>
+<li>
+<strong><code><a href="../reference/prepare_geno.html">prepare_geno()</a></code></strong>: unified preparation step — centres (r²) or centres + whitens (rV²).</li>
+<li>
+<strong><code><a href="../reference/compute_ld.html">compute_ld()</a></code></strong>: dispatcher routing to <code>compute_r2_cpp()</code> or <code>compute_rV2_cpp()</code>.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="bug-fixes-0-3-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-3-0"></a></h4>
+<ul><li>
+<code><a href="../reference/CLQD.html">CLQD()</a></code>: fixed latent bug in <code>re_idx</code> tracking after dense-core pre-pass; original indices were not correctly mapped back after removal.</li>
+<li>
+<code><a href="../reference/Big_LD.html">Big_LD()</a></code>: <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code> used throughout instead of <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply()</a></code> for type-stability.</li>
+</ul><hr></div>
+</div>
+<div class="section level3">
+<h3 id="ldxblocks-0-3-0-1">LDxBlocks 0.1.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-0-3-0-1"></a></h3>
+<p>Initial release.</p>
+<ul><li>
+<code><a href="../reference/Big_LD.html">Big_LD()</a></code>: core per-chromosome LD block segmentation (Kim et al. 2018).</li>
+<li>
+<code><a href="../reference/CLQD.html">CLQD()</a></code>: clique detection on rV² adjacency graph.</li>
+<li>
+<code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: chromosome-wise wrapper.</li>
+<li>
+<code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>: grid-search parameter auto-tuner.</li>
+<li>
+<code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>, <code><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>, <code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>: haplotype analysis module.</li>
+<li>
+<code><a href="../reference/summarise_blocks.html">summarise_blocks()</a></code>, <code><a href="../reference/plot_ld_blocks.html">plot_ld_blocks()</a></code>: utilities.</li>
+</ul></div>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
