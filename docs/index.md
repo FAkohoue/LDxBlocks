@@ -463,7 +463,7 @@ which wraps the Bron-Kerbosch algorithm. Each maximal clique represents
 a set of SNPs in mutual high LD. The cliques are prioritised by a score:
 
 ``` math
-\text{score}(\mathcal{K}) = \begin{cases} |\mathcal{K}| / (\text{span\_kb}(\mathcal{K}) + 1) & \text{Density mode (default)} \\ |\mathcal{K}| & \text{Maximal mode} \end{cases}
+\text{score}(\mathcal{K}) = \begin{cases} |\mathcal{K}| / (\mathrm{span_{kb}}(\mathcal{K}) + 1) & \text{Density mode (default)} \\ |\mathcal{K}| & \text{Maximal mode} \end{cases}
 ```
 
 **Density mode** (`CLQmode = "Density"`) prefers compact, high-density

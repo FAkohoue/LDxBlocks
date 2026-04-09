@@ -69,7 +69,12 @@ arma::mat compute_r2_cpp(
   // r² = (Z'Z / (n-1))²  — but columns already unit-variance, so
   // Z'Z/(n-1) is already the correlation matrix
   arma::mat R(p, p, arma::fill::zeros);
+#ifdef _OPENMP
   int n_thr = (n_threads == 0) ? omp_get_max_threads() : n_threads;
+#else
+  int n_thr = 1;  // OpenMP unavailable (e.g. Apple Clang)
+  (void)n_threads;  // suppress unused-parameter warning
+#endif
 
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic, 4) num_threads(n_thr)

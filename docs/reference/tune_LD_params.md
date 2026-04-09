@@ -71,7 +71,7 @@ tune_LD_params(
 - parallel:
 
   Logical. If `TRUE`, uses
-  [`future.apply::future_lapply`](https://future.apply.futureverse.org/reference/future_lapply.html)
+  [`future.apply::future_lapply`](https://rdrr.io/pkg/future.apply/man/future_lapply.html)
   for parallelism (user must set a `future` plan before calling).
   Default `FALSE`.
 

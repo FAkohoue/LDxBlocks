@@ -207,7 +207,7 @@ t_rv2 <- system.time(for(i in 1:20) compute_rV2(Gc_bench))
 cat("compute_r2  (50 SNPs, 20 reps):", round(t_r2["elapsed"],  3), "s\n")
 #> compute_r2  (50 SNPs, 20 reps): 0 s
 cat("compute_rV2 (50 SNPs, 20 reps):", round(t_rv2["elapsed"], 3), "s\n")
-#> compute_rV2 (50 SNPs, 20 reps): 0 s
+#> compute_rV2 (50 SNPs, 20 reps): 0.02 s
 # Both use the same C++ kernel — times should be identical
 # The cost of rV² is entirely in prepare_geno() (GRM + Cholesky)
 ```
