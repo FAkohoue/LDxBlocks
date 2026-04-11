@@ -40,7 +40,7 @@ jobs:
             libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
             libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
             zlib1g-dev libgit2-dev libhdf5-dev \
-            libopenblas-dev liblapack-dev
+            libopenblas-dev liblapack-dev gfortran
 
       - name: Install Bioconductor packages
         shell: Rscript {0}
