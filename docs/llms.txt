@@ -96,7 +96,7 @@ improvements:
 4.  **Unified multi-format I/O** —
     [`read_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
     auto-detects and reads numeric dosage CSV, HapMap, VCF/VCF.gz,
-    SeqArray GDS, PLINK BED/BIM/FAM, and in-memory R matrices through a
+    SNPRelate GDS, PLINK BED/BIM/FAM, and in-memory R matrices through a
     single entry point with a common backend interface
     (`LDxBlocks_backend`).
 5.  **Never-full-genome memory model** — the full genotype matrix is
@@ -185,7 +185,7 @@ enforces a strict memory contract regardless of format:
   counts rows with zero data loaded. A single pre-allocated matrix is
   filled in 50,000-row chunks via successive `fread()` calls. Peak RAM =
   one chunk, never 2x the file.
-- **VCF and HapMap**: auto-converted to a SeqArray GDS cache on first
+- **VCF and HapMap**: auto-converted to a SNPRelate GDS cache on first
   call. All subsequent access streams per chromosome window via
   [`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md).
 - **GDS and PLINK BED**: `read_chunk(backend, col_idx)` is called once
@@ -346,7 +346,7 @@ install.packages(c(
 # GDS backend — required for .gds files; recommended for panels > 2 M SNPs
 if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
-BiocManager::install("SeqArray")
+BiocManager::install("SNPRelate")
 
 # PLINK BED backend — required for .bed/.bim/.fam input
 install.packages("BEDMatrix")
@@ -465,7 +465,7 @@ the `read_pheno()` and `align_geno_pheno()` utilities documented under
 | Numeric dosage     | `.csv`, `.txt`            | `"numeric"` |
 | HapMap             | `.hmp.txt`                | `"hapmap"`  |
 | VCF / bgzipped VCF | `.vcf`, `.vcf.gz`         | `"vcf"`     |
-| SeqArray GDS       | `.gds`                    | `"gds"`     |
+| SNPRelate GDS      | `.gds`                    | `"gds"`     |
 | PLINK binary       | `.bed` (+ `.bim`, `.fam`) | `"bed"`     |
 | R matrix           | (in-memory)               | `"matrix"`  |
 
@@ -503,11 +503,11 @@ skipped automatically:
 | 1       | 20000 | SNP002 | G   | C   | .    | PASS   | .    | GT     | 1/1    | 0/0    | …   |
 | 1       | 30000 | SNP003 | C   | G   | .    | PASS   | .    | GT     | 0/1    | 1/1    | …   |
 
-**GDS** — SeqArray GDS file. Requires
-`BiocManager::install("SeqArray")`. Chunk access is via
-[`SeqArray::seqSetFilter()`](https://rdrr.io/pkg/SeqArray/man/seqSetFilter.html) +
-`seqGetData("$dosage")` + `seqResetFilter()` — the full genome matrix is
-never held in RAM simultaneously.
+**GDS** — SNPRelate GDS file. Requires
+`BiocManager::install("SNPRelate")`. Chunk access is via
+[`SNPRelate::snpgdsGetGeno()`](https://rdrr.io/pkg/SNPRelate/man/snpgdsGetGeno.html)
+with explicit `snp.id` and `sample.id` vectors — the full genome matrix
+is never held in RAM simultaneously.
 
 **PLINK BED** — binary PLINK format. The companion `.bim` and `.fam`
 files must exist at the same path stem. Requires
@@ -885,7 +885,7 @@ dispatches to the appropriate low-level reader based on `be$type`:
 | Backend type | [`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md) implementation |
 |----|----|
 | `"numeric"`, `"hapmap"`, `"vcf"`, `"matrix"` | Direct column slice of in-memory matrix |
-| `"gds"` | `seqSetFilter()` → `seqGetData("$dosage")` → `seqResetFilter()` |
+| `"gds"` | `snpgdsGetGeno(snp.id=..., sample.id=...)` — one call, no filter cycle |
 | `"bed"` | `BEDMatrix` row × column index (OS-level memory mapping) |
 
 For GDS and BED backends, only the requested column slice is loaded per
@@ -1147,7 +1147,7 @@ with zero data loading. A single pre-allocated matrix is then filled in
 calls. Peak RAM = one chunk (not 2× the file). `gc(FALSE)` is called
 after each chunk.
 
-**VCF and HapMap** — Auto-converted to a SeqArray GDS cache on first
+**VCF and HapMap** — Auto-converted to a SNPRelate GDS cache on first
 call (placed next to the source file). Subsequent calls reuse the cache.
 All access is streaming via
 [`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md).

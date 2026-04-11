@@ -116,7 +116,7 @@
 <li>
 <strong>OpenMP parallelism</strong> — the outer loop of <code>compute_r2_cpp()</code> is parallelised across threads; count controlled with <code>n_threads =</code>.</li>
 <li>
-<strong>Unified multi-format I/O</strong> — <code><a href="reference/read_geno.html">read_geno()</a></code> auto-detects and reads numeric dosage CSV, HapMap, VCF/VCF.gz, SeqArray GDS, PLINK BED/BIM/FAM, and in-memory R matrices through a single entry point with a common backend interface (<code>LDxBlocks_backend</code>).</li>
+<strong>Unified multi-format I/O</strong> — <code><a href="reference/read_geno.html">read_geno()</a></code> auto-detects and reads numeric dosage CSV, HapMap, VCF/VCF.gz, SNPRelate GDS, PLINK BED/BIM/FAM, and in-memory R matrices through a single entry point with a common backend interface (<code>LDxBlocks_backend</code>).</li>
 <li>
 <strong>Never-full-genome memory model</strong> — the full genotype matrix is never held in RAM at once for any format. Numeric dosage CSV is read in pre-allocated 50,000-row chunks (peak RAM = one chunk, not 2× the file). VCF and HapMap auto-convert to a streaming GDS cache. GDS and PLINK BED backends load only the SNP window per CLQD call. <code>gc(FALSE)</code> is called after each chromosome to prevent heap fragmentation across 20–30 chromosome passes.</li>
 <li>
@@ -204,7 +204,7 @@
 <li>
 <strong>Numeric dosage CSV</strong>: two-pass chunked pre-allocated reader. Pass 1 counts rows with zero data loaded. A single pre-allocated matrix is filled in 50,000-row chunks via successive <code>fread()</code> calls. Peak RAM = one chunk, never 2x the file.</li>
 <li>
-<strong>VCF and HapMap</strong>: auto-converted to a SeqArray GDS cache on first call. All subsequent access streams per chromosome window via <code><a href="reference/read_chunk.html">read_chunk()</a></code>.</li>
+<strong>VCF and HapMap</strong>: auto-converted to a SNPRelate GDS cache on first call. All subsequent access streams per chromosome window via <code><a href="reference/read_chunk.html">read_chunk()</a></code>.</li>
 <li>
 <strong>GDS and PLINK BED</strong>: <code>read_chunk(backend, col_idx)</code> is called once per sub-segment per chromosome. Only those columns are loaded; the rest of the genome remains on disk.</li>
 <li>
@@ -390,7 +390,7 @@
 <code class="sourceCode R"><span><span class="co"># GDS backend — required for .gds files; recommended for panels &gt; 2 M SNPs</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"SeqArray"</span><span class="op">)</span></span>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"SNPRelate"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># PLINK BED backend — required for .bed/.bim/.fam input</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BEDMatrix"</span><span class="op">)</span></span>
@@ -512,7 +512,7 @@
 <td><code>"vcf"</code></td>
 </tr>
 <tr>
-<td>SeqArray GDS</td>
+<td>SNPRelate GDS</td>
 <td><code>.gds</code></td>
 <td><code>"gds"</code></td>
 </tr>
@@ -704,7 +704,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong>GDS</strong> — SeqArray GDS file. Requires <code>BiocManager::install("SeqArray")</code>. Chunk access is via <code><a href="https://rdrr.io/pkg/SeqArray/man/seqSetFilter.html" class="external-link">SeqArray::seqSetFilter()</a></code> + <code>seqGetData("$dosage")</code> + <code>seqResetFilter()</code> — the full genome matrix is never held in RAM simultaneously.</p>
+<p><strong>GDS</strong> — SNPRelate GDS file. Requires <code>BiocManager::install("SNPRelate")</code>. Chunk access is via <code><a href="https://rdrr.io/pkg/SNPRelate/man/snpgdsGetGeno.html" class="external-link">SNPRelate::snpgdsGetGeno()</a></code> with explicit <code>snp.id</code> and <code>sample.id</code> vectors — the full genome matrix is never held in RAM simultaneously.</p>
 <p><strong>PLINK BED</strong> — binary PLINK format. The companion <code>.bim</code> and <code>.fam</code> files must exist at the same path stem. Requires <code>install.packages("BEDMatrix")</code>. Row and column indexing are memory-mapped via <code>BEDMatrix</code>.</p>
 <p><strong>Chromosome normalisation.</strong> At read time, all chromosome labels are stripped of leading <code>chr</code>, <code>Chr</code>, or <code>CHR</code> so that <code>chr1</code>, <code>Chr01</code>, and <code>1</code> are all stored as <code>"1"</code> in <code>snp_info$CHR</code>. This applies to all six formats and ensures correct cross-format matching.</p>
 <hr>
@@ -951,8 +951,7 @@
 <tr>
 <td><code>"gds"</code></td>
 <td>
-<code>seqSetFilter()</code> → <code>seqGetData("$dosage")</code> → <code>seqResetFilter()</code>
-</td>
+<code>snpgdsGetGeno(snp.id=..., sample.id=...)</code> — one call, no filter cycle</td>
 </tr>
 <tr>
 <td><code>"bed"</code></td>
@@ -1673,7 +1672,7 @@
 </h3>
 <p>LDxBlocks enforces a strict memory contract: <strong>the full genotype matrix is never held in RAM at once for any dataset size or format.</strong></p>
 <p><strong>Numeric dosage CSV</strong> — Two-pass chunked reading following the OptSLDP pattern (Akohoue et al. 2026): Pass 1 scans the header and counts rows with zero data loading. A single pre-allocated matrix is then filled in 50,000-row chunks via successive <code><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">data.table::fread()</a></code> calls. Peak RAM = one chunk (not 2× the file). <code>gc(FALSE)</code> is called after each chunk.</p>
-<p><strong>VCF and HapMap</strong> — Auto-converted to a SeqArray GDS cache on first call (placed next to the source file). Subsequent calls reuse the cache. All access is streaming via <code><a href="reference/read_chunk.html">read_chunk()</a></code>.</p>
+<p><strong>VCF and HapMap</strong> — Auto-converted to a SNPRelate GDS cache on first call (placed next to the source file). Subsequent calls reuse the cache. All access is streaming via <code><a href="reference/read_chunk.html">read_chunk()</a></code>.</p>
 <p><strong>GDS and PLINK BED</strong> — <code>read_chunk(backend, col_idx)</code> is called once per sub-segment per chromosome. With <code>subSegmSize = 1500</code> and 50,000 SNPs per chromosome, this is approximately 33 disk reads per chromosome. Each read loads only a 1,500-column slice; the rest of the genome remains on disk.</p>
 <p><strong>Chromosome loop</strong> — In <code><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> and <code><a href="reference/extract_haplotypes.html">extract_haplotypes()</a></code>, each chromosome is extracted, processed, freed with <code><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm()</a></code>, and <code>gc(FALSE)</code> is called before the next chromosome is touched, preventing heap fragmentation from accumulating across 20–30 chromosome passes.</p>
 </div>

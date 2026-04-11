@@ -86,7 +86,7 @@
     
     
 <p>All code chunks in this vignette have <code>eval = FALSE</code>
-because they require either optional packages (SeqArray, BEDMatrix) or
+because they require either optional packages (SNPRelate, BEDMatrix) or
 large data files that are not shipped with the package. Copy and adapt
 them to your own data.</p>
 <hr>
@@ -176,8 +176,7 @@ format.</strong></p>
 <tr class="odd">
 <td>GDS</td>
 <td>
-<code><a href="https://rdrr.io/pkg/SeqArray/man/seqSetFilter.html" class="external-link">seqSetFilter()</a></code> + <code><a href="https://rdrr.io/pkg/SeqArray/man/seqGetData.html" class="external-link">seqGetData()</a></code> per
-window</td>
+<code><a href="https://rdrr.io/pkg/SNPRelate/man/snpgdsGetGeno.html" class="external-link">snpgdsGetGeno()</a></code> per window</td>
 <td>~60 MB per window</td>
 </tr>
 <tr class="even">
@@ -211,8 +210,8 @@ accumulates more than one chromosome in RAM at any point.</p>
 <tbody>
 <tr class="odd">
 <td><code>"gds"</code></td>
-<td>SeqArray GDS</td>
-<td><code>BiocManager::install("SeqArray")</code></td>
+<td>SNPRelate GDS</td>
+<td><code>BiocManager::install("SNPRelate")</code></td>
 </tr>
 <tr class="even">
 <td><code>"bed"</code></td>
@@ -244,7 +243,7 @@ and the default <code>subSegmSize = 1500</code>:</p>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="gds-backend-seqarray">GDS backend (SeqArray)<a class="anchor" aria-label="anchor" href="#gds-backend-seqarray"></a>
+<h2 id="gds-backend-snprelate">GDS backend (SNPRelate)<a class="anchor" aria-label="anchor" href="#gds-backend-snprelate"></a>
 </h2>
 <div class="section level3">
 <h3 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -252,7 +251,7 @@ and the default <code>subSegmSize = 1500</code>:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
-<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"SeqArray"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">BiocManager</span><span class="fu">::</span><span class="fu"><a href="https://bioconductor.github.io/BiocManager/reference/install.html" class="external-link">install</a></span><span class="op">(</span><span class="st">"SNPRelate"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="converting-vcf-to-gds">Converting VCF to GDS<a class="anchor" aria-label="anchor" href="#converting-vcf-to-gds"></a>
@@ -261,8 +260,8 @@ and the default <code>subSegmSize = 1500</code>:</p>
 supports random-access compressed storage, making repeated window reads
 fast:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/zhengxwen/SeqArray" class="external-link">SeqArray</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/SeqArray/man/seqVCF2GDS.html" class="external-link">seqVCF2GDS</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/zhengxwen/SNPRelate" class="external-link">SNPRelate</a></span><span class="op">)</span></span>
+<span><span class="fu">seqVCF2GDS</span><span class="op">(</span></span>
 <span>  vcf.fn         <span class="op">=</span> <span class="st">"mydata.vcf.gz"</span>,</span>
 <span>  out.fn         <span class="op">=</span> <span class="st">"mydata.gds"</span>,</span>
 <span>  storage.option <span class="op">=</span> <span class="st">"ZIP_RA"</span>,   <span class="co"># random-access LZ4 compression</span></span>
@@ -299,9 +298,14 @@ fast:</p>
 </h3>
 <p>Each call executes:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">SeqArray</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SeqArray/man/seqSetFilter.html" class="external-link">seqSetFilter</a></span><span class="op">(</span><span class="va">gds</span>, variant.id <span class="op">=</span> <span class="va">var_ids</span><span class="op">[</span><span class="va">col_idx</span><span class="op">]</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">dos</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu">SeqArray</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SeqArray/man/seqGetData.html" class="external-link">seqGetData</a></span><span class="op">(</span><span class="va">gds</span>, <span class="st">"$dosage"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">SeqArray</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SeqArray/man/seqSetFilter.html" class="external-link">seqResetFilter</a></span><span class="op">(</span><span class="va">gds</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">dos</span> <span class="op">&lt;-</span> <span class="fu">SNPRelate</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/SNPRelate/man/snpgdsGetGeno.html" class="external-link">snpgdsGetGeno</a></span><span class="op">(</span></span>
+<span>  <span class="va">gds</span>,</span>
+<span>  snp.id      <span class="op">=</span> <span class="va">snp_int_ids</span><span class="op">[</span><span class="va">col_idx</span><span class="op">]</span>,</span>
+<span>  sample.id   <span class="op">=</span> <span class="va">sample_ids</span>,</span>
+<span>  snpfirstdim <span class="op">=</span> <span class="cn">FALSE</span>,   <span class="co"># returns samples x SNPs</span></span>
+<span>  with.id     <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">dos</span> <span class="op">&lt;-</span> <span class="fl">2L</span> <span class="op">-</span> <span class="va">dos</span>  <span class="co"># convert REF count to ALT dosage convention</span></span></code></pre></div>
 <p>For <code>subSegmSize = 1500</code> and a 30-chromosome bovine genome
 with 10 M markers, this is approximately
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">⌈</mo><mn>10</mn><mo>,</mo><mn>000</mn><mo>,</mo><mn>000</mn><mi>/</mi><mn>1</mn><mo>,</mo><mn>500</mn><mo stretchy="false" form="postfix">⌉</mo><mo>≈</mo><mn>6</mn><mo>,</mo><mn>700</mn></mrow><annotation encoding="application/x-tex">\lceil 10{,}000{,}000 / 1{,}500 \rceil \approx 6{,}700</annotation></semantics></math>
@@ -476,7 +480,7 @@ avoid loading the full genome matrix:</p>
 <div class="section level2">
 <h2 id="troubleshooting">Troubleshooting<a class="anchor" aria-label="anchor" href="#troubleshooting"></a>
 </h2>
-<p><strong>GDS handle errors on Windows.</strong> SeqArray GDS file
+<p><strong>GDS handle errors on Windows.</strong> SNPRelate GDS file
 handles are not fork-safe. Avoid FORK-based parallelism
 (<code><a href="https://rdrr.io/r/parallel/mcdummies.html" class="external-link">parallel::mclapply()</a></code>); use <code>n_threads &gt; 1</code>
 (OpenMP within a single process) instead.</p>

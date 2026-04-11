@@ -1,7 +1,7 @@
 # Large-Scale Analysis: GDS and PLINK BED Backends
 
 All code chunks in this vignette have `eval = FALSE` because they
-require either optional packages (SeqArray, BEDMatrix) or large data
+require either optional packages (SNPRelate, BEDMatrix) or large data
 files that are not shipped with the package. Copy and adapt them to your
 own data.
 
@@ -39,7 +39,7 @@ is never held in RAM at once, for any dataset size or format.**
 |----|----|----|
 | VCF / HapMap | Auto-converted to GDS cache; streams per chromosome window | ~60 MB per window |
 | Numeric CSV | Two-pass chunked pre-allocated reader; 50,000-row chunks | ~50 MB per chunk |
-| GDS | [`seqSetFilter()`](https://rdrr.io/pkg/SeqArray/man/seqSetFilter.html) + [`seqGetData()`](https://rdrr.io/pkg/SeqArray/man/seqGetData.html) per window | ~60 MB per window |
+| GDS | [`snpgdsGetGeno()`](https://rdrr.io/pkg/SNPRelate/man/snpgdsGetGeno.html) per window | ~60 MB per window |
 | PLINK BED | `BEDMatrix` OS memory-mapping; page faults load only requested bytes | ~60 MB per window |
 
 The peak RAM formula for file-backed backends is:
@@ -60,10 +60,10 @@ than one chromosome in RAM at any point.
 
 Two file-backed backends handle the on-disk streaming:
 
-| Backend | Format           | Package required                   |
-|---------|------------------|------------------------------------|
-| `"gds"` | SeqArray GDS     | `BiocManager::install("SeqArray")` |
-| `"bed"` | PLINK binary BED | `install.packages("BEDMatrix")`    |
+| Backend | Format           | Package required                    |
+|---------|------------------|-------------------------------------|
+| `"gds"` | SNPRelate GDS    | `BiocManager::install("SNPRelate")` |
+| `"bed"` | PLINK binary BED | `install.packages("BEDMatrix")`     |
 
 Both backends are read-only memory-mapped: at any point only the columns
 requested by the current
@@ -91,14 +91,14 @@ $`5{,}000 \times 10{,}000{,}000 \times 8
 
 ------------------------------------------------------------------------
 
-## GDS backend (SeqArray)
+## GDS backend (SNPRelate)
 
 ### Installation
 
 ``` r
 if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
-BiocManager::install("SeqArray")
+BiocManager::install("SNPRelate")
 ```
 
 ### Converting VCF to GDS
@@ -107,7 +107,7 @@ Convert once; use for all subsequent analyses. The GDS format supports
 random-access compressed storage, making repeated window reads fast:
 
 ``` r
-library(SeqArray)
+library(SNPRelate)
 seqVCF2GDS(
   vcf.fn         = "mydata.vcf.gz",
   out.fn         = "mydata.gds",
@@ -146,9 +146,14 @@ close_backend(be_gds)
 Each call executes:
 
 ``` r
-SeqArray::seqSetFilter(gds, variant.id = var_ids[col_idx], verbose = FALSE)
-dos <- t(SeqArray::seqGetData(gds, "$dosage"))
-SeqArray::seqResetFilter(gds, verbose = FALSE)
+dos <- SNPRelate::snpgdsGetGeno(
+  gds,
+  snp.id      = snp_int_ids[col_idx],
+  sample.id   = sample_ids,
+  snpfirstdim = FALSE,   # returns samples x SNPs
+  with.id     = FALSE
+)
+dos <- 2L - dos  # convert REF count to ALT dosage convention
 ```
 
 For `subSegmSize = 1500` and a 30-chromosome bovine genome with 10 M
@@ -292,7 +297,7 @@ haps_chr1 <- extract_haplotypes(be, be$snp_info, blocks,
 
 ## Troubleshooting
 
-**GDS handle errors on Windows.** SeqArray GDS file handles are not
+**GDS handle errors on Windows.** SNPRelate GDS file handles are not
 fork-safe. Avoid FORK-based parallelism
 ([`parallel::mclapply()`](https://rdrr.io/r/parallel/mcdummies.html));
 use `n_threads > 1` (OpenMP within a single process) instead.

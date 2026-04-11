@@ -167,7 +167,7 @@ auto-detects the file format from the extension and returns an
 | Numeric dosage     | `.csv`, `.txt`            | `"numeric"` |
 | HapMap             | `.hmp.txt`                | `"hapmap"`  |
 | VCF / bgzipped VCF | `.vcf`, `.vcf.gz`         | `"vcf"`     |
-| SeqArray GDS       | `.gds`                    | `"gds"`     |
+| SNPRelate GDS      | `.gds`                    | `"gds"`     |
 | PLINK binary       | `.bed` (+ `.bim`, `.fam`) | `"bed"`     |
 | R matrix           | (in-memory)               | `"matrix"`  |
 
@@ -175,7 +175,7 @@ auto-detects the file format from the extension and returns an
 be_vcf <- read_geno("mydata.vcf.gz")
 be_csv <- read_geno("mydata.csv")
 be_hmp <- read_geno("mydata.hmp.txt")
-be_gds <- read_geno("mydata.gds")    # SeqArray GDS; streams SNP windows
+be_gds <- read_geno("mydata.gds")    # SNPRelate GDS; streams SNP windows
 be_bed <- read_geno("mydata.bed")    # PLINK BED; memory-mapped
 ```
 

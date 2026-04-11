@@ -92,7 +92,7 @@ algorithm of Kim et al. (2018) with 12 concrete improvements:
 3. **OpenMP parallelism** — the outer loop of `compute_r2_cpp()` is
    parallelised across threads; count controlled with `n_threads =`.
 4. **Unified multi-format I/O** — `read_geno()` auto-detects and reads numeric
-   dosage CSV, HapMap, VCF/VCF.gz, SeqArray GDS, PLINK BED/BIM/FAM, and
+   dosage CSV, HapMap, VCF/VCF.gz, SNPRelate GDS, PLINK BED/BIM/FAM, and
    in-memory R matrices through a single entry point with a common backend
    interface (`LDxBlocks_backend`).
 5. **Never-full-genome memory model** — the full genotype matrix is never held
@@ -165,7 +165,7 @@ a strict memory contract regardless of format:
   rows with zero data loaded. A single pre-allocated matrix is filled in
   50,000-row chunks via successive `fread()` calls. Peak RAM = one chunk, never
   2x the file.
-- **VCF and HapMap**: auto-converted to a SeqArray GDS cache on first call.
+- **VCF and HapMap**: auto-converted to a SNPRelate GDS cache on first call.
   All subsequent access streams per chromosome window via `read_chunk()`.
 - **GDS and PLINK BED**: `read_chunk(backend, col_idx)` is called once per
   sub-segment per chromosome. Only those columns are loaded; the rest of the
@@ -315,7 +315,7 @@ install.packages(c(
 # GDS backend — required for .gds files; recommended for panels > 2 M SNPs
 if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
-BiocManager::install("SeqArray")
+BiocManager::install("SNPRelate")
 
 # PLINK BED backend — required for .bed/.bim/.fam input
 install.packages("BEDMatrix")
@@ -432,7 +432,7 @@ subset to phenotyped individuals before running the pipeline — see the
 | Numeric dosage | `.csv`, `.txt` | `"numeric"` |
 | HapMap | `.hmp.txt` | `"hapmap"` |
 | VCF / bgzipped VCF | `.vcf`, `.vcf.gz` | `"vcf"` |
-| SeqArray GDS | `.gds` | `"gds"` |
+| SNPRelate GDS | `.gds` | `"gds"` |
 | PLINK binary | `.bed` (+ `.bim`, `.fam`) | `"bed"` |
 | R matrix | (in-memory) | `"matrix"` |
 
@@ -468,9 +468,9 @@ automatically:
 | 1 | 20000 | SNP002 | G | C | . | PASS | . | GT | 1/1 | 0/0 | … |
 | 1 | 30000 | SNP003 | C | G | . | PASS | . | GT | 0/1 | 1/1 | … |
 
-**GDS** — SeqArray GDS file. Requires `BiocManager::install("SeqArray")`.
-Chunk access is via `SeqArray::seqSetFilter()` + `seqGetData("$dosage")` +
-`seqResetFilter()` — the full genome matrix is never held in RAM simultaneously.
+**GDS** — SNPRelate GDS file. Requires `BiocManager::install("SNPRelate")`.
+Chunk access is via `SNPRelate::snpgdsGetGeno()` with explicit `snp.id` and
+`sample.id` vectors — the full genome matrix is never held in RAM simultaneously.
 
 **PLINK BED** — binary PLINK format. The companion `.bim` and `.fam` files must
 exist at the same path stem. Requires `install.packages("BEDMatrix")`. Row and
@@ -809,7 +809,7 @@ close_backend(be)                     # releases memory-mapped file handle
 | Backend type | `read_chunk()` implementation |
 |---|---|
 | `"numeric"`, `"hapmap"`, `"vcf"`, `"matrix"` | Direct column slice of in-memory matrix |
-| `"gds"` | `seqSetFilter()` → `seqGetData("$dosage")` → `seqResetFilter()` |
+| `"gds"` | `snpgdsGetGeno(snp.id=..., sample.id=...)` — one call, no filter cycle |
 | `"bed"` | `BEDMatrix` row × column index (OS-level memory mapping) |
 
 For GDS and BED backends, only the requested column slice is loaded per call.
@@ -1065,7 +1065,7 @@ loading. A single pre-allocated matrix is then filled in 50,000-row chunks via
 successive `data.table::fread()` calls. Peak RAM = one chunk (not 2× the file).
 `gc(FALSE)` is called after each chunk.
 
-**VCF and HapMap** — Auto-converted to a SeqArray GDS cache on first call
+**VCF and HapMap** — Auto-converted to a SNPRelate GDS cache on first call
 (placed next to the source file). Subsequent calls reuse the cache. All access
 is streaming via `read_chunk()`.
 
