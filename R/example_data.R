@@ -133,21 +133,25 @@
 #' \code{\link{ldx_blocks}}, so a correctly parameterised run of
 #' \code{tune_LD_params} should return zero unassigned markers.
 #'
-#' @format A \code{data.frame} with 20 rows and 4 columns:
+#' @format A \code{data.frame} with 20 rows and 5 columns:
 #' \describe{
 #'   \item{\code{Marker}}{Character. SNP identifier, matching entries in
 #'     \code{ldx_snp_info$SNP}.}
 #'   \item{\code{CHR}}{Character. Chromosome label.}
 #'   \item{\code{POS}}{Integer. Base-pair position.}
-#'   \item{\code{P}}{Numeric. Toy p-value in (1e-8, 0.001); not used by
-#'     \code{tune_LD_params} itself but useful for demonstration.}
+#'   \item{\code{P}}{Numeric. Toy p-value in (1e-8, 0.001).}
+#'   \item{\code{trait}}{Character. Toy trait label (\code{"TraitA"} or
+#'     \code{"TraitB"}), assigned randomly at 60/40 probability. Used to
+#'     demonstrate multi-trait pleiotropic block detection in
+#'     \code{\link{define_qtl_regions}}. When a single trait is analysed,
+#'     this column is simply ignored or the \code{trait_col} argument omitted.}
 #' }
 #'
 #' @source Simulated with \code{data-raw/generate_example_data.R}.
 #'   Seed: \code{set.seed(42)}.
 #'
-#' @seealso \code{\link{tune_LD_params}}, \code{\link{ldx_geno}},
-#'   \code{\link{ldx_snp_info}}
+#' @seealso \code{\link{tune_LD_params}}, \code{\link{define_qtl_regions}},
+#'   \code{\link{ldx_geno}}, \code{\link{ldx_snp_info}}
 #'
 #' @examples
 #' data(ldx_gwas)

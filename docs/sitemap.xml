@@ -18,6 +18,7 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_rV2.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/get_V_inv_sqrt.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/index.html</loc></url>
@@ -26,14 +27,22 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/ldx_geno.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/ldx_gwas.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/ldx_snp_info.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/phase_with_beagle.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/phase_with_pedigree.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/plot_ld_blocks.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/print.LDxBlocks_backend.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/read_geno.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/summarise_blocks.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/summary.LDxBlocks_backend.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/unphase_to_dosage.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_diversity.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_hapmap.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.html</loc></url>
 </urlset>
 

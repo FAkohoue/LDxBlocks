@@ -20,6 +20,7 @@ run_Big_LD_all_chr(
   subSegmSize = 1500,
   MAFcut = 0.05,
   appendrare = FALSE,
+  singleton_as_block = FALSE,
   checkLargest = FALSE,
   CLQmode = "Density",
   kin_method = "chol",
@@ -43,8 +44,9 @@ run_Big_LD_all_chr(
   Data frame with columns `CHR`, `SNP`, `POS`. Column order is flexible;
   columns are matched by name.
 
-- CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare, checkLargest,
-  CLQmode, kin_method, split, digits, seed, verbose:
+- CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare,
+  singleton_as_block, checkLargest, CLQmode, kin_method, split, digits,
+  seed, verbose:
 
   Forwarded to
   [`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md).

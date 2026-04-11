@@ -16,9 +16,9 @@
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="LDxBlocks — Genome-Wide LD Block Detection">
-<meta name="description" content="Fast, scalable LD block detection using r² or kinship-adjusted rV², with C++/Armadillo acceleration, multi-format I/O, haplotype analysis, and genomic prediction feature engineering.
+<meta name="description" content="Fast, scalable LD block detection using r² or kinship-adjusted rV², with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype analysis (phased and unphased), post-GWAS QTL mapping, and genomic prediction feature engineering.
 ">
-<meta property="og:description" content="Fast, scalable LD block detection using r² or kinship-adjusted rV², with C++/Armadillo acceleration, multi-format I/O, haplotype analysis, and genomic prediction feature engineering.
+<meta property="og:description" content="Fast, scalable LD block detection using r² or kinship-adjusted rV², with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype analysis (phased and unphased), post-GWAS QTL mapping, and genomic prediction feature engineering.
 ">
 <meta property="og:image" content="https://FAkohoue.github.io/LDxBlocks/logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,7 +58,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
-    <li><a class="external-link dropdown-item" href="https://github.com/yourorg/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="news/index.html">Changelog</a></li>
   </ul>
@@ -68,7 +68,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/yourorg/LDxBlocks" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/FAkohoue/LDxBlocks" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -89,16 +89,18 @@
 <div class="section level2">
 <h2 id="motivation">Motivation<a class="anchor" aria-label="anchor" href="#motivation"></a>
 </h2>
-<p>Linkage disequilibrium (LD) block detection is a foundational step in modern genomic analyses. Knowing which SNPs co-segregate as a unit determines how GWAS results are interpreted, how haplotypes are defined for population genetics, and how genomic prediction models should be structured. Despite its importance, most implementations of LD block detection suffer from two problems that limit their usefulness in practice.</p>
-<p><strong>The kinship problem.</strong> Classical LD estimators (r²) assume independence between individuals. In livestock, crop, or family-based human cohorts this assumption is systematically violated. Cryptic relatedness inflates pairwise correlations, causing LD to appear stronger than it is and blocks to be drawn too broadly or in the wrong places. The kinship-adjusted squared correlation rV² (Kim et al. 2018) corrects for this by whitening the genotype matrix with the inverse square root of the genomic relationship matrix (GRM):</p>
+<p>Linkage disequilibrium (LD) block detection is a foundational step in modern genomic analyses. Knowing which SNPs co-segregate as a unit determines how GWAS results are interpreted, how haplotypes are defined for population genetics, and how genomic prediction models should be structured. Despite its importance, most implementations of LD block detection suffer from three problems that limit their usefulness in practice.</p>
+<p><strong>The kinship problem.</strong> Classical LD estimators (r²) assume independence between individuals. In livestock, crop, or family-based human cohorts this assumption is systematically violated. Cryptic relatedness inflates pairwise correlations, causing LD to appear stronger than it is and blocks to be drawn too broadly or in the wrong places. The kinship-adjusted squared correlation rV² (Mangin et al. 2012, <em>Heredity</em> 108:285-291) corrects for this by whitening the genotype matrix with the inverse square root of the genomic relationship matrix (GRM):</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msubsup><mi>V</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>G</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.278em"></mspace><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>G</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2_{jk} = \left[\mathrm{Cor}(V^{-1/2} G_j,\; V^{-1/2} G_k)\right]^2</annotation></semantics></math></p>
 <p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> is the VanRaden (2008) GRM and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math> is its Cholesky whitening factor. Every pairwise correlation in the Big-LD algorithm is replaced with rV², giving block boundaries that reflect true recombination structure rather than population-structure artefacts.</p>
-<p><strong>The scale problem.</strong> The original Big-LD implementation (Kim et al. 2018) is pure R. For modern whole-genome sequencing panels with 2–10 million markers the inner loops are prohibitively slow, and the full genotype matrix can exceed available RAM. LDxBlocks addresses this with a C++/Armadillo computational core compiled via Rcpp, OpenMP-parallelised LD computation, a unified multi-format I/O layer (numeric dosage CSV, HapMap, VCF, GDS, PLINK BED, or plain R matrices), and streaming chromosome-by-chromosome access for all file-backed formats.</p>
+<p><strong>The scale problem.</strong> The original Big-LD implementation (Kim et al. 2018) contains no compiled code – every matrix operation runs through the R interpreter. For modern whole-genome sequencing panels with 2-10 million markers the inner loops are prohibitively slow, and loading the full genotype matrix before detection is impossible on most workstations. LDxBlocks addresses this with a C++/Armadillo computational core compiled via Rcpp, OpenMP-parallelised LD computation, a unified multi-format I/O layer, and a strict never-full-genome memory model: the full genotype matrix is never loaded into RAM simultaneously regardless of dataset size or format.</p>
+<p><strong>The pipeline gap.</strong> The original Big-LD stops at block boundaries. In breeding programmes and GWAS follow-up studies the immediate next questions are: What haplotypes exist within each block? How diverse are they? Which blocks harbour QTLs? How do I build a genomic prediction model that captures multi-locus block effects? These questions require a coherent downstream pipeline that the original implementation does not provide.</p>
 <p><strong>Why LDxBlocks and not other tools?</strong></p>
 <ul>
-<li>Unlike PLINK <code>--blocks</code>, LDxBlocks uses a clique-based segmentation algorithm that does not require a pre-specified number of blocks and naturally handles complex LD patterns with overlapping windows.</li>
-<li>Unlike the original Big-LD R package, LDxBlocks has a C++ core, supports kinship correction (rV²), reads five file formats natively, and extends the pipeline into haplotype reconstruction and genomic prediction feature engineering.</li>
+<li>Unlike PLINK <code>--blocks</code>, LDxBlocks uses the clique-based Big-LD segmentation algorithm which does not require a pre-specified number of blocks and naturally handles complex LD patterns. It also supports kinship correction (rV²) and six input formats natively.</li>
+<li>Unlike the original Big-LD R package, LDxBlocks has a compiled C++ core (approximately 40x faster for typical window sizes), streams genotype data from disk without loading the full genome into RAM, adds rV² kinship correction, handles singleton SNPs explicitly, and extends the pipeline into haplotype analysis and genomic prediction.</li>
 <li>Unlike LDstore2 or LDpred2, LDxBlocks produces interpretable genomic intervals (start/end position, rsID) as output — not just summary statistics — making blocks immediately usable for annotation, diversity analysis, and region-based modelling.</li>
+<li>Unlike gpart (the Bioconductor successor to Big-LD), LDxBlocks integrates directly with R-based genomic prediction workflows (rrBLUP, BGLR, ASReml-R) through its haplotype feature matrix module, supports automatic GDS conversion for WGS-scale datasets, and provides GWAS-driven parameter auto-tuning.</li>
 </ul>
 <hr>
 </div>
@@ -116,7 +118,7 @@
 <li>
 <strong>Unified multi-format I/O</strong> — <code><a href="reference/read_geno.html">read_geno()</a></code> auto-detects and reads numeric dosage CSV, HapMap, VCF/VCF.gz, SeqArray GDS, PLINK BED/BIM/FAM, and in-memory R matrices through a single entry point with a common backend interface (<code>LDxBlocks_backend</code>).</li>
 <li>
-<strong>Streaming chromosome access</strong> — GDS and PLINK BED backends load only the SNP window requested per CLQD call, never the full genome-wide matrix, keeping peak RAM proportional to one chromosome.</li>
+<strong>Never-full-genome memory model</strong> — the full genotype matrix is never held in RAM at once for any format. Numeric dosage CSV is read in pre-allocated 50,000-row chunks (peak RAM = one chunk, not 2× the file). VCF and HapMap auto-convert to a streaming GDS cache. GDS and PLINK BED backends load only the SNP window per CLQD call. <code>gc(FALSE)</code> is called after each chromosome to prevent heap fragmentation across 20–30 chromosome passes.</li>
 <li>
 <strong>MAF filter in C++</strong> — <code>maf_filter_cpp()</code> runs in a single O(np) pass, handling NA imputation and monomorphic detection simultaneously.</li>
 <li>
@@ -133,6 +135,197 @@
 <strong>Prediction feature matrix</strong> — <code><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> converts haplotype strings to numeric dosage columns for GBLUP, BayesB, or machine learning models, capturing multi-locus epistatic effects implicitly.</li>
 </ol>
 <hr>
+</div>
+<div class="section level2">
+<h2 id="relationship-to-the-original-big-ld-algorithm">Relationship to the original Big-LD algorithm<a class="anchor" aria-label="anchor" href="#relationship-to-the-original-big-ld-algorithm"></a>
+</h2>
+<p>LDxBlocks is built on the clique-based segmentation algorithm of Kim et al. (2018), published as the <code>BigLD</code> R package and later updated as the <code>gpart</code> Bioconductor package. The mathematical core — interval graph modelling of LD bins, maximum-weight independent set block construction, and Bron-Kerbosch clique enumeration via igraph — is preserved exactly. LDxBlocks extends that foundation in the following concrete ways.</p>
+<div class="section level3">
+<h3 id="computational-core-r-loops-replaced-by-c">Computational core: R loops replaced by C++<a class="anchor" aria-label="anchor" href="#computational-core-r-loops-replaced-by-c"></a>
+</h3>
+<p>The original <code><a href="reference/Big_LD.html">Big_LD()</a></code> calls <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> inside the boundary-scan loop — up to three separate R-level matrix operations per candidate cut position. For a 50,000-SNP chromosome with <code>leng = 200</code> this is approximately 150,000 small matrix multiplications running through the R interpreter. LDxBlocks replaces these with seven compiled functions:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Original R operation</th>
+<th>LDxBlocks C++ function</th>
+<th>Speedup</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code>cor(subgeno)</code> per CLQD call</td>
+<td>
+<code>compute_r2_cpp()</code> + OpenMP</td>
+<td>~40x for 1,500-SNP window</td>
+</tr>
+<tr>
+<td>
+<code>apply(Ogeno, 2, ...)</code> MAF filter</td>
+<td>
+<code>maf_filter_cpp()</code> single pass</td>
+<td>~10x for 100k+ SNPs</td>
+</tr>
+<tr>
+<td>
+<code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> inside boundary-scan loop</td>
+<td>
+<code>boundary_scan_cpp()</code> compiled</td>
+<td>~20x per chromosome</td>
+</tr>
+<tr>
+<td><code>r2Mat[r2Mat &gt;= CLQcut^2] &lt;- 1</code></td>
+<td><code>build_adj_matrix_cpp()</code></td>
+<td>eliminates intermediate allocation</td>
+</tr>
+<tr>
+<td>Single-column correlation</td>
+<td><code>col_r2_cpp()</code></td>
+<td>used in boundary scan helper</td>
+</tr>
+<tr>
+<td>Sparse within-window r²</td>
+<td><code>compute_r2_sparse_cpp()</code></td>
+<td>avoids O(p^2) for large segments</td>
+</tr>
+</tbody>
+</table>
+<p>The outer loop of <code>compute_r2_cpp()</code> is parallelised with OpenMP, controlled by <code>n_threads =</code>. Thread scaling is efficient up to 8-16 threads for typical <code>subSegmSize = 1500</code> windows.</p>
+</div>
+<div class="section level3">
+<h3 id="memory-model-never-full-genome">Memory model: never-full-genome<a class="anchor" aria-label="anchor" href="#memory-model-never-full-genome"></a>
+</h3>
+<p>The original <code><a href="reference/Big_LD.html">Big_LD()</a></code> accepts a plain R matrix — the entire genotype dataset must fit in RAM simultaneously. For a 10M-marker, 5,000-individual WGS panel this requires approximately 400 GB as an R <code>double</code> matrix. LDxBlocks enforces a strict memory contract regardless of format:</p>
+<ul>
+<li>
+<strong>Numeric dosage CSV</strong>: two-pass chunked pre-allocated reader. Pass 1 counts rows with zero data loaded. A single pre-allocated matrix is filled in 50,000-row chunks via successive <code>fread()</code> calls. Peak RAM = one chunk, never 2x the file.</li>
+<li>
+<strong>VCF and HapMap</strong>: auto-converted to a SeqArray GDS cache on first call. All subsequent access streams per chromosome window via <code><a href="reference/read_chunk.html">read_chunk()</a></code>.</li>
+<li>
+<strong>GDS and PLINK BED</strong>: <code>read_chunk(backend, col_idx)</code> is called once per sub-segment per chromosome. Only those columns are loaded; the rest of the genome remains on disk.</li>
+<li>
+<strong>Chromosome loop</strong>: <code><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm()</a></code> and <code>gc(FALSE)</code> are called after each chromosome completes, preventing heap fragmentation across 20-30 chromosome passes.</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="kinship-correction-rv²">Kinship correction: rV²<a class="anchor" aria-label="anchor" href="#kinship-correction-rv%C2%B2"></a>
+</h3>
+<p>The original implementation uses Pearson r as the LD metric. For related populations (livestock half-sib families, inbred plant lines, family-based human cohorts) kinship-induced allele sharing inflates r between all SNP pairs, producing blocks that are too broad and incorrectly delimited.</p>
+<p>LDxBlocks adds <code>method = "rV2"</code> which replaces every pairwise correlation with the kinship-whitened equivalent. The whitening factor A is computed once per chromosome from the VanRaden (2008) GRM via <code><a href="reference/get_V_inv_sqrt.html">get_V_inv_sqrt()</a></code> (Cholesky or eigendecomposition), then applied to the centred genotype matrix before passing to the same <code>compute_r2_cpp()</code> kernel. In related populations, rV² blocks are typically 10-30% smaller and more precisely delimited than r² blocks.</p>
+</div>
+<div class="section level3">
+<h3 id="singleton-snp-handling">Singleton SNP handling<a class="anchor" aria-label="anchor" href="#singleton-snp-handling"></a>
+</h3>
+<p>The original <code><a href="reference/Big_LD.html">Big_LD()</a></code> silently discards SNPs that pass MAF filtering but receive <code>NA</code> from <code><a href="reference/CLQD.html">CLQD()</a></code> (no clique partner above <code>CLQcut</code>). These singletons — which mark recombination hotspots and rapidly-evolving loci — are never returned to the user and are invisible in the block table.</p>
+<p>LDxBlocks adds <code>singleton_as_block = TRUE</code> which collects singleton indices during the sub-segment loop and appends them to the final block table as single-SNP entries (<code>start == end</code>, <code>length_bp == 1</code>). With the default <code>singleton_as_block = FALSE</code> the original behaviour is preserved for backward compatibility.</p>
+</div>
+<div class="section level3">
+<h3 id="bug-fix-zero-row-assignment">Bug fix: zero-row assignment<a class="anchor" aria-label="anchor" href="#bug-fix-zero-row-assignment"></a>
+</h3>
+<p>The original main loop body contains:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">LDblocks</span><span class="op">[</span><span class="op">(</span><span class="va">preleng1</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">:</span><span class="op">(</span><span class="va">preleng1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">nowLDblocks</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="va">nowLDblocks</span></span></code></pre></div>
+<p>When a sub-segment contains no valid cliques (all singletons above the MAF threshold) <code>nowLDblocks</code> has zero rows and R evaluates <code>(preleng1+1):preleng1</code> as a backwards sequence, causing <code>replacement has length zero</code>. LDxBlocks wraps this with <code>if (nrow(nowLD) &gt; 0L)</code>, making the function robust to sparse chromosomal regions and small input datasets.</p>
+</div>
+<div class="section level3">
+<h3 id="downstream-pipeline">Downstream pipeline<a class="anchor" aria-label="anchor" href="#downstream-pipeline"></a>
+</h3>
+<p>The original Big-LD stops at the block table. LDxBlocks adds a complete downstream module:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Capability</th>
+<th>Original Big-LD / gpart</th>
+<th>LDxBlocks</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Block detection</td>
+<td>Yes (core algorithm)</td>
+<td>Yes (same algorithm + C++ + rV²)</td>
+</tr>
+<tr>
+<td>Statistical phasing</td>
+<td>No</td>
+<td>
+<code><a href="reference/phase_with_beagle.html">phase_with_beagle()</a></code>, <code><a href="reference/phase_with_pedigree.html">phase_with_pedigree()</a></code>, <code><a href="reference/read_phased_vcf.html">read_phased_vcf()</a></code>
+</td>
+</tr>
+<tr>
+<td>Haplotype extraction</td>
+<td>No</td>
+<td>
+<code><a href="reference/extract_haplotypes.html">extract_haplotypes()</a></code> — phased and unphased, backend streaming</td>
+</tr>
+<tr>
+<td>Diversity metrics</td>
+<td>No</td>
+<td>
+<code><a href="reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code> — He, Shannon, richness, f_max</td>
+</tr>
+<tr>
+<td>Post-GWAS QTL mapping</td>
+<td>No</td>
+<td>
+<code><a href="reference/define_qtl_regions.html">define_qtl_regions()</a></code> — pleiotropic block detection</td>
+</tr>
+<tr>
+<td>Genomic prediction features</td>
+<td>No</td>
+<td>
+<code><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> — additive 0/1/2 or presence/absence</td>
+</tr>
+<tr>
+<td>Output writers</td>
+<td>No</td>
+<td>Numeric CSV, HapMap, diversity CSV — compatible with TASSEL, GAPIT, rrBLUP</td>
+</tr>
+<tr>
+<td>Parameter auto-tuning</td>
+<td>No</td>
+<td>
+<code><a href="reference/tune_LD_params.html">tune_LD_params()</a></code> — grid search against GWAS marker coverage</td>
+</tr>
+<tr>
+<td>Multi-format I/O</td>
+<td>PLINK, VCF (gpart)</td>
+<td>Numeric CSV, HapMap, VCF, GDS, BED, R matrix via unified backend</td>
+</tr>
+<tr>
+<td>WGS-scale streaming</td>
+<td>Partial (gpart GDS)</td>
+<td>Full never-full-genome model for all formats</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="what-is-kept-exactly">What is kept exactly<a class="anchor" aria-label="anchor" href="#what-is-kept-exactly"></a>
+</h3>
+<ul>
+<li>The interval graph modelling of LD bins (cliques of strong pairwise LD SNPs)</li>
+<li>
+<code><a href="reference/CLQD.html">CLQD()</a></code>: bin vector assignment via maximal clique enumeration and greedy density-priority selection</li>
+<li>
+<code>constructLDblock()</code>: maximum-weight independent set via dynamic programming on sorted interval sequences</li>
+<li>
+<code>appendSGTs()</code>: rare-SNP appending logic</li>
+<li>
+<code>cutsequence.modi()</code>: boundary-scan logic and forced-split fall-back</li>
+<li>All <code>CLQmode = "Density"</code> and <code>CLQmode = "Maximal"</code> clique scoring</li>
+<li>The <code>clstgap</code> physical distance splitting within cliques</li>
+<li>Block table column format (<code>start</code>, <code>end</code>, <code>start.rsID</code>, <code>end.rsID</code>, <code>start.bp</code>, <code>end.bp</code>) for drop-in compatibility with downstream tools that accept original Big-LD output</li>
+</ul>
+<hr>
+</div>
 </div>
 <div class="section level2">
 <h2 id="table-of-contents">Table of contents<a class="anchor" aria-label="anchor" href="#table-of-contents"></a>
@@ -171,20 +364,20 @@
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <p>Install from GitHub with vignettes (recommended):</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/LDxBlocks"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Install without vignettes for a faster build:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/LDxBlocks"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><strong>Required dependencies</strong> (installed automatically):</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  <span class="st">"Rcpp"</span>,            <span class="co"># C++ interface</span></span>
 <span>  <span class="st">"RcppArmadillo"</span>,   <span class="co"># linear algebra C++ library</span></span>
@@ -193,7 +386,7 @@
 <span>  <span class="st">"dplyr"</span>            <span class="co"># pipeline utilities</span></span>
 <span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Optional dependencies</strong> for additional backends and features:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># GDS backend — required for .gds files; recommended for panels &gt; 2 M SNPs</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
@@ -211,14 +404,14 @@
 <span><span class="co"># LD block visualisation</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"ggplot2"</span><span class="op">)</span></span></code></pre></div>
 <blockquote>
-<p><strong>C++ compilation note.</strong> LDxBlocks compiles C++ with <code>-O3 -march=native -fopenmp</code> on Linux/macOS (<code>src/Makevars</code>) and <code>-O3 -fopenmp</code> on Windows (<code>src/Makevars.win</code>). The <code>-march=native</code> flag enables AVX2/AVX512 instructions where available for maximum throughput. Remove it from <code>src/Makevars</code> for portable binary distribution (e.g., CRAN submission).</p>
+<p><strong>C++ compilation note.</strong> LDxBlocks compiles C++ with OpenMP enabled via <code>$(SHLIB_OPENMP_CXXFLAGS)</code> in <code>src/Makevars</code> and <code>src/Makevars.win</code>. R’s default <code>CXXFLAGS</code> already include <code>-O2</code> optimisation. No non-portable flags are used, so the package passes <code>R CMD check --as-cran</code> without notes.</p>
 </blockquote>
 <hr>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/FAkohoue/LDxBlocks" class="external-link">LDxBlocks</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># ── Option A: from files (all formats accepted) ───────────────────────────────</span></span>
@@ -249,7 +442,7 @@
 <span><span class="co"># 13 GENOME  1502   2000     82000    88940  512000       133548316</span></span>
 <span></span>
 <span><span class="fu"><a href="reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ── Option B: plain R matrix (backward-compatible, unchanged API) ─────────────</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="va">my_geno_matrix</span>,</span>
@@ -257,9 +450,11 @@
 <span>  method    <span class="op">=</span> <span class="st">"r2"</span>,</span>
 <span>  CLQcut    <span class="op">=</span> <span class="fl">0.70</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># ── Haplotype analysis ────────────────────────────────────────────────────────</span></span>
-<span><span class="va">haps</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">my_geno_matrix</span>, <span class="va">my_snp_info</span>, <span class="va">blocks</span>, min_snps <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># ── Haplotype analysis — pass the backend directly for chromosome streaming ───</span></span>
+<span><span class="co"># extract_haplotypes() detects LDxBlocks_backend input and processes one</span></span>
+<span><span class="co"># chromosome at a time, freeing RAM before moving to the next.</span></span>
+<span><span class="va">haps</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">be</span>, <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span>, <span class="va">blocks</span>, min_snps <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">div</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compute_haplotype_diversity.html">compute_haplotype_diversity</a></span><span class="op">(</span><span class="va">haps</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">div</span><span class="op">)</span></span>
@@ -268,7 +463,7 @@
 <span></span>
 <span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># 500 x (n_blocks * 5)</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ── Parameter auto-tuning against GWAS markers ────────────────────────────────</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span></span>
 <span>  geno_matrix    <span class="op">=</span> <span class="va">my_geno</span>,</span>
@@ -635,7 +830,7 @@
 </table>
 <p><strong>When r² produces wrong blocks.</strong> In a livestock panel where sires appear many times through progeny, r² between two SNPs in the same family cluster can reach 0.9 even when they are in different LD blocks. The whitened matrix removes this familial signal. In practice, rV² blocks are typically 10–30% smaller and more precisely delimited in related populations.</p>
 <p><strong>When r² is preferable.</strong> For large human biobank panels (n &gt; 10,000, p &gt; 1,000,000) computing and inverting the GRM is computationally infeasible. The standard r² inflates LD modestly but the effect on block boundaries is small in approximately random-mating populations, and the 50× speed advantage of the pure C++ path dominates.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Switching LD metric requires only a single argument change</span></span>
 <span><span class="va">blocks_r2</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"r2"</span>,  CLQcut <span class="op">=</span> <span class="fl">0.70</span><span class="op">)</span></span>
 <span><span class="va">blocks_rv2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"rV2"</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span>,</span>
@@ -675,7 +870,7 @@
 </h3>
 <p><code><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> converts haplotype strings to a numeric dosage matrix suitable for GBLUP, BayesB, random forests, or any other genomic prediction framework. For each block, the <code>top_n</code> most frequent haplotypes are selected as reference haplotypes and each individual receives a dosage of 2 (homozygous match) or 0 (absent) for each reference.</p>
 <p>The resulting matrix has dimension n_individuals × (n_blocks × top_n):</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Build a haplotype-GRM for use in GBLUP</span></span>
 <span><span class="va">feat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># haplotype GRM</span></span>
@@ -699,7 +894,7 @@
 <strong>Deviation from target median block size</strong> — biological plausibility via <code>target_bp_band</code> (default 50 kb – 500 kb).</li>
 </ol>
 <p>When <code>prefer_perfect = TRUE</code> (default), combinations achieving zero unassigned and zero forced assignments are isolated first and the winner is selected from that subset by criteria 3 and 4.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span></span>
 <span>  geno_matrix    <span class="op">=</span> <span class="va">my_geno</span>,</span>
 <span>  snp_info       <span class="op">=</span> <span class="va">my_snp_info</span>,</span>
@@ -718,7 +913,7 @@
 <span><span class="va">result</span><span class="op">$</span><span class="va">gwas_assigned</span>     <span class="co"># gwas_df with LD_block column added</span></span></code></pre></div>
 <p>The default grid searches <code>CLQcut</code> ∈ {0.65, 0.70, 0.75, 0.80} with all other parameters held at their defaults. A custom grid can be supplied as a <code>data.frame</code> where each row is one parameter combination.</p>
 <p>For parallel execution across grid combinations:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">4L</span><span class="op">)</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span><span class="va">my_geno</span>, <span class="va">my_snp_info</span>, <span class="va">my_gwas</span>, parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
@@ -731,7 +926,7 @@
 <h3 id="the-ldxblocks_backend-interface">The LDxBlocks_backend interface<a class="anchor" aria-label="anchor" href="#the-ldxblocks_backend-interface"></a>
 </h3>
 <p>All functions that require genotype data operate through the <code>LDxBlocks_backend</code> S3 object rather than directly on a matrix. This single abstraction makes all six input formats interchangeable with zero code change in the algorithm:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">be</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">"mydata.bed"</span><span class="op">)</span>      <span class="co"># opens PLINK BED, reads .bim/.fam</span></span>
 <span><span class="va">chunk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_chunk.html">read_chunk</a></span><span class="op">(</span><span class="va">be</span>, <span class="va">col_idx</span><span class="op">)</span>      <span class="co"># returns n_samples x length(col_idx) matrix</span></span>
 <span><span class="fu"><a href="reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span>                     <span class="co"># releases memory-mapped file handle</span></span></code></pre></div>
@@ -979,7 +1174,7 @@
 </tbody>
 </table>
 <p><strong>Detailed example with all parameters:</strong></p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="co"># ── Genotype input ──────────────────────────────────────────────────────────</span></span>
 <span>  geno_matrix  <span class="op">=</span> <span class="va">be</span>,                  <span class="co"># LDxBlocks_backend or plain matrix</span></span>
@@ -1474,15 +1669,19 @@
 <p><strong><code>build_adj_matrix_cpp()</code></strong> replaces <code>ifelse(LD &gt;= cut, 1L, 0L)</code> with a C++ write in place, avoiding the allocation of the intermediate logical matrix.</p>
 </div>
 <div class="section level3">
-<h3 id="streaming-genotype-access">Streaming genotype access<a class="anchor" aria-label="anchor" href="#streaming-genotype-access"></a>
+<h3 id="never-full-genome-memory-model">Never-full-genome memory model<a class="anchor" aria-label="anchor" href="#never-full-genome-memory-model"></a>
 </h3>
-<p>For GDS and PLINK BED backends, <code>read_chunk(backend, col_idx)</code> is the only function that reads genotype data from disk. It is called once per sub-segment per chromosome. With <code>subSegmSize = 1500</code> and 50,000 SNPs per chromosome, this is approximately 33 disk reads per chromosome. Each read loads only a 1,500-column slice; the rest of the genome remains on disk and is never in RAM.</p>
+<p>LDxBlocks enforces a strict memory contract: <strong>the full genotype matrix is never held in RAM at once for any dataset size or format.</strong></p>
+<p><strong>Numeric dosage CSV</strong> — Two-pass chunked reading following the OptSLDP pattern (Akohoue et al. 2026): Pass 1 scans the header and counts rows with zero data loading. A single pre-allocated matrix is then filled in 50,000-row chunks via successive <code><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">data.table::fread()</a></code> calls. Peak RAM = one chunk (not 2× the file). <code>gc(FALSE)</code> is called after each chunk.</p>
+<p><strong>VCF and HapMap</strong> — Auto-converted to a SeqArray GDS cache on first call (placed next to the source file). Subsequent calls reuse the cache. All access is streaming via <code><a href="reference/read_chunk.html">read_chunk()</a></code>.</p>
+<p><strong>GDS and PLINK BED</strong> — <code>read_chunk(backend, col_idx)</code> is called once per sub-segment per chromosome. With <code>subSegmSize = 1500</code> and 50,000 SNPs per chromosome, this is approximately 33 disk reads per chromosome. Each read loads only a 1,500-column slice; the rest of the genome remains on disk.</p>
+<p><strong>Chromosome loop</strong> — In <code><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> and <code><a href="reference/extract_haplotypes.html">extract_haplotypes()</a></code>, each chromosome is extracted, processed, freed with <code><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm()</a></code>, and <code>gc(FALSE)</code> is called before the next chromosome is touched, preventing heap fragmentation from accumulating across 20–30 chromosome passes.</p>
 </div>
 <div class="section level3">
 <h3 id="openmp-thread-count">OpenMP thread count<a class="anchor" aria-label="anchor" href="#openmp-thread-count"></a>
 </h3>
 <p>The <code>n_threads</code> parameter controls the number of OpenMP threads in <code>compute_r2_cpp()</code>. Thread scaling is efficient up to approximately 8–16 threads for typical window sizes (1,500 SNPs). For very large windows (<code>subSegmSize = 5000+</code>), higher thread counts remain beneficial:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Auto-detect physical cores</span></span>
 <span><span class="va">n_thr</span>  <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span>logical <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, n_threads <span class="op">=</span> <span class="va">n_thr</span><span class="op">)</span></span></code></pre></div>
@@ -1495,7 +1694,7 @@
 <p>Full documentation, function reference, and tutorials are available at:</p>
 <p><a href="https://FAkohoue.github.io/LDxBlocks/" class="uri">https://FAkohoue.github.io/LDxBlocks/</a></p>
 <p>To read the vignette after installation:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"LDxBlocks-workflow"</span>, package <span class="op">=</span> <span class="st">"LDxBlocks"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -1552,13 +1751,14 @@ https://doi.org/10.1073/pnas.70.12.3321</code></pre>
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
 </h2>
-<p>GPL (&gt;= 3) © LDxBlocks Development Team</p>
+<p>MIT + file LICENSE © Félicien Akohoue</p>
 <hr>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
-<p>Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block detection method for dense genome sequencing data based on interval graph modeling and dynamic programming. <em>Bioinformatics</em> <strong>34</strong>(4):588–596. <a href="https://doi.org/10.1093/bioinformatics/btx609" class="external-link uri">https://doi.org/10.1093/bioinformatics/btx609</a></p>
+<p>Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block detection method for dense genome sequencing data based on interval graph modeling and dynamic programming. <em>Bioinformatics</em> <strong>34</strong>(4):588-596. <a href="https://doi.org/10.1093/bioinformatics/btx609" class="external-link uri">https://doi.org/10.1093/bioinformatics/btx609</a></p>
+<p>Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles C (2012). Novel measures of linkage disequilibrium that correct the bias due to population structure and relatedness. <em>Heredity</em> <strong>108</strong>(3):285-291. <a href="https://doi.org/10.1038/hdy.2011.73" class="external-link uri">https://doi.org/10.1038/hdy.2011.73</a></p>
 <p>VanRaden PM (2008). Efficient methods to compute genomic predictions. <em>Journal of Dairy Science</em> <strong>91</strong>(11):4414–4423. <a href="https://doi.org/10.3168/jds.2007-0980" class="external-link uri">https://doi.org/10.3168/jds.2007-0980</a></p>
 <p>Gabriel SB, Schaffner SF, Nguyen H, et al. (2002). The structure of haplotype blocks in the human genome. <em>Science</em> <strong>296</strong>(5576):2225–2229. <a href="https://doi.org/10.1126/science.1069424" class="external-link uri">https://doi.org/10.1126/science.1069424</a></p>
 <p>Calus MPL, Meuwissen THE, de Roos APW, Veerkamp RF (2008). Accuracy of genomic selection using different methods to define haplotypes. <em>Genetics</em> <strong>178</strong>(1):553–561. <a href="https://doi.org/10.1534/genetics.107.080838" class="external-link uri">https://doi.org/10.1534/genetics.107.080838</a></p>
@@ -1571,8 +1771,8 @@ https://doi.org/10.1073/pnas.70.12.3321</code></pre>
 <ul class="list-unstyled">
 <li><a href="https://github.com/FAkohoue/LDxBlocks/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/FAkohoue/LDxBlocks/issues" class="external-link">Report a bug</a></li>
-<li><a href="https://github.com/yourorg/LDxBlocks" class="external-link">Browse source code</a></li>
-<li><a href="https://github.com/yourorg/LDxBlocks/issues" class="external-link">Report a bug</a></li>
+<li><a href="https://github.com/FAkohoue/LDxBlocks" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/FAkohoue/LDxBlocks/issues" class="external-link">Report a bug</a></li>
 </ul>
 </div>
 

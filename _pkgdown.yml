@@ -15,20 +15,21 @@ navbar:
   components:
     github:
       icon: fab fa-github fa-lg
-      href: https://github.com/yourorg/LDxBlocks
+      href: https://github.com/FAkohoue/LDxBlocks
       aria-label: GitHub
 
 home:
   title: "LDxBlocks — Genome-Wide LD Block Detection"
   description: >
     Fast, scalable LD block detection using r² or kinship-adjusted rV²,
-    with C++/Armadillo acceleration, multi-format I/O, haplotype analysis,
-    and genomic prediction feature engineering.
+    with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype
+    analysis (phased and unphased), post-GWAS QTL mapping, and genomic
+    prediction feature engineering.
   links:
     - text: Browse source code
-      href: https://github.com/yourorg/LDxBlocks
+      href: https://github.com/FAkohoue/LDxBlocks
     - text: Report a bug
-      href: https://github.com/yourorg/LDxBlocks/issues
+      href: https://github.com/FAkohoue/LDxBlocks/issues
 
 articles:
   - title: "Getting started"
@@ -53,12 +54,13 @@ reference:
   - title: "Main pipeline"
     desc: >
       High-level functions for genome-wide LD block detection.
-      `run_Big_LD_all_chr()` is the recommended entry point for most users.
+      `run_Big_LD_all_chr()` is the recommended entry point.
     contents:
       - run_Big_LD_all_chr
       - Big_LD
       - CLQD
       - tune_LD_params
+      - run_ldx_pipeline
 
   - title: "Genotype I/O"
     desc: >
@@ -73,8 +75,7 @@ reference:
 
   - title: "LD computation"
     desc: >
-      LD matrix computation functions: standard r² (fast, no kinship) and
-      kinship-adjusted rV² (for structured populations).
+      LD matrix computation: standard r² and kinship-adjusted rV².
     contents:
       - compute_ld
       - compute_r2
@@ -82,26 +83,46 @@ reference:
       - prepare_geno
       - get_V_inv_sqrt
 
+  - title: "Phasing"
+    desc: >
+      Functions for obtaining gametic phase from WGS data (Beagle),
+      pedigree records, or pre-phased VCF files.
+    contents:
+      - read_phased_vcf
+      - phase_with_beagle
+      - phase_with_pedigree
+      - unphase_to_dosage
+
   - title: "Haplotype analysis"
     desc: >
-      Extract phase-free haplotypes within LD blocks, compute diversity
-      metrics, and build feature matrices for genomic prediction.
+      Extract haplotypes within LD blocks (phased or unphased), compute
+      diversity metrics, map GWAS hits to QTL regions, and build feature
+      matrices for genomic prediction.
     contents:
       - extract_haplotypes
       - compute_haplotype_diversity
+      - define_qtl_regions
       - build_haplotype_feature_matrix
 
-  - title: "Utilities"
+  - title: "Haplotype output writers"
     desc: >
-      Summary statistics and visualisation for block tables.
+      Write haplotype matrices and diversity tables to disk in formats
+      compatible with TASSEL, GAPIT, rrBLUP, BGLR, and ASReml-R.
+    contents:
+      - write_haplotype_numeric
+      - write_haplotype_hapmap
+      - write_haplotype_diversity
+
+  - title: "Utilities"
+    desc: Summary statistics and visualisation for block tables.
     contents:
       - summarise_blocks
       - plot_ld_blocks
 
   - title: "Example data"
     desc: >
-      Simulated datasets shipped with the package for examples and tests.
-      See `data-raw/generate_example_data.R` for the simulation code.
+      Simulated datasets (120 individuals, 230 SNPs, 3 chromosomes,
+      9 LD blocks) for examples and tests.
     contents:
       - ldx_geno
       - ldx_snp_info
@@ -111,4 +132,4 @@ reference:
 news:
   releases:
     - text: "LDxBlocks 0.3.0"
-      href: https://github.com/yourorg/LDxBlocks/releases/tag/v0.3.0
+      href: https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0

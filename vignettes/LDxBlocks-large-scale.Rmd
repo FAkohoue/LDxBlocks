@@ -24,16 +24,57 @@ not shipped with the package. Copy and adapt them to your own data.
 
 ---
 
-## The scale problem
+## Why scale matters: the original Big-LD limitation
 
-A 10 M-marker, 5,000-individual genotype matrix occupies roughly 200 GB as a
-dense R `double` matrix. Loading it into RAM before block detection is
-impractical on any workstation. LDxBlocks solves this through the
-`LDxBlocks_backend` abstraction: `run_Big_LD_all_chr()` calls
-`read_chunk(backend, col_idx)` to obtain exactly the SNP window it needs,
-leaving the rest of the genome on disk.
+The original `Big_LD()` function (Kim et al. 2018) accepts a plain R numeric
+matrix -- the entire genotype dataset must be in RAM simultaneously. For a
+500-individual panel with 50,000 SNPs this works fine. For modern breeding
+programmes operating with whole-genome sequencing data, the numbers become
+untenable:
 
-Two file-backed backends handle this streaming access:
+| Dataset | SNPs | Individuals | RAM required (naive) |
+|---|---|---|---|
+| Typical SNP chip | 50,000 | 5,000 | ~2 GB |
+| Medium WGS panel | 1,000,000 | 500 | ~4 GB |
+| Large WGS panel | 3,000,000 | 204 | ~5 GB |
+| Rice mega-GWAS panel | 3,000,000 | 5,000 | ~120 GB |
+| Bovine WGS | 10,000,000 | 2,000 | ~160 GB |
+
+The 120 GB rice example is from the motivating use case for LDxBlocks:
+`second_variant_calling_merged.snpsOnly.maf05.miss20.vcf.gz`, a 3M-SNP,
+204-sample WGS panel where the original Big-LD would require loading the
+entire genotype matrix before a single block boundary is computed.
+
+## How LDxBlocks solves it: never-full-genome memory model
+
+LDxBlocks enforces a strict memory contract:
+**the full genotype matrix is never held in RAM at once, for any dataset size
+or format.**
+
+| Format | Memory strategy | Peak RAM for 3M x 204 panel |
+|--------|----------------|---|
+| VCF / HapMap | Auto-converted to GDS cache; streams per chromosome window | ~60 MB per window |
+| Numeric CSV | Two-pass chunked pre-allocated reader; 50,000-row chunks | ~50 MB per chunk |
+| GDS | `seqSetFilter()` + `seqGetData()` per window | ~60 MB per window |
+| PLINK BED | `BEDMatrix` OS memory-mapping; page faults load only requested bytes | ~60 MB per window |
+
+The peak RAM formula for file-backed backends is:
+
+```
+RAM_peak ~ n_samples x subSegmSize x 8 bytes
+         = 204 x 1500 x 8 = 2.4 MB per window (3M-SNP rice panel)
+         = 5000 x 1500 x 8 = 60 MB per window (5000-sample cattle panel)
+```
+
+Compare to the naive approach: `204 x 3,000,000 x 8 = 4.9 GB` just for the
+matrix, before any LD computation allocates additional memory.
+
+In all cases `run_Big_LD_all_chr()` calls `read_chunk(backend, col_idx)` to
+obtain exactly the SNP window it needs, frees it with `rm()` and `gc(FALSE)`
+before moving to the next window, and never accumulates more than one
+chromosome in RAM at any point.
+
+Two file-backed backends handle the on-disk streaming:
 
 | Backend | Format | Package required |
 |---------|--------|-----------------|
@@ -223,21 +264,34 @@ For large panels, extract haplotypes one chromosome at a time to avoid
 loading the full genome matrix:
 
 ```{r hap-large, eval=FALSE}
-be      <- read_geno("wgs_panel.gds")
-blocks  <- run_Big_LD_all_chr(be, method = "r2", CLQcut = 0.70,
-                               n_threads = 16L, verbose = FALSE)
+be     <- read_geno("wgs_panel.gds")
+blocks <- run_Big_LD_all_chr(be, method = "r2", CLQcut = 0.70,
+                              n_threads = 16L, verbose = FALSE)
 
-# Process chromosome 1 only
-chr1_idx    <- which(be$snp_info$CHR == "1")
-chr1_geno   <- read_chunk(be, chr1_idx)          # load chr1 only
-chr1_blocks <- blocks[blocks$CHR == "1", ]
-chr1_info   <- be$snp_info[chr1_idx, ]
-
-haps <- extract_haplotypes(chr1_geno, chr1_info, chr1_blocks, min_snps = 5)
+# Pass the backend directly — extract_haplotypes() detects LDxBlocks_backend
+# and streams one chromosome at a time internally.
+# Each chromosome is loaded, processed, rm()'d and gc(FALSE) called before
+# the next chromosome. The full genome is NEVER in RAM simultaneously.
+haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5)
 div  <- compute_haplotype_diversity(haps)
-feat <- build_haplotype_feature_matrix(haps, top_n = 5, scale_features = TRUE)
+
+# Feature matrix and output (haps is a list of strings, always small in RAM)
+feat <- build_haplotype_feature_matrix(haps, top_n = 5,
+                                        encoding = "additive_012",
+                                        scale_features = TRUE)
+write_haplotype_numeric(feat, "haplotype_matrix.csv")
+write_haplotype_hapmap(feat,  "haplotype_matrix.hmp.txt")
+write_haplotype_diversity(div, "haplotype_diversity.csv")
 
 close_backend(be)
+```
+
+For chromosome-specific analyses (e.g. a single chromosome only):
+
+```{r hap-chr1, eval=FALSE}
+# Filter blocks and extract by chromosome — backend still streams
+haps_chr1 <- extract_haplotypes(be, be$snp_info, blocks,
+                                 chr = "1", min_snps = 5)
 ```
 
 ---

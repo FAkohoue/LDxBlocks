@@ -11,11 +11,11 @@ Source:
 [`DESCRIPTION`](https://github.com/FAkohoue/LDxBlocks/blob/HEAD/DESCRIPTION)
 
 Akohoue F (2026). *LDxBlocks: Genome-Wide LD Block Detection and
-Haplotype Analysis (r² and rV², C++ Accelerated)*. R package version
+Haplotype Analysis (r^2 and rV^2, C++ Accelerated)*. R package version
 0.3.0, <https://github.com/FAkohoue/LDxBlocks>.
 
     @Manual{,
-      title = {LDxBlocks: Genome-Wide LD Block Detection and Haplotype Analysis (r² and rV², C++ Accelerated)},
+      title = {LDxBlocks: Genome-Wide LD Block Detection and Haplotype Analysis (r^2 and rV^2, C++ Accelerated)},
       author = {Félicien Akohoue},
       year = {2026},
       note = {R package version 0.3.0},

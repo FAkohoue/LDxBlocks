@@ -1,6 +1,6 @@
 Package: LDxBlocks
 Type: Package
-Title: Genome-Wide LD Block Detection and Haplotype Analysis (r² and rV², C++ Accelerated)
+Title: Genome-Wide LD Block Detection and Haplotype Analysis (r^2 and rV^2, C++ Accelerated)
 Version: 0.3.0
 Date: 2025-04-07
 Authors@R:
@@ -12,15 +12,23 @@ Authors@R:
       comment = c(ORCID = "0000-0002-2160-0182")
     )
 Description: Fast, scalable linkage disequilibrium (LD) block detection for
-    genome-wide SNP data. Supports two LD metrics: standard r² (fast, suitable
-    for 10M+ markers) and the kinship-adjusted rV² (Kim et al. 2018, GENETICS)
-    for structured or related populations. The clique-based Big-LD segmentation
-    algorithm is accelerated throughout by Rcpp/RcppArmadillo and OpenMP. A
-    unified multi-format I/O layer reads numeric dosage CSV, HapMap, VCF,
-    SeqArray GDS, and PLINK BED files. Downstream modules cover haplotype
-    reconstruction, diversity metrics (richness, expected heterozygosity,
-    Shannon entropy), haplotype feature matrices for genomic prediction, and
-    automatic parameter tuning against GWAS marker coverage.
+    genome-wide SNP data. Supports two LD metrics: standard r^2 (fast, suitable
+    for 10M+ markers) and the kinship-adjusted rV^2 (Mangin et al. 2012,
+    Heredity 108(3):285-291) for structured or related populations.
+    The clique-based segmentation algorithm is from Kim et al. (2018,
+    Bioinformatics 34(4):588-596).
+    The clique-based Big-LD segmentation algorithm is accelerated throughout
+    by Rcpp/RcppArmadillo and OpenMP. A unified multi-format I/O layer reads
+    numeric dosage CSV, HapMap, VCF, SeqArray GDS, and PLINK BED files.
+    Downstream modules cover: haplotype phasing (statistical via Beagle,
+    pedigree-based transmission, or pre-phased VCF); haplotype extraction
+    for phased and unphased data; diversity metrics (richness, expected
+    heterozygosity, Shannon entropy); post-GWAS QTL region definition with
+    pleiotropic block detection; haplotype feature matrices for genomic
+    prediction (additive 0/1/2 or presence/absence 0/2 encoding); and
+    output writers for numeric CSV, HapMap, and diversity CSV formats
+    compatible with TASSEL, GAPIT, rrBLUP, BGLR, and ASReml-R.
+    Automatic parameter tuning against GWAS marker coverage is also provided.
 License: MIT + file LICENSE
 Depends:
     R (>= 4.2.0)
@@ -35,6 +43,7 @@ Suggests:
     AGHmatrix (>= 2.0.0),
     ASRgenomics (>= 1.1.0),
     SeqArray,
+    gdsfmt,
     BEDMatrix,
     future.apply,
     ggplot2,

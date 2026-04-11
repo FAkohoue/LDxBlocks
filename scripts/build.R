@@ -65,43 +65,64 @@ list.files("pkgdown/favicon")
 
 ######################################################################################################
 #######################################################################################################
-# BiocManager::install("SeqArray")
-# install.packages("SeqArray", force = TRUE)
 
-# 0. Recreate NAMESPACE and man/ from roxygen tags
+# =============================================================================
+# LDxBlocks — clean build script
+# Run SESSION A top-to-bottom, let it restart R, then run SESSION B.
+# Both sessions must start with the working directory set to the package root
+# (the folder containing DESCRIPTION).
+# =============================================================================
 
+
+# ─────────────────────────────── SESSION A ───────────────────────────────────
+# Goal: wipe every stale artifact so the next session starts from zero.
+
+# 1. Remove the installed package so no old DLL can be loaded by mistake.
 remove.packages("LDxBlocks")
-.rs.restartR()
 
-# Recreate NAMESPACE and man/ from roxygen tags
+# 2. Delete the compiled DLL from the source tree (src/*.so / src/*.dll).
+#    Do this BEFORE the restart so there is nothing to unload conflicts with.
+devtools::clean_dll()
+
+# 3. Restart R.  All loaded DLLs are released, file locks are cleared.
+.rs.restartR()
+# ── after restart, continue in SESSION B ──────────────────────────────────────
+
+
+
+
+# ─────────────────────────────── SESSION B ───────────────────────────────────
+# Goal: rebuild everything from source in the correct dependency order.
+
+# 1. Regenerate example data (.rda files in data/ and flat files in
+#    inst/extdata/).  Must come first because devtools::document() will
+#    try to lazy-load data/ when it parses roxygen @examples.
 source("data-raw/generate_example_data.R")
 
-# Step 2: now document will work
+# 2. First document pass: generates NAMESPACE and man/ from roxygen tags in
+#    R/*.R.  RcppExports.R does not exist yet so its tags are skipped.
 devtools::document()
 
-
-# 4. Now compileAttributes will work (DESCRIPTION exists, src/ exists)
+# 3. Regenerate RcppExports.R (in R/) and src/RcppExports.cpp from the
+#    [[Rcpp::export]] annotations in src/ld_core.cpp.
+#    This is the canonical source of truth for the C++ symbol table.
 Rcpp::compileAttributes()
 
-# 5. Document again to pick up RcppExports.R
+# 4. Second document pass: picks up the roxygen tags now present in
+#    the freshly written R/RcppExports.R.
 devtools::document()
 
-
-# Step 1: Detach and unload the package completely
-try(detach("package:LDxBlocks", unload = TRUE, force = TRUE), silent = TRUE)
-
-# Step 2: Restart R session to release the file lock
-.rs.restartR()
-
-# 6. Install
+# 5. Compile C++ and install into the library.
+#    upgrade = FALSE  — do not touch other packages.
 devtools::install()
 
-# 7. Test
+# 6. Run the test suite.  All C++ symbols are now registered in the
+#    installed DLL, so load_all() will find them.
 devtools::test()
 
-
-# 8. Check
+# 7. Full CRAN check (run after tests pass).
 devtools::check()
+
 
 
 # 9. Build vignettes

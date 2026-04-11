@@ -2,89 +2,36 @@
 % Please edit documentation in R/haplotypes.R
 \name{extract_haplotypes}
 \alias{extract_haplotypes}
-\title{Extract Phase-Free Haplotypes Within LD Blocks}
+\title{Extract Haplotype Strings Within LD Blocks}
 \usage{
 extract_haplotypes(
   geno,
   snp_info,
   blocks,
   chr = NULL,
-  min_snps = 2L,
+  min_snps = 3L,
   na_char = "."
 )
 }
 \arguments{
-\item{geno}{Numeric matrix (individuals × SNPs; 0/1/2). Column names must
-be SNP IDs matching \code{snp_info$SNP}. Row names are used as individual
-IDs.}
+\item{geno}{Dosage matrix (individuals x SNPs) OR phased list from read_phased_vcf()/phase_with_pedigree().}
 
-\item{snp_info}{Data frame with columns \code{SNP}, \code{CHR}, \code{POS}.}
+\item{snp_info}{Data frame with SNP, CHR, POS.}
 
-\item{blocks}{Data frame of LD blocks as returned by
-\code{\link{run_Big_LD_all_chr}} or \code{\link{Big_LD}}. Must include
-columns \code{start.bp}, \code{end.bp}, and (if \code{chr} is given)
-\code{CHR}.}
+\item{blocks}{LD block data frame from run_Big_LD_all_chr() with CHR, start.bp, end.bp.}
 
-\item{chr}{Character. If supplied, only the blocks on this chromosome and
-the SNPs on this chromosome (from \code{snp_info}) are processed.
-\code{NULL} processes all blocks jointly.}
+\item{chr}{Optional chromosome filter. Default NULL (all).}
 
-\item{min_snps}{Integer. Minimum number of SNPs required for a block to be
-included. Blocks with fewer SNPs are skipped. Default \code{2}.}
+\item{min_snps}{Minimum SNPs per block. Default 3L.}
 
-\item{na_char}{Character. Replacement for \code{NA} alleles in strings.
-Default \code{"."}.}
+\item{na_char}{Missing allele character. Default ".".}
 }
 \value{
-A named list with one element per block (named
-  \code{"block_<start.bp>_<end.bp>"}). Each element is a character vector
-  of length \code{nrow(geno)}, giving the haplotype string for each
-  individual. The list has an attribute \code{"block_info"} — a data frame
-  summarising block ID, chromosome, positions, and SNP count.
+Named list of character vectors (length=n_individuals), one per block.
+  Carries block_info attribute.
 }
 \description{
-For each LD block in \code{blocks}, extracts the SNP columns from
-\code{geno} that fall within the block's bp interval and constructs a
-*phase-free haplotype* for each individual by concatenating their allele
-codes (0, 1, or 2) into a character string. Missing genotypes are
-represented as \code{"."}.
-
-These haplotype strings serve as multi-locus genotype identifiers and can be
-used directly with \code{\link{compute_haplotype_diversity}} or
-\code{\link{build_haplotype_feature_matrix}}.
-}
-\section{Note on phasing}{
-
-True gametic haplotypes require statistical or read-based phasing (e.g.
-SHAPEIT, Beagle). The strings produced here are *diploid allele strings*,
-not gametic phases. They are nonetheless highly informative for diversity
-metrics and genomic prediction because within a high-LD block, unphased
-multi-locus codes are nearly 1:1 with true haplotype classes.
-}
-
-\examples{
-\donttest{
-set.seed(1)
-geno <- matrix(sample(0:2, 50 * 40, replace = TRUE), 50, 40)
-rownames(geno) <- paste0("ind", 1:50)
-colnames(geno) <- paste0("rs", 1:40)
-snp_info <- data.frame(
-  SNP = colnames(geno),
-  CHR = "chr1",
-  POS = seq(1000, by = 5000, length.out = 40)
-)
-# Toy blocks
-blocks <- data.frame(
-  start.bp = c(1000, 80000),
-  end.bp   = c(70000, 200000),
-  CHR      = "chr1"
-)
-haps <- extract_haplotypes(geno, snp_info, blocks)
-head(haps[[1]])
-}
-
-}
-\seealso{
-\code{\link{compute_haplotype_diversity}},
-  \code{\link{build_haplotype_feature_matrix}}
+Builds haplotype strings per individual per LD block.
+  Unphased mode: "012201" (diploid). Phased mode: "011|100" (gametes).
+  Blocks are always defined within a single chromosome.
 }

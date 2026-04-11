@@ -21,7 +21,7 @@
 #' @param min_snps_chr Integer. Chromosomes with fewer SNPs than this after
 #'   MAF filtering are skipped. Default \code{10L}. Increase to skip small
 #'   scaffolds in whole-genome datasets.
-#' @param CLQcut,clstgap,leng,subSegmSize,MAFcut,appendrare,checkLargest,CLQmode,kin_method,split,digits,seed,verbose
+#' @param CLQcut,clstgap,leng,subSegmSize,MAFcut,appendrare,singleton_as_block,checkLargest,CLQmode,kin_method,split,digits,seed,verbose
 #'   Forwarded to \code{\link{Big_LD}}. See that function's documentation for
 #'   details.
 #'
@@ -60,6 +60,7 @@ run_Big_LD_all_chr <- function(
     subSegmSize  = 1500,
     MAFcut       = 0.05,
     appendrare   = FALSE,
+    singleton_as_block = FALSE,
     checkLargest = FALSE,
     CLQmode      = "Density",
     kin_method   = "chol",
@@ -103,7 +104,8 @@ run_Big_LD_all_chr <- function(
       Big_LD(geno = geno_chr, SNPinfo = info_chr,
              CLQcut = CLQcut, clstgap = clstgap, leng = leng,
              subSegmSize = subSegmSize, MAFcut = MAFcut,
-             appendrare = appendrare, checkLargest = checkLargest,
+             appendrare = appendrare, singleton_as_block = singleton_as_block,
+             checkLargest = checkLargest,
              CLQmode = CLQmode, kin_method = kin_method,
              split = split, method = method[1], n_threads = n_threads,
              digits = digits, seed = seed, verbose = verbose),
@@ -114,6 +116,12 @@ run_Big_LD_all_chr <- function(
       }
     )
     if (!is.null(blk)) { blk$CHR <- chr; ld_blocks_all[[chr]] <- blk }
+
+    # Free chromosome genotype matrix immediately after use.
+    # gc(FALSE) is called to release allocator pressure without a full GC cycle.
+    # For GDS/BED backends geno_chr is already a fresh extraction; for matrix
+    # backends it is a column slice. Either way it can be freed here.
+    rm(geno_chr, info_chr); gc(FALSE)
   }
 
   all_blocks <- data.table::rbindlist(ld_blocks_all, use.names = TRUE, fill = TRUE)

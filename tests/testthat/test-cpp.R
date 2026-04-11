@@ -149,7 +149,7 @@ test_that("col_r2_cpp: matches corresponding row of full r2 matrix", {
 test_that("compute_r2_sparse_cpp: returns triplet list", {
   bp     <- as.integer(seq(1000, by = 5000, length.out = 30))
   result <- compute_r2_sparse_cpp(G_small, bp, max_bp_dist = 20000L,
-                                  threshold = 0.0)
+                                   threshold = 0.0)
   expect_type(result, "list")
   expect_true(all(c("row","col","r2") %in% names(result)))
   expect_equal(length(result$row), length(result$col))
@@ -159,16 +159,16 @@ test_that("compute_r2_sparse_cpp: returns triplet list", {
 test_that("compute_r2_sparse_cpp: all r2 values in [0,1]", {
   bp     <- as.integer(seq(1000, by = 5000, length.out = 30))
   result <- compute_r2_sparse_cpp(G_small, bp, max_bp_dist = 30000L,
-                                  threshold = 0.0)
+                                   threshold = 0.0)
   expect_true(all(result$r2 >= 0 & result$r2 <= 1 + 1e-8))
 })
 
 test_that("compute_r2_sparse_cpp: threshold filters pairs correctly", {
   bp     <- as.integer(seq(1000, by = 1000, length.out = 30))
   full   <- compute_r2_sparse_cpp(G_small, bp, max_bp_dist = 30000L,
-                                  threshold = 0.0)
+                                   threshold = 0.0)
   thresh <- compute_r2_sparse_cpp(G_small, bp, max_bp_dist = 30000L,
-                                  threshold = 0.3)
+                                   threshold = 0.3)
   expect_true(length(thresh$row) <= length(full$row))
   expect_true(all(thresh$r2 >= 0.3))
 })
@@ -177,7 +177,7 @@ test_that("compute_r2_sparse_cpp: threshold filters pairs correctly", {
 test_that("boundary_scan_cpp: returns 0/1 integer vector of correct length", {
   Gc  <- scale(G_small, center = TRUE, scale = FALSE)
   res <- boundary_scan_cpp(Gc, start = 5L, end = 20L,
-                           half_w = 3L, threshold = 0.5)
+                            half_w = 3L, threshold = 0.5)
   expect_equal(length(res), 16L)
   expect_true(all(res %in% c(0L, 1L)))
 })

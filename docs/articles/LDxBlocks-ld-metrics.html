@@ -53,7 +53,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
-    <li><a class="external-link dropdown-item" href="https://github.com/yourorg/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
   </ul>
@@ -63,7 +63,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/yourorg/LDxBlocks" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/FAkohoue/LDxBlocks" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -114,10 +114,12 @@ are absorbed into large blocks.</p>
 <div class="section level2">
 <h2 id="the-kinship-correction-rv²">The kinship correction: rV²<a class="anchor" aria-label="anchor" href="#the-kinship-correction-rv%C2%B2"></a>
 </h2>
-<p>Kim et al. (2018) proposed replacing
+<p>Mangin et al. (2012) proposed replacing
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math>
 with the <strong>kinship-adjusted squared correlation</strong>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msup><mi>V</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2</annotation></semantics></math>:</p>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msup><mi>V</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2</annotation></semantics></math>
+specifically to correct LD estimates in structured or related
+populations:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msubsup><mi>V</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>g</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.278em"></mspace><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2_{jk} = \left[\mathrm{Cor}(V^{-1/2} g_j,\; V^{-1/2} g_k)\right]^2</annotation></semantics></math></p>
 <p>where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math>
@@ -352,9 +354,9 @@ clamped to
 <span><span class="va">t_rv2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span> <span class="fu"><a href="../reference/compute_rV2.html">compute_rV2</a></span><span class="op">(</span><span class="va">Gc_bench</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"compute_r2  (50 SNPs, 20 reps):"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">t_r2</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span>,  <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; compute_r2  (50 SNPs, 20 reps): 0 s</span></span>
+<span><span class="co">#&gt; compute_r2  (50 SNPs, 20 reps): 0.01 s</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"compute_rV2 (50 SNPs, 20 reps):"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">t_rv2</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; compute_rV2 (50 SNPs, 20 reps): 0.02 s</span></span>
+<span><span class="co">#&gt; compute_rV2 (50 SNPs, 20 reps): 0 s</span></span>
 <span><span class="co"># Both use the same C++ kernel — times should be identical</span></span>
 <span><span class="co"># The cost of rV² is entirely in prepare_geno() (GRM + Cholesky)</span></span></code></pre></div>
 </div>
@@ -373,8 +375,14 @@ change:</p>
 </h2>
 <ul>
 <li>Kim S-A et al. (2018) <em>Bioinformatics</em>
-<strong>34</strong>(4):588–596. <a href="https://doi.org/10.1093/bioinformatics/btx609" class="external-link uri">https://doi.org/10.1093/bioinformatics/btx609</a>
+<strong>34</strong>(4):588-596. <a href="https://doi.org/10.1093/bioinformatics/btx609" class="external-link uri">https://doi.org/10.1093/bioinformatics/btx609</a>
 </li>
+<li><ul>
+<li>Mangin B et al. (2012) Novel measures of linkage disequilibrium that
+correct the bias due to population structure and relatedness.
+<em>Heredity</em> <strong>108</strong>(3):285-291. <a href="https://doi.org/10.1038/hdy.2011.73" class="external-link uri">https://doi.org/10.1038/hdy.2011.73</a>
+</li>
+</ul></li>
 <li>VanRaden PM (2008) <em>J. Dairy Sci.</em>
 <strong>91</strong>(11):4414–4423. <a href="https://doi.org/10.3168/jds.2007-0980" class="external-link uri">https://doi.org/10.3168/jds.2007-0980</a>
 </li>

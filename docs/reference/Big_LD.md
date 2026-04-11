@@ -34,6 +34,7 @@ Big_LD(
   subSegmSize = 1500,
   MAFcut = 0.05,
   appendrare = FALSE,
+  singleton_as_block = FALSE,
   checkLargest = FALSE,
   CLQmode = "Density",
   kin_method = "chol",
@@ -83,6 +84,17 @@ Big_LD(
 - appendrare:
 
   Logical. Append rare SNPs after block detection. Default FALSE.
+
+- singleton_as_block:
+
+  Logical. If `TRUE`, every SNP that passes MAF filtering but has
+  pairwise r² below `CLQcut` with all neighbours (i.e. is not assigned
+  to any clique) is returned as a single-SNP block with `start == end`
+  and `length_bp == 1`. Default `FALSE`. These blocks are excluded from
+  haplotype analysis by the default `min_snps = 3` threshold in
+  [`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md),
+  but are useful for auditing coverage and for single-SNP feature
+  engineering.
 
 - checkLargest:
 

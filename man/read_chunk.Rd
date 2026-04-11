@@ -13,10 +13,10 @@ by \code{\link{read_geno}}.}
 \item{col_idx}{Integer vector of column indices (1-based SNP positions).}
 }
 \value{
-Numeric matrix (n_samples × length(col_idx)).
+Numeric matrix (n_samples x length(col_idx)).
 }
 \description{
-Returns an \code{n_samples × length(col_idx)} numeric matrix of dosage
+Returns an \code{n_samples x length(col_idx)} numeric matrix of dosage
 values (0/1/2/NA) for the selected SNP columns. Works identically for all
 supported backend types.
 }

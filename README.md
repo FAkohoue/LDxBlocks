@@ -18,46 +18,60 @@ Linkage disequilibrium (LD) block detection is a foundational step in modern
 genomic analyses. Knowing which SNPs co-segregate as a unit determines how GWAS
 results are interpreted, how haplotypes are defined for population genetics, and
 how genomic prediction models should be structured. Despite its importance, most
-implementations of LD block detection suffer from two problems that limit their
-usefulness in practice.
+implementations of LD block detection suffer from three problems that limit
+their usefulness in practice.
 
 **The kinship problem.** Classical LD estimators (r²) assume independence
 between individuals. In livestock, crop, or family-based human cohorts this
 assumption is systematically violated. Cryptic relatedness inflates pairwise
 correlations, causing LD to appear stronger than it is and blocks to be drawn
 too broadly or in the wrong places. The kinship-adjusted squared correlation
-rV² (Kim et al. 2018) corrects for this by whitening the genotype matrix with
-the inverse square root of the genomic relationship matrix (GRM):
+rV² (Mangin et al. 2012, *Heredity* 108:285-291) corrects for this by
+whitening the genotype matrix with the inverse square root of the genomic
+relationship matrix (GRM):
 
 $$rV^2_{jk} = \left[\mathrm{Cor}(V^{-1/2} G_j,\; V^{-1/2} G_k)\right]^2$$
 
 where $V$ is the VanRaden (2008) GRM and $V^{-1/2}$ is its Cholesky whitening
-factor. Every pairwise correlation in the Big-LD algorithm is replaced with rV²,
-giving block boundaries that reflect true recombination structure rather than
-population-structure artefacts.
+factor. Every pairwise correlation in the Big-LD algorithm is replaced with
+rV², giving block boundaries that reflect true recombination structure rather
+than population-structure artefacts.
 
-**The scale problem.** The original Big-LD implementation (Kim et al. 2018) is
-pure R. For modern whole-genome sequencing panels with 2–10 million markers the
-inner loops are prohibitively slow, and the full genotype matrix can exceed
-available RAM. LDxBlocks addresses this with a C++/Armadillo computational core
-compiled via Rcpp, OpenMP-parallelised LD computation, a unified multi-format
-I/O layer (numeric dosage CSV, HapMap, VCF, GDS, PLINK BED, or plain R
-matrices), and streaming chromosome-by-chromosome access for all file-backed
-formats.
+**The scale problem.** The original Big-LD implementation (Kim et al. 2018) contains
+no compiled code -- every matrix operation runs through the R interpreter. For modern whole-genome sequencing panels with 2-10 million markers the
+inner loops are prohibitively slow, and loading the full genotype matrix
+before detection is impossible on most workstations. LDxBlocks addresses this
+with a C++/Armadillo computational core compiled via Rcpp, OpenMP-parallelised
+LD computation, a unified multi-format I/O layer, and a strict never-full-genome
+memory model: the full genotype matrix is never loaded into RAM simultaneously
+regardless of dataset size or format.
+
+**The pipeline gap.** The original Big-LD stops at block boundaries. In
+breeding programmes and GWAS follow-up studies the immediate next questions
+are: What haplotypes exist within each block? How diverse are they? Which
+blocks harbour QTLs? How do I build a genomic prediction model that captures
+multi-locus block effects? These questions require a coherent downstream
+pipeline that the original implementation does not provide.
 
 **Why LDxBlocks and not other tools?**
 
-- Unlike PLINK `--blocks`, LDxBlocks uses a clique-based segmentation algorithm
-  that does not require a pre-specified number of blocks and naturally handles
-  complex LD patterns with overlapping windows.
-- Unlike the original Big-LD R package, LDxBlocks has a C++ core, supports
-  kinship correction (rV²), reads five file formats natively, and extends the
-  pipeline into haplotype reconstruction and genomic prediction feature
-  engineering.
+- Unlike PLINK `--blocks`, LDxBlocks uses the clique-based Big-LD segmentation
+  algorithm which does not require a pre-specified number of blocks and
+  naturally handles complex LD patterns. It also supports kinship correction
+  (rV²) and six input formats natively.
+- Unlike the original Big-LD R package, LDxBlocks has a compiled C++ core
+  (approximately 40x faster for typical window sizes), streams genotype data
+  from disk without loading the full genome into RAM, adds rV² kinship
+  correction, handles singleton SNPs explicitly, and extends the pipeline into
+  haplotype analysis and genomic prediction.
 - Unlike LDstore2 or LDpred2, LDxBlocks produces interpretable genomic
-  intervals (start/end position, rsID) as output — not just summary statistics —
-  making blocks immediately usable for annotation, diversity analysis, and
+  intervals (start/end position, rsID) as output — not just summary statistics
+  — making blocks immediately usable for annotation, diversity analysis, and
   region-based modelling.
+- Unlike gpart (the Bioconductor successor to Big-LD), LDxBlocks integrates
+  directly with R-based genomic prediction workflows (rrBLUP, BGLR, ASReml-R)
+  through its haplotype feature matrix module, supports automatic GDS conversion
+  for WGS-scale datasets, and provides GWAS-driven parameter auto-tuning.
 
 ---
 
@@ -81,9 +95,12 @@ algorithm of Kim et al. (2018) with 12 concrete improvements:
    dosage CSV, HapMap, VCF/VCF.gz, SeqArray GDS, PLINK BED/BIM/FAM, and
    in-memory R matrices through a single entry point with a common backend
    interface (`LDxBlocks_backend`).
-5. **Streaming chromosome access** — GDS and PLINK BED backends load only the
-   SNP window requested per CLQD call, never the full genome-wide matrix,
-   keeping peak RAM proportional to one chromosome.
+5. **Never-full-genome memory model** — the full genotype matrix is never held
+   in RAM at once for any format. Numeric dosage CSV is read in pre-allocated
+   50,000-row chunks (peak RAM = one chunk, not 2× the file). VCF and HapMap
+   auto-convert to a streaming GDS cache. GDS and PLINK BED backends load only
+   the SNP window per CLQD call. `gc(FALSE)` is called after each chromosome
+   to prevent heap fragmentation across 20–30 chromosome passes.
 6. **MAF filter in C++** — `maf_filter_cpp()` runs in a single O(np) pass,
    handling NA imputation and monomorphic detection simultaneously.
 7. **C++ boundary scan** — `boundary_scan_cpp()` replaces the R inner loop in
@@ -104,6 +121,131 @@ algorithm of Kim et al. (2018) with 12 concrete improvements:
 12. **Prediction feature matrix** — `build_haplotype_feature_matrix()` converts
     haplotype strings to numeric dosage columns for GBLUP, BayesB, or machine
     learning models, capturing multi-locus epistatic effects implicitly.
+
+---
+
+## Relationship to the original Big-LD algorithm
+
+LDxBlocks is built on the clique-based segmentation algorithm of Kim et al.
+(2018), published as the `BigLD` R package and later updated as the `gpart`
+Bioconductor package. The mathematical core — interval graph modelling of LD
+bins, maximum-weight independent set block construction, and Bron-Kerbosch
+clique enumeration via igraph — is preserved exactly. LDxBlocks extends that
+foundation in the following concrete ways.
+
+### Computational core: R loops replaced by C++
+
+The original `Big_LD()` calls `cor()` inside the boundary-scan loop — up to
+three separate R-level matrix operations per candidate cut position. For a
+50,000-SNP chromosome with `leng = 200` this is approximately 150,000 small
+matrix multiplications running through the R interpreter. LDxBlocks replaces
+these with seven compiled functions:
+
+| Original R operation | LDxBlocks C++ function | Speedup |
+|---|---|---|
+| `cor(subgeno)` per CLQD call | `compute_r2_cpp()` + OpenMP | ~40x for 1,500-SNP window |
+| `apply(Ogeno, 2, ...)` MAF filter | `maf_filter_cpp()` single pass | ~10x for 100k+ SNPs |
+| `cor()` inside boundary-scan loop | `boundary_scan_cpp()` compiled | ~20x per chromosome |
+| `r2Mat[r2Mat >= CLQcut^2] <- 1` | `build_adj_matrix_cpp()` | eliminates intermediate allocation |
+| Single-column correlation | `col_r2_cpp()` | used in boundary scan helper |
+| Sparse within-window r² | `compute_r2_sparse_cpp()` | avoids O(p^2) for large segments |
+
+The outer loop of `compute_r2_cpp()` is parallelised with OpenMP, controlled
+by `n_threads =`. Thread scaling is efficient up to 8-16 threads for typical
+`subSegmSize = 1500` windows.
+
+### Memory model: never-full-genome
+
+The original `Big_LD()` accepts a plain R matrix — the entire genotype dataset
+must fit in RAM simultaneously. For a 10M-marker, 5,000-individual WGS panel
+this requires approximately 400 GB as an R `double` matrix. LDxBlocks enforces
+a strict memory contract regardless of format:
+
+- **Numeric dosage CSV**: two-pass chunked pre-allocated reader. Pass 1 counts
+  rows with zero data loaded. A single pre-allocated matrix is filled in
+  50,000-row chunks via successive `fread()` calls. Peak RAM = one chunk, never
+  2x the file.
+- **VCF and HapMap**: auto-converted to a SeqArray GDS cache on first call.
+  All subsequent access streams per chromosome window via `read_chunk()`.
+- **GDS and PLINK BED**: `read_chunk(backend, col_idx)` is called once per
+  sub-segment per chromosome. Only those columns are loaded; the rest of the
+  genome remains on disk.
+- **Chromosome loop**: `rm()` and `gc(FALSE)` are called after each chromosome
+  completes, preventing heap fragmentation across 20-30 chromosome passes.
+
+### Kinship correction: rV²
+
+The original implementation uses Pearson r as the LD metric. For related
+populations (livestock half-sib families, inbred plant lines, family-based
+human cohorts) kinship-induced allele sharing inflates r between all SNP pairs,
+producing blocks that are too broad and incorrectly delimited.
+
+LDxBlocks adds `method = "rV2"` which replaces every pairwise correlation with
+the kinship-whitened equivalent. The whitening factor A is computed once per
+chromosome from the VanRaden (2008) GRM via `get_V_inv_sqrt()` (Cholesky or
+eigendecomposition), then applied to the centred genotype matrix before passing
+to the same `compute_r2_cpp()` kernel. In related populations, rV² blocks are
+typically 10-30% smaller and more precisely delimited than r² blocks.
+
+### Singleton SNP handling
+
+The original `Big_LD()` silently discards SNPs that pass MAF filtering but
+receive `NA` from `CLQD()` (no clique partner above `CLQcut`). These
+singletons — which mark recombination hotspots and rapidly-evolving loci — are
+never returned to the user and are invisible in the block table.
+
+LDxBlocks adds `singleton_as_block = TRUE` which collects singleton indices
+during the sub-segment loop and appends them to the final block table as
+single-SNP entries (`start == end`, `length_bp == 1`). With the default
+`singleton_as_block = FALSE` the original behaviour is preserved for backward
+compatibility.
+
+### Bug fix: zero-row assignment
+
+The original main loop body contains:
+
+```r
+LDblocks[(preleng1 + 1):(preleng1 + dim(nowLDblocks)[1]), ] <- nowLDblocks
+```
+
+When a sub-segment contains no valid cliques (all singletons above the MAF
+threshold) `nowLDblocks` has zero rows and R evaluates `(preleng1+1):preleng1`
+as a backwards sequence, causing `replacement has length zero`. LDxBlocks wraps
+this with `if (nrow(nowLD) > 0L)`, making the function robust to sparse
+chromosomal regions and small input datasets.
+
+### Downstream pipeline
+
+The original Big-LD stops at the block table. LDxBlocks adds a complete
+downstream module:
+
+| Capability | Original Big-LD / gpart | LDxBlocks |
+|---|---|---|
+| Block detection | Yes (core algorithm) | Yes (same algorithm + C++ + rV²) |
+| Statistical phasing | No | `phase_with_beagle()`, `phase_with_pedigree()`, `read_phased_vcf()` |
+| Haplotype extraction | No | `extract_haplotypes()` — phased and unphased, backend streaming |
+| Diversity metrics | No | `compute_haplotype_diversity()` — He, Shannon, richness, f_max |
+| Post-GWAS QTL mapping | No | `define_qtl_regions()` — pleiotropic block detection |
+| Genomic prediction features | No | `build_haplotype_feature_matrix()` — additive 0/1/2 or presence/absence |
+| Output writers | No | Numeric CSV, HapMap, diversity CSV — compatible with TASSEL, GAPIT, rrBLUP |
+| Parameter auto-tuning | No | `tune_LD_params()` — grid search against GWAS marker coverage |
+| Multi-format I/O | PLINK, VCF (gpart) | Numeric CSV, HapMap, VCF, GDS, BED, R matrix via unified backend |
+| WGS-scale streaming | Partial (gpart GDS) | Full never-full-genome model for all formats |
+
+### What is kept exactly
+
+- The interval graph modelling of LD bins (cliques of strong pairwise LD SNPs)
+- `CLQD()`: bin vector assignment via maximal clique enumeration and greedy
+  density-priority selection
+- `constructLDblock()`: maximum-weight independent set via dynamic programming
+  on sorted interval sequences
+- `appendSGTs()`: rare-SNP appending logic
+- `cutsequence.modi()`: boundary-scan logic and forced-split fall-back
+- All `CLQmode = "Density"` and `CLQmode = "Maximal"` clique scoring
+- The `clstgap` physical distance splitting within cliques
+- Block table column format (`start`, `end`, `start.rsID`, `end.rsID`,
+  `start.bp`, `end.bp`) for drop-in compatibility with downstream tools that
+  accept original Big-LD output
 
 ---
 
@@ -188,11 +330,10 @@ install.packages("future.apply")
 install.packages("ggplot2")
 ```
 
-> **C++ compilation note.** LDxBlocks compiles C++ with `-O3 -march=native
-> -fopenmp` on Linux/macOS (`src/Makevars`) and `-O3 -fopenmp` on Windows
-> (`src/Makevars.win`). The `-march=native` flag enables AVX2/AVX512
-> instructions where available for maximum throughput. Remove it from
-> `src/Makevars` for portable binary distribution (e.g., CRAN submission).
+> **C++ compilation note.** LDxBlocks compiles C++ with OpenMP enabled via
+> `$(SHLIB_OPENMP_CXXFLAGS)` in `src/Makevars` and `src/Makevars.win`. R's
+> default `CXXFLAGS` already include `-O2` optimisation. No non-portable flags
+> are used, so the package passes `R CMD check --as-cran` without notes.
 
 ---
 
@@ -242,8 +383,10 @@ blocks <- run_Big_LD_all_chr(
 ```
 
 ```r
-# ── Haplotype analysis ────────────────────────────────────────────────────────
-haps <- extract_haplotypes(my_geno_matrix, my_snp_info, blocks, min_snps = 3)
+# ── Haplotype analysis — pass the backend directly for chromosome streaming ───
+# extract_haplotypes() detects LDxBlocks_backend input and processes one
+# chromosome at a time, freeing RAM before moving to the next.
+haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 3)
 
 div <- compute_haplotype_diversity(haps)
 head(div)
@@ -911,13 +1054,30 @@ imputation and monomorphic detection in the same loop.
 **`build_adj_matrix_cpp()`** replaces `ifelse(LD >= cut, 1L, 0L)` with a C++
 write in place, avoiding the allocation of the intermediate logical matrix.
 
-### Streaming genotype access
+### Never-full-genome memory model
 
-For GDS and PLINK BED backends, `read_chunk(backend, col_idx)` is the only
-function that reads genotype data from disk. It is called once per sub-segment
-per chromosome. With `subSegmSize = 1500` and 50,000 SNPs per chromosome, this
-is approximately 33 disk reads per chromosome. Each read loads only a 1,500-column
-slice; the rest of the genome remains on disk and is never in RAM.
+LDxBlocks enforces a strict memory contract: **the full genotype matrix is never
+held in RAM at once for any dataset size or format.**
+
+**Numeric dosage CSV** — Two-pass chunked reading following the OptSLDP pattern
+(Akohoue et al. 2026): Pass 1 scans the header and counts rows with zero data
+loading. A single pre-allocated matrix is then filled in 50,000-row chunks via
+successive `data.table::fread()` calls. Peak RAM = one chunk (not 2× the file).
+`gc(FALSE)` is called after each chunk.
+
+**VCF and HapMap** — Auto-converted to a SeqArray GDS cache on first call
+(placed next to the source file). Subsequent calls reuse the cache. All access
+is streaming via `read_chunk()`.
+
+**GDS and PLINK BED** — `read_chunk(backend, col_idx)` is called once per
+sub-segment per chromosome. With `subSegmSize = 1500` and 50,000 SNPs per
+chromosome, this is approximately 33 disk reads per chromosome. Each read loads
+only a 1,500-column slice; the rest of the genome remains on disk.
+
+**Chromosome loop** — In `run_Big_LD_all_chr()` and `extract_haplotypes()`,
+each chromosome is extracted, processed, freed with `rm()`, and `gc(FALSE)` is
+called before the next chromosome is touched, preventing heap fragmentation
+from accumulating across 20–30 chromosome passes.
 
 ### OpenMP thread count
 
@@ -1008,7 +1168,7 @@ Before opening a pull request, please:
 
 ## License
 
-GPL (>= 3) © LDxBlocks Development Team
+MIT + file LICENSE © Félicien Akohoue
 
 ---
 
@@ -1016,8 +1176,13 @@ GPL (>= 3) © LDxBlocks Development Team
 
 Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block
 detection method for dense genome sequencing data based on interval graph
-modeling and dynamic programming. *Bioinformatics* **34**(4):588–596.
+modeling and dynamic programming. *Bioinformatics* **34**(4):588-596.
 <https://doi.org/10.1093/bioinformatics/btx609>
+
+Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles C (2012).
+Novel measures of linkage disequilibrium that correct the bias due to population
+structure and relatedness. *Heredity* **108**(3):285-291.
+<https://doi.org/10.1038/hdy.2011.73>
 
 VanRaden PM (2008). Efficient methods to compute genomic predictions. *Journal
 of Dairy Science* **91**(11):4414–4423.

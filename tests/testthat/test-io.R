@@ -186,7 +186,7 @@ test_that("HapMap: backend properties match input", {
   tmp  <- tempfile(fileext=".hmp.txt")
   write_hapmap(G, info, tmp)
   be <- read_geno(tmp)
-  expect_equal(be$type,      "hapmap")
+  expect_true(be$type %in% c("hapmap","gds"))
   expect_equal(be$n_snps,    8L)
   expect_equal(be$n_samples, 12L)
   close_backend(be); unlink(tmp)
@@ -199,6 +199,7 @@ write_vcf <- function(G, info, path) {
     c("0"="0/0","1"="0/1","2"="1/1")[as.character(x)]
   }, character(1))
   lines <- c("##fileformat=VCFv4.2",
+             "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
              paste(c("#CHROM","POS","ID","REF","ALT","QUAL","FILTER",
                      "INFO","FORMAT",rownames(G)), collapse="\t"))
   for(i in seq_len(nrow(info))) {
@@ -257,7 +258,7 @@ test_that("VCF: backend properties correct", {
   tmp  <- tempfile(fileext=".vcf")
   write_vcf(G, info, tmp)
   be <- read_geno(tmp)
-  expect_equal(be$type,      "vcf")
+  expect_true(be$type %in% c("vcf","gds"))
   expect_equal(be$n_snps,    8L)
   expect_equal(be$n_samples, 12L)
   close_backend(be); unlink(tmp)
@@ -280,14 +281,14 @@ test_that("format auto-detection from extension works for all formats", {
   tmp_hmp <- tempfile(fileext=".hmp.txt")
   write_hapmap(G, info, tmp_hmp)
   be_hmp <- read_geno(tmp_hmp)
-  expect_equal(be_hmp$type, "hapmap")
+  expect_true(be_hmp$type %in% c("hapmap","gds"))
   close_backend(be_hmp); unlink(tmp_hmp)
 
   # VCF
   tmp_vcf <- tempfile(fileext=".vcf")
   write_vcf(G, info, tmp_vcf)
   be_vcf <- read_geno(tmp_vcf)
-  expect_equal(be_vcf$type, "vcf")
+  expect_true(be_vcf$type %in% c("vcf","gds"))
   close_backend(be_vcf); unlink(tmp_vcf)
 })
 

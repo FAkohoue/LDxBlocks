@@ -12,7 +12,7 @@ Package-level documentation and overview.
 
 High-level functions for genome-wide LD block detection.
 [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
-is the recommended entry point for most users.
+is the recommended entry point.
 
 - [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
   : Genome-Wide LD Block Detection by Chromosome
@@ -22,6 +22,8 @@ is the recommended entry point for most users.
   Clique-Based LD Block Detection
 - [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md)
   : Auto-Tune LD Block Detection Parameters
+- [`run_ldx_pipeline()`](https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.md)
+  : End-to-End Haplotype Block Pipeline
 
 ## Genotype I/O
 
@@ -41,8 +43,7 @@ GDS, PLINK BED, R matrix) through a unified backend interface.
 
 ## LD computation
 
-LD matrix computation functions: standard r² (fast, no kinship) and
-kinship-adjusted rV² (for structured populations).
+LD matrix computation: standard r² and kinship-adjusted rV².
 
 - [`compute_ld()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.md)
   : Compute LD Matrix: Standard r² or Kinship-Adjusted rV²
@@ -56,17 +57,46 @@ kinship-adjusted rV² (for structured populations).
   : Compute the Inverse Square Root (Whitening Factor) of a Kinship
   Matrix
 
+## Phasing
+
+Functions for obtaining gametic phase from WGS data (Beagle), pedigree
+records, or pre-phased VCF files.
+
+- [`read_phased_vcf()`](https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.md)
+  : Read Pre-Phased VCF
+- [`phase_with_beagle()`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_beagle.md)
+  : Statistical Phasing via Beagle 5.x
+- [`phase_with_pedigree()`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_pedigree.md)
+  : Pedigree-Based Allele Transmission Phasing
+- [`unphase_to_dosage()`](https://FAkohoue.github.io/LDxBlocks/reference/unphase_to_dosage.md)
+  : Collapse Phased Gametes to 0/1/2 Dosage
+
 ## Haplotype analysis
 
-Extract phase-free haplotypes within LD blocks, compute diversity
-metrics, and build feature matrices for genomic prediction.
+Extract haplotypes within LD blocks (phased or unphased), compute
+diversity metrics, map GWAS hits to QTL regions, and build feature
+matrices for genomic prediction.
 
 - [`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
-  : Extract Phase-Free Haplotypes Within LD Blocks
+  : Extract Haplotype Strings Within LD Blocks
 - [`compute_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.md)
-  : Compute Haplotype Diversity Metrics Per LD Block
+  : Compute Haplotype Diversity Per Block
+- [`define_qtl_regions()`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md)
+  : Map GWAS Hits to LD Blocks (Post-GWAS QTL Region Definition)
 - [`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md)
-  : Build a Haplotype Dosage Feature Matrix for Genomic Prediction
+  : Build Haplotype Dosage Matrix for Genomic Prediction
+
+## Haplotype output writers
+
+Write haplotype matrices and diversity tables to disk in formats
+compatible with TASSEL, GAPIT, rrBLUP, BGLR, and ASReml-R.
+
+- [`write_haplotype_numeric()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.md)
+  : Write Haplotype Matrix as Numeric CSV
+- [`write_haplotype_hapmap()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_hapmap.md)
+  : Write Haplotype Matrix in HapMap Format
+- [`write_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_diversity.md)
+  : Write Haplotype Diversity Table
 
 ## Utilities
 
@@ -79,8 +109,8 @@ Summary statistics and visualisation for block tables.
 
 ## Example data
 
-Simulated datasets shipped with the package for examples and tests. See
-`data-raw/generate_example_data.R` for the simulation code.
+Simulated datasets (120 individuals, 230 SNPs, 3 chromosomes, 9 LD
+blocks) for examples and tests.
 
 - [`ldx_geno`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_geno.md)
   : Example Genotype Matrix

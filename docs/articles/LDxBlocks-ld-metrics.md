@@ -25,8 +25,9 @@ are absorbed into large blocks.
 
 ## The kinship correction: rV²
 
-Kim et al. (2018) proposed replacing $`r^2`$ with the **kinship-adjusted
-squared correlation** $`rV^2`$:
+Mangin et al. (2012) proposed replacing $`r^2`$ with the
+**kinship-adjusted squared correlation** $`rV^2`$ specifically to
+correct LD estimates in structured or related populations:
 
 ``` math
 rV^2_{jk} = \left[\mathrm{Cor}(V^{-1/2} g_j,\; V^{-1/2} g_k)\right]^2
@@ -205,9 +206,9 @@ t_r2  <- system.time(for(i in 1:20) compute_r2(G_bench))
 t_rv2 <- system.time(for(i in 1:20) compute_rV2(Gc_bench))
 
 cat("compute_r2  (50 SNPs, 20 reps):", round(t_r2["elapsed"],  3), "s\n")
-#> compute_r2  (50 SNPs, 20 reps): 0 s
+#> compute_r2  (50 SNPs, 20 reps): 0.01 s
 cat("compute_rV2 (50 SNPs, 20 reps):", round(t_rv2["elapsed"], 3), "s\n")
-#> compute_rV2 (50 SNPs, 20 reps): 0.02 s
+#> compute_rV2 (50 SNPs, 20 reps): 0 s
 # Both use the same C++ kernel — times should be identical
 # The cost of rV² is entirely in prepare_geno() (GRM + Cholesky)
 ```
@@ -224,7 +225,10 @@ blocks_rv2 <- run_Big_LD_all_chr(be, method = "rV2", CLQcut = 0.70,
 
 ## References
 
-- Kim S-A et al. (2018) *Bioinformatics* **34**(4):588–596.
+- Kim S-A et al. (2018) *Bioinformatics* **34**(4):588-596.
   <https://doi.org/10.1093/bioinformatics/btx609>
+- - Mangin B et al. (2012) Novel measures of linkage disequilibrium that
+    correct the bias due to population structure and relatedness.
+    *Heredity* **108**(3):285-291. <https://doi.org/10.1038/hdy.2011.73>
 - VanRaden PM (2008) *J. Dairy Sci.* **91**(11):4414–4423.
   <https://doi.org/10.3168/jds.2007-0980>

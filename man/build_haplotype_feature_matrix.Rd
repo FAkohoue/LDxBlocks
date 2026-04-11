@@ -2,79 +2,42 @@
 % Please edit documentation in R/haplotypes.R
 \name{build_haplotype_feature_matrix}
 \alias{build_haplotype_feature_matrix}
-\title{Build a Haplotype Dosage Feature Matrix for Genomic Prediction}
+\title{Build Haplotype Dosage Matrix for Genomic Prediction}
 \usage{
 build_haplotype_feature_matrix(
   haplotypes,
   top_n = 5L,
+  encoding = c("additive_012", "presence_02"),
   missing_string = ".",
-  scale_features = FALSE
+  scale_features = FALSE,
+  min_freq = 0.01
 )
 }
 \arguments{
-\item{haplotypes}{List as returned by \code{\link{extract_haplotypes}}.}
+\item{haplotypes}{List from extract_haplotypes().}
 
-\item{top_n}{Integer. Number of most frequent haplotypes per block to
-include as features. Remaining haplotypes are pooled as
-\code{"hap_OTHER"}. Default \code{5}.}
+\item{top_n}{Top haplotype alleles per block. Default 5L.}
 
-\item{missing_string}{Character. Haplotype strings matching this pattern are
-coded as \code{NA} in the output matrix. Default \code{"."}.}
+\item{encoding}{"additive_012" (default) or "presence_02".}
 
-\item{scale_features}{Logical. If \code{TRUE}, each haplotype dosage column
-is centred and scaled (mean 0, sd 1). Recommended when combining blocks
-in a single model. Default \code{FALSE}.}
+\item{missing_string}{Missing data marker. Default ".".}
+
+\item{scale_features}{Center and scale columns. Default FALSE.}
+
+\item{min_freq}{Minimum allele frequency to include. Default 0.01.}
 }
 \value{
-A numeric matrix of dimension
-  \code{n_individuals × n_features}, where features are haplotype dosages
-  named \code{"<block_id>__hap<rank>"} (rank 1 = most frequent). Row names
-  are individual IDs (from the input haplotype list). Columns for the
-  \code{"OTHER"} category are omitted (it is the implicit reference level).
+Numeric matrix (individuals x haplotype allele columns).
 }
 \description{
-Converts the phase-free haplotype strings from
-\code{\link{extract_haplotypes}} into a numeric dosage matrix suitable for
-genomic prediction (GBLUP, BayesB, random forests, etc.).
+Converts haplotype strings to a numeric matrix for genomic
+  prediction. Supports phased and unphased input with two encoding schemes.
 
-For each block, the \code{top_n} most frequent haplotypes are selected as
-*reference haplotypes*. Each individual then receives an integer dosage
-count (0, 1, or 2 for diploids) for each reference haplotype, analogous to
-allele dosage in single-SNP analysis. Rare haplotypes (not in the top
-\code{top_n}) are collapsed into an \code{"OTHER"} category.
-}
-\section{Why haplotype features?}{
+  encoding="additive_012" (default, recommended for GBLUP/rrBLUP/BGLR):
+    Phased:   0=0 copies, 1=1 copy (het), 2=2 copies (hom)
+    Unphased: 0=no match, 2=match (1 not identifiable without phase)
 
-Single-SNP models assume additive effects and miss multi-locus interactions
-implicit in haplotype structure. Haplotype dosages capture these
-interactions without requiring explicit interaction terms, often improving
-prediction accuracy in structured populations (Calus et al. 2008; de Roos
-et al. 2009).
-}
-
-\examples{
-\donttest{
-set.seed(1)
-geno <- matrix(sample(0:2, 50 * 40, replace = TRUE), 50, 40)
-rownames(geno) <- paste0("ind", 1:50)
-colnames(geno) <- paste0("rs", 1:40)
-snp_info <- data.frame(SNP = colnames(geno), CHR = "chr1",
-  POS = seq(1000, by = 5000, length.out = 40))
-blocks <- data.frame(start.bp = c(1000, 80000), end.bp = c(70000, 200000), CHR = "chr1")
-haps <- extract_haplotypes(geno, snp_info, blocks)
-feat <- build_haplotype_feature_matrix(haps, top_n = 3)
-dim(feat)
-feat[1:5, 1:min(6, ncol(feat))]
-}
-
-}
-\references{
-Calus MPL et al. (2008) Accuracy of genomic selection using different
-methods to define haplotypes. \emph{Genetics} \strong{178}(1):553–561.\cr
-de Roos APW et al. (2009) Linkage disequilibrium and persistence of phase in
-Holstein–Friesian, Jersey and Angus cattle. \emph{Genetics}
-\strong{179}(3):1503–1512.
-}
-\seealso{
-\code{\link{extract_haplotypes}}, \code{\link{compute_haplotype_diversity}}
+  encoding="presence_02" (kernel methods, random forest):
+    Phased:   2=either gamete matches, 0=neither, NA=missing
+    Unphased: 2=match, 0=no match, NA=missing
 }

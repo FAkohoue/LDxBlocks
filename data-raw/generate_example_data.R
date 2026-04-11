@@ -16,6 +16,8 @@
 ##   inst/extdata/example_genotypes_numeric.csv   (numeric dosage)
 ##   inst/extdata/example_genotypes.hmp.txt       (HapMap)
 ##   inst/extdata/example_genotypes.vcf           (VCF)
+##   inst/extdata/example_gwas.csv                (GWAS marker table)
+##   inst/extdata/example_phenotype.csv           (simulated phenotypes)
 ## ─────────────────────────────────────────────────────────────────────────────
 
 set.seed(20250407)
@@ -179,7 +181,10 @@ ldx_gwas <- data.frame(
   Marker = ldx_snp_info$SNP[gwas_snp_idx],
   CHR    = ldx_snp_info$CHR[gwas_snp_idx],
   POS    = ldx_snp_info$POS[gwas_snp_idx],
-  P      = runif(20, 1e-8, 0.001),
+  P      = c(runif(8, 1e-10, 9e-7),   # 8 markers clearly below 1e-6
+             runif(7, 1e-5, 1e-3),   # 7 suggestive
+             runif(5, 1e-3, 0.05)),  # 5 sub-threshold
+  trait  = sample(c("TraitA", "TraitB"), 20, replace = TRUE, prob = c(0.6, 0.4)),
   stringsAsFactors = FALSE
 )
 
@@ -278,6 +283,49 @@ for (si in seq_len(nrow(ldx_snp_info))) {
   ), collapse = "\t"))
 }
 writeLines(vcf_lines, "inst/extdata/example_genotypes.vcf")
+
+## 4. GWAS flat file (inst/extdata/example_gwas.csv)
+write.csv(ldx_gwas,
+          file = "inst/extdata/example_gwas.csv",
+          row.names = FALSE, quote = FALSE
+)
+
+## 5. Simulated phenotype file
+## Two quantitative traits (polygenic architecture from the LD blocks)
+## plus two principal components (population structure surrogates).
+## Trait1 / Trait2 are linear combinations of 10 random SNP effects plus noise.
+set.seed(20250408)
+n_qtl <- 10L
+
+# Random SNP effects for each trait
+qtl_idx1  <- sample(ncol(ldx_geno), n_qtl)
+qtl_eff1  <- rnorm(n_qtl, 0, 0.3)
+trait1_val <- as.numeric(ldx_geno[, qtl_idx1] %*% qtl_eff1) + rnorm(N_IND, 0, 0.5)
+trait1_val <- round((trait1_val - mean(trait1_val)) / sd(trait1_val), 4)
+
+qtl_idx2  <- sample(ncol(ldx_geno), n_qtl)
+qtl_eff2  <- rnorm(n_qtl, 0, 0.3)
+trait2_val <- as.numeric(ldx_geno[, qtl_idx2] %*% qtl_eff2) + rnorm(N_IND, 0, 0.5)
+trait2_val <- round((trait2_val - mean(trait2_val)) / sd(trait2_val), 4)
+
+# PCA on genotype matrix for population structure covariates
+Gc_pca  <- scale(ldx_geno, center = TRUE, scale = FALSE)
+pca_out <- prcomp(Gc_pca, rank. = 2L)
+pc_scores <- round(pca_out$x[, 1:2], 4)
+
+ldx_pheno <- data.frame(
+  Sample = rownames(ldx_geno),
+  Trait1 = trait1_val,
+  Trait2 = trait2_val,
+  PC1    = pc_scores[, 1],
+  PC2    = pc_scores[, 2],
+  stringsAsFactors = FALSE
+)
+
+write.csv(ldx_pheno,
+          file = "inst/extdata/example_phenotype.csv",
+          row.names = FALSE, quote = FALSE
+)
 
 message("Written flat-file examples to inst/extdata/")
 message("Data generation complete.")

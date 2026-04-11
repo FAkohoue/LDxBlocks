@@ -1,6 +1,6 @@
 # Extract a Genotype Slice from an LDxBlocks Backend
 
-Returns an `n_samples × length(col_idx)` numeric matrix of dosage values
+Returns an `n_samples x length(col_idx)` numeric matrix of dosage values
 (0/1/2/NA) for the selected SNP columns. Works identically for all
 supported backend types.
 
@@ -23,4 +23,4 @@ read_chunk(backend, col_idx)
 
 ## Value
 
-Numeric matrix (n_samples × length(col_idx)).
+Numeric matrix (n_samples x length(col_idx)).

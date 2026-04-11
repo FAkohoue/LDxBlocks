@@ -15,6 +15,7 @@ run_Big_LD_all_chr(
   subSegmSize = 1500,
   MAFcut = 0.05,
   appendrare = FALSE,
+  singleton_as_block = FALSE,
   checkLargest = FALSE,
   CLQmode = "Density",
   kin_method = "chol",
@@ -32,7 +33,7 @@ spanning all chromosomes.}
 \item{snp_info}{Data frame with columns \code{CHR}, \code{SNP}, \code{POS}.
 Column order is flexible; columns are matched by name.}
 
-\item{CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare, checkLargest, CLQmode, kin_method, split, digits, seed, verbose}{Forwarded to \code{\link{Big_LD}}. See that function's documentation for
+\item{CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare, singleton_as_block, checkLargest, CLQmode, kin_method, split, digits, seed, verbose}{Forwarded to \code{\link{Big_LD}}. See that function's documentation for
 details.}
 
 \item{method}{Character. LD metric: \code{"r2"} (default, standard squared

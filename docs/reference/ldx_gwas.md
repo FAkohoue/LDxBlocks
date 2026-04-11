@@ -17,7 +17,7 @@ ldx_gwas
 
 ## Format
 
-A `data.frame` with 20 rows and 4 columns:
+A `data.frame` with 20 rows and 5 columns:
 
 - `Marker`:
 
@@ -33,8 +33,16 @@ A `data.frame` with 20 rows and 4 columns:
 
 - `P`:
 
-  Numeric. Toy p-value in (1e-8, 0.001); not used by `tune_LD_params`
-  itself but useful for demonstration.
+  Numeric. Toy p-value in (1e-8, 0.001).
+
+- `trait`:
+
+  Character. Toy trait label (`"TraitA"` or `"TraitB"`), assigned
+  randomly at 60/40 probability. Used to demonstrate multi-trait
+  pleiotropic block detection in
+  [`define_qtl_regions`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md).
+  When a single trait is analysed, this column is simply ignored or the
+  `trait_col` argument omitted.
 
 ## Source
 
@@ -43,6 +51,7 @@ Simulated with `data-raw/generate_example_data.R`. Seed: `set.seed(42)`.
 ## See also
 
 [`tune_LD_params`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md),
+[`define_qtl_regions`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md),
 [`ldx_geno`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_geno.md),
 [`ldx_snp_info`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_snp_info.md)
 
@@ -51,13 +60,13 @@ Simulated with `data-raw/generate_example_data.R`. Seed: `set.seed(42)`.
 ``` r
 data(ldx_gwas)
 head(ldx_gwas)
-#>   Marker CHR   POS            P
-#> 1 rs1001   1  1000 0.0009057391
-#> 2 rs1005   1  5246 0.0004469752
-#> 3 rs1017   1 17510 0.0008360059
-#> 4 rs1034   1 84716 0.0007375982
-#> 5 rs1040   1 90503 0.0008110570
-#> 6 rs1048   1 98806 0.0003881144
+#>   Marker CHR   POS            P  trait
+#> 1 rs1001   1  1000 8.151737e-07 TraitB
+#> 2 rs1005   1  5246 4.023280e-07 TraitB
+#> 3 rs1017   1 17510 7.524202e-07 TraitB
+#> 4 rs1034   1 84716 6.638623e-07 TraitA
+#> 5 rs1040   1 90503 7.299685e-07 TraitA
+#> 6 rs1048   1 98806 3.493586e-07 TraitA
 # All markers should fall within ldx_blocks:
 data(ldx_blocks)
 data(ldx_snp_info)

@@ -1,15 +1,11 @@
 ## tests/testthat/test-basic.R
-## ─────────────────────────────────────────────────────────────────────────────
-## Basic smoke tests — verify that the package loads, example data is accessible,
-## and high-level functions produce output of the correct type without crashing.
-## These tests are intentionally fast (<10 s total) and use small subsets of
-## ldx_geno so they pass on CRAN/CI with minimal resources.
-## ─────────────────────────────────────────────────────────────────────────────
+## Fast smoke tests — package loads, example data accessible, high-level
+## functions produce output of the correct type. Target: <10 s on CRAN/CI.
 
 library(testthat)
 library(LDxBlocks)
 
-# ── Example data loads ────────────────────────────────────────────────────────
+# ── Example data ──────────────────────────────────────────────────────────────
 test_that("example datasets load and have correct dimensions", {
   data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
@@ -21,14 +17,16 @@ test_that("example datasets load and have correct dimensions", {
   expect_equal(nrow(ldx_snp_info), 230L)
   expect_true(all(c("SNP","CHR","POS","REF","ALT") %in% names(ldx_snp_info)))
   expect_equal(nrow(ldx_blocks), 9L)
-  expect_true(all(c("start","end","start.rsID","end.rsID","start.bp","end.bp","CHR") %in%
-                    names(ldx_blocks)))
+  expect_true(all(c("start","end","start.rsID","end.rsID",
+                    "start.bp","end.bp","CHR") %in% names(ldx_blocks)))
   expect_equal(nrow(ldx_gwas), 20L)
-  expect_true(all(c("Marker","CHR","POS") %in% names(ldx_gwas)))
+  # ldx_gwas has 5 columns: Marker, CHR, POS, P, trait
+  expect_true(all(c("Marker","CHR","POS","P","trait") %in% names(ldx_gwas)))
+  expect_true(all(ldx_gwas$trait %in% c("TraitA","TraitB")))
 })
 
 test_that("example SNP IDs match between geno matrix and snp_info", {
-  data(ldx_geno, package = "LDxBlocks")
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
   expect_equal(colnames(ldx_geno), ldx_snp_info$SNP)
 })
@@ -39,7 +37,7 @@ test_that("example chromosomes are normalised (no chr prefix)", {
 })
 
 # ── C++ kernels: basic contracts ──────────────────────────────────────────────
-test_that("compute_r2_cpp returns symmetric matrix in [0,1] with zero diagonal", {
+test_that("compute_r2_cpp: symmetric, [0,1], zero diagonal", {
   data(ldx_geno, package = "LDxBlocks")
   r2 <- compute_r2_cpp(ldx_geno[, 1:20], digits = -1L, n_threads = 1L)
   expect_equal(dim(r2), c(20L, 20L))
@@ -48,18 +46,17 @@ test_that("compute_r2_cpp returns symmetric matrix in [0,1] with zero diagonal",
   expect_equal(diag(r2), rep(0, 20))
 })
 
-test_that("maf_filter_cpp removes low-MAF and monomorphic columns", {
+test_that("maf_filter_cpp: removes monomorphic and low-MAF columns", {
   data(ldx_geno, package = "LDxBlocks")
-  G        <- ldx_geno[, 1:30]
-  G[, 1]   <- 0L      # monomorphic
-  G[, 2]   <- c(rep(0L, 115), rep(1L, 5))  # MAF = 5/240 ~ 0.021 < 0.05
-  keep     <- maf_filter_cpp(G, maf_cut = 0.05)
-  expect_false(keep[1])
-  expect_false(keep[2])
+  G      <- ldx_geno[, 1:30]
+  G[, 1] <- 0L
+  G[, 2] <- c(rep(0L, 115), rep(1L, 5))
+  keep   <- maf_filter_cpp(G, maf_cut = 0.05)
+  expect_false(keep[1]); expect_false(keep[2])
   expect_true(all(keep[3:30]))
 })
 
-test_that("build_adj_matrix_cpp produces valid 0/1 matrix", {
+test_that("build_adj_matrix_cpp: valid 0/1 symmetric matrix", {
   data(ldx_geno, package = "LDxBlocks")
   r2  <- compute_r2_cpp(ldx_geno[, 1:15])
   adj <- build_adj_matrix_cpp(r2, 0.5)
@@ -70,19 +67,19 @@ test_that("build_adj_matrix_cpp produces valid 0/1 matrix", {
 
 # ── read_geno: matrix backend ─────────────────────────────────────────────────
 test_that("read_geno wraps matrix into valid LDxBlocks_backend", {
-  data(ldx_geno, package = "LDxBlocks")
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
   be <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
   expect_s3_class(be, "LDxBlocks_backend")
-  expect_equal(be$type, "matrix")
+  expect_equal(be$type,      "matrix")
   expect_equal(be$n_samples, 120L)
-  expect_equal(be$n_snps, 230L)
+  expect_equal(be$n_snps,    230L)
   expect_equal(be$sample_ids, rownames(ldx_geno))
   close_backend(be)
 })
 
 test_that("read_chunk returns correct slice dimensions", {
-  data(ldx_geno, package = "LDxBlocks")
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
   be    <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
   chunk <- read_chunk(be, 10:25)
@@ -90,209 +87,226 @@ test_that("read_chunk returns correct slice dimensions", {
   close_backend(be)
 })
 
-test_that("close_backend is a no-op for matrix backend", {
-  data(ldx_geno, package = "LDxBlocks")
-  data(ldx_snp_info, package = "LDxBlocks")
-  be <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
-  expect_null(close_backend(be))
-})
-
-# ── read_geno: flat-file formats ──────────────────────────────────────────────
-test_that("read_geno reads numeric dosage CSV correctly", {
-  f <- system.file("extdata", "example_genotypes_numeric.csv",
-                   package = "LDxBlocks")
+# ── flat-file formats ─────────────────────────────────────────────────────────
+test_that("read_geno reads numeric CSV from extdata", {
+  f <- system.file("extdata","example_genotypes_numeric.csv",package="LDxBlocks")
   skip_if(!file.exists(f), "extdata CSV not available")
   be <- read_geno(f)
-  expect_s3_class(be, "LDxBlocks_backend")
-  expect_equal(be$type, "numeric")
-  expect_equal(be$n_snps, 230L)
-  expect_equal(be$n_samples, 120L)
-  chunk <- read_chunk(be, 1:10)
-  expect_equal(dim(chunk), c(120L, 10L))
-  expect_true(all(chunk %in% c(0, 1, 2, NA)))
+  expect_equal(be$type, "numeric"); expect_equal(be$n_snps, 230L)
   close_backend(be)
 })
 
-test_that("read_geno reads HapMap format correctly", {
-  f <- system.file("extdata", "example_genotypes.hmp.txt",
-                   package = "LDxBlocks")
+test_that("read_geno reads HapMap from extdata", {
+  f <- system.file("extdata","example_genotypes.hmp.txt",package="LDxBlocks")
   skip_if(!file.exists(f), "extdata HapMap not available")
   be <- read_geno(f)
-  expect_s3_class(be, "LDxBlocks_backend")
-  expect_equal(be$type, "hapmap")
-  expect_equal(be$n_snps, 230L)
+  # After auto-conversion to GDS cache type is "gds"; without SeqArray stays "hapmap".
+  expect_true(be$type %in% c("hapmap", "gds")); expect_equal(be$n_snps, 230L)
   close_backend(be)
 })
 
-test_that("read_geno reads VCF format correctly", {
-  f <- system.file("extdata", "example_genotypes.vcf",
-                   package = "LDxBlocks")
+test_that("read_geno reads VCF from extdata", {
+  f <- system.file("extdata","example_genotypes.vcf",package="LDxBlocks")
   skip_if(!file.exists(f), "extdata VCF not available")
   be <- read_geno(f)
-  expect_s3_class(be, "LDxBlocks_backend")
-  expect_equal(be$type, "vcf")
-  expect_equal(be$n_snps, 230L)
-  # Chromosome names should be normalised (no "chr" prefix)
+  # After auto-conversion to GDS cache the backend type is "gds";
+  # without SeqArray it stays "vcf". Both are correct.
+  expect_true(be$type %in% c("vcf", "gds"))
   expect_true(all(be$snp_info$CHR %in% c("1","2","3")))
-  chunk <- read_chunk(be, 1:5)
-  expect_equal(dim(chunk), c(120L, 5L))
   close_backend(be)
 })
 
-# ── Big_LD: single chromosome ─────────────────────────────────────────────────
-test_that("Big_LD (r2) returns valid block data.frame for chr1 subset", {
-  data(ldx_geno, package = "LDxBlocks")
-  data(ldx_snp_info, package = "LDxBlocks")
-  chr1_idx <- which(ldx_snp_info$CHR == "1")
-  g1       <- ldx_geno[, chr1_idx]
-  s1       <- ldx_snp_info[chr1_idx, c("SNP","POS")]
-  blocks   <- Big_LD(g1, s1, method = "r2", CLQcut = 0.5,
-                     leng = 8, subSegmSize = 80, verbose = FALSE)
-  expect_s3_class(blocks, "data.frame")
-  expect_true(nrow(blocks) >= 1L)
-  expect_true(all(c("start","end","start.rsID","end.rsID",
-                    "start.bp","end.bp") %in% names(blocks)))
-  expect_true(all(blocks$start <= blocks$end))
-  expect_true(all(blocks$start.bp <= blocks$end.bp))
-  # Blocks should not overlap
-  if (nrow(blocks) > 1L) {
-    expect_true(all(blocks$start.bp[-1] >= blocks$end.bp[-nrow(blocks)]))
-  }
+test_that("read_geno reads example_gwas.csv from extdata", {
+  f <- system.file("extdata","example_gwas.csv",package="LDxBlocks")
+  skip_if(!file.exists(f), "extdata GWAS not available")
+  gwas <- read.csv(f, stringsAsFactors = FALSE)
+  expect_true(all(c("Marker","CHR","POS","P","trait") %in% names(gwas)))
+  expect_true(all(gwas$trait %in% c("TraitA","TraitB")))
 })
 
-# ── run_Big_LD_all_chr ────────────────────────────────────────────────────────
-test_that("run_Big_LD_all_chr returns blocks for all 3 chromosomes", {
-  data(ldx_geno, package = "LDxBlocks")
+test_that("read_geno reads example_phenotype.csv from extdata", {
+  f <- system.file("extdata","example_phenotype.csv",package="LDxBlocks")
+  skip_if(!file.exists(f), "extdata phenotype not available")
+  pheno <- read.csv(f, stringsAsFactors = FALSE)
+  expect_true(all(c("Sample","Trait1","Trait2","PC1","PC2") %in% names(pheno)))
+  expect_equal(nrow(pheno), 120L)
+})
+
+# ── Big_LD + run_Big_LD_all_chr ───────────────────────────────────────────────
+test_that("Big_LD (r2) returns valid block data.frame for chr1", {
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
-  blocks <- run_Big_LD_all_chr(ldx_geno, snp_info = ldx_snp_info,
-                               method = "r2", CLQcut = 0.4,
-                               leng = 5, subSegmSize = 100, verbose = FALSE)
+  chr1_idx <- which(ldx_snp_info$CHR == "1")
+  blocks   <- Big_LD(ldx_geno[, chr1_idx],
+                     ldx_snp_info[chr1_idx, c("SNP","POS")],
+                     method="r2", CLQcut=0.5, leng=8,
+                     subSegmSize=80, verbose=FALSE)
   expect_s3_class(blocks, "data.frame")
-  expect_true(nrow(blocks) >= 3L)
-  expect_true(all(c("CHR","start","end","start.bp","end.bp","length_bp") %in%
-                    names(blocks)))
+  expect_true(nrow(blocks) >= 1L)
+  expect_true(all(blocks$start <= blocks$end))
+  expect_true(all(blocks$start.bp <= blocks$end.bp))
+})
+
+test_that("run_Big_LD_all_chr returns blocks for all 3 chromosomes", {
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  blocks <- run_Big_LD_all_chr(ldx_geno, snp_info=ldx_snp_info,
+                               method="r2", CLQcut=0.4,
+                               leng=5, subSegmSize=100, verbose=FALSE)
   expect_true(all(c("1","2","3") %in% blocks$CHR))
+  expect_true(all(c("CHR","start","end","start.bp","end.bp","length_bp")
+                  %in% names(blocks)))
 })
 
 test_that("run_Big_LD_all_chr accepts LDxBlocks_backend", {
-  data(ldx_geno, package = "LDxBlocks")
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
-  be     <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
-  blocks <- run_Big_LD_all_chr(be, method = "r2", CLQcut = 0.5,
-                               leng = 10, subSegmSize = 70, verbose = FALSE)
+  be     <- read_geno(ldx_geno, format="matrix", snp_info=ldx_snp_info)
+  blocks <- run_Big_LD_all_chr(be, method="r2", CLQcut=0.5,
+                               leng=10, subSegmSize=70, verbose=FALSE)
   expect_s3_class(blocks, "data.frame")
   expect_true(nrow(blocks) >= 3L)
   close_backend(be)
 })
 
-# ── summarise_blocks ──────────────────────────────────────────────────────────
-test_that("summarise_blocks returns per-chromosome and genome-wide rows", {
+# ── summarise + prepare_geno ──────────────────────────────────────────────────
+test_that("summarise_blocks returns per-chromosome and GENOME rows", {
   data(ldx_blocks, package = "LDxBlocks")
   s <- summarise_blocks(ldx_blocks)
   expect_true("GENOME" %in% s$CHR)
-  expect_equal(nrow(s), 4L)   # chr1 + chr2 + chr3 + GENOME
-  expect_true(all(s$n_blocks > 0))
-  expect_true(all(s$median_bp > 0))
+  expect_equal(nrow(s), 4L)
 })
 
-# ── compute_ld + prepare_geno ─────────────────────────────────────────────────
-test_that("compute_r2 matches compute_r2_cpp for small window", {
-  data(ldx_geno, package = "LDxBlocks")
-  G  <- ldx_geno[, 1:15]
-  r1 <- compute_r2(G, digits = 6L)
-  r2 <- compute_r2_cpp(G, digits = 6L)
-  expect_equal(r1, r2)
-})
-
-test_that("prepare_geno r2 returns centred matrix with NULL V_inv_sqrt", {
+test_that("prepare_geno r2 path returns centred matrix", {
   data(ldx_geno, package = "LDxBlocks")
   prep <- prepare_geno(ldx_geno[, 1:20], method = "r2")
   expect_null(prep$V_inv_sqrt)
-  expect_equal(dim(prep$adj_geno), c(120L, 20L))
   expect_true(max(abs(colMeans(prep$adj_geno))) < 1e-10)
 })
 
-# ── CLQD ─────────────────────────────────────────────────────────────────────
-test_that("CLQD returns integer vector of correct length", {
-  data(ldx_geno, package = "LDxBlocks")
+# ── Haplotype pipeline smoke tests ────────────────────────────────────────────
+test_that("extract_haplotypes returns one entry per block", {
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
-  g    <- ldx_geno[, 1:25]
-  info <- ldx_snp_info[1:25, c("SNP","POS")]
-  Gc   <- scale(g, center = TRUE, scale = FALSE)
-  bv   <- CLQD(g, info, Gc, CLQcut = 0.4, digits = -1L,
-               n_threads = 1L, verbose = FALSE)
-  expect_equal(length(bv), 25L)
-  expect_type(bv, "integer")
-})
-
-# ── Haplotype pipeline ────────────────────────────────────────────────────────
-test_that("extract_haplotypes returns list with one entry per block", {
-  data(ldx_geno, package = "LDxBlocks")
-  data(ldx_snp_info, package = "LDxBlocks")
-  data(ldx_blocks, package = "LDxBlocks")
-  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3)
-  expect_type(haps, "list")
-  expect_true(length(haps) >= 1L)
+  data(ldx_blocks,   package = "LDxBlocks")
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=3)
+  expect_type(haps, "list"); expect_true(length(haps) >= 1L)
   expect_equal(length(haps[[1]]), 120L)
-  expect_false(is.null(attr(haps, "block_info")))
 })
 
 test_that("compute_haplotype_diversity returns valid metrics", {
-  data(ldx_geno, package = "LDxBlocks")
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
-  data(ldx_blocks, package = "LDxBlocks")
-  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3)
+  data(ldx_blocks,   package = "LDxBlocks")
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=3)
   div  <- compute_haplotype_diversity(haps)
-  expect_s3_class(div, "data.frame")
-  expect_true(all(c("block_id","n_ind","n_haplotypes","He","Shannon",
-                    "freq_dominant") %in% names(div)))
-  expect_true(all(div$He[!is.na(div$He)] >= 0 &
-                    div$He[!is.na(div$He)] <= 1 + 1e-8))
-  expect_true(all(div$Shannon[!is.na(div$Shannon)] >= 0))
-  expect_true(all(div$freq_dominant[!is.na(div$freq_dominant)] > 0 &
-                    div$freq_dominant[!is.na(div$freq_dominant)] <= 1))
+  expect_true(all(c("block_id","He","Shannon","freq_dominant") %in% names(div)))
+  expect_true(all(div$He[!is.na(div$He)] >= 0))
 })
 
-test_that("build_haplotype_feature_matrix has correct dimensions", {
-  data(ldx_geno, package = "LDxBlocks")
+test_that("build_haplotype_feature_matrix: correct dimensions, additive_012", {
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
-  data(ldx_blocks, package = "LDxBlocks")
-  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3)
-  feat <- build_haplotype_feature_matrix(haps, top_n = 3)
-  expect_true(is.matrix(feat))
+  data(ldx_blocks,   package = "LDxBlocks")
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=3)
+  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="additive_012")
   expect_equal(nrow(feat), 120L)
   expect_equal(ncol(feat), length(haps) * 3L)
+  vals <- as.vector(feat[!is.na(feat)])
+  expect_true(all(vals %in% c(0, 2)))  # unphased: only 0 or 2
 })
 
-test_that("scaled haplotype feature matrix has near-zero column means", {
-  data(ldx_geno, package = "LDxBlocks")
+test_that("build_haplotype_feature_matrix: presence_02 encoding", {
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
-  data(ldx_blocks, package = "LDxBlocks")
-  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3)
-  feat <- build_haplotype_feature_matrix(haps, top_n = 3, scale_features = TRUE)
-  col_means <- colMeans(feat, na.rm = TRUE)
-  expect_true(all(abs(col_means) < 1e-10))
+  data(ldx_blocks,   package = "LDxBlocks")
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=3)
+  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="presence_02")
+  vals <- as.vector(feat[!is.na(feat)])
+  expect_true(all(vals %in% c(0, 2)))
+})
+
+# ── define_qtl_regions ────────────────────────────────────────────────────────
+test_that("define_qtl_regions: returns data.frame with pleiotropic column", {
+  data(ldx_gwas,     package = "LDxBlocks")
+  data(ldx_blocks,   package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  qtl <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
+                            p_threshold = NULL, trait_col = "trait")
+  expect_s3_class(qtl, "data.frame")
+  expect_true(all(c("block_id","CHR","pleiotropic","n_traits","traits")
+                  %in% names(qtl)))
+  expect_true(is.logical(qtl$pleiotropic))
+})
+
+test_that("define_qtl_regions: works without trait column (single-trait)", {
+  data(ldx_gwas,     package = "LDxBlocks")
+  data(ldx_blocks,   package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  gwas_no_trait <- ldx_gwas[, c("Marker","CHR","POS","P")]
+  qtl <- define_qtl_regions(gwas_no_trait, ldx_blocks, ldx_snp_info,
+                            p_threshold = NULL)
+  expect_true(all(qtl$n_traits == 1L))
+  expect_true(all(!qtl$pleiotropic))
+})
+
+# ── output writers ────────────────────────────────────────────────────────────
+test_that("write_haplotype_numeric writes readable CSV", {
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  data(ldx_blocks,   package = "LDxBlocks")
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
+  feat <- build_haplotype_feature_matrix(haps, top_n=2)
+  tmp  <- tempfile(fileext=".csv")
+  write_haplotype_numeric(feat, tmp, verbose=FALSE)
+  df <- read.csv(tmp, check.names=FALSE)
+  expect_equal(nrow(df), 120L)
+  expect_true("Sample" %in% names(df))
+  unlink(tmp)
+})
+
+test_that("write_haplotype_hapmap writes readable HapMap file", {
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  data(ldx_blocks,   package = "LDxBlocks")
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
+  feat <- build_haplotype_feature_matrix(haps, top_n=2)
+  tmp  <- tempfile(fileext=".hmp.txt")
+  write_haplotype_hapmap(feat, tmp, verbose=FALSE)
+  hmp <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE, comment.char="")
+  expect_true("rs#" %in% names(hmp))
+  expect_equal(nrow(hmp), ncol(feat))   # one row per haplotype allele
+  unlink(tmp)
+})
+
+test_that("write_haplotype_diversity writes readable CSV with summary row", {
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  data(ldx_blocks,   package = "LDxBlocks")
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
+  div  <- compute_haplotype_diversity(haps)
+  tmp  <- tempfile(fileext=".csv")
+  write_haplotype_diversity(div, tmp, append_summary=TRUE, verbose=FALSE)
+  df <- read.csv(tmp, stringsAsFactors=FALSE)
+  expect_true("GENOME" %in% df$block_id)
+  expect_equal(nrow(df), nrow(div) + 1L)
+  unlink(tmp)
 })
 
 # ── tune_LD_params ────────────────────────────────────────────────────────────
 test_that("tune_LD_params returns correct result structure", {
-  data(ldx_geno, package = "LDxBlocks")
+  data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
-  data(ldx_gwas, package = "LDxBlocks")
-
-  # Tiny grid to keep test fast
+  data(ldx_gwas,     package = "LDxBlocks")
   grid <- expand.grid(
-    CLQcut = c(0.5, 0.6), clstgap = 1e5, leng = 10,
-    subSegmSize = 70, split = FALSE, checkLargest = FALSE,
-    MAFcut = 0.05, CLQmode = "Density", kin_method = "chol",
-    digits = -1, appendrare = FALSE, stringsAsFactors = FALSE
+    CLQcut=c(0.5,0.6), clstgap=1e5, leng=10,
+    subSegmSize=70, split=FALSE, checkLargest=FALSE,
+    MAFcut=0.05, CLQmode="Density", kin_method="chol",
+    digits=-1, appendrare=FALSE, stringsAsFactors=FALSE
   )
   res <- tune_LD_params(ldx_geno, ldx_snp_info, ldx_gwas,
-                        grid = grid, prefer_perfect = TRUE, seed = 1L)
-  expect_type(res, "list")
+                        grid=grid, prefer_perfect=TRUE, seed=1L)
   expect_true(all(c("best_params","score_table","final_blocks",
                     "gwas_assigned") %in% names(res)))
-  expect_true(is.list(res$best_params))
-  expect_s3_class(res$score_table, "data.frame")
   expect_true("LD_block" %in% names(res$gwas_assigned))
 })

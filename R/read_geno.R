@@ -1,6 +1,6 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# read_geno.R  –  Unified genotype reader for LDxBlocks
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# read_geno.R  -  Unified genotype reader for LDxBlocks
+# -----------------------------------------------------------------------------
 #
 # Supported formats (auto-detected from extension or set via format =):
 #
@@ -8,11 +8,11 @@
 #                            then one col per sample with values in {0,1,2,NA}
 #
 #   "hapmap"   .hmp.txt      Standard 11-col HapMap header then sample cols
-#                            with two-character nucleotide calls (AA/AT/NN…)
+#                            with two-character nucleotide calls (AA/AT/NN...)
 #
 #   "vcf"      .vcf          Standard VCF v4.2; GT field parsed to 0/1/2/NA;
 #              .vcf.gz       phased (0|1) and unphased (0/1) both accepted;
-#                            multi-allelic → first ALT; missing ./. → NA
+#                            multi-allelic -> first ALT; missing ./. -> NA
 #
 #   "gds"      .gds          SeqArray GDS file (Bioconductor)
 #
@@ -26,21 +26,21 @@
 #   backend$n_snps     integer
 #   backend$sample_ids character vector
 #   backend$snp_info   data.frame(SNP, CHR, POS, REF, ALT)
-#   read_chunk(backend, col_idx)  →  n × length(col_idx) numeric matrix
-#   close_backend(backend)        →  releases file handles
+#   read_chunk(backend, col_idx)  ->  n x length(col_idx) numeric matrix
+#   close_backend(backend)        ->  releases file handles
 #
-# Chromosome names are normalised: "chr1" → "1" consistently.
-# ─────────────────────────────────────────────────────────────────────────────
+# Chromosome names are normalised: "chr1" -> "1" consistently.
+# -----------------------------------------------------------------------------
 
 
-# ── Internal: normalise chromosome names ──────────────────────────────────────
+# -- Internal: normalise chromosome names --------------------------------------
 .norm_chr <- function(x) {
   x <- as.character(x)
   sub("^[Cc][Hh][Rr]", "", x)   # strip leading "chr" / "Chr" / "CHR"
 }
 
 
-# ── Internal: detect format from file path ────────────────────────────────────
+# -- Internal: detect format from file path ------------------------------------
 .detect_format <- function(path) {
   p <- tolower(path)
   if (grepl("\\.hmp\\.txt$", p))                        return("hapmap")
@@ -53,9 +53,9 @@
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Main entry point
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 #' Read Genotype Data into an LDxBlocks Backend
 #'
@@ -83,7 +83,7 @@
 #'   \item{\code{"bed"}}{PLINK binary BED. Companion \code{.bim} and
 #'     \code{.fam} files must exist at the same path stem. Extension:
 #'     \code{.bed}.}
-#'   \item{\code{"matrix"}}{In-memory R numeric matrix (individuals × SNPs,
+#'   \item{\code{"matrix"}}{In-memory R numeric matrix (individuals x SNPs,
 #'     0/1/2). Must supply \code{snp_info} separately.}
 #' }
 #'
@@ -98,6 +98,13 @@
 #' @param sample_ids Character vector. Override sample IDs extracted from the
 #'   file. Length must equal number of samples.
 #' @param sep Character. Field separator for \code{"numeric"} format.
+#' @param gds_cache Character or \code{NULL}. Path where a GDS cache file
+#'   should be written when \code{format = "vcf"} and SeqArray is available.
+#'   If \code{NULL} (default), the GDS file is placed next to the VCF with a
+#'   \code{.gds} extension. Set to \code{FALSE} to disable auto-conversion
+#'   and read the VCF fully into memory instead. When the cache file already
+#'   exists it is reused without re-converting (fast subsequent calls).
+#'   Ignored for all non-VCF formats.
 #'   Default \code{","}.
 #' @param na_strings Character vector. Strings treated as NA. Default
 #'   \code{c("NA", "N", "NN", "./.", ".", "")}.
@@ -135,14 +142,57 @@ read_geno <- function(
     sample_ids  = NULL,
     sep         = ",",
     na_strings  = c("NA", "N", "NN", "./.", ".", ""),
+    gds_cache   = NULL,
     verbose     = FALSE
 ) {
-  # ── Dispatch on format ──────────────────────────────────────────────────────
+  # -- Dispatch on format ------------------------------------------------------
   if (is.matrix(path) || is.data.frame(path)) {
     fmt <- "matrix"
   } else {
     fmt <- if (!is.null(format)) tolower(format) else .detect_format(path)
   }
+
+  # -- Auto-convert VCF or HapMap to GDS for streaming access ---------------
+  # Triggered when SeqArray is available and gds_cache != FALSE.
+  # GDS is placed next to the source file (same directory, .gds extension)
+  # unless the user supplies a custom path via gds_cache. Subsequent calls
+  # reuse the cached GDS without re-converting.
+  if (fmt %in% c("vcf", "hapmap") && !isFALSE(gds_cache) &&
+      requireNamespace("SeqArray", quietly = TRUE)) {
+
+    cache_path <- if (is.null(gds_cache)) {
+      sub("\\.(vcf(\\.gz)?|hmp\\.txt)$", ".gds", path, ignore.case = TRUE)
+    } else {
+      as.character(gds_cache)
+    }
+
+    if (!file.exists(cache_path)) {
+      message("[read_geno] Converting ", toupper(fmt),
+              " to GDS for streaming access.")
+      message("[read_geno] GDS cache: ", cache_path)
+      message("[read_geno] This runs once; subsequent calls reuse the cache.")
+
+      if (fmt == "vcf") {
+        SeqArray::seqVCF2GDS(
+          vcf.fn         = path,
+          out.fn         = cache_path,
+          storage.option = "ZIP_RA",
+          verbose        = isTRUE(verbose)
+        )
+      } else {
+        # HapMap: SeqArray has no direct reader.
+        # Read via data.table, decode nucleotide calls to dosage, write GDS.
+        .hapmap_to_gds(path, cache_path, na_strings, verbose)
+      }
+
+    } else if (isTRUE(verbose)) {
+      message("[read_geno] Reusing GDS cache: ", cache_path)
+    }
+
+    fmt  <- "gds"
+    path <- cache_path
+  }
+
 
   be <- switch(fmt,
                numeric = .read_numeric(path, sep, na_strings, verbose),
@@ -154,7 +204,7 @@ read_geno <- function(
                stop("Unknown format '", fmt, "'. Choose: numeric, hapmap, vcf, gds, bed, matrix.")
   )
 
-  # ── Override sample IDs if supplied ────────────────────────────────────────
+  # -- Override sample IDs if supplied ----------------------------------------
   if (!is.null(sample_ids)) {
     if (length(sample_ids) != be$n_samples)
       stop("length(sample_ids) [", length(sample_ids), "] != n_samples [",
@@ -162,52 +212,103 @@ read_geno <- function(
     be$sample_ids <- as.character(sample_ids)
   }
 
-  # ── Normalise chromosome names ──────────────────────────────────────────────
+  # -- Normalise chromosome names ----------------------------------------------
   be$snp_info$CHR <- .norm_chr(be$snp_info$CHR)
 
   structure(be, class = "LDxBlocks_backend")
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Format readers
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
-# ── 1. Numeric dosage (CSV/TXT) ───────────────────────────────────────────────
-.read_numeric <- function(path, sep, na_strings, verbose) {
-  if (isTRUE(verbose)) cat("[read_geno] Reading numeric dosage:", path, "\n")
-
-  # Use data.table for speed on large files
+# -- 1. Numeric dosage (CSV/TXT) -----------------------------------------------
+.read_numeric <- function(path, sep, na_strings, verbose,
+                          chunk_rows = 50000L) {
+  if (isTRUE(verbose)) cat("[read_geno] Reading numeric dosage (chunked):", path, "\n")
   .require_pkg("data.table", "numeric dosage reader")
-  dt <- data.table::fread(path, sep = sep, na.strings = na_strings,
-                          showProgress = verbose, data.table = TRUE)
 
-  # Required meta columns
-  meta_cols <- c("SNP", "CHR", "POS", "REF", "ALT")
-  present   <- intersect(meta_cols, names(dt))
-  missing   <- setdiff(c("SNP", "CHR", "POS"), names(dt))
-  if (length(missing) > 0)
-    stop("numeric dosage file missing required columns: ", paste(missing, collapse = ", "))
+  # -- Pass 1: header-only scan (zero data rows) ----------------------------
+  # Determines column names and exact row count without loading any data.
+  # Reading only column 1 for the row count costs essentially nothing.
+  meta_cols <- c("SNP","CHR","POS","REF","ALT")
+  hdr       <- data.table::fread(path, sep = sep, nrows = 0L,
+                                 check.names = FALSE, data.table = TRUE)
+  all_cols  <- names(hdr)
+  missing   <- setdiff(c("SNP","CHR","POS"), all_cols)
+  if (length(missing))
+    stop("numeric dosage file missing: ", paste(missing, collapse=", "))
+  if (!"REF" %in% all_cols) all_cols <- c(all_cols, "REF")
+  if (!"ALT" %in% all_cols) all_cols <- c(all_cols, "ALT")
 
-  # Add REF/ALT as NA if absent
-  if (!"REF" %in% names(dt)) dt[, REF := NA_character_]
-  if (!"ALT" %in% names(dt)) dt[, ALT := NA_character_]
+  samp_cols <- setdiff(names(hdr), meta_cols)
+  if (!length(samp_cols)) stop("No sample columns found in numeric dosage file.")
+  n_samp <- length(samp_cols)
 
-  snp_info  <- as.data.frame(dt[, .(SNP, CHR, POS, REF, ALT)])
-  samp_cols <- setdiff(names(dt), meta_cols)
-  if (length(samp_cols) == 0) stop("No sample columns found in numeric dosage file.")
+  n_snp <- nrow(data.table::fread(path, sep = sep, select = 1L,
+                                  header = TRUE, data.table = TRUE))
+  if (isTRUE(verbose))
+    cat("[read_geno]  ", n_snp, "SNPs x", n_samp, "samples\n")
 
-  # Transpose: SNPs as columns, samples as rows
-  geno_mat <- t(as.matrix(dt[, ..samp_cols]))
-  storage.mode(geno_mat) <- "numeric"
-  colnames(geno_mat) <- snp_info$SNP
+  # -- Pre-allocate output: SNPs as columns, samples as rows ----------------
+  # This is the ONLY large allocation. Peak RAM = pre-alloc + one chunk,
+  # not 2x the full file (which naive fread -> as.matrix produces).
+  geno_mat           <- matrix(NA_real_, nrow = n_samp, ncol = n_snp)
   rownames(geno_mat) <- samp_cols
+  snp_info_list      <- vector("list", ceiling(n_snp / chunk_rows))
+  snps_filled        <- 0L; chunk_idx <- 0L
+
+  # -- Pass 2: fill chunks --------------------------------------------------
+  repeat {
+    if (snps_filled >= n_snp) break
+    chunk_idx <- chunk_idx + 1L
+
+    chunk <- data.table::fread(
+      path, sep = sep,
+      nrows      = chunk_rows,
+      skip       = snps_filled + 1L,  # +1 skips the header line
+      header     = FALSE,
+      col.names  = names(hdr),
+      check.names = FALSE,
+      na.strings = na_strings,
+      data.table = TRUE
+    )
+    if (!nrow(chunk)) break
+
+    c_start <- snps_filled + 1L
+    c_end   <- snps_filled + nrow(chunk)
+
+    # Numeric block: transpose directly into pre-allocated slice
+    blk <- as.matrix(chunk[, samp_cols, with = FALSE])  # n_SNPs x n_samples
+    storage.mode(blk) <- "numeric"
+    geno_mat[, c_start:c_end] <- t(blk)  # transpose: fill as n_samples x n_SNPs
+    rm(blk)
+
+    # REF/ALT fill if columns absent in source file
+    if (!"REF" %in% names(chunk)) chunk[, REF := NA_character_]
+    if (!"ALT" %in% names(chunk)) chunk[, ALT := NA_character_]
+
+    snp_info_list[[chunk_idx]] <- data.frame(
+      SNP = as.character(chunk$SNP),
+      CHR = .norm_chr(chunk$CHR),
+      POS = as.integer(chunk$POS),
+      REF = as.character(chunk$REF),
+      ALT = as.character(chunk$ALT),
+      stringsAsFactors = FALSE
+    )
+    snps_filled <- c_end
+    rm(chunk); gc(FALSE)  # release allocator pressure between chunks
+  }
+
+  snp_info           <- do.call(rbind, snp_info_list[seq_len(chunk_idx)])
+  colnames(geno_mat) <- snp_info$SNP
 
   .make_matrix_backend(geno_mat, snp_info, samp_cols, "numeric")
 }
 
 
-# ── 2. HapMap ────────────────────────────────────────────────────────────────
+# -- 2. HapMap ----------------------------------------------------------------
 .read_hapmap <- function(path, na_strings, verbose) {
   if (isTRUE(verbose)) cat("[read_geno] Reading HapMap:", path, "\n")
   .require_pkg("data.table", "HapMap reader")
@@ -231,7 +332,7 @@ read_geno <- function(
   if (!all(required %in% names(dt)))
     stop("HapMap file missing columns: ", paste(setdiff(required, names(dt)), collapse = ", "))
 
-  # Parse alleles column "A/T" → REF=A, ALT=T
+  # Parse alleles column "A/T" -> REF=A, ALT=T
   if ("alleles" %in% names(dt)) {
     parts <- strsplit(as.character(dt$alleles), "/", fixed = TRUE)
     dt[, REF := vapply(parts, function(x) x[1L], character(1L))]
@@ -247,12 +348,12 @@ read_geno <- function(
 
   snp_info <- as.data.frame(dt[, .(SNP, CHR, POS, REF, ALT)])
 
-  # Decode two-character nucleotide calls → dosage
+  # Decode two-character nucleotide calls -> dosage
   # Strategy: heterozygous = 1, homozygous ref = 0, homozygous alt = 2, NN = NA
   ref_alleles <- snp_info$REF
   alt_alleles <- snp_info$ALT
 
-  geno_raw <- as.matrix(dt[, ..samp_cols])   # SNPs × samples (character)
+  geno_raw <- as.matrix(dt[, ..samp_cols])   # SNPs x samples (character)
   n_snp    <- nrow(geno_raw)
   n_samp   <- ncol(geno_raw)
   geno_dos <- matrix(NA_real_, n_snp, n_samp,
@@ -272,13 +373,13 @@ read_geno <- function(
     }
   }
 
-  # Transpose to samples × SNPs
+  # Transpose to samples x SNPs
   geno_mat <- t(geno_dos)
   .make_matrix_backend(geno_mat, snp_info, samp_cols, "hapmap")
 }
 
 
-# ── 3. VCF / VCF.GZ ─────────────────────────────────────────────────────────
+# -- 3. VCF / VCF.GZ ---------------------------------------------------------
 .read_vcf <- function(path, na_strings, verbose) {
   if (isTRUE(verbose)) cat("[read_geno] Reading VCF:", path, "\n")
   .require_pkg("data.table", "VCF reader")
@@ -319,7 +420,7 @@ read_geno <- function(
     stringsAsFactors = FALSE
   )
 
-  # Parse GT field → dosage
+  # Parse GT field -> dosage
   # GT is always first sub-field in FORMAT column
   n_snp  <- nrow(dt)
   n_samp <- length(samp_hdr)
@@ -332,11 +433,11 @@ read_geno <- function(
     geno_dos[, i] <- .parse_gt(gt_raw)
   }
 
-  geno_mat <- t(geno_dos)   # samples × SNPs
+  geno_mat <- t(geno_dos)   # samples x SNPs
   .make_matrix_backend(geno_mat, snp_info, samp_hdr, "vcf")
 }
 
-# Parse GT strings ("0/0", "0/1", "1|1", "./.", "0|1") → dosage 0/1/2/NA
+# Parse GT strings ("0/0", "0/1", "1|1", "./.", "0|1") -> dosage 0/1/2/NA
 .parse_gt <- function(gt) {
   gt  <- as.character(gt)
   sep <- ifelse(grepl("|", gt, fixed = TRUE), "|", "/")
@@ -351,7 +452,7 @@ read_geno <- function(
 }
 
 
-# ── 4. GDS (SeqArray) ────────────────────────────────────────────────────────
+# -- 4. GDS (SeqArray) --------------------------------------------------------
 .read_gds <- function(path, verbose) {
   if (isTRUE(verbose)) cat("[read_geno] Opening GDS:", path, "\n")
   .require_pkg("SeqArray", "GDS reader",
@@ -394,7 +495,7 @@ read_geno <- function(
 }
 
 
-# ── 5. PLINK BED ─────────────────────────────────────────────────────────────
+# -- 5. PLINK BED -------------------------------------------------------------
 .read_bed <- function(path, verbose) {
   if (isTRUE(verbose)) cat("[read_geno] Opening PLINK BED:", path, "\n")
   .require_pkg("BEDMatrix", "PLINK BED reader",
@@ -429,7 +530,7 @@ read_geno <- function(
 }
 
 
-# ── 6. Plain R matrix (existing / backward-compatible) ───────────────────────
+# -- 6. Plain R matrix (existing / backward-compatible) -----------------------
 .wrap_matrix <- function(mat, snp_info, verbose) {
   if (!is.matrix(mat)) mat <- as.matrix(mat)
   if (is.null(snp_info))
@@ -451,7 +552,7 @@ read_geno <- function(
 }
 
 
-# ── Internal: build in-memory backend list ────────────────────────────────────
+# -- Internal: build in-memory backend list ------------------------------------
 .make_matrix_backend <- function(mat, snp_info, sample_ids, type) {
   list(
     type       = type,
@@ -465,7 +566,7 @@ read_geno <- function(
 
 
 
-# ── Internal: check / suggest package installation ────────────────────────────
+# -- Internal: check / suggest package installation ----------------------------
 .require_pkg <- function(pkg, context, install = NULL) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     msg <- sprintf("Package '%s' is required for %s.", pkg, context)
@@ -475,14 +576,14 @@ read_geno <- function(
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Backend interface: read_chunk() and close_backend()
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 #' Extract a Genotype Slice from an LDxBlocks Backend
 #'
 #' @description
-#' Returns an \code{n_samples × length(col_idx)} numeric matrix of dosage
+#' Returns an \code{n_samples x length(col_idx)} numeric matrix of dosage
 #' values (0/1/2/NA) for the selected SNP columns. Works identically for all
 #' supported backend types.
 #'
@@ -490,7 +591,7 @@ read_geno <- function(
 #'   by \code{\link{read_geno}}.
 #' @param col_idx Integer vector of column indices (1-based SNP positions).
 #'
-#' @return Numeric matrix (n_samples × length(col_idx)).
+#' @return Numeric matrix (n_samples x length(col_idx)).
 #'
 #' @export
 read_chunk <- function(backend, col_idx) {
@@ -514,8 +615,19 @@ read_chunk <- function(backend, col_idx) {
              SeqArray::seqSetFilter(backend$.gds,
                                     variant.id = var_ids, verbose = FALSE)
            }
-           dos <- t(SeqArray::seqGetData(backend$.gds, "$dosage"))
+           # "$dosage" convention varies across SeqArray versions (REF vs ALT count).
+           # Compute ALT dosage directly from raw genotype [ploidy x n_samp x n_var]:
+           #   allele encoding  0 = REF,  1 = ALT,  -1 = missing
+           # apply over dims (2,3) = sample x variant, counting 1s = ALT alleles.
+           gt  <- SeqArray::seqGetData(backend$.gds, "genotype")
+           dos <- apply(gt, c(2L, 3L), function(a) {
+             # SeqArray encodes missing as NA_integer_ (not -1).
+             # anyNA() correctly handles both; sum(a==1L) counts ALT alleles.
+             if (anyNA(a)) NA_real_ else sum(a == 1L)
+           })
+           storage.mode(dos) <- "numeric"
            SeqArray::seqResetFilter(backend$.gds, verbose = FALSE)
+           if (!is.matrix(dos)) dos <- matrix(dos, nrow = backend$n_samples)
            rownames(dos) <- backend$sample_ids
            colnames(dos) <- backend$snp_info$SNP[col_idx]
            dos
@@ -585,4 +697,102 @@ summary.LDxBlocks_backend <- function(object, ...) {
   for (nm in names(chrs))
     cat(sprintf("    chr%-4s  %d SNPs\n", nm, chrs[[nm]]))
   invisible(object)
+}
+
+
+# -- Internal: HapMap -> GDS converter -----------------------------------------
+# SeqArray has no native HapMap reader. This function streams through a
+# HapMap file row-by-row via data.table, decodes two-character nucleotide
+# calls (AA, AT, TT, NN) to 0/1/2/NA dosage, and writes a SeqArray GDS
+# using gdsfmt's low-level node API.
+#
+# Format assumption (standard HapMap):
+#   Column 1  : rs#        (SNP ID)
+#   Column 2  : alleles    "REF/ALT"
+#   Column 3  : chrom      (chromosome)
+#   Column 4  : pos        (position)
+#   Columns 12+: sample columns with two-character nucleotide calls
+#
+.hapmap_to_gds <- function(hmp_path, gds_path, na_strings, verbose) {
+  # Strategy: read HapMap in full with data.table, convert nucleotide calls to
+  # 0/1/2, write a minimal VCF to a temp file, then use seqVCF2GDS() which
+  # IS a real SeqArray export. This avoids SeqArray::seqNewGDS() which does
+  # not exist in the package.
+  .require_pkg("data.table", "HapMap-to-GDS converter")
+  .require_pkg("SeqArray",   "HapMap-to-GDS converter")
+  .require_pkg("gdsfmt",     "HapMap-to-GDS converter")
+
+  if (isTRUE(verbose)) message("[.hapmap_to_gds] Reading HapMap: ", basename(hmp_path))
+  dt <- data.table::fread(hmp_path, na.strings = na_strings,
+                          showProgress = isTRUE(verbose), data.table = TRUE)
+
+  # Normalise column names
+  hdr_map <- c("rs#"="SNP","chrom"="CHR","pos"="POS","alleles"="alleles")
+  nms_low <- tolower(names(dt))
+  for (k in names(hdr_map)) {
+    idx <- which(nms_low == k)
+    if (length(idx)) data.table::setnames(dt, names(dt)[idx], hdr_map[k])
+  }
+  if (!all(c("SNP","CHR","POS","alleles") %in% names(dt)))
+    stop("HapMap file missing rs#, chrom, pos, or alleles columns.", call.=FALSE)
+
+  parts <- strsplit(as.character(dt$alleles), "/", fixed=TRUE)
+  ref_v  <- vapply(parts, `[`, character(1L), 1L)
+  alt_v  <- vapply(parts, function(x) if (length(x)>1L) x[2L] else NA_character_,
+                   character(1L))
+
+  meta_cols <- c("SNP","CHR","POS","alleles","strand","assembly#","center",
+                 "protLSID","assayLSID","panelLSID","QCcode")
+  meta_idx  <- which(tolower(names(dt)) %in% tolower(meta_cols))
+  samp_cols <- names(dt)[-meta_idx]
+  if (!length(samp_cols)) stop("No sample columns found in HapMap file.", call.=FALSE)
+
+  n_snp  <- nrow(dt)
+  n_samp <- length(samp_cols)
+  if (isTRUE(verbose))
+    message("[.hapmap_to_gds] ", n_snp, " SNPs x ", n_samp, " samples - decoding calls")
+
+  # Decode nucleotide calls to GT strings (0/0, 0/1, 1/1, ./.)
+  gt_mat <- matrix(NA_character_, nrow=n_snp, ncol=n_samp)
+  for (i in seq_len(n_snp)) {
+    r <- ref_v[i]; a <- alt_v[i]
+    if (is.na(r) || is.na(a)) { gt_mat[i,] <- "./."; next }
+    calls <- as.character(dt[i, ..samp_cols, drop=TRUE])
+    rr <- paste0(r,r); ra1 <- paste0(r,a); ra2 <- paste0(a,r); aa <- paste0(a,a)
+    gt <- rep("./.", n_samp)
+    gt[calls==rr]  <- "0/0"
+    gt[calls==ra1 | calls==ra2] <- "0/1"
+    gt[calls==aa]  <- "1/1"
+    gt_mat[i,] <- gt
+  }
+
+  # Write minimal VCF to temp file
+  vcf_tmp <- tempfile(fileext=".vcf")
+  on.exit(unlink(vcf_tmp), add=TRUE)
+
+  if (isTRUE(verbose)) message("[.hapmap_to_gds] Writing temp VCF: ", basename(vcf_tmp))
+  header <- c(
+    "##fileformat=VCFv4.2",
+    "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
+    paste(c("#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT",
+            samp_cols), collapse="	")
+  )
+  data_rows <- paste(
+    as.character(dt$CHR), as.integer(dt$POS),
+    as.character(dt$SNP), ref_v, alt_v,
+    ".", "PASS", ".", "GT",
+    apply(gt_mat, 1L, paste, collapse="	"),
+    sep="	"
+  )
+  writeLines(c(header, data_rows), vcf_tmp)
+
+  if (isTRUE(verbose)) message("[.hapmap_to_gds] Converting VCF -> GDS: ", basename(gds_path))
+  SeqArray::seqVCF2GDS(
+    vcf.fn         = vcf_tmp,
+    out.fn         = gds_path,
+    storage.option = "ZIP_RA",
+    verbose        = isTRUE(verbose)
+  )
+  if (isTRUE(verbose)) message("[.hapmap_to_gds] Done.")
+  invisible(gds_path)
 }

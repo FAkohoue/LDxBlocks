@@ -14,6 +14,7 @@ Big_LD(
   subSegmSize = 1500,
   MAFcut = 0.05,
   appendrare = FALSE,
+  singleton_as_block = FALSE,
   checkLargest = FALSE,
   CLQmode = "Density",
   kin_method = "chol",
@@ -43,6 +44,14 @@ as individual IDs; auto-generated if absent.}
 \item{MAFcut}{Numeric. Minor allele frequency minimum. Default 0.05.}
 
 \item{appendrare}{Logical. Append rare SNPs after block detection. Default FALSE.}
+
+\item{singleton_as_block}{Logical. If \code{TRUE}, every SNP that passes MAF
+filtering but has pairwise r² below \code{CLQcut} with all neighbours
+(i.e. is not assigned to any clique) is returned as a single-SNP block with
+\code{start == end} and \code{length_bp == 1}. Default \code{FALSE}.
+These blocks are excluded from haplotype analysis by the default
+\code{min_snps = 3} threshold in \code{extract_haplotypes()}, but are
+useful for auditing coverage and for single-SNP feature engineering.}
 
 \item{checkLargest}{Logical. Dense-core pre-pass for large windows. Default FALSE.}
 

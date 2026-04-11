@@ -11,6 +11,7 @@ read_geno(
   sample_ids = NULL,
   sep = ",",
   na_strings = c("NA", "N", "NN", "./.", ".", ""),
+  gds_cache = NULL,
   verbose = FALSE
 )
 }
@@ -29,11 +30,19 @@ when \code{format = "matrix"}.}
 \item{sample_ids}{Character vector. Override sample IDs extracted from the
 file. Length must equal number of samples.}
 
-\item{sep}{Character. Field separator for \code{"numeric"} format.
-Default \code{","}.}
+\item{sep}{Character. Field separator for \code{"numeric"} format.}
 
 \item{na_strings}{Character vector. Strings treated as NA. Default
 \code{c("NA", "N", "NN", "./.", ".", "")}.}
+
+\item{gds_cache}{Character or \code{NULL}. Path where a GDS cache file
+should be written when \code{format = "vcf"} and SeqArray is available.
+If \code{NULL} (default), the GDS file is placed next to the VCF with a
+\code{.gds} extension. Set to \code{FALSE} to disable auto-conversion
+and read the VCF fully into memory instead. When the cache file already
+exists it is reused without re-converting (fast subsequent calls).
+Ignored for all non-VCF formats.
+Default \code{","}.}
 
 \item{verbose}{Logical. Print progress messages.}
 }
@@ -69,7 +78,7 @@ The format is auto-detected from the file extension unless overridden with
   \item{\code{"bed"}}{PLINK binary BED. Companion \code{.bim} and
     \code{.fam} files must exist at the same path stem. Extension:
     \code{.bed}.}
-  \item{\code{"matrix"}}{In-memory R numeric matrix (individuals × SNPs,
+  \item{\code{"matrix"}}{In-memory R numeric matrix (individuals x SNPs,
     0/1/2). Must supply \code{snp_info} separately.}
 }
 }

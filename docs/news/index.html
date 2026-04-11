@@ -29,13 +29,13 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
-    <li><a class="external-link dropdown-item" href="https://github.com/yourorg/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/yourorg/LDxBlocks" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/FAkohoue/LDxBlocks" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -49,92 +49,142 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="ldxblocks-030">LDxBlocks 0.3.0<a class="anchor" aria-label="anchor" href="#ldxblocks-030"></a></h2>
-<div class="section level4">
-<h4 id="breaking-changes-0-3-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-3-0"></a></h4>
+<div class="section level3">
+<h3 id="breaking-changes-0-3-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-3-0"></a></h3>
 <ul><li>
 <code><a href="../reference/read_geno.html">read_geno()</a></code>: removed <code>pheno_ids</code> parameter. Sample subsetting is the caller’s responsibility — use <code>be$sample_ids</code> to match externally.</li>
 <li>Removed <code>read_pheno()</code> and <code>align_geno_pheno()</code> entirely. Phenotype handling is not part of LD block detection and these functions had no algorithmic role.</li>
 <li>
-<code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: parameter <code>rV2method</code> renamed to <code>kin_method</code> for clarity.</li>
+<code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: parameter <code>rV2method</code> renamed to <code>kin_method</code>.</li>
 <li>
-<code>digits</code> default changed from <code>6</code> to <code>-1</code> (no rounding) throughout. Rounding was a source of subtle threshold-comparison instability. Set <code>digits = 6</code> explicitly to restore previous behaviour.</li>
+<code>digits</code> default changed from <code>6</code> to <code>-1</code> (no rounding) throughout.</li>
 </ul></div>
-<div class="section level4">
-<h4 id="new-features-0-3-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0"></a></h4>
-<ul><li>
-<strong>Multi-format I/O</strong>: <code><a href="../reference/read_geno.html">read_geno()</a></code> now supports numeric dosage CSV, HapMap, VCF / bgzipped VCF, SeqArray GDS, PLINK BED/BIM/FAM, and plain R matrices through a unified <code>LDxBlocks_backend</code> S3 interface.</li>
-<li>
-<strong>GDS streaming backend</strong>: SeqArray GDS files are accessed via <code><a href="https://rdrr.io/pkg/SeqArray/man/seqSetFilter.html" class="external-link">seqSetFilter()</a></code> + <code>seqGetData("$dosage")</code> per window, keeping peak RAM proportional to one chromosome window rather than the full genome.</li>
-<li>
-<strong>PLINK BED backend</strong>: <code>BEDMatrix</code>-backed streaming access for binary PLINK files.</li>
-<li>
-<strong><code><a href="../reference/read_chunk.html">read_chunk()</a></code></strong>: unified genotype slice accessor — works identically for all six backend types.</li>
-<li>
-<strong><code><a href="../reference/close_backend.html">close_backend()</a></code></strong>: releases GDS file handles; no-op for in-memory backends.</li>
-<li>
-<strong><code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> now accepts <code>LDxBlocks_backend</code></strong> directly, removing the need to load the full genome matrix before calling it.</li>
-<li>
-<strong><code>min_snps_chr</code></strong> parameter in <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: skip chromosomes or scaffolds with fewer than this many SNPs (default 10).</li>
-<li>
-<strong>Example datasets</strong>: <code>ldx_geno</code>, <code>ldx_snp_info</code>, <code>ldx_blocks</code>, <code>ldx_gwas</code> — simulated with clear block structure for examples and tests.</li>
-<li>
-<strong>Flat-file examples</strong> in <code>inst/extdata/</code>: numeric CSV, HapMap, and VCF copies of the example data for format-reader tests.</li>
-</ul></div>
-<div class="section level4">
-<h4 id="performance-improvements-0-3-0">Performance improvements<a class="anchor" aria-label="anchor" href="#performance-improvements-0-3-0"></a></h4>
-<ul><li>
-<strong><code>boundary_scan_cpp()</code></strong>: C++ replacement for the R inner loop in <code>cutsequence.modi()</code>. For a 50,000-SNP chromosome with <code>leng = 200</code>, eliminates ~150,000 small R-level matrix operations per chromosome.</li>
-<li>
-<strong><code>maf_filter_cpp()</code></strong>: combined MAF + monomorphic filter in one O(np) C++ pass; ~10× faster than the <code><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply()</a></code> equivalent.</li>
-<li>
-<strong><code>build_adj_matrix_cpp()</code></strong>: in-place C++ adjacency construction, avoiding the intermediate logical matrix from <code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse()</a></code>.</li>
-<li>
-<strong><code>compute_r2_sparse_cpp()</code></strong>: sparse r² within a bp distance window, returning only above-threshold pairs as a triplet (row, col, r²). Avoids the O(p²) dense matrix for large sub-segments where distant pairs are always below threshold.</li>
-</ul></div>
-<div class="section level4">
-<h4 id="tests-0-3-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-3-0"></a></h4>
-<ul><li>Three test files: <code>test-basic.R</code> (smoke tests via example data), <code>test-cpp.R</code> (property-based C++ kernel tests), <code>test-io.R</code> (all I/O format tests via tempfiles).</li>
-</ul><hr></div>
 <div class="section level3">
-<h3 id="ldxblocks-0-3-0">LDxBlocks 0.2.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-0-3-0"></a></h3>
-<div class="section level4">
-<h4 id="new-features-0-3-0-1">New features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0-1"></a></h4>
+<h3 id="new-features--haplotype-module-comprehensive-rewrite-0-3-0">New features — haplotype module (comprehensive rewrite)<a class="anchor" aria-label="anchor" href="#new-features--haplotype-module-comprehensive-rewrite-0-3-0"></a></h3>
 <ul><li>
-<strong>C++/Armadillo core</strong>: <code>compute_r2_cpp()</code>, <code>compute_rV2_cpp()</code>, <code>maf_filter_cpp()</code>, <code>build_adj_matrix_cpp()</code>, <code>col_r2_cpp()</code>, <code>compute_r2_sparse_cpp()</code>, <code>boundary_scan_cpp()</code> via RcppArmadillo.</li>
+<strong>Phasing functions</strong>:
+<ul><li>
+<code><a href="../reference/read_phased_vcf.html">read_phased_vcf()</a></code>: read pre-phased VCF with <code>0|1</code> GT fields; returns <code>hap1</code>/<code>hap2</code> gamete matrices plus combined dosage.</li>
 <li>
-<strong>OpenMP parallelism</strong>: <code>n_threads</code> parameter for <code>compute_r2_cpp()</code>.</li>
+<code><a href="../reference/phase_with_beagle.html">phase_with_beagle()</a></code>: call Beagle 5.x for statistical phasing of WGS data; returns path to phased VCF.gz.</li>
 <li>
-<strong>Dual LD metric</strong>: <code>method = "r2"</code> (default) or <code>"rV2"</code> in <code><a href="../reference/Big_LD.html">Big_LD()</a></code> and <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>.</li>
+<code><a href="../reference/phase_with_pedigree.html">phase_with_pedigree()</a></code>: Mendelian allele transmission phasing within parent-offspring trios; exact when parents are homozygous.</li>
 <li>
-<strong><code><a href="../reference/prepare_geno.html">prepare_geno()</a></code></strong>: unified preparation step — centres (r²) or centres + whitens (rV²).</li>
+<code><a href="../reference/unphase_to_dosage.html">unphase_to_dosage()</a></code>: collapse phased gamete matrices back to 0/1/2.</li>
+</ul></li>
 <li>
-<strong><code><a href="../reference/compute_ld.html">compute_ld()</a></code></strong>: dispatcher routing to <code>compute_r2_cpp()</code> or <code>compute_rV2_cpp()</code>.</li>
+<strong>Haplotype extraction</strong> (<code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>):
+<ul><li>Auto-detects phased vs unphased input from list structure.</li>
+<li>Unphased mode: diploid string <code>"012201"</code> per individual per block.</li>
+<li>Phased mode: two-gamete string <code>"011|100"</code> per individual per block.</li>
+<li>Blocks are strictly per-chromosome; cross-chromosome blocks are architecturally impossible.</li>
+</ul></li>
+<li>
+<strong>Feature matrix</strong> (<code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>):
+<ul><li>New <code>encoding =</code> parameter: <code>"additive_012"</code> (default) or <code>"presence_02"</code>.</li>
+<li>Phased + <code>"additive_012"</code>: true 0/1/2 allele counts per gamete.</li>
+<li>Unphased + <code>"additive_012"</code>: 0 or 2 (1 not identifiable without phase).</li>
+<li>
+<code>"presence_02"</code>: 0/2 presence/absence for kernel methods or random forests.</li>
+<li>New <code>min_freq =</code> parameter to drop rare haplotype allele columns.</li>
+</ul></li>
+<li>
+<strong>QTL region definition</strong> (<code><a href="../reference/define_qtl_regions.html">define_qtl_regions()</a></code>):
+<ul><li>Maps significant GWAS markers onto LD blocks post-GWAS.</li>
+<li>Flags pleiotropic blocks (significant hits from multiple traits).</li>
+<li>Implements the haploblock-based QTL cataloguing approach of Tong et al. (2024) <em>Theor Appl Genet</em> 137:274.</li>
+</ul></li>
+<li>
+<strong>Output writers</strong>:
+<ul><li>
+<code><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric()</a></code>: CSV with rows = individuals, columns = haplotype alleles (0/1/2 or 0/2); compatible with rrBLUP, BGLR, ASReml-R.</li>
+<li>
+<code><a href="../reference/write_haplotype_hapmap.html">write_haplotype_hapmap()</a></code>: HapMap tab-delimited format with rows = haplotype alleles, columns = individuals; nucleotide encoding 0→HH, 1→HA, 2→AA, NA→NN; compatible with TASSEL and GAPIT.</li>
+<li>
+<code><a href="../reference/write_haplotype_diversity.html">write_haplotype_diversity()</a></code>: CSV of per-block diversity metrics with optional genome-wide mean summary row.</li>
+</ul></li>
+<li>
+<strong>End-to-end pipeline</strong> (<code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>): single-call wrapper from genotype file to all outputs (blocks, diversity, haplotype matrix).</li>
 </ul></div>
-<div class="section level4">
-<h4 id="bug-fixes-0-3-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-3-0"></a></h4>
+<div class="section level3">
+<h3 id="new-features--io-and-backend-0-3-0">New features — I/O and backend<a class="anchor" aria-label="anchor" href="#new-features--io-and-backend-0-3-0"></a></h3>
 <ul><li>
-<code><a href="../reference/CLQD.html">CLQD()</a></code>: fixed latent bug in <code>re_idx</code> tracking after dense-core pre-pass; original indices were not correctly mapped back after removal.</li>
+<strong>Multi-format I/O</strong>: <code><a href="../reference/read_geno.html">read_geno()</a></code> supports numeric dosage CSV, HapMap, VCF / bgzipped VCF, SeqArray GDS, PLINK BED/BIM/FAM, and plain R matrices.</li>
 <li>
-<code><a href="../reference/Big_LD.html">Big_LD()</a></code>: <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code> used throughout instead of <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply()</a></code> for type-stability.</li>
+<strong>GDS streaming backend</strong>: peak RAM proportional to one window.</li>
+<li>
+<strong>PLINK BED backend</strong>: <code>BEDMatrix</code>-backed memory-mapped access.</li>
+<li>
+<strong><code><a href="../reference/read_chunk.html">read_chunk()</a></code></strong>, <strong><code><a href="../reference/close_backend.html">close_backend()</a></code></strong>: unified accessor interface.</li>
+<li>
+<strong><code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code></strong> accepts <code>LDxBlocks_backend</code> directly.</li>
+<li>
+<strong><code>min_snps_chr</code></strong> parameter: skip scaffolds with fewer SNPs (default 10).</li>
+<li>
+<strong><code>ldx_gwas</code></strong> example dataset now includes a <code>trait</code> column (<code>"TraitA"</code> / <code>"TraitB"</code>) to demonstrate multi-trait pleiotropic block detection via <code>define_qtl_regions(trait_col = "trait")</code>. For single-trait GWAS the argument is omitted entirely.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="performance-improvements--c-core-0-3-0">Performance improvements — C++ core<a class="anchor" aria-label="anchor" href="#performance-improvements--c-core-0-3-0"></a></h3>
+<ul><li>
+<code>boundary_scan_cpp()</code>: C++ boundary scan replaces R inner loop.</li>
+<li>
+<code>maf_filter_cpp()</code>: combined MAF + monomorphic filter, single O(np) pass.</li>
+<li>
+<code>build_adj_matrix_cpp()</code>: in-place adjacency construction.</li>
+<li>
+<code>compute_r2_sparse_cpp()</code>: sparse r² within bp window.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="performance-improvements--never-full-genome-memory-model-optsldp-inspired-0-3-0">Performance improvements — never-full-genome memory model (OptSLDP-inspired)<a class="anchor" aria-label="anchor" href="#performance-improvements--never-full-genome-memory-model-optsldp-inspired-0-3-0"></a></h3>
+<ul><li>
+<strong>Chunked pre-allocated numeric CSV reader</strong> (<code><a href="../reference/read_geno.html">read_geno()</a></code> numeric path): two-pass strategy — header scan only in Pass 1, then fixed 50,000-row chunks fill a single pre-allocated matrix in Pass 2. Peak RAM = one chunk, not 2× the file. <code>gc(FALSE)</code> called after each chunk. Directly follows the <code>.read_dosage_chunked()</code> pattern of Akohoue et al. (2026) <em>OptSLDP</em>.</li>
+<li>
+<strong>VCF and HapMap mandatory GDS auto-conversion</strong>: <code><a href="../reference/read_geno.html">read_geno()</a></code> for VCF and HapMap auto-converts to a SeqArray GDS cache (placed next to the source file) when SeqArray is available, transparently switching to the streaming GDS backend. Cache reused on subsequent calls.</li>
+<li>
+<strong>Explicit per-chromosome gc()</strong> in <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: <code>rm(geno_chr,   info_chr)</code> and <code>gc(FALSE)</code> called after each chromosome’s block detection completes, preventing heap fragmentation across 20–30 chromosome passes.</li>
+<li>
+<strong>Backend streaming path in <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code></strong>: when an <code>LDxBlocks_backend</code> object is passed (instead of a matrix), haplotypes are extracted one chromosome at a time using <code><a href="../reference/read_chunk.html">read_chunk()</a></code>. Each chromosome is freed with <code><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm()</a></code> and <code>gc(FALSE)</code> before the next chromosome is loaded. The full genome is never in RAM simultaneously.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="tests-0-3-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-3-0"></a></h3>
+<ul><li>
+<code>test-basic.R</code>: smoke tests via example data (230 SNPs, 3 chromosomes).</li>
+<li>
+<code>test-cpp.R</code>: property-based C++ kernel tests.</li>
+<li>
+<code>test-io.R</code>: all I/O format round-trip tests via tempfiles.</li>
+<li>
+<code>test-haplotypes.R</code>: haplotype extraction, diversity, QTL, feature matrix, and all three output writers.</li>
 </ul><hr></div>
 </div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="ldxblocks-020-2025-04-07">LDxBlocks 0.2.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-020-2025-04-07"></a></h2>
 <div class="section level3">
-<h3 id="ldxblocks-0-3-0-1">LDxBlocks 0.1.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-0-3-0-1"></a></h3>
+<h3 id="new-features-0-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-2-0"></a></h3>
+<ul><li>C++/Armadillo core: <code>compute_r2_cpp()</code>, <code>compute_rV2_cpp()</code>, <code>maf_filter_cpp()</code>, <code>build_adj_matrix_cpp()</code>, <code>col_r2_cpp()</code>, <code>compute_r2_sparse_cpp()</code>, <code>boundary_scan_cpp()</code>.</li>
+<li>OpenMP parallelism via <code>n_threads</code> parameter.</li>
+<li>Dual LD metric: <code>method = "r2"</code> or <code>"rV2"</code>.</li>
+<li>
+<code><a href="../reference/prepare_geno.html">prepare_geno()</a></code>, <code><a href="../reference/compute_ld.html">compute_ld()</a></code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-2-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
+<ul><li>
+<code><a href="../reference/CLQD.html">CLQD()</a></code>: fixed <code>re_idx</code> tracking after dense-core pre-pass.</li>
+<li>
+<code><a href="../reference/Big_LD.html">Big_LD()</a></code>: <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code> used throughout for type-stability.</li>
+</ul><hr></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.0" id="ldxblocks-010-2025-04-07">LDxBlocks 0.1.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-010-2025-04-07"></a></h2>
 <p>Initial release.</p>
 <ul><li>
-<code><a href="../reference/Big_LD.html">Big_LD()</a></code>: core per-chromosome LD block segmentation (Kim et al. 2018).</li>
+<code><a href="../reference/Big_LD.html">Big_LD()</a></code>, <code><a href="../reference/CLQD.html">CLQD()</a></code>, <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>, <code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>.</li>
 <li>
-<code><a href="../reference/CLQD.html">CLQD()</a></code>: clique detection on rV² adjacency graph.</li>
+<code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>, <code><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>, <code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>.</li>
 <li>
-<code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: chromosome-wise wrapper.</li>
-<li>
-<code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>: grid-search parameter auto-tuner.</li>
-<li>
-<code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>, <code><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>, <code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>: haplotype analysis module.</li>
-<li>
-<code><a href="../reference/summarise_blocks.html">summarise_blocks()</a></code>, <code><a href="../reference/plot_ld_blocks.html">plot_ld_blocks()</a></code>: utilities.</li>
+<code><a href="../reference/summarise_blocks.html">summarise_blocks()</a></code>, <code><a href="../reference/plot_ld_blocks.html">plot_ld_blocks()</a></code>.</li>
 </ul></div>
-</div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

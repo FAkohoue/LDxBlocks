@@ -33,6 +33,13 @@
 #' @param subSegmSize Integer. Max SNPs per CLQD call. Default 1500.
 #' @param MAFcut Numeric. Minor allele frequency minimum. Default 0.05.
 #' @param appendrare Logical. Append rare SNPs after block detection. Default FALSE.
+#' @param singleton_as_block Logical. If \code{TRUE}, every SNP that passes MAF
+#'   filtering but has pairwise r² below \code{CLQcut} with all neighbours
+#'   (i.e. is not assigned to any clique) is returned as a single-SNP block with
+#'   \code{start == end} and \code{length_bp == 1}. Default \code{FALSE}.
+#'   These blocks are excluded from haplotype analysis by the default
+#'   \code{min_snps = 3} threshold in \code{extract_haplotypes()}, but are
+#'   useful for auditing coverage and for single-SNP feature engineering.
 #' @param checkLargest Logical. Dense-core pre-pass for large windows. Default FALSE.
 #' @param CLQmode \code{"Density"} (default) or \code{"Maximal"}.
 #' @param kin_method Character. GRM whitening: \code{"chol"} (default) or
@@ -88,6 +95,7 @@ Big_LD <- function(
     subSegmSize  = 1500,
     MAFcut       = 0.05,
     appendrare   = FALSE,
+    singleton_as_block = FALSE,
     checkLargest = FALSE,
     CLQmode      = "Density",
     kin_method   = "chol",
@@ -469,18 +477,29 @@ Big_LD <- function(
     bv   <- CLQD(sg, si, ag, CLQcut = CLQcut, clstgap = clstgap, CLQmode = CLQmode,
                  codechange = FALSE, checkLargest = checkLargest, split = split,
                  digits = digits, n_threads = n_threads, verbose = verbose)
-    bins <- seq_len(max(bv[!is.na(bv)]))
-    cl   <- lapply(bins, function(x) sort(which(bv == x)))
-    cl   <- cl[order(vapply(cl, min, numeric(1L)))]
-    nowLD <- constructLDblock(cl, si)
-    if (!is.null(nowLD)) {
-      if (!is.matrix(nowLD)) nowLD <- matrix(nowLD, nrow = 1L)
-      nowLD <- nowLD + (nowst - 1L)
-      nowLD <- nowLD[order(nowLD[,1L]), , drop = FALSE]
-    } else { nowLD <- matrix(integer(0), nrow = 0L, ncol = 2L) }
+    # Collect singleton indices (NA in bin vector = no clique partner found)
+    if (isTRUE(singleton_as_block)) {
+      sing_local <- which(is.na(bv))           # local indices within segment
+      sing_global <- sing_local + (nowst - 1L) # map back to full-chromosome index
+      if (!exists("singleton_idx")) singleton_idx <- integer(0L)
+      singleton_idx <- c(singleton_idx, sing_global)
+    }
+    non_empty <- !all(is.na(bv))
+    if (!non_empty) { nowLD <- matrix(integer(0), nrow=0L, ncol=2L) } else {
+      bins <- seq_len(max(bv[!is.na(bv)]))
+      cl   <- lapply(bins, function(x) sort(which(bv == x)))
+      cl   <- cl[order(vapply(cl, min, numeric(1L)))]
+      nowLD <- constructLDblock(cl, si)
+      if (!is.null(nowLD)) {
+        if (!is.matrix(nowLD)) nowLD <- matrix(nowLD, nrow = 1L)
+        nowLD <- nowLD + (nowst - 1L)
+        nowLD <- nowLD[order(nowLD[,1L]), , drop = FALSE]
+      } else { nowLD <- matrix(integer(0), nrow = 0L, ncol = 2L) }
+    }  # end else(!non_empty)
 
     pre <- sum(!is.na(LDblocks[,1L]))
-    LDblocks[(pre+1L):(pre+nrow(nowLD)), ] <- nowLD
+    if (nrow(nowLD) > 0L)
+      LDblocks[(pre+1L):(pre+nrow(nowLD)), ] <- nowLD
     if (isTRUE(verbose)) message(sprintf("[Big_LD] Segment %d/%d done.", i, nrow(cutblock)))
   }
 
@@ -552,6 +571,39 @@ Big_LD <- function(
     prep_full <- list(V_inv_sqrt = V_inv_sqrt)
     out <- appendSGTs(out, Ogeno, OSNPinfo, CLQcut, clstgap, checkLargest,
                       CLQmode, prep_full, split, digits, n_threads)
+  }
+
+  # ── Optional: include singletons as single-SNP blocks ─────────────────────
+  # Each SNP that passed MAF filtering but was not assigned to any clique
+  # (no r² >= CLQcut partner within its sub-segment) becomes its own block.
+  # start == end, length_bp == 1, start.rsID == end.rsID.
+  # These are biologically meaningful: they mark low-LD regions, recombination
+  # hotspots, or rapidly-evolving loci. They are excluded from haplotype
+  # analysis by the default min_snps = 3 threshold in extract_haplotypes().
+  if (isTRUE(singleton_as_block) && exists("singleton_idx") &&
+      length(singleton_idx) > 0L) {
+    # Map singleton indices to OSNPinfo positions (already over full SNP set)
+    si_bp  <- as.numeric(SNPinfo[[2L]][singleton_idx])
+    si_id  <- as.character(SNPinfo[[1L]][singleton_idx])
+    # Re-index to full SNP set (including monomorphics) using bp position
+    all_bp  <- sort(c(as.numeric(monoSNPs[[2L]]), as.numeric(OSNPinfo[[2L]])))
+    si_full <- match(si_bp, all_bp)
+    sing_df <- data.frame(
+      start      = si_full,
+      end        = si_full,
+      start.rsID = si_id,
+      end.rsID   = si_id,
+      start.bp   = si_bp,
+      end.bp     = si_bp,
+      CHR        = if ("CHR" %in% names(out)) out$CHR[1L] else NA_character_,
+      length_bp  = 1L,
+      stringsAsFactors = FALSE
+    )
+    # Merge with multi-SNP blocks and re-sort by position
+    out <- rbind(out, sing_df[, names(out), drop = FALSE])
+    out <- out[order(out$start), ]
+    if (isTRUE(verbose))
+      message("[Big_LD] Added ", nrow(sing_df), " singleton SNP block(s).")
   }
   out
 }

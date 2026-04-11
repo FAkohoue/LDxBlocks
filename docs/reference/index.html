@@ -29,13 +29,13 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
-    <li><a class="external-link dropdown-item" href="https://github.com/yourorg/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/yourorg/LDxBlocks" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/FAkohoue/LDxBlocks" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul></div>
 
 
@@ -65,7 +65,7 @@
       </dl></div><div class="section level2">
       <h2 id="main-pipeline">Main pipeline<a class="anchor" aria-label="anchor" href="#main-pipeline"></a></h2>
 
-      <div class="section-desc"><p>High-level functions for genome-wide LD block detection. <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> is the recommended entry point for most users.</p></div>
+      <div class="section-desc"><p>High-level functions for genome-wide LD block detection. <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> is the recommended entry point.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -99,6 +99,13 @@
 
         </dt>
         <dd>Auto-Tune LD Block Detection Parameters</dd>
+
+        <dt>
+
+          <code><a href="run_ldx_pipeline.html">run_ldx_pipeline()</a></code>
+
+        </dt>
+        <dd>End-to-End Haplotype Block Pipeline</dd>
       </dl></div><div class="section level2">
       <h2 id="genotype-i-o">Genotype I/O<a class="anchor" aria-label="anchor" href="#genotype-i-o"></a></h2>
 
@@ -146,7 +153,7 @@
       </dl></div><div class="section level2">
       <h2 id="ld-computation">LD computation<a class="anchor" aria-label="anchor" href="#ld-computation"></a></h2>
 
-      <div class="section-desc"><p>LD matrix computation functions: standard r² (fast, no kinship) and kinship-adjusted rV² (for structured populations).</p></div>
+      <div class="section-desc"><p>LD matrix computation: standard r² and kinship-adjusted rV².</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -188,9 +195,46 @@
         </dt>
         <dd>Compute the Inverse Square Root (Whitening Factor) of a Kinship Matrix</dd>
       </dl></div><div class="section level2">
+      <h2 id="phasing">Phasing<a class="anchor" aria-label="anchor" href="#phasing"></a></h2>
+
+      <div class="section-desc"><p>Functions for obtaining gametic phase from WGS data (Beagle), pedigree records, or pre-phased VCF files.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="read_phased_vcf.html">read_phased_vcf()</a></code>
+
+        </dt>
+        <dd>Read Pre-Phased VCF</dd>
+
+        <dt>
+
+          <code><a href="phase_with_beagle.html">phase_with_beagle()</a></code>
+
+        </dt>
+        <dd>Statistical Phasing via Beagle 5.x</dd>
+
+        <dt>
+
+          <code><a href="phase_with_pedigree.html">phase_with_pedigree()</a></code>
+
+        </dt>
+        <dd>Pedigree-Based Allele Transmission Phasing</dd>
+
+        <dt>
+
+          <code><a href="unphase_to_dosage.html">unphase_to_dosage()</a></code>
+
+        </dt>
+        <dd>Collapse Phased Gametes to 0/1/2 Dosage</dd>
+      </dl></div><div class="section level2">
       <h2 id="haplotype-analysis">Haplotype analysis<a class="anchor" aria-label="anchor" href="#haplotype-analysis"></a></h2>
 
-      <div class="section-desc"><p>Extract phase-free haplotypes within LD blocks, compute diversity metrics, and build feature matrices for genomic prediction.</p></div>
+      <div class="section-desc"><p>Extract haplotypes within LD blocks (phased or unphased), compute diversity metrics, map GWAS hits to QTL regions, and build feature matrices for genomic prediction.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -202,21 +246,58 @@
           <code><a href="extract_haplotypes.html">extract_haplotypes()</a></code>
 
         </dt>
-        <dd>Extract Phase-Free Haplotypes Within LD Blocks</dd>
+        <dd>Extract Haplotype Strings Within LD Blocks</dd>
 
         <dt>
 
           <code><a href="compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>
 
         </dt>
-        <dd>Compute Haplotype Diversity Metrics Per LD Block</dd>
+        <dd>Compute Haplotype Diversity Per Block</dd>
+
+        <dt>
+
+          <code><a href="define_qtl_regions.html">define_qtl_regions()</a></code>
+
+        </dt>
+        <dd>Map GWAS Hits to LD Blocks (Post-GWAS QTL Region Definition)</dd>
 
         <dt>
 
           <code><a href="build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>
 
         </dt>
-        <dd>Build a Haplotype Dosage Feature Matrix for Genomic Prediction</dd>
+        <dd>Build Haplotype Dosage Matrix for Genomic Prediction</dd>
+      </dl></div><div class="section level2">
+      <h2 id="haplotype-output-writers">Haplotype output writers<a class="anchor" aria-label="anchor" href="#haplotype-output-writers"></a></h2>
+
+      <div class="section-desc"><p>Write haplotype matrices and diversity tables to disk in formats compatible with TASSEL, GAPIT, rrBLUP, BGLR, and ASReml-R.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="write_haplotype_numeric.html">write_haplotype_numeric()</a></code>
+
+        </dt>
+        <dd>Write Haplotype Matrix as Numeric CSV</dd>
+
+        <dt>
+
+          <code><a href="write_haplotype_hapmap.html">write_haplotype_hapmap()</a></code>
+
+        </dt>
+        <dd>Write Haplotype Matrix in HapMap Format</dd>
+
+        <dt>
+
+          <code><a href="write_haplotype_diversity.html">write_haplotype_diversity()</a></code>
+
+        </dt>
+        <dd>Write Haplotype Diversity Table</dd>
       </dl></div><div class="section level2">
       <h2 id="utilities">Utilities<a class="anchor" aria-label="anchor" href="#utilities"></a></h2>
 
@@ -243,7 +324,7 @@
       </dl></div><div class="section level2">
       <h2 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a></h2>
 
-      <div class="section-desc"><p>Simulated datasets shipped with the package for examples and tests. See <code>data-raw/generate_example_data.R</code> for the simulation code.</p></div>
+      <div class="section-desc"><p>Simulated datasets (120 individuals, 230 SNPs, 3 chromosomes, 9 LD blocks) for examples and tests.</p></div>
 
       <dl></dl></div><div class="section level2">
 

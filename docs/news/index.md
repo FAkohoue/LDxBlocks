@@ -2,7 +2,7 @@
 
 ## LDxBlocks 0.3.0
 
-#### Breaking changes
+### Breaking changes
 
 - [`read_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md):
   removed `pheno_ids` parameter. Sample subsetting is the caller’s
@@ -11,111 +11,162 @@
   handling is not part of LD block detection and these functions had no
   algorithmic role.
 - [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md):
-  parameter `rV2method` renamed to `kin_method` for clarity.
+  parameter `rV2method` renamed to `kin_method`.
 - `digits` default changed from `6` to `-1` (no rounding) throughout.
-  Rounding was a source of subtle threshold-comparison instability. Set
-  `digits = 6` explicitly to restore previous behaviour.
 
-#### New features
+### New features — haplotype module (comprehensive rewrite)
+
+- **Phasing functions**:
+  - [`read_phased_vcf()`](https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.md):
+    read pre-phased VCF with `0|1` GT fields; returns `hap1`/`hap2`
+    gamete matrices plus combined dosage.
+  - [`phase_with_beagle()`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_beagle.md):
+    call Beagle 5.x for statistical phasing of WGS data; returns path to
+    phased VCF.gz.
+  - [`phase_with_pedigree()`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_pedigree.md):
+    Mendelian allele transmission phasing within parent-offspring trios;
+    exact when parents are homozygous.
+  - [`unphase_to_dosage()`](https://FAkohoue.github.io/LDxBlocks/reference/unphase_to_dosage.md):
+    collapse phased gamete matrices back to 0/1/2.
+- **Haplotype extraction**
+  ([`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)):
+  - Auto-detects phased vs unphased input from list structure.
+  - Unphased mode: diploid string `"012201"` per individual per block.
+  - Phased mode: two-gamete string `"011|100"` per individual per block.
+  - Blocks are strictly per-chromosome; cross-chromosome blocks are
+    architecturally impossible.
+- **Feature matrix**
+  ([`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md)):
+  - New `encoding =` parameter: `"additive_012"` (default) or
+    `"presence_02"`.
+  - Phased + `"additive_012"`: true 0/1/2 allele counts per gamete.
+  - Unphased + `"additive_012"`: 0 or 2 (1 not identifiable without
+    phase).
+  - `"presence_02"`: 0/2 presence/absence for kernel methods or random
+    forests.
+  - New `min_freq =` parameter to drop rare haplotype allele columns.
+- **QTL region definition**
+  ([`define_qtl_regions()`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md)):
+  - Maps significant GWAS markers onto LD blocks post-GWAS.
+  - Flags pleiotropic blocks (significant hits from multiple traits).
+  - Implements the haploblock-based QTL cataloguing approach of Tong et
+    al. (2024) *Theor Appl Genet* 137:274.
+- **Output writers**:
+  - [`write_haplotype_numeric()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.md):
+    CSV with rows = individuals, columns = haplotype alleles (0/1/2 or
+    0/2); compatible with rrBLUP, BGLR, ASReml-R.
+  - [`write_haplotype_hapmap()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_hapmap.md):
+    HapMap tab-delimited format with rows = haplotype alleles, columns =
+    individuals; nucleotide encoding 0→HH, 1→HA, 2→AA, NA→NN; compatible
+    with TASSEL and GAPIT.
+  - [`write_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_diversity.md):
+    CSV of per-block diversity metrics with optional genome-wide mean
+    summary row.
+- **End-to-end pipeline**
+  ([`run_ldx_pipeline()`](https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.md)):
+  single-call wrapper from genotype file to all outputs (blocks,
+  diversity, haplotype matrix).
+
+### New features — I/O and backend
 
 - **Multi-format I/O**:
   [`read_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
-  now supports numeric dosage CSV, HapMap, VCF / bgzipped VCF, SeqArray
-  GDS, PLINK BED/BIM/FAM, and plain R matrices through a unified
-  `LDxBlocks_backend` S3 interface.
-- **GDS streaming backend**: SeqArray GDS files are accessed via
-  [`seqSetFilter()`](https://rdrr.io/pkg/SeqArray/man/seqSetFilter.html) +
-  `seqGetData("$dosage")` per window, keeping peak RAM proportional to
-  one chromosome window rather than the full genome.
-- **PLINK BED backend**: `BEDMatrix`-backed streaming access for binary
-  PLINK files.
-- **[`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md)**:
-  unified genotype slice accessor — works identically for all six
-  backend types.
-- **[`close_backend()`](https://FAkohoue.github.io/LDxBlocks/reference/close_backend.md)**:
-  releases GDS file handles; no-op for in-memory backends.
-- **[`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
-  now accepts `LDxBlocks_backend`** directly, removing the need to load
-  the full genome matrix before calling it.
-- **`min_snps_chr`** parameter in
-  [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md):
-  skip chromosomes or scaffolds with fewer than this many SNPs (default
+  supports numeric dosage CSV, HapMap, VCF / bgzipped VCF, SeqArray GDS,
+  PLINK BED/BIM/FAM, and plain R matrices.
+- **GDS streaming backend**: peak RAM proportional to one window.
+- **PLINK BED backend**: `BEDMatrix`-backed memory-mapped access.
+- **[`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md)**,
+  **[`close_backend()`](https://FAkohoue.github.io/LDxBlocks/reference/close_backend.md)**:
+  unified accessor interface.
+- **[`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)**
+  accepts `LDxBlocks_backend` directly.
+- **`min_snps_chr`** parameter: skip scaffolds with fewer SNPs (default
   10).
-- **Example datasets**: `ldx_geno`, `ldx_snp_info`, `ldx_blocks`,
-  `ldx_gwas` — simulated with clear block structure for examples and
-  tests.
-- **Flat-file examples** in `inst/extdata/`: numeric CSV, HapMap, and
-  VCF copies of the example data for format-reader tests.
+- **`ldx_gwas`** example dataset now includes a `trait` column
+  (`"TraitA"` / `"TraitB"`) to demonstrate multi-trait pleiotropic block
+  detection via `define_qtl_regions(trait_col = "trait")`. For
+  single-trait GWAS the argument is omitted entirely.
 
-#### Performance improvements
+### Performance improvements — C++ core
 
-- **`boundary_scan_cpp()`**: C++ replacement for the R inner loop in
-  `cutsequence.modi()`. For a 50,000-SNP chromosome with `leng = 200`,
-  eliminates ~150,000 small R-level matrix operations per chromosome.
-- **`maf_filter_cpp()`**: combined MAF + monomorphic filter in one O(np)
-  C++ pass; ~10× faster than the
-  [`apply()`](https://rdrr.io/r/base/apply.html) equivalent.
-- **`build_adj_matrix_cpp()`**: in-place C++ adjacency construction,
-  avoiding the intermediate logical matrix from
-  [`ifelse()`](https://rdrr.io/r/base/ifelse.html).
-- **`compute_r2_sparse_cpp()`**: sparse r² within a bp distance window,
-  returning only above-threshold pairs as a triplet (row, col, r²).
-  Avoids the O(p²) dense matrix for large sub-segments where distant
-  pairs are always below threshold.
+- `boundary_scan_cpp()`: C++ boundary scan replaces R inner loop.
+- `maf_filter_cpp()`: combined MAF + monomorphic filter, single O(np)
+  pass.
+- `build_adj_matrix_cpp()`: in-place adjacency construction.
+- `compute_r2_sparse_cpp()`: sparse r² within bp window.
 
-#### Tests
+### Performance improvements — never-full-genome memory model (OptSLDP-inspired)
 
-- Three test files: `test-basic.R` (smoke tests via example data),
-  `test-cpp.R` (property-based C++ kernel tests), `test-io.R` (all I/O
-  format tests via tempfiles).
+- **Chunked pre-allocated numeric CSV reader**
+  ([`read_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
+  numeric path): two-pass strategy — header scan only in Pass 1, then
+  fixed 50,000-row chunks fill a single pre-allocated matrix in Pass 2.
+  Peak RAM = one chunk, not 2× the file. `gc(FALSE)` called after each
+  chunk. Directly follows the `.read_dosage_chunked()` pattern of
+  Akohoue et al. (2026) *OptSLDP*.
+- **VCF and HapMap mandatory GDS auto-conversion**:
+  [`read_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
+  for VCF and HapMap auto-converts to a SeqArray GDS cache (placed next
+  to the source file) when SeqArray is available, transparently
+  switching to the streaming GDS backend. Cache reused on subsequent
+  calls.
+- **Explicit per-chromosome gc()** in
+  [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md):
+  `rm(geno_chr, info_chr)` and `gc(FALSE)` called after each
+  chromosome’s block detection completes, preventing heap fragmentation
+  across 20–30 chromosome passes.
+- **Backend streaming path in
+  [`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)**:
+  when an `LDxBlocks_backend` object is passed (instead of a matrix),
+  haplotypes are extracted one chromosome at a time using
+  [`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md).
+  Each chromosome is freed with [`rm()`](https://rdrr.io/r/base/rm.html)
+  and `gc(FALSE)` before the next chromosome is loaded. The full genome
+  is never in RAM simultaneously.
+
+### Tests
+
+- `test-basic.R`: smoke tests via example data (230 SNPs, 3
+  chromosomes).
+- `test-cpp.R`: property-based C++ kernel tests.
+- `test-io.R`: all I/O format round-trip tests via tempfiles.
+- `test-haplotypes.R`: haplotype extraction, diversity, QTL, feature
+  matrix, and all three output writers.
 
 ------------------------------------------------------------------------
 
-### LDxBlocks 0.2.0 (2025-04-07)
+## LDxBlocks 0.2.0 (2025-04-07)
 
-#### New features
+### New features
 
-- **C++/Armadillo core**: `compute_r2_cpp()`, `compute_rV2_cpp()`,
+- C++/Armadillo core: `compute_r2_cpp()`, `compute_rV2_cpp()`,
   `maf_filter_cpp()`, `build_adj_matrix_cpp()`, `col_r2_cpp()`,
-  `compute_r2_sparse_cpp()`, `boundary_scan_cpp()` via RcppArmadillo.
-- **OpenMP parallelism**: `n_threads` parameter for `compute_r2_cpp()`.
-- **Dual LD metric**: `method = "r2"` (default) or `"rV2"` in
-  [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-  and
-  [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md).
-- **[`prepare_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md)**:
-  unified preparation step — centres (r²) or centres + whitens (rV²).
-- **[`compute_ld()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.md)**:
-  dispatcher routing to `compute_r2_cpp()` or `compute_rV2_cpp()`.
+  `compute_r2_sparse_cpp()`, `boundary_scan_cpp()`.
+- OpenMP parallelism via `n_threads` parameter.
+- Dual LD metric: `method = "r2"` or `"rV2"`.
+- [`prepare_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md),
+  [`compute_ld()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.md).
 
-#### Bug fixes
+### Bug fixes
 
 - [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md):
-  fixed latent bug in `re_idx` tracking after dense-core pre-pass;
-  original indices were not correctly mapped back after removal.
+  fixed `re_idx` tracking after dense-core pre-pass.
 - [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md):
-  [`vapply()`](https://rdrr.io/r/base/lapply.html) used throughout
-  instead of [`sapply()`](https://rdrr.io/r/base/lapply.html) for
+  [`vapply()`](https://rdrr.io/r/base/lapply.html) used throughout for
   type-stability.
 
 ------------------------------------------------------------------------
 
-### LDxBlocks 0.1.0 (2025-04-07)
+## LDxBlocks 0.1.0 (2025-04-07)
 
 Initial release.
 
-- [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md):
-  core per-chromosome LD block segmentation (Kim et al. 2018).
-- [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md):
-  clique detection on rV² adjacency graph.
-- [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md):
-  chromosome-wise wrapper.
-- [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md):
-  grid-search parameter auto-tuner.
+- [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md),
+  [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md),
+  [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md),
+  [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md).
 - [`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md),
   [`compute_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.md),
-  [`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md):
-  haplotype analysis module.
+  [`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md).
 - [`summarise_blocks()`](https://FAkohoue.github.io/LDxBlocks/reference/summarise_blocks.md),
-  [`plot_ld_blocks()`](https://FAkohoue.github.io/LDxBlocks/reference/plot_ld_blocks.md):
-  utilities.
+  [`plot_ld_blocks()`](https://FAkohoue.github.io/LDxBlocks/reference/plot_ld_blocks.md).

@@ -15,6 +15,7 @@ read_geno(
   sample_ids = NULL,
   sep = ",",
   na_strings = c("NA", "N", "NN", "./.", ".", ""),
+  gds_cache = NULL,
   verbose = FALSE
 )
 ```
@@ -43,12 +44,22 @@ read_geno(
 
 - sep:
 
-  Character. Field separator for `"numeric"` format. Default `","`.
+  Character. Field separator for `"numeric"` format.
 
 - na_strings:
 
   Character vector. Strings treated as NA. Default
   `c("NA", "N", "NN", "./.", ".", "")`.
+
+- gds_cache:
+
+  Character or `NULL`. Path where a GDS cache file should be written
+  when `format = "vcf"` and SeqArray is available. If `NULL` (default),
+  the GDS file is placed next to the VCF with a `.gds` extension. Set to
+  `FALSE` to disable auto-conversion and read the VCF fully into memory
+  instead. When the cache file already exists it is reused without
+  re-converting (fast subsequent calls). Ignored for all non-VCF
+  formats. Default `","`.
 
 - verbose:
 
@@ -96,7 +107,7 @@ to release file handles.
 
 - `"matrix"`:
 
-  In-memory R numeric matrix (individuals × SNPs, 0/1/2). Must supply
+  In-memory R numeric matrix (individuals x SNPs, 0/1/2). Must supply
   `snp_info` separately.
 
 ## See also
