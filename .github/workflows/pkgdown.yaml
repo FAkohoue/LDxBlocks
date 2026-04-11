@@ -1,20 +1,25 @@
 name: pkgdown
+
 on:
   push:
     branches: [main, master]
   workflow_dispatch:
+
 concurrency:
   group: "pages-${{ github.ref }}"
   cancel-in-progress: true
+
 permissions:
   contents: read
-  pages:    write
+  pages: write
   id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,14 +50,14 @@ jobs:
       - name: Install Bioconductor packages
         shell: Rscript {0}
         run: |
-          if (!requireNamespace("BiocManager", quietly = TRUE))
+          if (!requireNamespace("BiocManager", quietly = TRUE)) {
             install.packages("BiocManager", repos = "https://cloud.r-project.org")
-          BiocManager::install(ask = FALSE, update = FALSE)
+          }
           bioc_pkgs <- c("SeqArray", "gdsfmt")
-          to_install <- bioc_pkgs[!vapply(bioc_pkgs, requireNamespace,
-                                          logical(1L), quietly = TRUE)]
-          if (length(to_install))
+          to_install <- bioc_pkgs[!vapply(bioc_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+          if (length(to_install)) {
             BiocManager::install(to_install, ask = FALSE, update = FALSE)
+          }
 
       - name: Install CRAN dependencies
         shell: Rscript {0}
@@ -64,17 +69,28 @@ jobs:
             "AGHmatrix", "ASRgenomics", "BEDMatrix",
             "ggplot2", "future.apply"
           )
-          to_install <- pkgs[!vapply(pkgs, requireNamespace,
-                                     logical(1L), quietly = TRUE)]
-          if (length(to_install))
+          to_install <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+          if (length(to_install)) {
             install.packages(to_install, repos = "https://cloud.r-project.org")
+          }
+
+      - name: Remove compiled artifacts
+        run: |
+          find . -type f \( \
+            -name "*.o" -o \
+            -name "*.obj" -o \
+            -name "*.so" -o \
+            -name "*.dll" -o \
+            -name "*.a" -o \
+            -name "*.lib" -o \
+            -name "*.def" -o \
+            -name "*.exp" -o \
+            -name "*.dylib" \
+          \) -print -delete
+          rm -rf src-i386 src-x64 libs
 
       - name: Install LDxBlocks
-        # R CMD INSTALL is the only reliable way to get the package into
-        # the default library so that library("LDxBlocks") works in the
-        # subsequent pkgdown step.  install.packages(".", repos=NULL) can
-        # place the package in a non-default path that pkgdown cannot find.
-        run: R CMD INSTALL --no-multiarch --with-keep.source .
+        run: R CMD INSTALL --preclean --no-multiarch --with-keep.source .
 
       - name: Build pkgdown site
         env:
@@ -83,7 +99,7 @@ jobs:
         run: |
           pkgdown::build_site_github_pages(
             new_process = FALSE,
-            install     = FALSE
+            install = FALSE
           )
 
       - name: Configure GitHub Pages
@@ -99,8 +115,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url:  ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Deploy to GitHub Pages
-        id:   deployment
+        id: deployment
         uses: actions/deploy-pages@v4
