@@ -1,23 +1,20 @@
 name: pkgdown
-
 on:
   push:
     branches: [main, master]
   workflow_dispatch:
-
 concurrency:
   group: "pages-${{ github.ref }}"
   cancel-in-progress: true
-
 permissions:
   contents: read
   pages:    write
   id-token: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,7 +54,7 @@ jobs:
           if (length(to_install))
             BiocManager::install(to_install, ask = FALSE, update = FALSE)
 
-      - name: Install CRAN packages
+      - name: Install CRAN dependencies
         shell: Rscript {0}
         run: |
           pkgs <- c(
@@ -72,13 +69,12 @@ jobs:
           if (length(to_install))
             install.packages(to_install, repos = "https://cloud.r-project.org")
 
-      - name: Install local package
-        shell: Rscript {0}
-        run: |
-          install.packages(".",
-                           repos        = NULL,
-                           type         = "source",
-                           INSTALL_opts = "--no-docs --no-multiarch --no-build-vignettes")
+      - name: Install LDxBlocks
+        # R CMD INSTALL is the only reliable way to get the package into
+        # the default library so that library("LDxBlocks") works in the
+        # subsequent pkgdown step.  install.packages(".", repos=NULL) can
+        # place the package in a non-default path that pkgdown cannot find.
+        run: R CMD INSTALL --no-multiarch --with-keep.source .
 
       - name: Build pkgdown site
         env:
