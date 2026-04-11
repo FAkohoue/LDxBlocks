@@ -19,7 +19,7 @@ Description: Fast, scalable linkage disequilibrium (LD) block detection for
     Bioinformatics 34(4):588-596).
     The clique-based Big-LD segmentation algorithm is accelerated throughout
     by Rcpp/RcppArmadillo and OpenMP. A unified multi-format I/O layer reads
-    numeric dosage CSV, HapMap, VCF, SeqArray GDS, and PLINK BED files.
+    numeric dosage CSV, HapMap, VCF, SNPRelate GDS, and PLINK BED files.
     Downstream modules cover: haplotype phasing (statistical via Beagle,
     pedigree-based transmission, or pre-phased VCF); haplotype extraction
     for phased and unphased data; diversity metrics (richness, expected
@@ -42,7 +42,7 @@ Imports:
 Suggests:
     AGHmatrix (>= 2.0.0),
     ASRgenomics (>= 1.1.0),
-    SeqArray,
+    SNPRelate,
     gdsfmt,
     BEDMatrix,
     future.apply,

@@ -15,7 +15,7 @@
 # ==============================================================================
 
 
-# ── Internal: write haplotype matrix in HapMap format ─────────────────────────
+# -- Internal: write haplotype matrix in HapMap format -------------------------
 
 #' Write a haplotype dosage matrix in HapMap nucleotide format
 #'
@@ -74,7 +74,7 @@
 }
 
 
-# ── Internal: MAF filter for backend ──────────────────────────────────────────
+# -- Internal: MAF filter for backend ------------------------------------------
 
 #' Filter SNPs by MAF using a backend object
 #'
@@ -111,7 +111,7 @@
 }
 
 
-# ── Main pipeline function ─────────────────────────────────────────────────────
+# -- Main pipeline function -----------------------------------------------------
 
 #' End-to-End Haplotype Block Pipeline
 #'
@@ -128,25 +128,25 @@
 #' @section Scale behaviour:
 #' Files are processed via the `LDxBlocks_backend` streaming interface.
 #' For VCF, HapMap, and numeric CSV files the backend reads one chromosome
-#' window at a time — peak RAM equals one `subSegmSize`-SNP window regardless
+#' window at a time - peak RAM equals one `subSegmSize`-SNP window regardless
 #' of total marker count. For very large files (> 2 M SNPs) the GDS backend
-#' via `SeqArray` is used automatically if the `SeqArray` package is installed.
+#' via `SNPRelate` is used automatically if the `SNPRelate` package is installed.
 #'
 #' @section Haplotype genotype matrix:
 #' The haplotype matrix has one row per individual and one column per
 #' haplotype allele (top-`top_n` haplotypes per block). Each cell contains
 #' the dosage of that haplotype allele encoded as:
 #' \itemize{
-#'   \item `0` — individual does not carry this haplotype
-#'   \item `2` — individual carries this haplotype (homozygous)
-#'   \item `NA` — missing data in block
+#'   \item `0` - individual does not carry this haplotype
+#'   \item `2` - individual carries this haplotype (homozygous)
+#'   \item `NA` - missing data in block
 #' }
 #' This encoding is directly compatible with genomic prediction software
 #' (ASReml-R, rrBLUP, BGLR, GBLUP) without further transformation.
 #'
 #' @param geno_file         Path to genotype file. Supported formats: numeric
 #'   dosage CSV (`.csv`), HapMap (`.hmp.txt`), VCF (`.vcf`, `.vcf.gz`),
-#'   SeqArray GDS (`.gds`), PLINK BED (`.bed`). Format is detected
+#'   SNPRelate GDS (`.gds`), PLINK BED (`.bed`). Format is detected
 #'   automatically from the file extension.
 #' @param out_blocks        Path for the LD block table CSV. Columns:
 #'   `CHR`, `start`, `end`, `start.rsID`, `end.rsID`, `start.bp`, `end.bp`,
@@ -158,21 +158,21 @@
 #'   controlled by `hap_format`. See section **Haplotype genotype matrix**.
 #' @param hap_format        Output format for the haplotype matrix:
 #'   \itemize{
-#'     \item `"numeric"` (default) — CSV with rows = individuals,
+#'     \item `"numeric"` (default) - CSV with rows = individuals,
 #'       columns = haplotype alleles coded 0/2/NA.
-#'     \item `"hapmap"` — HapMap format with rows = haplotype alleles,
+#'     \item `"hapmap"` - HapMap format with rows = haplotype alleles,
 #'       columns = individuals, nucleotide encoding.
 #'   }
 #' @param maf_cut           Minimum minor allele frequency. SNPs below this
 #'   threshold are removed before block detection. Default `0.05`.
-#' @param CLQcut            r² threshold for clique edges in CLQD. Higher
+#' @param CLQcut            r^2 threshold for clique edges in CLQD. Higher
 #'   values produce tighter, smaller blocks. Default `0.5`.
 #' @param method            LD metric: `"r2"` (default) or `"rV2"` (requires
 #'   kinship matrix; see `Big_LD()`).
 #' @param leng              Boundary scan half-window in SNPs. Default `200L`.
-#'   Reduce to 50–100 for very dense WGS panels.
+#'   Reduce to 50-100 for very dense WGS panels.
 #' @param subSegmSize       Maximum SNPs per CLQD sub-segment. Controls peak
-#'   RAM: `subSegmSize × n_individuals × 8` bytes. Default `1500L`.
+#'   RAM: `subSegmSize x n_individuals x 8` bytes. Default `1500L`.
 #' @param n_threads         OpenMP threads for the C++ LD kernel. Default `1L`.
 #' @param min_snps_chr      Skip chromosomes with fewer post-filter SNPs than
 #'   this. Default `10L`. Increase to skip unplaced scaffolds.
@@ -192,7 +192,7 @@
 #'   \item{`blocks`}{`data.frame` of LD blocks.}
 #'   \item{`diversity`}{`data.frame` of per-block haplotype diversity metrics.}
 #'   \item{`hap_matrix`}{Numeric matrix of haplotype dosages
-#'     (individuals × haplotype alleles). `NULL` if written to file only.}
+#'     (individuals x haplotype alleles). `NULL` if written to file only.}
 #'   \item{`snp_info_filtered`}{`data.frame` of SNP metadata after MAF filter.}
 #'   \item{`n_blocks`}{Integer. Total blocks detected.}
 #'   \item{`n_hap_columns`}{Integer. Total haplotype allele columns.}
@@ -255,13 +255,13 @@ run_ldx_pipeline <- function(
                                  paste0(...)))
   }
 
-  # ── Step 1: Open backend (auto-detect format) ──────────────────────────────
+  # -- Step 1: Open backend (auto-detect format) ------------------------------
   .ldx_log("Opening genotype file: ", basename(geno_file))
   be <- read_geno(geno_file, verbose = verbose)
   .ldx_log("Backend: ", be$type, " | ",
-            be$n_samples, " individuals | ", be$n_snps, " SNPs")
+           be$n_samples, " individuals | ", be$n_snps, " SNPs")
 
-  # ── Step 2: MAF filtering ──────────────────────────────────────────────────
+  # -- Step 2: MAF filtering --------------------------------------------------
   .ldx_log("MAF filtering (>= ", maf_cut, ") ...")
   snp_info_filtered <- .maf_filter_backend(be, maf_cut = maf_cut,
                                            verbose = verbose)
@@ -275,7 +275,7 @@ run_ldx_pipeline <- function(
   be$snp_info <- snp_info_filtered
   be$n_snps   <- n_pass
 
-  # ── Step 3: Subset chromosomes if requested ────────────────────────────────
+  # -- Step 3: Subset chromosomes if requested --------------------------------
   if (!is.null(chr)) {
     chr <- as.character(chr)
     be$snp_info <- be$snp_info[be$snp_info$CHR %in% chr, ]
@@ -284,7 +284,7 @@ run_ldx_pipeline <- function(
              paste(chr, collapse = ", "))
   }
 
-  # ── Step 4: Load genotype matrix for block detection ──────────────────────
+  # -- Step 4: Load genotype matrix for block detection ----------------------
   # For streaming backends we load chromosome by chromosome inside
   # run_Big_LD_all_chr; here we assemble the full filtered matrix.
   # For very large datasets users should use the GDS backend which handles
@@ -303,7 +303,7 @@ run_ldx_pipeline <- function(
   colnames(geno_mat) <- be$snp_info$SNP
   .ldx_log("Genotype matrix: ", nrow(geno_mat), " x ", ncol(geno_mat))
 
-  # ── Step 5: Genome-wide LD block detection ─────────────────────────────────
+  # -- Step 5: Genome-wide LD block detection ---------------------------------
   .ldx_log("Running genome-wide LD block detection ...")
   blocks <- run_Big_LD_all_chr(
     geno_matrix  = geno_mat,
@@ -327,7 +327,7 @@ run_ldx_pipeline <- function(
                      quote = FALSE, na = "NA")
   .ldx_log("Block table written: ", out_blocks)
 
-  # ── Step 6: Haplotype extraction ───────────────────────────────────────────
+  # -- Step 6: Haplotype extraction -------------------------------------------
   .ldx_log("Extracting haplotypes (min_snps = ", min_snps_block, ") ...")
   haplotypes <- extract_haplotypes(
     geno     = geno_mat,
@@ -342,7 +342,7 @@ run_ldx_pipeline <- function(
   if (n_hap_blocks == 0L)
     stop("No haplotype blocks produced. Check min_snps_block vs block sizes.")
 
-  # ── Step 7: Haplotype diversity ────────────────────────────────────────────
+  # -- Step 7: Haplotype diversity --------------------------------------------
   .ldx_log("Computing haplotype diversity ...")
   diversity <- compute_haplotype_diversity(haplotypes)
 
@@ -350,7 +350,7 @@ run_ldx_pipeline <- function(
                      quote = FALSE, na = "NA")
   .ldx_log("Diversity table written: ", out_diversity)
 
-  # ── Step 8: Build haplotype genotype matrix ────────────────────────────────
+  # -- Step 8: Build haplotype genotype matrix --------------------------------
   .ldx_log("Building haplotype feature matrix (top_n = ", top_n, ") ...")
   hap_matrix <- build_haplotype_feature_matrix(
     haplotypes     = haplotypes,
@@ -361,7 +361,7 @@ run_ldx_pipeline <- function(
   .ldx_log("Haplotype matrix: ", nrow(hap_matrix), " individuals x ",
            n_hap_cols, " haplotype allele columns")
 
-  # ── Step 9: Write haplotype genotype matrix ────────────────────────────────
+  # -- Step 9: Write haplotype genotype matrix --------------------------------
   .ldx_log("Writing haplotype matrix (format = ", hap_format, ") ...")
 
   if (identical(hap_format, "numeric")) {
@@ -381,7 +381,7 @@ run_ldx_pipeline <- function(
 
   .ldx_log("Haplotype matrix written: ", out_hap_matrix)
 
-  # ── Done ───────────────────────────────────────────────────────────────────
+  # -- Done -------------------------------------------------------------------
   .ldx_log("Pipeline complete.")
   .ldx_log("  Blocks:              ", nrow(blocks))
   .ldx_log("  Haplotype blocks:    ", n_hap_blocks)

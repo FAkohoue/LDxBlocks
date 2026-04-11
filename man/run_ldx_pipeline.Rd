@@ -27,7 +27,7 @@ run_ldx_pipeline(
 \arguments{
 \item{geno_file}{Path to genotype file. Supported formats: numeric
 dosage CSV (`.csv`), HapMap (`.hmp.txt`), VCF (`.vcf`, `.vcf.gz`),
-SeqArray GDS (`.gds`), PLINK BED (`.bed`). Format is detected
+SNPRelate GDS (`.gds`), PLINK BED (`.bed`). Format is detected
 automatically from the file extension.}
 
 \item{out_blocks}{Path for the LD block table CSV. Columns:
@@ -43,26 +43,26 @@ controlled by `hap_format`. See section **Haplotype genotype matrix**.}
 
 \item{hap_format}{Output format for the haplotype matrix:
 \itemize{
-  \item `"numeric"` (default) — CSV with rows = individuals,
+  \item `"numeric"` (default) - CSV with rows = individuals,
     columns = haplotype alleles coded 0/2/NA.
-  \item `"hapmap"` — HapMap format with rows = haplotype alleles,
+  \item `"hapmap"` - HapMap format with rows = haplotype alleles,
     columns = individuals, nucleotide encoding.
 }}
 
 \item{maf_cut}{Minimum minor allele frequency. SNPs below this
 threshold are removed before block detection. Default `0.05`.}
 
-\item{CLQcut}{r² threshold for clique edges in CLQD. Higher
+\item{CLQcut}{r^2 threshold for clique edges in CLQD. Higher
 values produce tighter, smaller blocks. Default `0.5`.}
 
 \item{method}{LD metric: `"r2"` (default) or `"rV2"` (requires
 kinship matrix; see `Big_LD()`).}
 
 \item{leng}{Boundary scan half-window in SNPs. Default `200L`.
-Reduce to 50–100 for very dense WGS panels.}
+Reduce to 50-100 for very dense WGS panels.}
 
 \item{subSegmSize}{Maximum SNPs per CLQD sub-segment. Controls peak
-RAM: `subSegmSize × n_individuals × 8` bytes. Default `1500L`.}
+RAM: `subSegmSize x n_individuals x 8` bytes. Default `1500L`.}
 
 \item{n_threads}{OpenMP threads for the C++ LD kernel. Default `1L`.}
 
@@ -90,7 +90,7 @@ A named list (invisibly) with elements:
   \item{`blocks`}{`data.frame` of LD blocks.}
   \item{`diversity`}{`data.frame` of per-block haplotype diversity metrics.}
   \item{`hap_matrix`}{Numeric matrix of haplotype dosages
-    (individuals × haplotype alleles). `NULL` if written to file only.}
+    (individuals x haplotype alleles). `NULL` if written to file only.}
   \item{`snp_info_filtered`}{`data.frame` of SNP metadata after MAF filter.}
   \item{`n_blocks`}{Integer. Total blocks detected.}
   \item{`n_hap_columns`}{Integer. Total haplotype allele columns.}
@@ -110,9 +110,9 @@ intermediate steps run transparently.
 
 Files are processed via the `LDxBlocks_backend` streaming interface.
 For VCF, HapMap, and numeric CSV files the backend reads one chromosome
-window at a time — peak RAM equals one `subSegmSize`-SNP window regardless
+window at a time - peak RAM equals one `subSegmSize`-SNP window regardless
 of total marker count. For very large files (> 2 M SNPs) the GDS backend
-via `SeqArray` is used automatically if the `SeqArray` package is installed.
+via `SNPRelate` is used automatically if the `SNPRelate` package is installed.
 }
 
 \section{Haplotype genotype matrix}{
@@ -121,9 +121,9 @@ The haplotype matrix has one row per individual and one column per
 haplotype allele (top-`top_n` haplotypes per block). Each cell contains
 the dosage of that haplotype allele encoded as:
 \itemize{
-  \item `0` — individual does not carry this haplotype
-  \item `2` — individual carries this haplotype (homozygous)
-  \item `NA` — missing data in block
+  \item `0` - individual does not carry this haplotype
+  \item `2` - individual carries this haplotype (homozygous)
+  \item `NA` - missing data in block
 }
 This encoding is directly compatible with genomic prediction software
 (ASReml-R, rrBLUP, BGLR, GBLUP) without further transformation.

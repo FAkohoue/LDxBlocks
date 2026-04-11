@@ -112,7 +112,7 @@ file. Length must equal number of samples.</p></dd>
 
 <dt id="arg-gds-cache">gds_cache<a class="anchor" aria-label="anchor" href="#arg-gds-cache"></a></dt>
 <dd><p>Character or <code>NULL</code>. Path where a GDS cache file
-should be written when <code>format = "vcf"</code> and SeqArray is available.
+should be written when <code>format = "vcf"</code> and SNPRelate is available.
 If <code>NULL</code> (default), the GDS file is placed next to the VCF with a
 <code>.gds</code> extension. Set to <code>FALSE</code> to disable auto-conversion
 and read the VCF fully into memory instead. When the cache file already
@@ -155,8 +155,8 @@ Default <code>","</code>.</p></dd>
     <code>.vcf.gz</code>.</p></dd>
 
   <dt><code>"gds"</code></dt>
-<dd><p>SeqArray GDS file. Requires
-    <code>BiocManager::install("SeqArray")</code>. Extension: <code>.gds</code>.</p></dd>
+<dd><p>SNPRelate GDS file. Requires
+    <code>BiocManager::install("SNPRelate")</code>. Extension: <code>.gds</code>.</p></dd>
 
   <dt><code>"bed"</code></dt>
 <dd><p>PLINK binary BED. Companion <code>.bim</code> and

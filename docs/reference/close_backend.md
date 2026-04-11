@@ -3,7 +3,7 @@
 Closes any open file connections held by the backend. For in-memory
 backends (`"matrix"`, `"numeric"`, `"hapmap"`, `"vcf"`) this is a no-op.
 For `"gds"` backends it calls
-[`SeqArray::seqClose()`](https://rdrr.io/pkg/SeqArray/man/seqClose.html).
+[`SNPRelate::snpgdsClose()`](https://rdrr.io/pkg/SNPRelate/man/snpgdsClose.html).
 For `"bed"` backends the memory-mapped file is released.
 
 ## Usage

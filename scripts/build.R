@@ -162,3 +162,29 @@ unlink("vignettes/LDxBlocks-large-scale_cache", recursive = TRUE)
 
 # Now rebuild just that article from scratch
 pkgdown::build_article("LDxBlocks-large-scale")
+
+
+file <- "R/read_geno.R"
+
+txt <- readLines(file, encoding = "UTF-8")
+
+txt <- gsub("→", "->", txt, fixed = TRUE)
+txt <- gsub("×", "x", txt, fixed = TRUE)
+txt <- gsub("─", "-", txt, fixed = TRUE)
+txt <- gsub("…", "...", txt, fixed = TRUE)
+
+writeLines(txt, file, useBytes = TRUE)
+
+tools::showNonASCIIfile("R/read_geno.R")
+
+
+file <- "R/read_geno.R"
+
+txt <- readLines(file, encoding = "UTF-8")
+
+txt <- gsub("–", "-", txt, fixed = TRUE)
+txt <- gsub("—", "-", txt, fixed = TRUE)
+
+writeLines(txt, file, useBytes = TRUE)
+
+tools::showNonASCIIfile("R/read_geno.R")

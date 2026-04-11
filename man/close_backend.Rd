@@ -16,6 +16,6 @@ Invisibly \code{NULL}.
 Closes any open file connections held by the backend. For in-memory
 backends (\code{"matrix"}, \code{"numeric"}, \code{"hapmap"}, \code{"vcf"})
 this is a no-op. For \code{"gds"} backends it calls
-\code{SeqArray::seqClose()}. For \code{"bed"} backends the memory-mapped
+\code{SNPRelate::snpgdsClose()}. For \code{"bed"} backends the memory-mapped
 file is released.
 }

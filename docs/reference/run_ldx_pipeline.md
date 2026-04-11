@@ -39,7 +39,7 @@ run_ldx_pipeline(
 
   Path to genotype file. Supported formats: numeric dosage CSV
   (\`.csv\`), HapMap (\`.hmp.txt\`), VCF (\`.vcf\`, \`.vcf.gz\`),
-  SeqArray GDS (\`.gds\`), PLINK BED (\`.bed\`). Format is detected
+  SNPRelate GDS (\`.gds\`), PLINK BED (\`.bed\`). Format is detected
   automatically from the file extension.
 
 - out_blocks:
@@ -62,10 +62,10 @@ run_ldx_pipeline(
 
   Output format for the haplotype matrix:
 
-  - \`"numeric"\` (default) — CSV with rows = individuals, columns =
+  - \`"numeric"\` (default) - CSV with rows = individuals, columns =
     haplotype alleles coded 0/2/NA.
 
-  - \`"hapmap"\` — HapMap format with rows = haplotype alleles, columns
+  - \`"hapmap"\` - HapMap format with rows = haplotype alleles, columns
     = individuals, nucleotide encoding.
 
 - maf_cut:
@@ -75,7 +75,7 @@ run_ldx_pipeline(
 
 - CLQcut:
 
-  r² threshold for clique edges in CLQD. Higher values produce tighter,
+  r^2 threshold for clique edges in CLQD. Higher values produce tighter,
   smaller blocks. Default \`0.5\`.
 
 - method:
@@ -85,13 +85,13 @@ run_ldx_pipeline(
 
 - leng:
 
-  Boundary scan half-window in SNPs. Default \`200L\`. Reduce to 50–100
+  Boundary scan half-window in SNPs. Default \`200L\`. Reduce to 50-100
   for very dense WGS panels.
 
 - subSegmSize:
 
-  Maximum SNPs per CLQD sub-segment. Controls peak RAM: \`subSegmSize ×
-  n_individuals × 8\` bytes. Default \`1500L\`.
+  Maximum SNPs per CLQD sub-segment. Controls peak RAM: \`subSegmSize x
+  n_individuals x 8\` bytes. Default \`1500L\`.
 
 - n_threads:
 
@@ -141,7 +141,7 @@ A named list (invisibly) with elements:
 
 - \`hap_matrix\`:
 
-  Numeric matrix of haplotype dosages (individuals × haplotype alleles).
+  Numeric matrix of haplotype dosages (individuals x haplotype alleles).
   \`NULL\` if written to file only.
 
 - \`snp_info_filtered\`:
@@ -160,9 +160,9 @@ A named list (invisibly) with elements:
 
 Files are processed via the \`LDxBlocks_backend\` streaming interface.
 For VCF, HapMap, and numeric CSV files the backend reads one chromosome
-window at a time — peak RAM equals one \`subSegmSize\`-SNP window
+window at a time - peak RAM equals one \`subSegmSize\`-SNP window
 regardless of total marker count. For very large files (\> 2 M SNPs) the
-GDS backend via \`SeqArray\` is used automatically if the \`SeqArray\`
+GDS backend via \`SNPRelate\` is used automatically if the \`SNPRelate\`
 package is installed.
 
 ## Haplotype genotype matrix
@@ -171,11 +171,11 @@ The haplotype matrix has one row per individual and one column per
 haplotype allele (top-\`top_n\` haplotypes per block). Each cell
 contains the dosage of that haplotype allele encoded as:
 
-- \`0\` — individual does not carry this haplotype
+- \`0\` - individual does not carry this haplotype
 
-- \`2\` — individual carries this haplotype (homozygous)
+- \`2\` - individual carries this haplotype (homozygous)
 
-- \`NA\` — missing data in block
+- \`NA\` - missing data in block
 
 This encoding is directly compatible with genomic prediction software
 (ASReml-R, rrBLUP, BGLR, GBLUP) without further transformation.

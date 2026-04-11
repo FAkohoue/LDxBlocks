@@ -36,7 +36,7 @@ file. Length must equal number of samples.}
 \code{c("NA", "N", "NN", "./.", ".", "")}.}
 
 \item{gds_cache}{Character or \code{NULL}. Path where a GDS cache file
-should be written when \code{format = "vcf"} and SeqArray is available.
+should be written when \code{format = "vcf"} and SNPRelate is available.
 If \code{NULL} (default), the GDS file is placed next to the VCF with a
 \code{.gds} extension. Set to \code{FALSE} to disable auto-conversion
 and read the VCF fully into memory instead. When the cache file already
@@ -73,8 +73,8 @@ The format is auto-detected from the file extension unless overridden with
     (\code{0/1}) GT fields are accepted. Multi-allelic sites use first ALT.
     Missing (\code{./.}) becomes \code{NA}. Extension: \code{.vcf},
     \code{.vcf.gz}.}
-  \item{\code{"gds"}}{SeqArray GDS file. Requires
-    \code{BiocManager::install("SeqArray")}. Extension: \code{.gds}.}
+  \item{\code{"gds"}}{SNPRelate GDS file. Requires
+    \code{BiocManager::install("SNPRelate")}. Extension: \code{.gds}.}
   \item{\code{"bed"}}{PLINK binary BED. Companion \code{.bim} and
     \code{.fam} files must exist at the same path stem. Extension:
     \code{.bed}.}

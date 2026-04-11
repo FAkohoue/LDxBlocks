@@ -14,7 +14,7 @@
 #              .vcf.gz       phased (0|1) and unphased (0/1) both accepted;
 #                            multi-allelic -> first ALT; missing ./. -> NA
 #
-#   "gds"      .gds          SeqArray GDS file (Bioconductor)
+#   "gds"      .gds          SNPRelate GDS file (Bioconductor)
 #
 #   "bed"      .bed + .bim   PLINK binary BED (requires .bim and .fam)
 #              + .fam
@@ -78,8 +78,8 @@
 #'     (\code{0/1}) GT fields are accepted. Multi-allelic sites use first ALT.
 #'     Missing (\code{./.}) becomes \code{NA}. Extension: \code{.vcf},
 #'     \code{.vcf.gz}.}
-#'   \item{\code{"gds"}}{SeqArray GDS file. Requires
-#'     \code{BiocManager::install("SeqArray")}. Extension: \code{.gds}.}
+#'   \item{\code{"gds"}}{SNPRelate GDS file. Requires
+#'     \code{BiocManager::install("SNPRelate")}. Extension: \code{.gds}.}
 #'   \item{\code{"bed"}}{PLINK binary BED. Companion \code{.bim} and
 #'     \code{.fam} files must exist at the same path stem. Extension:
 #'     \code{.bed}.}
@@ -99,7 +99,7 @@
 #'   file. Length must equal number of samples.
 #' @param sep Character. Field separator for \code{"numeric"} format.
 #' @param gds_cache Character or \code{NULL}. Path where a GDS cache file
-#'   should be written when \code{format = "vcf"} and SeqArray is available.
+#'   should be written when \code{format = "vcf"} and SNPRelate is available.
 #'   If \code{NULL} (default), the GDS file is placed next to the VCF with a
 #'   \code{.gds} extension. Set to \code{FALSE} to disable auto-conversion
 #'   and read the VCF fully into memory instead. When the cache file already
@@ -153,17 +153,32 @@ read_geno <- function(
   }
 
   # -- Auto-convert VCF or HapMap to GDS for streaming access ---------------
-  # Triggered when SeqArray is available and gds_cache != FALSE.
+  # Triggered when SNPRelate is available and gds_cache != FALSE.
   # GDS is placed next to the source file (same directory, .gds extension)
   # unless the user supplies a custom path via gds_cache. Subsequent calls
   # reuse the cached GDS without re-converting.
   if (fmt %in% c("vcf", "hapmap") && !isFALSE(gds_cache) &&
-      requireNamespace("SeqArray", quietly = TRUE)) {
+      requireNamespace("SNPRelate", quietly = TRUE)) {
 
     cache_path <- if (is.null(gds_cache)) {
       sub("\\.(vcf(\\.gz)?|hmp\\.txt)$", ".gds", path, ignore.case = TRUE)
     } else {
       as.character(gds_cache)
+    }
+
+    # Validate any existing cache: a .gds created by SeqArray has
+    # FileFormat=SEQ_ARRAY and cannot be opened by SNPRelate's snpgdsOpen().
+    # If that happens, delete the stale file and re-convert.
+    if (file.exists(cache_path)) {
+      ok <- tryCatch({
+        gf <- SNPRelate::snpgdsOpen(cache_path, readonly = TRUE, allow.fork = TRUE)
+        SNPRelate::snpgdsClose(gf)
+        TRUE
+      }, error = function(e) FALSE)
+      if (!ok) {
+        message("[read_geno] Stale or incompatible GDS cache detected - removing and re-converting.")
+        unlink(cache_path)
+      }
     }
 
     if (!file.exists(cache_path)) {
@@ -173,15 +188,17 @@ read_geno <- function(
       message("[read_geno] This runs once; subsequent calls reuse the cache.")
 
       if (fmt == "vcf") {
-        SeqArray::seqVCF2GDS(
-          vcf.fn         = path,
-          out.fn         = cache_path,
-          storage.option = "ZIP_RA",
-          verbose        = isTRUE(verbose)
+        # SNPRelate::snpgdsVCF2GDS is the CRAN-friendly replacement for
+        # SNPRelate::snpgdsVCF2GDS. Both produce GDS files readable by gdsfmt.
+        SNPRelate::snpgdsVCF2GDS(
+          vcf.fn      = path,
+          out.fn      = cache_path,
+          method      = "biallelic.only",
+          snpfirstdim = FALSE,
+          verbose     = isTRUE(verbose)
         )
       } else {
-        # HapMap: SeqArray has no direct reader.
-        # Read via data.table, decode nucleotide calls to dosage, write GDS.
+        # HapMap: decode to VCF then convert via SNPRelate
         .hapmap_to_gds(path, cache_path, na_strings, verbose)
       }
 
@@ -452,35 +469,40 @@ read_geno <- function(
 }
 
 
-# -- 4. GDS (SeqArray) --------------------------------------------------------
+# -- 4. GDS (SNPRelate + gdsfmt) ---------------------------------------------
+# Uses SNPRelate instead of SeqArray: both packages produce compatible GDS
+# files and SNPRelate installs more reliably on Linux servers.
+# SNPRelate GDS node names differ from SeqArray (see mapping in comments).
 .read_gds <- function(path, verbose) {
   if (isTRUE(verbose)) cat("[read_geno] Opening GDS:", path, "\n")
-  .require_pkg("SeqArray", "GDS reader",
-               install = "BiocManager::install('SeqArray')")
+  .require_pkg("SNPRelate", "GDS reader",
+               install = "BiocManager::install('SNPRelate')")
+  .require_pkg("gdsfmt",   "GDS reader",
+               install = "BiocManager::install('gdsfmt')")
 
-  gds <- SeqArray::seqOpen(path, readonly = TRUE)
+  gds <- SNPRelate::snpgdsOpen(path, readonly = TRUE, allow.fork = TRUE)
 
-  sample_ids <- SeqArray::seqGetData(gds, "sample.id")
-  var_ids    <- SeqArray::seqGetData(gds, "variant.id")
-  chrom      <- SeqArray::seqGetData(gds, "chromosome")
-  pos        <- SeqArray::seqGetData(gds, "position")
+  .gdsn <- function(node) gdsfmt::read.gdsn(gdsfmt::index.gdsn(gds, node))
 
-  # rsID if present, else CHR:POS
-  rsid <- tryCatch(SeqArray::seqGetData(gds, "annotation/id"),
+  sample_ids <- .gdsn("sample.id")            # same in both APIs
+  var_ids    <- .gdsn("snp.id")               # SeqArray: "variant.id"
+  chrom      <- as.character(.gdsn("snp.chromosome"))  # SeqArray: "chromosome"
+  pos        <- as.integer(.gdsn("snp.position"))      # SeqArray: "position"
+
+  # rsID: stored in snp.rs.id (SeqArray: "annotation/id")
+  rsid <- tryCatch(.gdsn("snp.rs.id"),
                    error = function(e) paste0(chrom, ":", pos))
-  rsid[is.na(rsid) | rsid == "." | rsid == ""] <- paste0(chrom, ":", pos)[
-    is.na(rsid) | rsid == "." | rsid == ""]
+  empty <- is.na(rsid) | rsid == "" | rsid == "."
+  rsid[empty] <- paste0(chrom, ":", pos)[empty]
 
-  # REF / ALT
-  ref <- tryCatch(SeqArray::seqGetData(gds, "$ref"),
-                  error = function(e) rep(NA_character_, length(var_ids)))
-  alt <- tryCatch({
-    a <- SeqArray::seqGetData(gds, "$alt")
-    # alt may be a list for multi-allelic; take first
-    if (is.list(a)) vapply(a, function(x) x[1L], character(1L)) else a
-  }, error = function(e) rep(NA_character_, length(var_ids)))
+  # REF / ALT: SNPRelate stores combined "REF/ALT" in snp.allele
+  allele_raw <- tryCatch(.gdsn("snp.allele"),
+                         error = function(e) rep(NA_character_, length(var_ids)))
+  allele_split <- strsplit(allele_raw, "/", fixed = TRUE)
+  ref <- vapply(allele_split, function(x) if (length(x) >= 1L) x[1L] else NA_character_, character(1L))
+  alt <- vapply(allele_split, function(x) if (length(x) >= 2L) x[2L] else NA_character_, character(1L))
 
-  snp_info <- data.frame(SNP = rsid, CHR = chrom, POS = pos,
+  snp_info <- data.frame(SNP = rsid, CHR = .norm_chr(chrom), POS = pos,
                          REF = ref, ALT = alt, stringsAsFactors = FALSE)
 
   list(
@@ -490,7 +512,7 @@ read_geno <- function(
     sample_ids = as.character(sample_ids),
     snp_info   = snp_info,
     .gds       = gds,
-    .var_ids   = var_ids
+    .var_ids   = var_ids       # integer SNPRelate snp.id vector
   )
 }
 
@@ -605,29 +627,27 @@ read_chunk <- function(backend, col_idx) {
          matrix  = backend$.mat[, col_idx, drop = FALSE],
 
          gds = {
-           .require_pkg("SeqArray", "GDS chunk reader")
-           var_ids <- backend$.var_ids[col_idx]
-           if (!is.null(backend$.sample_filter)) {
-             SeqArray::seqSetFilter(backend$.gds,
-                                    sample.id  = backend$.sample_filter,
-                                    variant.id = var_ids, verbose = FALSE)
-           } else {
-             SeqArray::seqSetFilter(backend$.gds,
-                                    variant.id = var_ids, verbose = FALSE)
-           }
-           # "$dosage" convention varies across SeqArray versions (REF vs ALT count).
-           # Compute ALT dosage directly from raw genotype [ploidy x n_samp x n_var]:
-           #   allele encoding  0 = REF,  1 = ALT,  -1 = missing
-           # apply over dims (2,3) = sample x variant, counting 1s = ALT alleles.
-           gt  <- SeqArray::seqGetData(backend$.gds, "genotype")
-           dos <- apply(gt, c(2L, 3L), function(a) {
-             # SeqArray encodes missing as NA_integer_ (not -1).
-             # anyNA() correctly handles both; sum(a==1L) counts ALT alleles.
-             if (anyNA(a)) NA_real_ else sum(a == 1L)
-           })
+           # SNPRelate::snpgdsGetGeno() reads genotypes directly by integer snp.id.
+           # It returns a matrix of 0/1/2 (ALT allele count) with NA for missing.
+           # No filter/reset cycle needed -- simpler and faster than the SeqArray path.
+           .require_pkg("SNPRelate", "GDS chunk reader")
+           snp_int_ids <- backend$.var_ids[col_idx]
+           samp_ids    <- backend$.sample_filter %||% backend$sample_ids
+
+           dos <- SNPRelate::snpgdsGetGeno(
+             backend$.gds,
+             snp.id      = snp_int_ids,
+             sample.id   = samp_ids,
+             snpfirstdim = FALSE,    # returns samples x SNPs
+             with.id     = FALSE
+           )
+           # snpgdsGetGeno() returns REF allele count by default (2=hom-REF, 0=hom-ALT).
+           # LDxBlocks uses ALT dosage convention (0=hom-REF, 2=hom-ALT).
+           # Invert: ALT_count = 2 - REF_count; NA stays NA.
+           dos <- 2L - dos
            storage.mode(dos) <- "numeric"
-           SeqArray::seqResetFilter(backend$.gds, verbose = FALSE)
-           if (!is.matrix(dos)) dos <- matrix(dos, nrow = backend$n_samples)
+           if (!is.matrix(dos))
+             dos <- matrix(dos, nrow = length(samp_ids))
            rownames(dos) <- backend$sample_ids
            colnames(dos) <- backend$snp_info$SNP[col_idx]
            dos
@@ -652,7 +672,7 @@ read_chunk <- function(backend, col_idx) {
 #' Closes any open file connections held by the backend. For in-memory
 #' backends (\code{"matrix"}, \code{"numeric"}, \code{"hapmap"}, \code{"vcf"})
 #' this is a no-op. For \code{"gds"} backends it calls
-#' \code{SeqArray::seqClose()}. For \code{"bed"} backends the memory-mapped
+#' \code{SNPRelate::snpgdsClose()}. For \code{"bed"} backends the memory-mapped
 #' file is released.
 #'
 #' @param backend An \code{"LDxBlocks_backend"} object.
@@ -663,7 +683,7 @@ read_chunk <- function(backend, col_idx) {
 close_backend <- function(backend) {
   if (!inherits(backend, "LDxBlocks_backend")) return(invisible(NULL))
   if (backend$type == "gds" && !is.null(backend$.gds)) {
-    try(SeqArray::seqClose(backend$.gds), silent = TRUE)
+    try(SNPRelate::snpgdsClose(backend$.gds), silent = TRUE)
   }
   invisible(NULL)
 }
@@ -703,7 +723,7 @@ summary.LDxBlocks_backend <- function(object, ...) {
 # -- Internal: HapMap -> GDS converter -----------------------------------------
 # SeqArray has no native HapMap reader. This function streams through a
 # HapMap file row-by-row via data.table, decodes two-character nucleotide
-# calls (AA, AT, TT, NN) to 0/1/2/NA dosage, and writes a SeqArray GDS
+# calls (AA, AT, TT, NN) to 0/1/2/NA dosage, and writes a SNPRelate-compatible GDS
 # using gdsfmt's low-level node API.
 #
 # Format assumption (standard HapMap):
@@ -716,11 +736,9 @@ summary.LDxBlocks_backend <- function(object, ...) {
 .hapmap_to_gds <- function(hmp_path, gds_path, na_strings, verbose) {
   # Strategy: read HapMap in full with data.table, convert nucleotide calls to
   # 0/1/2, write a minimal VCF to a temp file, then use seqVCF2GDS() which
-  # IS a real SeqArray export. This avoids SeqArray::seqNewGDS() which does
-  # not exist in the package.
+  # snpgdsVCF2GDS is the SNPRelate equivalent.
   .require_pkg("data.table", "HapMap-to-GDS converter")
-  .require_pkg("SeqArray",   "HapMap-to-GDS converter")
-  .require_pkg("gdsfmt",     "HapMap-to-GDS converter")
+  .require_pkg("SNPRelate",  "HapMap-to-GDS converter")
 
   if (isTRUE(verbose)) message("[.hapmap_to_gds] Reading HapMap: ", basename(hmp_path))
   dt <- data.table::fread(hmp_path, na.strings = na_strings,
@@ -787,11 +805,12 @@ summary.LDxBlocks_backend <- function(object, ...) {
   writeLines(c(header, data_rows), vcf_tmp)
 
   if (isTRUE(verbose)) message("[.hapmap_to_gds] Converting VCF -> GDS: ", basename(gds_path))
-  SeqArray::seqVCF2GDS(
-    vcf.fn         = vcf_tmp,
-    out.fn         = gds_path,
-    storage.option = "ZIP_RA",
-    verbose        = isTRUE(verbose)
+  SNPRelate::snpgdsVCF2GDS(
+    vcf.fn      = vcf_tmp,
+    out.fn      = gds_path,
+    method      = "biallelic.only",
+    snpfirstdim = FALSE,
+    verbose     = isTRUE(verbose)
   )
   if (isTRUE(verbose)) message("[.hapmap_to_gds] Done.")
   invisible(gds_path)

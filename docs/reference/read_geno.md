@@ -54,7 +54,7 @@ read_geno(
 - gds_cache:
 
   Character or `NULL`. Path where a GDS cache file should be written
-  when `format = "vcf"` and SeqArray is available. If `NULL` (default),
+  when `format = "vcf"` and SNPRelate is available. If `NULL` (default),
   the GDS file is placed next to the VCF with a `.gds` extension. Set to
   `FALSE` to disable auto-conversion and read the VCF fully into memory
   instead. When the cache file already exists it is reused without
@@ -97,7 +97,7 @@ to release file handles.
 
 - `"gds"`:
 
-  SeqArray GDS file. Requires `BiocManager::install("SeqArray")`.
+  SNPRelate GDS file. Requires `BiocManager::install("SNPRelate")`.
   Extension: `.gds`.
 
 - `"bed"`:
