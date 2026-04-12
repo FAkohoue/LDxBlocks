@@ -387,11 +387,16 @@ feat_pa <- build_haplotype_feature_matrix(
 dim(feat_pa)
 ```
 
-Write the feature matrix in numeric or HapMap format:
+Write the feature matrix:
 
 ```{r feat-write, eval=FALSE}
-write_haplotype_numeric(feat_add, "hap_matrix_numeric.csv")
-write_haplotype_hapmap(feat_add, "hap_matrix.hmp.txt")
+# Numeric: rows=haplotypes, cols=individuals, values=0/1/2/NA dosage
+write_haplotype_numeric(feat_add, "hap_matrix_numeric.csv",
+                         haplotypes = haps, snp_info = ldx_snp_info)
+
+# Character: nucleotide sequence per individual per haplotype allele
+write_haplotype_character(haplotypes = haps, snp_info = ldx_snp_info,
+                           out_file = "hap_matrix_character.txt")
 ```
 
 ### Building a haplotype GRM for GBLUP
@@ -447,11 +452,22 @@ haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5)
 div  <- compute_haplotype_diversity(haps)
 write_haplotype_diversity(div, "diversity.csv")
 
-feat <- build_haplotype_feature_matrix(haps, top_n = 5,
+feat <- build_haplotype_feature_matrix(haps,
                                         encoding = "additive_012",
                                         scale_features = TRUE)
-write_haplotype_numeric(feat, "hap_matrix.csv")
-write_haplotype_hapmap(feat, "hap_matrix.hmp.txt")
+
+# Numeric dosage matrix: rows=haplotypes, cols=individuals, values=0/1/2/NA
+write_haplotype_numeric(feat, "hap_matrix_numeric.csv",
+                         haplotypes = haps, snp_info = be$snp_info)
+
+# Nucleotide character matrix: shows actual allele sequence per individual
+write_haplotype_character(haplotypes = haps, snp_info = be$snp_info,
+                           out_file = "hap_matrix_character.txt")
+
+# Decode haplotype strings to nucleotide sequences (for biological interpretation)
+decoded <- decode_haplotype_strings(haps, snp_info = be$snp_info)
+head(decoded[, c("block_id","hap_rank","dosage_string",
+                  "nucleotide_sequence","frequency")])
 
 close_backend(be)
 ```
@@ -460,10 +476,17 @@ close_backend(be)
 
 ## References
 
-- Kim S-A et al. (2018) *Bioinformatics* **34**(4):588–596.
-- VanRaden PM (2008) *J. Dairy Sci.* **91**(11):4414–4423.
-- Calus MPL et al. (2008) *Genetics* **178**(1):553–561.
-- de Roos APW et al. (2009) *Genetics* **183**(4):1545–1553.
-- Nei M (1973) *PNAS* **70**(12):3321–3323.
-- Tong J et al. (2024) *Theor Appl Genet* **137**:274.
+- Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block detection method for dense genome sequencing data based on interval graph modeling and dynamic programming. *Bioinformatics* **34**(4):588-596.
+  <https://doi.org/10.1093/bioinformatics/btx609>
+- Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles C (2012). Novel measures of linkage disequilibrium that correct the bias due to population structure and relatedness. *Heredity* **108**(3):285-291.
+  <https://doi.org/10.1038/hdy.2011.73>
+- VanRaden PM (2008). Efficient methods to compute genomic predictions. *Journal of Dairy Science* **91**(11):4414-4423.
+  <https://doi.org/10.3168/jds.2007-0980>
+- Calus MPL, Meuwissen THE, de Roos APW, Veerkamp RF (2008). Accuracy of genomic selection using different methods to define haplotypes. *Genetics* **178**(1):553-561.
+  <https://doi.org/10.1534/genetics.107.080838>
+- de Roos APW, Hayes BJ, Goddard ME (2009). Reliability of genomic predictions across multiple populations. *Genetics* **183**(4):1545-1553.
+  <https://doi.org/10.1534/genetics.109.104935>
+- Nei M (1973). Analysis of gene diversity in subdivided populations. *Proceedings of the National Academy of Sciences* **70**(12):3321-3323.
+  <https://doi.org/10.1073/pnas.70.12.3321>
+- Tong J, Gorjanc G, Li Z, et al. (2024). Haplotype-based prediction of genomic breeding values in plant and animal populations. *Theoretical and Applied Genetics* **137**:274.
   <https://doi.org/10.1007/s00122-024-04784-w>

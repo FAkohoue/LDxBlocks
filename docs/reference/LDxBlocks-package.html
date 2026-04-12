@@ -82,14 +82,19 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.</
     <h2 id="pipeline-overview">Pipeline overview<a class="anchor" aria-label="anchor" href="#pipeline-overview"></a></h2>
 
 
-<ol><li><p>Read genotype data: <code><a href="read_geno.html">read_geno</a></code> - auto-detects CSV,
+<ol><li><p>Read genotype data: <code><a href="read_geno.html">read_geno</a></code> – auto-detects CSV,
     HapMap, VCF, GDS, BED, or plain matrix.</p></li>
 <li><p>Detect LD blocks chromosome-wise: <code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></code>.</p></li>
 <li><p>Optionally auto-tune parameters: <code><a href="tune_LD_params.html">tune_LD_params</a></code>.</p></li>
 <li><p>Reconstruct haplotypes: <code><a href="extract_haplotypes.html">extract_haplotypes</a></code>.</p></li>
+<li><p>Decode haplotype strings to nucleotides:
+    <code><a href="decode_haplotype_strings.html">decode_haplotype_strings</a></code>.</p></li>
 <li><p>Compute diversity metrics: <code><a href="compute_haplotype_diversity.html">compute_haplotype_diversity</a></code>.</p></li>
 <li><p>Build prediction feature matrix:
     <code><a href="build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></code>.</p></li>
+<li><p>Write outputs: <code><a href="write_haplotype_numeric.html">write_haplotype_numeric</a></code>,
+    <code><a href="write_haplotype_character.html">write_haplotype_character</a></code>.</p></li>
+<li><p>Or run everything at once: <code><a href="run_ldx_pipeline.html">run_ldx_pipeline</a></code>.</p></li>
 </ol></div>
     <div class="section level2">
     <h2 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a></h2>

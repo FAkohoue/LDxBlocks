@@ -18,14 +18,19 @@
 #'
 #' @section Pipeline overview:
 #' \enumerate{
-#'   \item Read genotype data: \code{\link{read_geno}} - auto-detects CSV,
+#'   \item Read genotype data: \code{\link{read_geno}} -- auto-detects CSV,
 #'     HapMap, VCF, GDS, BED, or plain matrix.
 #'   \item Detect LD blocks chromosome-wise: \code{\link{run_Big_LD_all_chr}}.
 #'   \item Optionally auto-tune parameters: \code{\link{tune_LD_params}}.
 #'   \item Reconstruct haplotypes: \code{\link{extract_haplotypes}}.
+#'   \item Decode haplotype strings to nucleotides:
+#'     \code{\link{decode_haplotype_strings}}.
 #'   \item Compute diversity metrics: \code{\link{compute_haplotype_diversity}}.
 #'   \item Build prediction feature matrix:
 #'     \code{\link{build_haplotype_feature_matrix}}.
+#'   \item Write outputs: \code{\link{write_haplotype_numeric}},
+#'     \code{\link{write_haplotype_character}}.
+#'   \item Or run everything at once: \code{\link{run_ldx_pipeline}}.
 #' }
 #'
 #' @section Example data:
@@ -56,7 +61,6 @@
 #' @importFrom data.table fread fwrite rbindlist setnames setorder :=
 #' @importFrom stats cor median quantile na.omit setNames
 #' @importFrom igraph graph_from_adjacency_matrix coreness max_cliques cliques components
-#'   cliques components
 #' @importFrom utils globalVariables read.table
 "_PACKAGE"
 

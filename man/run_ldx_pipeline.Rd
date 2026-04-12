@@ -9,7 +9,7 @@ run_ldx_pipeline(
   out_blocks,
   out_diversity,
   out_hap_matrix,
-  hap_format = c("numeric", "hapmap"),
+  hap_format = c("numeric", "character"),
   maf_cut = 0.05,
   CLQcut = 0.5,
   method = c("r2", "rV2"),
@@ -18,7 +18,7 @@ run_ldx_pipeline(
   n_threads = 1L,
   min_snps_chr = 10L,
   min_snps_block = 3L,
-  top_n = 5L,
+  top_n = NULL,
   scale_hap_matrix = FALSE,
   chr = NULL,
   verbose = TRUE,
@@ -44,10 +44,15 @@ controlled by `hap_format`. See section **Haplotype genotype matrix**.}
 
 \item{hap_format}{Output format for the haplotype matrix:
 \itemize{
-  \item `"numeric"` (default) - CSV with rows = individuals,
-    columns = haplotype alleles coded 0/2/NA.
-  \item `"hapmap"` - HapMap format with rows = haplotype alleles,
-    columns = individuals, nucleotide encoding.
+  \item \code{"numeric"} (default) - Tab-delimited. Rows = haplotype
+    alleles, columns = individuals. Metadata columns: \code{hap_id},
+    \code{CHR}, \code{start_bp}, \code{end_bp}, \code{n_snps},
+    \code{alleles} (nucleotide sequence of this allele), \code{frequency}.
+    Individual columns contain 0/1/2/NA dosage.
+  \item \code{"character"} - Tab-delimited. Same row/column orientation.
+    Individual cells contain the nucleotide sequence of the haplotype
+    allele if the individual carries it, \code{"-"} if absent, \code{"."}
+    if missing.
 }}
 
 \item{maf_cut}{Minimum minor allele frequency. SNPs below this
@@ -94,8 +99,11 @@ A named list (invisibly) with elements:
 \describe{
   \item{`blocks`}{`data.frame` of LD blocks.}
   \item{`diversity`}{`data.frame` of per-block haplotype diversity metrics.}
-  \item{`hap_matrix`}{Numeric matrix of haplotype dosages
-    (individuals x haplotype alleles). `NULL` if written to file only.}
+  \item{hap_matrix}{Numeric matrix of haplotype dosages
+    (individuals x haplotype alleles, 0/1/2/NA). Always returned
+    regardless of \code{hap_format}. Use this for downstream modelling.}
+  \item{haplotypes}{Named list of haplotype strings from
+    \code{extract_haplotypes()}. Useful for \code{decode_haplotype_strings()}.}
   \item{`snp_info_filtered`}{`data.frame` of SNP metadata after MAF filter.}
   \item{`n_blocks`}{Integer. Total blocks detected.}
   \item{`n_hap_columns`}{Integer. Total haplotype allele columns.}
@@ -122,16 +130,18 @@ via `SNPRelate` is used automatically if the `SNPRelate` package is installed.
 
 \section{Haplotype genotype matrix}{
 
-The haplotype matrix has one row per individual and one column per
-haplotype allele (top-`top_n` haplotypes per block). Each cell contains
-the dosage of that haplotype allele encoded as:
+Both output formats have haplotype alleles as rows and individuals as
+columns, with four metadata columns before the individual columns:
+\code{hap_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+\code{n_snps}, \code{alleles} (nucleotide sequence), \code{frequency}.
 \itemize{
-  \item `0` - individual does not carry this haplotype
-  \item `2` - individual carries this haplotype (homozygous)
-  \item `NA` - missing data in block
+  \item \code{"numeric"}: individual cells are 0/1/2/NA dosage.
+    0 = does not carry this allele, 2 = carries it (unphased), 1 = one
+    gamete carries it (phased only). Compatible with rrBLUP, BGLR, ASReml-R.
+  \item \code{"character"}: individual cells are the nucleotide sequence
+    (e.g. \code{"AGTTA"}) if the individual carries this allele, \code{"-"}
+    if absent, \code{"."} if missing.
 }
-This encoding is directly compatible with genomic prediction software
-(ASReml-R, rrBLUP, BGLR, GBLUP) without further transformation.
 }
 
 \examples{
@@ -150,7 +160,7 @@ res <- run_ldx_pipeline(
   leng           = 10L,
   subSegmSize    = 80L,
   min_snps_block = 3L,
-  top_n          = 3L,
+  # top_n          = 5L,       # optional integer cap; NULL = all above min_freq
   verbose        = FALSE
 )
 

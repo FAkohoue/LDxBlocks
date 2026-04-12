@@ -1,7 +1,7 @@
 # LDxBlocks — Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic Prediction Features
 
 <p align="center">
-  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="190px">
+  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="300px">
 </p>
 
 <!-- badges: start -->
@@ -227,7 +227,7 @@ downstream module:
 | Diversity metrics | No | `compute_haplotype_diversity()` — He, Shannon, richness, f_max |
 | Post-GWAS QTL mapping | No | `define_qtl_regions()` — pleiotropic block detection |
 | Genomic prediction features | No | `build_haplotype_feature_matrix()` — additive 0/1/2 or presence/absence |
-| Output writers | No | Numeric CSV, HapMap, diversity CSV — compatible with TASSEL, GAPIT, rrBLUP |
+| Output writers | No | Numeric dosage matrix, nucleotide character matrix, diversity CSV |
 | Parameter auto-tuning | No | `tune_LD_params()` — grid search against GWAS marker coverage |
 | Multi-format I/O | PLINK, VCF (gpart) | Numeric CSV, HapMap, VCF, GDS, BED, R matrix via unified backend |
 | WGS-scale streaming | Partial (gpart GDS) | Full never-full-genome model for all formats |
@@ -720,7 +720,7 @@ The resulting matrix has dimension n_individuals × (n_blocks × top_n):
 
 ```r
 # Build a haplotype-GRM for use in GBLUP
-feat  <- build_haplotype_feature_matrix(haps, top_n = 5, scale_features = TRUE)
+feat  <- build_haplotype_feature_matrix(haps, scale_features = TRUE)
 G_hap <- tcrossprod(feat) / ncol(feat)   # haplotype GRM
 # ... feed G_hap to rrBLUP::kinship.BLUP or ASReml-R
 ```
@@ -929,7 +929,7 @@ blocks <- run_Big_LD_all_chr(
 
 | Function | Description |
 |----------|-------------|
-| `compute_ld()` | Unified dispatcher: routes to `compute_r2_cpp()` or `compute_rV2_cpp()` based on `method =`. |
+| `compute_ld()` | Internal dispatcher (not exported). Use `compute_r2()` or `compute_rV2()` directly. |
 | `compute_r2()` | Standard r² matrix via C++ Armadillo + optional OpenMP. |
 | `compute_rV2()` | rV² on a pre-whitened matrix (same C++ kernel as `compute_r2()`). |
 | `prepare_geno()` | Centre (r²) or centre + whiten (rV²). Returns list of `adj_geno` and `V_inv_sqrt`. |
@@ -1066,8 +1066,8 @@ successive `data.table::fread()` calls. Peak RAM = one chunk (not 2× the file).
 `gc(FALSE)` is called after each chunk.
 
 **VCF and HapMap** — Auto-converted to a SNPRelate GDS cache on first call
-(placed next to the source file). Subsequent calls reuse the cache. All access
-is streaming via `read_chunk()`.
+(placed next to the source file; `.gds` extension). Subsequent calls reuse the
+cache automatically. All access is streaming via `read_chunk()`.
 
 **GDS and PLINK BED** — `read_chunk(backend, col_idx)` is called once per
 sub-segment per chromosome. With `subSegmSize = 1500` and 50,000 SNPs per

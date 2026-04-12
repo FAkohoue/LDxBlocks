@@ -7,71 +7,13 @@
 #   2. MAF filtering
 #   3. Genome-wide LD block detection via run_Big_LD_all_chr()
 #   4. Haplotype extraction and diversity analysis
-#   5. Build haplotype genotype matrix (numeric or HapMap)
+#   5. Build haplotype genotype matrix (numeric or character/nucleotide)
 #   6. Write all outputs to user-specified paths
 #
 # The user provides only a file path. Format detection and GDS conversion
 # are handled internally, mirroring the OptSLDP scale-aware architecture.
 # ==============================================================================
 
-
-# -- Internal: write haplotype matrix in HapMap format -------------------------
-
-#' Write a haplotype dosage matrix in HapMap nucleotide format
-#'
-#' Each haplotype column in `hap_mat` carries values 0 (absent), 2 (present),
-#' or NA. We encode 0 -> REF/REF, 2 -> ALT/ALT, NA -> NN. REF and ALT are
-#' synthetic nucleotide labels (H for haplotype reference, A for alternate).
-#'
-#' @param hap_mat  Numeric matrix (individuals x haplotype columns).
-#' @param out_file Path to write the HapMap file.
-#' @keywords internal
-#' @noRd
-.write_haplotype_hapmap <- function(hap_mat, out_file) {
-  n_hap  <- ncol(hap_mat)
-  hap_nm <- colnames(hap_mat)
-
-  # Parse block_id and haplotype rank from column names like "block_1_hap1"
-  block_ids <- sub("_hap[0-9]+$", "", hap_nm)
-  hap_ranks <- as.integer(sub(".*_hap", "", hap_nm))
-
-  # REF = "H" (haplotype reference), ALT = "A" (alternate allele token)
-  REF <- "H"; ALT <- "A"
-
-  # Encode dosage -> nucleotide
-  encode <- function(vals) {
-    out <- character(length(vals))
-    out[!is.na(vals) & vals == 0]  <- paste0(REF, REF)
-    out[!is.na(vals) & vals == 2]  <- paste0(ALT, ALT)
-    out[is.na(vals)]               <- "NN"
-    out
-  }
-
-  hdr <- data.frame(
-    "rs#"       = hap_nm,
-    alleles     = paste0(REF, "/", ALT),
-    chrom       = block_ids,
-    pos         = hap_ranks,
-    strand      = "+",
-    "assembly#" = "NA", center    = "NA",
-    protLSID    = "NA", assayLSID = "NA",
-    panelLSID   = "NA", QCcode    = "NA",
-    check.names = FALSE, stringsAsFactors = FALSE
-  )
-
-  # Build nucleotide call matrix (haplotypes x individuals)
-  call_mat <- apply(hap_mat, 2, encode)   # returns individuals x haplotypes
-  # apply over columns -> result is nrow x ncol of hap_mat
-  # We need haplotypes as rows, individuals as columns
-  call_mat <- t(call_mat)
-  rownames(call_mat) <- hap_nm
-  colnames(call_mat) <- rownames(hap_mat)
-
-  out <- cbind(hdr, as.data.frame(call_mat, stringsAsFactors = FALSE))
-  data.table::fwrite(out, file = out_file, sep = "\t",
-                     quote = FALSE, na = "NN")
-  invisible(out_file)
-}
 
 
 # -- Internal: MAF filter for backend ------------------------------------------
@@ -133,16 +75,18 @@
 #' via `SNPRelate` is used automatically if the `SNPRelate` package is installed.
 #'
 #' @section Haplotype genotype matrix:
-#' The haplotype matrix has one row per individual and one column per
-#' haplotype allele (top-`top_n` haplotypes per block). Each cell contains
-#' the dosage of that haplotype allele encoded as:
+#' Both output formats have haplotype alleles as rows and individuals as
+#' columns, with four metadata columns before the individual columns:
+#' \code{hap_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+#' \code{n_snps}, \code{alleles} (nucleotide sequence), \code{frequency}.
 #' \itemize{
-#'   \item `0` - individual does not carry this haplotype
-#'   \item `2` - individual carries this haplotype (homozygous)
-#'   \item `NA` - missing data in block
+#'   \item \code{"numeric"}: individual cells are 0/1/2/NA dosage.
+#'     0 = does not carry this allele, 2 = carries it (unphased), 1 = one
+#'     gamete carries it (phased only). Compatible with rrBLUP, BGLR, ASReml-R.
+#'   \item \code{"character"}: individual cells are the nucleotide sequence
+#'     (e.g. \code{"AGTTA"}) if the individual carries this allele, \code{"-"}
+#'     if absent, \code{"."} if missing.
 #' }
-#' This encoding is directly compatible with genomic prediction software
-#' (ASReml-R, rrBLUP, BGLR, GBLUP) without further transformation.
 #'
 #' @param clean_malformed   Logical. Stream-clean the input file before reading
 #'   by removing any lines whose column count does not match the header. Needed
@@ -161,10 +105,15 @@
 #'   controlled by `hap_format`. See section **Haplotype genotype matrix**.
 #' @param hap_format        Output format for the haplotype matrix:
 #'   \itemize{
-#'     \item `"numeric"` (default) - CSV with rows = individuals,
-#'       columns = haplotype alleles coded 0/2/NA.
-#'     \item `"hapmap"` - HapMap format with rows = haplotype alleles,
-#'       columns = individuals, nucleotide encoding.
+#'     \item \code{"numeric"} (default) - Tab-delimited. Rows = haplotype
+#'       alleles, columns = individuals. Metadata columns: \code{hap_id},
+#'       \code{CHR}, \code{start_bp}, \code{end_bp}, \code{n_snps},
+#'       \code{alleles} (nucleotide sequence of this allele), \code{frequency}.
+#'       Individual columns contain 0/1/2/NA dosage.
+#'     \item \code{"character"} - Tab-delimited. Same row/column orientation.
+#'       Individual cells contain the nucleotide sequence of the haplotype
+#'       allele if the individual carries it, \code{"-"} if absent, \code{"."}
+#'       if missing.
 #'   }
 #' @param maf_cut           Minimum minor allele frequency. SNPs below this
 #'   threshold are removed before block detection. Default `0.05`.
@@ -194,8 +143,11 @@
 #' \describe{
 #'   \item{`blocks`}{`data.frame` of LD blocks.}
 #'   \item{`diversity`}{`data.frame` of per-block haplotype diversity metrics.}
-#'   \item{`hap_matrix`}{Numeric matrix of haplotype dosages
-#'     (individuals x haplotype alleles). `NULL` if written to file only.}
+#'   \item{hap_matrix}{Numeric matrix of haplotype dosages
+#'     (individuals x haplotype alleles, 0/1/2/NA). Always returned
+#'     regardless of \code{hap_format}. Use this for downstream modelling.}
+#'   \item{haplotypes}{Named list of haplotype strings from
+#'     \code{extract_haplotypes()}. Useful for \code{decode_haplotype_strings()}.}
 #'   \item{`snp_info_filtered`}{`data.frame` of SNP metadata after MAF filter.}
 #'   \item{`n_blocks`}{Integer. Total blocks detected.}
 #'   \item{`n_hap_columns`}{Integer. Total haplotype allele columns.}
@@ -217,7 +169,8 @@
 #'   leng           = 10L,
 #'   subSegmSize    = 80L,
 #'   min_snps_block = 3L,
-#'   top_n          = 3L,
+#'   # top_n          = 5L,       # optional integer cap; NULL = all above min_freq
+# hap_format     = "character",  # or "numeric" (default)
 #'   verbose        = FALSE
 #' )
 #'
@@ -235,7 +188,7 @@ run_ldx_pipeline <- function(
     out_blocks,
     out_diversity,
     out_hap_matrix,
-    hap_format       = c("numeric", "hapmap"),
+    hap_format       = c("numeric", "character"),
     maf_cut          = 0.05,
     CLQcut           = 0.5,
     method           = c("r2", "rV2"),
@@ -244,7 +197,7 @@ run_ldx_pipeline <- function(
     n_threads        = 1L,
     min_snps_chr     = 10L,
     min_snps_block   = 3L,
-    top_n            = 5L,
+    top_n            = NULL,
     scale_hap_matrix = FALSE,
     chr              = NULL,
     verbose          = TRUE,
@@ -366,21 +319,29 @@ run_ldx_pipeline <- function(
            n_hap_cols, " haplotype allele columns")
 
   # -- Step 9: Write haplotype genotype matrix --------------------------------
+  # Both formats: rows = haplotype alleles, cols = individuals.
+  # Metadata columns: hap_id, CHR, start_bp, end_bp, n_snps, alleles, frequency.
   .ldx_log("Writing haplotype matrix (format = ", hap_format, ") ...")
 
   if (identical(hap_format, "numeric")) {
-    # Numeric CSV: rows = individuals, columns = haplotype alleles
-    out_df <- data.frame(
-      Sample = rownames(hap_matrix),
-      as.data.frame(hap_matrix, check.names = FALSE),
-      check.names = FALSE,
-      stringsAsFactors = FALSE
+    # Numeric: individual cells = 0/1/2/NA dosage
+    # write_haplotype_numeric() handles transposition and metadata internally
+    write_haplotype_numeric(
+      hap_matrix = hap_matrix,
+      out_file   = out_hap_matrix,
+      haplotypes = haplotypes,
+      snp_info   = be$snp_info,
+      sep        = "\t",
+      verbose    = verbose
     )
-    data.table::fwrite(out_df, file = out_hap_matrix, sep = ",",
-                       quote = FALSE, na = "NA")
   } else {
-    # HapMap: rows = haplotype alleles, columns = individuals
-    .write_haplotype_hapmap(hap_matrix, out_hap_matrix)
+    # Character: individual cells = nucleotide sequence or "-" or "."
+    write_haplotype_character(
+      haplotypes = haplotypes,
+      snp_info   = be$snp_info,
+      out_file   = out_hap_matrix,
+      verbose    = verbose
+    )
   }
 
   .ldx_log("Haplotype matrix written: ", out_hap_matrix)
@@ -392,12 +353,16 @@ run_ldx_pipeline <- function(
   .ldx_log("  Haplotype columns:   ", n_hap_cols)
   .ldx_log("  Individuals:         ", nrow(hap_matrix))
 
+  # res$hap_matrix: always return the numeric dosage matrix (individuals x
+  # haplotype alleles) regardless of hap_format, so downstream R code can
+  # use it directly for modelling. The file on disk matches hap_format.
   invisible(list(
-    blocks           = blocks,
-    diversity        = diversity,
-    hap_matrix       = hap_matrix,
+    blocks            = blocks,
+    diversity         = diversity,
+    hap_matrix        = hap_matrix,          # raw numeric, always
+    haplotypes        = haplotypes,           # list of dosage strings
     snp_info_filtered = be$snp_info,
-    n_blocks         = nrow(blocks),
-    n_hap_columns    = n_hap_cols
+    n_blocks          = nrow(blocks),
+    n_hap_columns     = n_hap_cols
   ))
 }

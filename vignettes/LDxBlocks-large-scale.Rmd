@@ -117,11 +117,12 @@ random-access compressed storage, making repeated window reads fast:
 
 ```{r vcf-to-gds, eval=FALSE}
 library(SNPRelate)
-seqVCF2GDS(
-  vcf.fn         = "mydata.vcf.gz",
-  out.fn         = "mydata.gds",
-  storage.option = "ZIP_RA",   # random-access LZ4 compression
-  parallel       = 4L
+# Convert VCF to GDS once; all subsequent analyses stream from the GDS file
+SNPRelate::snpgdsVCF2GDS(
+  vcf.fn      = "mydata.vcf.gz",
+  out.fn      = "mydata.gds",
+  method      = "biallelic.only",
+  snpfirstdim = FALSE
 )
 ```
 
@@ -281,11 +282,13 @@ haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5)
 div  <- compute_haplotype_diversity(haps)
 
 # Feature matrix and output (haps is a list of strings, always small in RAM)
-feat <- build_haplotype_feature_matrix(haps, top_n = 5,
+feat <- build_haplotype_feature_matrix(haps,
                                         encoding = "additive_012",
                                         scale_features = TRUE)
-write_haplotype_numeric(feat, "haplotype_matrix.csv")
-write_haplotype_hapmap(feat,  "haplotype_matrix.hmp.txt")
+write_haplotype_numeric(feat, "haplotype_matrix_dosage.csv",
+                         haplotypes = haps, snp_info = be$snp_info)
+write_haplotype_character(haplotypes = haps, snp_info = be$snp_info,
+                           out_file = "haplotype_matrix_nucleotide.txt")
 write_haplotype_diversity(div, "haplotype_diversity.csv")
 
 close_backend(be)
@@ -328,7 +331,7 @@ more GDS reads but use far less RAM per step.
 
 ## References
 
-- Lawrence M et al. (2013) *PLOS Comput. Biol.* **9**(8):e1003118.
+- Lawrence M, Huber W, Pages H, et al. (2013). Software for computing and annotating genomic ranges. *PLOS Computational Biology* **9**(8):e1003118.
   <https://doi.org/10.1371/journal.pcbi.1003118>
-- VanRaden PM (2008) *J. Dairy Sci.* **91**(11):4414–4423.
+- VanRaden PM (2008). Efficient methods to compute genomic predictions. *Journal of Dairy Science* **91**(11):4414-4423.
   <https://doi.org/10.3168/jds.2007-0980>

@@ -2,8 +2,7 @@
 
 Computes per-chromosome and genome-wide summary statistics for a block
 table returned by
-[`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
-or [`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md).
+[`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md).
 
 ## Usage
 

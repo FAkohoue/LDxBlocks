@@ -5,11 +5,11 @@
 \alias{ldx_snp_info}
 \title{Example SNP Information Table}
 \format{
-A \code{data.frame} with 200 rows and 5 columns:
+A \code{data.frame} with 230 rows and 5 columns:
 \describe{
   \item{\code{SNP}}{Character. SNP identifier (e.g. \code{"rs1001"}).}
   \item{\code{CHR}}{Character. Chromosome label (\code{"1"}, \code{"2"},
-    or \code{"3"}). No \code{chr} prefix — consistent with the normalisation
+    or \code{"3"}). No \code{chr} prefix - consistent with the normalisation
     applied by \code{\link{read_geno}}.}
   \item{\code{POS}}{Integer. Base-pair position on the chromosome. Positions
     increase monotonically within each chromosome; inter-block gaps of
@@ -30,7 +30,7 @@ Genomic metadata for the 200 SNPs in \code{\link{ldx_geno}}.
 \examples{
 data(ldx_snp_info)
 head(ldx_snp_info)
-table(ldx_snp_info$CHR)   # 70 70 60
+table(ldx_snp_info$CHR)   # 80 80 70
 }
 \seealso{
 \code{\link{ldx_geno}}, \code{\link{ldx_blocks}}

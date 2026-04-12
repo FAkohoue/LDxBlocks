@@ -2,31 +2,51 @@
 % Please edit documentation in R/haplotypes.R
 \name{write_haplotype_numeric}
 \alias{write_haplotype_numeric}
-\title{Write Haplotype Matrix as Numeric CSV}
+\title{Write Haplotype Feature Matrix as Numeric Dosage Table}
 \usage{
 write_haplotype_numeric(
   hap_matrix,
   out_file,
-  sep = ",",
+  haplotypes = NULL,
+  snp_info = NULL,
+  sep = "\\t",
   na_str = "NA",
+  min_freq = 0.01,
+  missing_string = ".",
   verbose = TRUE
 )
 }
 \arguments{
-\item{hap_matrix}{Numeric matrix (individuals x haplotype alleles).}
+\item{hap_matrix}{Numeric matrix (individuals x haplotype alleles) from
+\code{\link{build_haplotype_feature_matrix}}.}
 
-\item{out_file}{Output CSV path.}
+\item{out_file}{Output file path.}
 
-\item{sep}{Separator. Default ",".}
+\item{haplotypes}{List from \code{\link{extract_haplotypes}}. When supplied
+together with \code{snp_info}, the \code{alleles} and \code{frequency}
+metadata columns are populated.}
 
-\item{na_str}{NA string. Default "NA".}
+\item{snp_info}{Data frame with \code{CHR}, \code{POS}, \code{REF},
+\code{ALT}. Required for \code{alleles} column.}
 
-\item{verbose}{Logical. Default TRUE.}
+\item{sep}{Field separator. Default \code{","}.}
+
+\item{na_str}{NA string. Default \code{"NA"}.}
+
+\item{min_freq}{Minimum frequency used when computing \code{alleles}.
+Default \code{0.01}.}
+
+\item{missing_string}{Missing genotype marker. Default \code{"."}.}
+
+\item{verbose}{Logical. Default \code{TRUE}.}
 }
 \value{
-Invisibly returns out_file.
+Invisibly returns \code{out_file}.
 }
 \description{
-Rows=individuals, columns=haplotype alleles (0/1/2 or 0/2).
-  Compatible with rrBLUP, BGLR, ASReml-R.
+Writes the haplotype dosage matrix in a tab-delimited format with
+haplotype alleles as rows and individuals as columns. Metadata columns
+(\code{hap_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+\code{n_snps}, \code{alleles}, \code{frequency}) precede the individual
+columns. Individual cells contain 0/1/2/NA dosage values.
 }

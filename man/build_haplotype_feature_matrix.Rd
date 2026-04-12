@@ -6,7 +6,7 @@
 \usage{
 build_haplotype_feature_matrix(
   haplotypes,
-  top_n = 5L,
+  top_n = NULL,
   encoding = c("additive_012", "presence_02"),
   missing_string = ".",
   scale_features = FALSE,
@@ -16,7 +16,12 @@ build_haplotype_feature_matrix(
 \arguments{
 \item{haplotypes}{List from extract_haplotypes().}
 
-\item{top_n}{Top haplotype alleles per block. Default 5L.}
+\item{top_n}{Integer or \code{NULL}. Maximum number of haplotype alleles
+to retain per block, ranked by frequency. \code{NULL} (default) retains
+all alleles that pass \code{min_freq} -- recommended for most analyses.
+Set an integer cap (e.g. \code{top_n = 5L}) only when you need to limit
+matrix width for memory reasons on panels with thousands of blocks and
+highly diverse haplotypes (many rare alleles above \code{min_freq}).}
 
 \item{encoding}{"additive_012" (default) or "presence_02".}
 

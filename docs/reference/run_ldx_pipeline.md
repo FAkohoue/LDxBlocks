@@ -17,7 +17,7 @@ run_ldx_pipeline(
   out_blocks,
   out_diversity,
   out_hap_matrix,
-  hap_format = c("numeric", "hapmap"),
+  hap_format = c("numeric", "character"),
   maf_cut = 0.05,
   CLQcut = 0.5,
   method = c("r2", "rV2"),
@@ -26,7 +26,7 @@ run_ldx_pipeline(
   n_threads = 1L,
   min_snps_chr = 10L,
   min_snps_block = 3L,
-  top_n = 5L,
+  top_n = NULL,
   scale_hap_matrix = FALSE,
   chr = NULL,
   verbose = TRUE,
@@ -63,11 +63,16 @@ run_ldx_pipeline(
 
   Output format for the haplotype matrix:
 
-  - \`"numeric"\` (default) - CSV with rows = individuals, columns =
-    haplotype alleles coded 0/2/NA.
+  - `"numeric"` (default) - Tab-delimited. Rows = haplotype alleles,
+    columns = individuals. Metadata columns: `hap_id`, `CHR`,
+    `start_bp`, `end_bp`, `n_snps`, `alleles` (nucleotide sequence of
+    this allele), `frequency`. Individual columns contain 0/1/2/NA
+    dosage.
 
-  - \`"hapmap"\` - HapMap format with rows = haplotype alleles, columns
-    = individuals, nucleotide encoding.
+  - `"character"` - Tab-delimited. Same row/column orientation.
+    Individual cells contain the nucleotide sequence of the haplotype
+    allele if the individual carries it, `"-"` if absent, `"."` if
+    missing.
 
 - maf_cut:
 
@@ -146,10 +151,18 @@ A named list (invisibly) with elements:
 
   \`data.frame\` of per-block haplotype diversity metrics.
 
-- \`hap_matrix\`:
+- hap_matrix:
 
-  Numeric matrix of haplotype dosages (individuals x haplotype alleles).
-  \`NULL\` if written to file only.
+  Numeric matrix of haplotype dosages (individuals x haplotype alleles,
+  0/1/2/NA). Always returned regardless of `hap_format`. Use this for
+  downstream modelling.
+
+- haplotypes:
+
+  Named list of haplotype strings from
+  [`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md).
+  Useful for
+  [`decode_haplotype_strings()`](https://FAkohoue.github.io/LDxBlocks/reference/decode_haplotype_strings.md).
 
 - \`snp_info_filtered\`:
 
@@ -174,18 +187,18 @@ package is installed.
 
 ## Haplotype genotype matrix
 
-The haplotype matrix has one row per individual and one column per
-haplotype allele (top-\`top_n\` haplotypes per block). Each cell
-contains the dosage of that haplotype allele encoded as:
+Both output formats have haplotype alleles as rows and individuals as
+columns, with four metadata columns before the individual columns:
+`hap_id`, `CHR`, `start_bp`, `end_bp`, `n_snps`, `alleles` (nucleotide
+sequence), `frequency`.
 
-- \`0\` - individual does not carry this haplotype
+- `"numeric"`: individual cells are 0/1/2/NA dosage. 0 = does not carry
+  this allele, 2 = carries it (unphased), 1 = one gamete carries it
+  (phased only). Compatible with rrBLUP, BGLR, ASReml-R.
 
-- \`2\` - individual carries this haplotype (homozygous)
-
-- \`NA\` - missing data in block
-
-This encoding is directly compatible with genomic prediction software
-(ASReml-R, rrBLUP, BGLR, GBLUP) without further transformation.
+- `"character"`: individual cells are the nucleotide sequence (e.g.
+  `"AGTTA"`) if the individual carries this allele, `"-"` if absent,
+  `"."` if missing.
 
 ## See also
 
@@ -210,7 +223,7 @@ res <- run_ldx_pipeline(
   leng           = 10L,
   subSegmSize    = 80L,
   min_snps_block = 3L,
-  top_n          = 3L,
+  # top_n          = 5L,       # optional integer cap; NULL = all above min_freq
   verbose        = FALSE
 )
 
@@ -238,6 +251,6 @@ head(res$diversity)
 #> 5 2.649231     0.2833333  FALSE
 #> 6 2.604423     0.3083333  FALSE
 dim(res$hap_matrix)
-#> [1] 120  27
+#> [1] 120  85
 # }
 ```

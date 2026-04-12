@@ -165,18 +165,18 @@ unphase_to_dosage <- function(phased_list) {
 extract_haplotypes <- function(geno, snp_info, blocks,
                                chr=NULL, min_snps=3L, na_char=".") {
 
-  # ── Input type detection ──────────────────────────────────────────────────
+  # -- Input type detection --------------------------------------------------
   # Three paths:
-  #  1. LDxBlocks_backend  — STREAMING: one chromosome at a time, never full
+  #  1. LDxBlocks_backend  - STREAMING: one chromosome at a time, never full
   #     genome in RAM. Each chromosome is extracted, all its blocks processed,
   #     then freed with gc(FALSE) before the next chromosome.
-  #  2. Phased list (hap1/hap2) — already in RAM, process as before.
-  #  3. Numeric dosage matrix — already in RAM, process as before.
+  #  2. Phased list (hap1/hap2) - already in RAM, process as before.
+  #  3. Numeric dosage matrix - already in RAM, process as before.
   is_backend <- inherits(geno, "LDxBlocks_backend")
   isp <- !is_backend && is.list(geno) && all(c("hap1","hap2")%in%names(geno))
 
   if (is_backend) {
-    # ── STREAMING PATH: chromosome by chromosome ───────────────────────────
+    # -- STREAMING PATH: chromosome by chromosome ---------------------------
     iids       <- geno$sample_ids
     si         <- geno$snp_info
     si$CHR     <- .norm_chr_hap(si$CHR)
@@ -195,7 +195,7 @@ extract_haplotypes <- function(geno, snp_info, blocks,
       chr_idx <- which(si$CHR == cb)
       if (!length(chr_idx)) next
 
-      # Extract ONLY this chromosome — RAM proportional to one chromosome
+      # Extract ONLY this chromosome - RAM proportional to one chromosome
       chr_geno  <- read_chunk(geno, chr_idx)   # individuals x chr_SNPs
       chr_si    <- si[chr_idx, ]
 
@@ -367,14 +367,19 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
 #'     Unphased: 2=match, 0=no match, NA=missing
 #'
 #' @param haplotypes List from extract_haplotypes().
-#' @param top_n Top haplotype alleles per block. Default 5L.
+#' @param top_n Integer or \code{NULL}. Maximum number of haplotype alleles
+#'   to retain per block, ranked by frequency. \code{NULL} (default) retains
+#'   all alleles that pass \code{min_freq} -- recommended for most analyses.
+#'   Set an integer cap (e.g. \code{top_n = 5L}) only when you need to limit
+#'   matrix width for memory reasons on panels with thousands of blocks and
+#'   highly diverse haplotypes (many rare alleles above \code{min_freq}).
 #' @param encoding "additive_012" (default) or "presence_02".
 #' @param missing_string Missing data marker. Default ".".
 #' @param scale_features Center and scale columns. Default FALSE.
 #' @param min_freq Minimum allele frequency to include. Default 0.01.
 #' @return Numeric matrix (individuals x haplotype allele columns).
 #' @export
-build_haplotype_feature_matrix <- function(haplotypes, top_n=5L,
+build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
                                            encoding=c("additive_012","presence_02"),
                                            missing_string=".", scale_features=FALSE,
                                            min_freq=0.01) {
@@ -394,7 +399,8 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=5L,
       miss <- grepl(missing_string,hap,fixed=TRUE); gam <- hap[!miss]
     }
     tbl <- sort(table(gam),decreasing=TRUE); fv <- as.numeric(tbl)/sum(tbl)
-    tbl <- tbl[fv>=min_freq]; tops <- names(tbl)[seq_len(min(top_n,length(tbl)))]
+    tbl  <- tbl[fv >= min_freq]
+    tops <- if (is.null(top_n)) names(tbl) else names(tbl)[seq_len(min(as.integer(top_n), length(tbl)))]
     if (!length(tops)){mats[[bk]]<-NULL;next}
     mat <- matrix(NA_real_,nrow=length(inames),ncol=length(tops),
                   dimnames=list(inames,paste0(bn,"__hap",seq_along(tops))))
@@ -412,79 +418,466 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=5L,
     mats[[bk]] <- mat
   }
   mats <- Filter(Negate(is.null),mats)
-  if (!length(mats)) stop("No columns produced. Lower min_freq or top_n.",call.=FALSE)
+  if (!length(mats)) stop("No columns produced. Lower min_freq.",call.=FALSE)
   feat <- do.call(cbind,mats)
   if (scale_features) { feat <- scale(feat); feat[is.nan(feat)] <- 0 }
   feat
 }
 
-#' Write Haplotype Matrix as Numeric CSV
-#' @description Rows=individuals, columns=haplotype alleles (0/1/2 or 0/2).
-#'   Compatible with rrBLUP, BGLR, ASReml-R.
-#' @param hap_matrix Numeric matrix (individuals x haplotype alleles).
-#' @param out_file Output CSV path.
-#' @param sep Separator. Default ",".
-#' @param na_str NA string. Default "NA".
-#' @param verbose Logical. Default TRUE.
-#' @return Invisibly returns out_file.
+#' Write Haplotype Character (Nucleotide) Matrix
+#'
+#' Writes a matrix where each cell contains the nucleotide sequence of the
+#' haplotype allele carried by each individual. Rows are haplotype alleles,
+#' columns are individuals. This is the most interpretable format: you can
+#' read directly which nucleotides define each haplotype allele and which
+#' individuals carry it.
+#'
+#' @details
+#' The cell value for individual i at haplotype allele h is:
+#' \itemize{
+#'   \item The nucleotide sequence (e.g. \code{"AGTTA"}) if the individual
+#'     carries that allele (dosage = 2 for unphased, or present in either
+#'     gamete for phased).
+#'   \item \code{"-"} if the individual does not carry that allele.
+#'   \item \code{"."} if the individual has missing data in that block.
+#' }
+#'
+#' @param haplotypes List from \code{\link{extract_haplotypes}}.
+#' @param snp_info   Data frame with \code{SNP}, \code{CHR}, \code{POS},
+#'   \code{REF}, \code{ALT}.
+#' @param out_file   Output file path (tab-delimited).
+#' @param min_freq   Minimum haplotype frequency. Default \code{0.01}.
+#' @param top_n      Integer or \code{NULL}. Cap alleles per block.
+#'   \code{NULL} (default) keeps all above \code{min_freq}.
+#' @param missing_string Missing genotype marker. Default \code{"."}.
+#' @param verbose    Logical. Default \code{TRUE}.
+#' @return Invisibly returns \code{out_file}.
 #' @export
-write_haplotype_numeric <- function(hap_matrix, out_file,
-                                    sep="," ,na_str="NA", verbose=TRUE) {
-  out <- data.frame(Sample=rownames(hap_matrix),
-                    as.data.frame(hap_matrix,check.names=FALSE),
-                    check.names=FALSE,stringsAsFactors=FALSE)
-  data.table::fwrite(out,out_file,sep=sep,quote=FALSE,na=na_str)
-  if(verbose) message("[write_haplotype_numeric] ",out_file,
-                      " (",nrow(hap_matrix)," ind x ",ncol(hap_matrix)," cols)")
+write_haplotype_character <- function(haplotypes, snp_info, out_file,
+                                      min_freq       = 0.01,
+                                      top_n          = NULL,
+                                      missing_string = ".",
+                                      verbose        = TRUE) {
+
+  if (!all(c("CHR","POS","REF","ALT") %in% names(snp_info)))
+    stop("snp_info must have columns CHR, POS, REF, ALT.", call. = FALSE)
+
+  snp_info$CHR <- .norm_chr_hap(snp_info$CHR)
+  bi           <- attr(haplotypes, "block_info")
+
+  # Decode one dosage string to nucleotide sequence
+  decode_str <- function(dstr, ref_v, alt_v) {
+    chars <- strsplit(dstr, "", fixed = TRUE)[[1L]]
+    n     <- min(length(chars), length(ref_v))
+    vapply(seq_len(n), function(i) {
+      switch(chars[i],
+             "0" = ref_v[i],
+             "2" = alt_v[i],
+             "1" = paste0(ref_v[i], "/", alt_v[i]),
+             "N")
+    }, character(1L)) |> paste(collapse = "")
+  }
+
+  rows_all <- vector("list", length(haplotypes))
+
+  for (bk in seq_along(haplotypes)) {
+    bn   <- names(haplotypes)[bk]
+    hap  <- haplotypes[[bn]]
+    brow <- if (!is.null(bi)) bi[bi$block_id == bn, , drop = FALSE] else NULL
+
+    # Parse CHR, start_bp from block name
+    parts_bn <- strsplit(bn, "_", fixed = TRUE)[[1L]]
+    chr  <- if (!is.null(brow) && nrow(brow)) brow$CHR[1L] else parts_bn[2L]
+    sb   <- if (!is.null(brow) && nrow(brow)) brow$start_bp[1L] else
+      suppressWarnings(as.integer(parts_bn[3L]))
+    eb   <- if (!is.null(brow) && nrow(brow)) brow$end_bp[1L] else
+      suppressWarnings(as.integer(parts_bn[4L]))
+
+    # SNPs in block
+    blk_snps <- snp_info[snp_info$CHR == chr &
+                           snp_info$POS >= sb &
+                           snp_info$POS <= eb, , drop = FALSE]
+    blk_snps <- blk_snps[order(blk_snps$POS), ]
+    if (!nrow(blk_snps)) next
+
+    ref_v <- as.character(blk_snps$REF)
+    alt_v <- as.character(blk_snps$ALT)
+
+    # Alleles string for metadata column: REF1/ALT1;REF2/ALT2;...
+    alleles_str <- paste(paste0(ref_v, "/", alt_v), collapse = ";")
+
+    # Frequency table
+    miss <- grepl(missing_string, hap, fixed = TRUE)
+    gam  <- hap[!miss]
+    if (!length(gam)) next
+    tbl  <- sort(table(gam), decreasing = TRUE)
+    fv   <- as.numeric(tbl) / sum(tbl)
+    tbl  <- tbl[fv >= min_freq]
+    tops <- if (is.null(top_n)) names(tbl)
+    else names(tbl)[seq_len(min(as.integer(top_n), length(tbl)))]
+    if (!length(tops)) next
+
+    # For each top haplotype allele, build a row:
+    # cols = hap_id | CHR | start_bp | end_bp | n_snps | Alleles | ind1 | ind2 | ...
+    # cell = nucleotide_sequence if individual carries it, "-" if not, "." if missing
+    for (r in seq_along(tops)) {
+      dstr   <- tops[r]
+      nuc_seq <- decode_str(dstr, ref_v, alt_v)
+      hap_id  <- paste0(bn, "__hap", r)
+
+      cell_vals <- ifelse(
+        miss, missing_string,
+        ifelse(hap == dstr, nuc_seq, "-")
+      )
+
+      # Build row: metadata cols + one col per individual
+      ind_df <- as.data.frame(
+        matrix(cell_vals, nrow = 1L,
+               dimnames = list(NULL, names(hap))),
+        check.names = FALSE, stringsAsFactors = FALSE
+      )
+      row_df <- data.frame(
+        hap_id   = hap_id,
+        CHR      = chr,
+        start_bp = as.integer(sb),
+        end_bp   = as.integer(eb),
+        n_snps   = nrow(blk_snps),
+        Alleles  = alleles_str,
+        ind_df,
+        check.names = FALSE, stringsAsFactors = FALSE,
+        row.names = NULL
+      )
+      rows_all[[length(rows_all) + 1L]] <- row_df
+    }
+  }
+
+  if (!length(rows_all)) {
+    message("[write_haplotype_character] No haplotypes passed filters. File not written.")
+    return(invisible(out_file))
+  }
+
+  out <- do.call(rbind, rows_all)
+  data.table::fwrite(out, out_file, sep = "\t", quote = FALSE, na = ".")
+  if (verbose) message("[write_haplotype_character] ", out_file,
+                       " (", nrow(out), " haplotypes x ",
+                       ncol(out) - 6L, " individuals)")
   invisible(out_file)
 }
 
-#' Write Haplotype Matrix in HapMap Format
-#' @description Rows=haplotype alleles, columns=individuals.
-#'   Encoding: 0->HH, 1->HA, 2->AA, NA->NN (H=ref token, A=alt token).
-#'   Compatible with TASSEL and GAPIT.
-#' @param hap_matrix Numeric matrix (individuals x haplotype alleles).
-#' @param out_file Output path (.hmp.txt recommended).
-#' @param ref_token Reference allele symbol. Default "H".
-#' @param alt_token Alternate allele symbol. Default "A".
-#' @param verbose Logical. Default TRUE.
-#' @return Invisibly returns out_file.
+#' Write Haplotype Feature Matrix as Numeric Dosage Table
+#'
+#' @description
+#' Writes the haplotype dosage matrix in a tab-delimited format with
+#' haplotype alleles as rows and individuals as columns. Metadata columns
+#' (\code{hap_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+#' \code{n_snps}, \code{alleles}, \code{frequency}) precede the individual
+#' columns. Individual cells contain 0/1/2/NA dosage values.
+#'
+#' @param hap_matrix Numeric matrix (individuals x haplotype alleles) from
+#'   \code{\link{build_haplotype_feature_matrix}}.
+#' @param out_file   Output file path.
+#' @param haplotypes List from \code{\link{extract_haplotypes}}. When supplied
+#'   together with \code{snp_info}, the \code{alleles} and \code{frequency}
+#'   metadata columns are populated.
+#' @param snp_info   Data frame with \code{CHR}, \code{POS}, \code{REF},
+#'   \code{ALT}. Required for \code{alleles} column.
+#' @param sep        Field separator. Default \code{","}.
+#' @param na_str     NA string. Default \code{"NA"}.
+#' @param min_freq   Minimum frequency used when computing \code{alleles}.
+#'   Default \code{0.01}.
+#' @param missing_string Missing genotype marker. Default \code{"."}.
+#' @param verbose    Logical. Default \code{TRUE}.
+#' @return Invisibly returns \code{out_file}.
 #' @export
-write_haplotype_hapmap <- function(hap_matrix, out_file,
-                                   ref_token="H", alt_token="A", verbose=TRUE) {
+write_haplotype_numeric <- function(hap_matrix, out_file,
+                                    haplotypes = NULL,
+                                    snp_info   = NULL,
+                                    sep        = "\t",
+                                    na_str     = "NA",
+                                    min_freq   = 0.01,
+                                    missing_string = ".",
+                                    verbose    = TRUE) {
+  # Output orientation: haplotype alleles as ROWS, individuals as COLUMNS.
+  #
+  # Metadata columns (before individual columns):
+  #   hap_id        - haplotype allele identifier
+  #   CHR           - chromosome
+  #   start_bp      - block start position (bp)
+  #   end_bp        - block end position (bp)
+  #   n_snps        - number of SNPs in the block
+  #   alleles       - nucleotide sequence of this specific haplotype allele,
+  #                   decoded from the dosage string using SNP REF/ALT.
+  #                   Unphased: gametic sequence (e.g. "AGTTA" for 5 SNPs).
+  #                   Phased: gametic sequence of one strand (haploid).
+  #                   Dosage = 2: both gametes carry this allele (unphased: present).
+  #                   Dosage = 1: one gamete carries it (phased data only).
+  #                   Dosage = 0: neither gamete carries this allele.
+  #   frequency     - observed frequency in the panel
+  #
+  # Individual columns:
+  #   Unphased: 0 = does not carry this allele, 2 = carries it, NA = missing.
+  #   Phased:   0 = neither gamete carries it, 1 = one gamete carries it,
+  #             2 = both gametes carry it, NA = missing.
+
   nhap    <- ncol(hap_matrix)
   hnm     <- colnames(hap_matrix)
   ind_ids <- rownames(hap_matrix)
   if (is.null(hnm))     hnm     <- paste0("hap", seq_len(nhap))
   if (is.null(ind_ids)) ind_ids <- paste0("Ind", seq_len(nrow(hap_matrix)))
 
-  blks <- sub("__hap[0-9]+$","",hnm)
-  rnks <- suppressWarnings(as.integer(sub(".*__hap","",hnm)))
-  rnks[is.na(rnks)] <- seq_len(sum(is.na(rnks)))
+  # Parse CHR, start_bp, end_bp from column names:
+  # block_{CHR}_{start_bp}_{end_bp}__{hapN}
+  parts    <- strsplit(hnm, "_", fixed = TRUE)
+  chr_col  <- vapply(parts, function(x) if (length(x)>=2L) x[2L] else "NA", character(1L))
+  spos_col <- suppressWarnings(
+    as.integer(vapply(parts, function(x) if (length(x)>=3L) x[3L] else "0", character(1L))))
+  epos_col <- suppressWarnings(
+    as.integer(vapply(parts, function(x) if (length(x)>=4L) x[4L] else "0", character(1L))))
+  spos_col[is.na(spos_col)] <- 0L
+  epos_col[is.na(epos_col)] <- 0L
 
-  enc <- function(v,r,a) {
-    o <- character(length(v))
-    o[!is.na(v)&v==0] <- paste0(r,r); o[!is.na(v)&v==1] <- paste0(r,a)
-    o[!is.na(v)&v==2] <- paste0(a,a); o[is.na(v)] <- "NN"; o
+  # block_info for n_snps
+  bi <- if (!is.null(haplotypes)) attr(haplotypes, "block_info") else NULL
+
+  # Nucleotide decoder: converts a dosage string to a nucleotide sequence.
+  # Works for both unphased ("02110") and phased gametic strings ("0110")
+  # because extract_haplotypes() already splits phased strings into individual
+  # gametes before tabling frequencies. So tops[] always contains single-strand
+  # gametic dosage strings regardless of phasing.
+  # "0" -> REF, "2" -> ALT, "1" -> REF/ALT (het, phased), "." -> N
+  decode_str <- function(dstr, ref_v, alt_v) {
+    chars <- strsplit(dstr, "", fixed = TRUE)[[1L]]
+    n     <- min(length(chars), length(ref_v))
+    paste(vapply(seq_len(n), function(i)
+      switch(chars[i], "0"=ref_v[i], "2"=alt_v[i],
+             "1"=paste0(ref_v[i],"/",alt_v[i]), "N"), character(1L)),
+      collapse="")
   }
 
-  # Write line by line with explicit tab joins — avoids any fwrite quoting or
-  # special-character issues with column names like "rs#" and "assembly#".
-  header_line <- paste(c("rs#","alleles","chrom","pos","strand",
-                         "assembly#","center","protLSID","assayLSID",
-                         "panelLSID","QCcode", ind_ids), collapse="\t")
+  # Compute metadata per haplotype allele
+  alt_seq_col  <- rep(NA_character_, nhap)
+  freq_col     <- rep(NA_real_, nhap)
+  n_snps_col   <- rep(NA_integer_, nhap)
 
-  data_lines <- vapply(seq_len(nhap), function(j) {
-    gt <- enc(hap_matrix[, j], r=ref_token, a=alt_token)
-    paste(c(hnm[j], paste0(ref_token,"/",alt_token), blks[j], rnks[j],
-            "+","NA","NA","NA","NA","NA","NA", gt), collapse="\t")
-  }, character(1L))
+  if (!is.null(haplotypes) && !is.null(snp_info) &&
+      all(c("CHR","POS","REF","ALT") %in% names(snp_info))) {
+    snp_info$CHR <- .norm_chr_hap(snp_info$CHR)
+    for (j in seq_len(nhap)) {
+      bn <- sub("__hap[0-9]+$", "", hnm[j])
+      hap_rank <- suppressWarnings(as.integer(sub(".*__hap","",hnm[j])))
+      if (is.na(hap_rank)) next
 
-  writeLines(c(header_line, data_lines), con=out_file)
-  if (verbose) message("[write_haplotype_hapmap] ",out_file,
-                       " (",nhap," alleles x ",nrow(hap_matrix)," ind)")
+      hap_strs <- haplotypes[[bn]]
+      if (is.null(hap_strs)) next
+
+      # Block SNPs
+      blk_snps <- snp_info[snp_info$CHR == chr_col[j] &
+                             snp_info$POS >= spos_col[j] &
+                             snp_info$POS <= epos_col[j], , drop=FALSE]
+      blk_snps <- blk_snps[order(blk_snps$POS), ]
+      if (!nrow(blk_snps)) next
+
+      ref_v <- as.character(blk_snps$REF)
+      alt_v <- as.character(blk_snps$ALT)
+      n_snps_col[j] <- nrow(blk_snps)
+
+      # Frequency table of this block
+      miss <- grepl(missing_string, hap_strs, fixed=TRUE)
+      gam  <- hap_strs[!miss]
+      if (!length(gam)) next
+      tbl  <- sort(table(gam), decreasing=TRUE)
+      fv   <- as.numeric(tbl)/sum(tbl)
+      tbl  <- tbl[fv >= min_freq]
+      tops <- names(tbl)
+
+      # This specific haplotype allele (ALT sequence)
+      if (hap_rank <= length(tops)) {
+        alt_hapstr     <- tops[hap_rank]
+        alt_seq_col[j] <- decode_str(alt_hapstr, ref_v, alt_v)  # stored as "alleles" column
+        freq_col[j]    <- round(as.numeric(tbl[hap_rank])/sum(tbl), 4)
+      }
+    }
+  }
+
+  # Block n_snps from block_info if not computed above
+  if (!is.null(bi)) {
+    for (j in seq_len(nhap)) {
+      if (!is.na(n_snps_col[j])) next
+      bn <- sub("__hap[0-9]+$", "", hnm[j])
+      brow <- bi[bi$block_id == bn, , drop=FALSE]
+      if (nrow(brow)) n_snps_col[j] <- brow$n_snps[1L]
+    }
+  }
+
+  # Transpose dosage matrix: haplotypes as rows
+  t_mat <- t(hap_matrix)
+
+  out <- data.frame(
+    hap_id       = hnm,
+    CHR          = chr_col,
+    start_bp     = spos_col,
+    end_bp       = epos_col,
+    n_snps       = n_snps_col,
+    alleles      = alt_seq_col,
+    frequency    = freq_col,
+    as.data.frame(t_mat, check.names=FALSE),
+    check.names=FALSE, stringsAsFactors=FALSE, row.names=NULL
+  )
+  data.table::fwrite(out, out_file, sep=sep, quote=FALSE, na=na_str)
+  if (verbose) message("[write_haplotype_numeric] ", out_file,
+                       " (", nhap, " haplotypes x ", length(ind_ids), " individuals)")
   invisible(out_file)
 }
+
+#' Decode Haplotype Strings to Nucleotide Sequences
+#'
+#' Converts the dosage-encoded haplotype strings produced by
+#' \code{\link{extract_haplotypes}} (e.g. \code{"02110"}) into
+#' nucleotide sequences (e.g. \code{"AGTTА"}) using the REF and ALT
+#' alleles of each SNP in the block.
+#'
+#' @details
+#' Each character in a haplotype string is the dosage at one SNP in the block:
+#' \itemize{
+#'   \item \code{"0"} = homozygous REF  -> REF nucleotide (e.g. \code{A})
+#'   \item \code{"1"} = heterozygous    -> REF/ALT (e.g. \code{A/G})
+#'   \item \code{"2"} = homozygous ALT  -> ALT nucleotide (e.g. \code{G})
+#'   \item \code{"."} = missing         -> \code{N}
+#' }
+#'
+#' The result is a data frame with one row per unique haplotype allele per
+#' block, showing its nucleotide sequence, frequency, and the REF/ALT at each
+#' SNP position. This is the most interpretable representation of what each
+#' haplotype allele actually encodes biologically.
+#'
+#' @param haplotypes List from \code{\link{extract_haplotypes}}.
+#' @param snp_info   Data frame with columns \code{SNP}, \code{CHR},
+#'   \code{POS}, \code{REF}, \code{ALT}. Must contain all SNPs in the blocks.
+#' @param min_freq   Minimum haplotype frequency to include. Default \code{0.01}.
+#' @param top_n      Integer or \code{NULL}. Maximum alleles per block.
+#'   \code{NULL} (default) retains all above \code{min_freq}.
+#' @param missing_string Missing genotype marker. Default \code{"."}.
+#'
+#' @return A data frame with columns:
+#' \describe{
+#'   \item{block_id}{Block identifier.}
+#'   \item{CHR}{Chromosome.}
+#'   \item{start_bp, end_bp}{Block boundaries.}
+#'   \item{hap_rank}{Rank by frequency (1 = most common).}
+#'   \item{hap_id}{Column name as it appears in the feature matrix.}
+#'   \item{dosage_string}{Raw dosage string e.g. \code{"02110"}.}
+#'   \item{nucleotide_sequence}{Decoded nucleotide string e.g. \code{"AGTTА"}.}
+#'   \item{frequency}{Observed frequency across non-missing individuals.}
+#'   \item{n_carriers}{Number of individuals carrying this haplotype (dosage > 0).}
+#'   \item{snp_positions}{Semicolon-separated CHR:POS of each SNP in the block.}
+#'   \item{snp_alleles}{Semicolon-separated REF/ALT for each SNP.}
+#' }
+#'
+#' @examples
+#' data(ldx_geno, ldx_snp_info, ldx_blocks, package = "LDxBlocks")
+#' haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3)
+#' decoded <- decode_haplotype_strings(haps, ldx_snp_info)
+#' head(decoded[, c("block_id","hap_rank","dosage_string",
+#'                   "nucleotide_sequence","frequency")])
+#'
+#' @export
+decode_haplotype_strings <- function(haplotypes, snp_info,
+                                     min_freq       = 0.01,
+                                     top_n          = NULL,
+                                     missing_string = ".") {
+
+  bi <- attr(haplotypes, "block_info")
+  if (is.null(bi))
+    stop("haplotypes must carry a block_info attribute from extract_haplotypes().",
+         call. = FALSE)
+  if (!all(c("CHR","POS","REF","ALT") %in% names(snp_info)))
+    stop("snp_info must have columns CHR, POS, REF, ALT.", call. = FALSE)
+
+  snp_info$CHR <- .norm_chr_hap(snp_info$CHR)
+  rows_out     <- vector("list", length(haplotypes))
+
+  for (bk in seq_along(haplotypes)) {
+
+    bn  <- names(haplotypes)[bk]
+    hap <- haplotypes[[bn]]
+    brow <- bi[bi$block_id == bn, , drop = FALSE]
+    if (!nrow(brow)) next
+
+    chr <- brow$CHR[1L]
+    sb  <- brow$start_bp[1L]
+    eb  <- brow$end_bp[1L]
+
+    # SNPs in this block from snp_info (ordered by position)
+    blk_snps <- snp_info[snp_info$CHR == chr &
+                           snp_info$POS >= sb &
+                           snp_info$POS <= eb, , drop = FALSE]
+    blk_snps <- blk_snps[order(blk_snps$POS), ]
+    n_snps   <- nrow(blk_snps)
+
+    if (!n_snps) next
+
+    ref_v <- as.character(blk_snps$REF)
+    alt_v <- as.character(blk_snps$ALT)
+    pos_v <- blk_snps$POS
+
+    # Frequency table of haplotype strings
+    miss <- grepl(missing_string, hap, fixed = TRUE)
+    gam  <- hap[!miss]
+    if (!length(gam)) next
+
+    tbl  <- sort(table(gam), decreasing = TRUE)
+    fv   <- as.numeric(tbl) / sum(tbl)
+    tbl  <- tbl[fv >= min_freq]
+    if (!length(tbl)) next
+    tops <- if (is.null(top_n)) names(tbl)
+    else names(tbl)[seq_len(min(as.integer(top_n), length(tbl)))]
+
+    # Decode each top haplotype string to nucleotides
+    decode_one <- function(dstr) {
+      chars <- strsplit(dstr, "", fixed = TRUE)[[1L]]
+      # Pad or trim if lengths differ (safety guard)
+      n <- min(length(chars), n_snps)
+      nuc <- character(n)
+      for (i in seq_len(n)) {
+        nuc[i] <- switch(chars[i],
+                         "0" = ref_v[i],
+                         "2" = alt_v[i],
+                         "1" = paste0(ref_v[i], "/", alt_v[i]),
+                         "." = "N",
+                         "N"
+        )
+      }
+      paste(nuc, collapse = "")
+    }
+
+    n_carriers_fn <- function(dstr) sum(hap == dstr, na.rm = TRUE)
+
+    for (r in seq_along(tops)) {
+      dstr <- tops[r]
+      rows_out[[length(rows_out) + 1L]] <- data.frame(
+        block_id           = bn,
+        CHR                = chr,
+        start_bp           = as.integer(sb),
+        end_bp             = as.integer(eb),
+        hap_rank           = r,
+        hap_id             = paste0(bn, "__hap", r),
+        dosage_string      = dstr,
+        nucleotide_sequence = decode_one(dstr),
+        frequency          = round(as.numeric(tbl[dstr]) / sum(tbl), 4),
+        n_carriers         = n_carriers_fn(dstr),
+        snp_positions      = paste(paste0(chr, ":", pos_v), collapse = ";"),
+        snp_alleles        = paste(paste0(ref_v, "/", alt_v), collapse = ";"),
+        stringsAsFactors   = FALSE
+      )
+    }
+  }
+
+  if (!length(rows_out))
+    return(data.frame())
+
+  do.call(rbind, rows_out)
+}
+
 
 #' Write Haplotype Diversity Table
 #' @param diversity Data frame from compute_haplotype_diversity().

@@ -100,7 +100,8 @@ test_that("read_geno reads HapMap from extdata", {
   f <- system.file("extdata","example_genotypes.hmp.txt",package="LDxBlocks")
   skip_if(!file.exists(f), "extdata HapMap not available")
   be <- read_geno(f)
-  # After auto-conversion to GDS cache type is "gds"; without SeqArray stays "hapmap".
+  # SNPRelate is used for GDS conversion so type is always "gds" when
+  # SNPRelate is installed. Falls back to "hapmap" if SNPRelate is absent.
   expect_true(be$type %in% c("hapmap", "gds")); expect_equal(be$n_snps, 230L)
   close_backend(be)
 })
@@ -109,8 +110,8 @@ test_that("read_geno reads VCF from extdata", {
   f <- system.file("extdata","example_genotypes.vcf",package="LDxBlocks")
   skip_if(!file.exists(f), "extdata VCF not available")
   be <- read_geno(f)
-  # After auto-conversion to GDS cache the backend type is "gds";
-  # without SeqArray it stays "vcf". Both are correct.
+  # SNPRelate converts VCF to GDS so type is "gds" when SNPRelate is
+  # installed; falls back to "vcf" if absent. Both are valid.
   expect_true(be$type %in% c("vcf", "gds"))
   expect_true(all(be$snp_info$CHR %in% c("1","2","3")))
   close_backend(be)
@@ -133,14 +134,14 @@ test_that("read_geno reads example_phenotype.csv from extdata", {
 })
 
 # ── Big_LD + run_Big_LD_all_chr ───────────────────────────────────────────────
-test_that("Big_LD (r2) returns valid block data.frame for chr1", {
+test_that("Big_LD internal: returns valid block data.frame for chr1", {
   data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
   chr1_idx <- which(ldx_snp_info$CHR == "1")
-  blocks   <- Big_LD(ldx_geno[, chr1_idx],
-                     ldx_snp_info[chr1_idx, c("SNP","POS")],
-                     method="r2", CLQcut=0.5, leng=8,
-                     subSegmSize=80, verbose=FALSE)
+  blocks   <- LDxBlocks:::Big_LD(ldx_geno[, chr1_idx],
+                                 ldx_snp_info[chr1_idx, c("SNP","POS")],
+                                 method="r2", CLQcut=0.5, leng=8,
+                                 subSegmSize=80, verbose=FALSE)
   expect_s3_class(blocks, "data.frame")
   expect_true(nrow(blocks) >= 1L)
   expect_true(all(blocks$start <= blocks$end))
@@ -251,7 +252,7 @@ test_that("define_qtl_regions: works without trait column (single-trait)", {
 })
 
 # ── output writers ────────────────────────────────────────────────────────────
-test_that("write_haplotype_numeric writes readable CSV", {
+test_that("write_haplotype_numeric writes readable dosage table", {
   data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
   data(ldx_blocks,   package = "LDxBlocks")
@@ -259,23 +260,25 @@ test_that("write_haplotype_numeric writes readable CSV", {
   feat <- build_haplotype_feature_matrix(haps, top_n=2)
   tmp  <- tempfile(fileext=".csv")
   write_haplotype_numeric(feat, tmp, verbose=FALSE)
-  df <- read.csv(tmp, check.names=FALSE)
-  expect_equal(nrow(df), 120L)
-  expect_true("Sample" %in% names(df))
+  df <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE)
+  # Rows = haplotype alleles (not individuals)
+  expect_equal(nrow(df), ncol(feat))
+  expect_true("hap_id" %in% names(df))
+  expect_false("Sample" %in% names(df))
   unlink(tmp)
 })
 
-test_that("write_haplotype_hapmap writes readable HapMap file", {
+test_that("write_haplotype_character writes readable nucleotide matrix", {
   data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
   data(ldx_blocks,   package = "LDxBlocks")
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=2)
-  tmp  <- tempfile(fileext=".hmp.txt")
-  write_haplotype_hapmap(feat, tmp, verbose=FALSE)
-  hmp <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE, comment.char="")
-  expect_true("rs#" %in% names(hmp))
-  expect_equal(nrow(hmp), ncol(feat))   # one row per haplotype allele
+  tmp  <- tempfile(fileext=".txt")
+  write_haplotype_character(haps, ldx_snp_info, tmp, verbose=FALSE)
+  mat <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE)
+  expect_true("hap_id" %in% names(mat))
+  expect_true("Alleles" %in% names(mat))
+  expect_true(nrow(mat) >= 1L)
   unlink(tmp)
 })
 

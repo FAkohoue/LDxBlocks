@@ -225,10 +225,14 @@ blocks_rv2 <- run_Big_LD_all_chr(be, method = "rV2", CLQcut = 0.70,
 
 ## References
 
-- Kim S-A et al. (2018) *Bioinformatics* **34**(4):588-596.
-  <https://doi.org/10.1093/bioinformatics/btx609>
-- Mangin B et al. (2012) Novel measures of linkage disequilibrium that
-  correct the bias due to population structure and relatedness.
-  *Heredity* **108**(3):285-291. <https://doi.org/10.1038/hdy.2011.73>
-- VanRaden PM (2008) *J. Dairy Sci.* **91**(11):4414–4423.
+- Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype
+  block detection method for dense genome sequencing data based on
+  interval graph modeling and dynamic programming. *Bioinformatics*
+  **34**(4):588-596. <https://doi.org/10.1093/bioinformatics/btx609>
+- Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles
+  C (2012). Novel measures of linkage disequilibrium that correct the
+  bias due to population structure and relatedness. *Heredity*
+  **108**(3):285-291. <https://doi.org/10.1038/hdy.2011.73>
+- VanRaden PM (2008). Efficient methods to compute genomic predictions.
+  *Journal of Dairy Science* **91**(11):4414-4423.
   <https://doi.org/10.3168/jds.2007-0980>

@@ -24,8 +24,8 @@ multi-format genotype I/O.
 ## Pipeline overview
 
 1.  Read genotype data:
-    [`read_geno`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md) -
-    auto-detects CSV, HapMap, VCF, GDS, BED, or plain matrix.
+    [`read_geno`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
+    – auto-detects CSV, HapMap, VCF, GDS, BED, or plain matrix.
 
 2.  Detect LD blocks chromosome-wise:
     [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md).
@@ -36,11 +36,21 @@ multi-format genotype I/O.
 4.  Reconstruct haplotypes:
     [`extract_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md).
 
-5.  Compute diversity metrics:
+5.  Decode haplotype strings to nucleotides:
+    [`decode_haplotype_strings`](https://FAkohoue.github.io/LDxBlocks/reference/decode_haplotype_strings.md).
+
+6.  Compute diversity metrics:
     [`compute_haplotype_diversity`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.md).
 
-6.  Build prediction feature matrix:
+7.  Build prediction feature matrix:
     [`build_haplotype_feature_matrix`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md).
+
+8.  Write outputs:
+    [`write_haplotype_numeric`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.md),
+    [`write_haplotype_character`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_character.md).
+
+9.  Or run everything at once:
+    [`run_ldx_pipeline`](https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.md).
 
 ## Example data
 

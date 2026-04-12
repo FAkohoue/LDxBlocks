@@ -26,8 +26,10 @@ Description: Fast, scalable linkage disequilibrium (LD) block detection for
     heterozygosity, Shannon entropy); post-GWAS QTL region definition with
     pleiotropic block detection; haplotype feature matrices for genomic
     prediction (additive 0/1/2 or presence/absence 0/2 encoding); and
-    output writers for numeric CSV, HapMap, and diversity CSV formats
-    compatible with TASSEL, GAPIT, rrBLUP, BGLR, and ASReml-R.
+    output writers for numeric dosage matrices, nucleotide character
+    matrices, and diversity CSV formats compatible with rrBLUP, BGLR,
+    and ASReml-R; and biological decoding of haplotype strings
+    to nucleotide sequences via decode_haplotype_strings().
     Automatic parameter tuning against GWAS marker coverage is also provided.
 License: MIT + file LICENSE
 Depends:

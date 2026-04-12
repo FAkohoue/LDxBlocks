@@ -256,7 +256,7 @@ downstream module:
 | Diversity metrics | No | [`compute_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.md) — He, Shannon, richness, f_max |
 | Post-GWAS QTL mapping | No | [`define_qtl_regions()`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md) — pleiotropic block detection |
 | Genomic prediction features | No | [`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md) — additive 0/1/2 or presence/absence |
-| Output writers | No | Numeric CSV, HapMap, diversity CSV — compatible with TASSEL, GAPIT, rrBLUP |
+| Output writers | No | Numeric dosage matrix, nucleotide character matrix, diversity CSV |
 | Parameter auto-tuning | No | [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md) — grid search against GWAS marker coverage |
 | Multi-format I/O | PLINK, VCF (gpart) | Numeric CSV, HapMap, VCF, GDS, BED, R matrix via unified backend |
 | WGS-scale streaming | Partial (gpart GDS) | Full never-full-genome model for all formats |
@@ -792,7 +792,7 @@ The resulting matrix has dimension n_individuals × (n_blocks × top_n):
 
 ``` r
 # Build a haplotype-GRM for use in GBLUP
-feat  <- build_haplotype_feature_matrix(haps, top_n = 5, scale_features = TRUE)
+feat  <- build_haplotype_feature_matrix(haps, scale_features = TRUE)
 G_hap <- tcrossprod(feat) / ncol(feat)   # haplotype GRM
 # ... feed G_hap to rrBLUP::kinship.BLUP or ASReml-R
 ```
@@ -1006,7 +1006,7 @@ blocks <- run_Big_LD_all_chr(
 
 | Function | Description |
 |----|----|
-| [`compute_ld()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.md) | Unified dispatcher: routes to `compute_r2_cpp()` or `compute_rV2_cpp()` based on `method =`. |
+| [`compute_ld()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.md) | Internal dispatcher (not exported). Use [`compute_r2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.md) or [`compute_rV2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_rV2.md) directly. |
 | [`compute_r2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.md) | Standard r² matrix via C++ Armadillo + optional OpenMP. |
 | [`compute_rV2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_rV2.md) | rV² on a pre-whitened matrix (same C++ kernel as [`compute_r2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.md)). |
 | [`prepare_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md) | Centre (r²) or centre + whiten (rV²). Returns list of `adj_geno` and `V_inv_sqrt`. |
@@ -1148,8 +1148,8 @@ calls. Peak RAM = one chunk (not 2× the file). `gc(FALSE)` is called
 after each chunk.
 
 **VCF and HapMap** — Auto-converted to a SNPRelate GDS cache on first
-call (placed next to the source file). Subsequent calls reuse the cache.
-All access is streaming via
+call (placed next to the source file; `.gds` extension). Subsequent
+calls reuse the cache automatically. All access is streaming via
 [`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md).
 
 **GDS and PLINK BED** — `read_chunk(backend, col_idx)` is called once
@@ -1306,15 +1306,11 @@ Package-level documentation and overview.
 ## Main pipeline
 
 High-level functions for genome-wide LD block detection.
-[`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
-is the recommended entry point.
+run_Big_LD_all_chr() is the recommended entry point. run_ldx_pipeline()
+runs the complete end-to-end workflow from a single file path.
 
 - [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
   : Genome-Wide LD Block Detection by Chromosome
-- [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-  : LD Block Segmentation (r^2 or rV^2, C++ accelerated)
-- [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md) :
-  Clique-Based LD Block Detection
 - [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md)
   : Auto-Tune LD Block Detection Parameters
 - [`run_ldx_pipeline()`](https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.md)
@@ -1338,10 +1334,8 @@ GDS, PLINK BED, R matrix) through a unified backend interface.
 
 ## LD computation
 
-LD matrix computation: standard r² and kinship-adjusted rV².
+LD matrix computation: standard r2 and kinship-adjusted rV2.
 
-- [`compute_ld()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.md)
-  : Compute LD Matrix: Standard r^2 or Kinship-Adjusted rV^2
 - [`compute_r2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.md)
   : Compute Standard r^2 LD Matrix
 - [`compute_rV2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_rV2.md)
@@ -1363,17 +1357,18 @@ records, or pre-phased VCF files.
   : Statistical Phasing via Beagle 5.x
 - [`phase_with_pedigree()`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_pedigree.md)
   : Pedigree-Based Allele Transmission Phasing
-- [`unphase_to_dosage()`](https://FAkohoue.github.io/LDxBlocks/reference/unphase_to_dosage.md)
-  : Collapse Phased Gametes to 0/1/2 Dosage
 
 ## Haplotype analysis
 
-Extract haplotypes within LD blocks (phased or unphased), compute
-diversity metrics, map GWAS hits to QTL regions, and build feature
-matrices for genomic prediction.
+Extract haplotypes within LD blocks (phased or unphased), decode
+haplotype strings to nucleotide sequences, compute diversity metrics,
+map GWAS hits to QTL regions, and build feature matrices for genomic
+prediction.
 
 - [`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
   : Extract Haplotype Strings Within LD Blocks
+- [`decode_haplotype_strings()`](https://FAkohoue.github.io/LDxBlocks/reference/decode_haplotype_strings.md)
+  : Decode Haplotype Strings to Nucleotide Sequences
 - [`compute_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.md)
   : Compute Haplotype Diversity Per Block
 - [`define_qtl_regions()`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md)
@@ -1383,13 +1378,14 @@ matrices for genomic prediction.
 
 ## Haplotype output writers
 
-Write haplotype matrices and diversity tables to disk in formats
-compatible with TASSEL, GAPIT, rrBLUP, BGLR, and ASReml-R.
+Write haplotype matrices and diversity tables to disk. Numeric format:
+0/1/2/NA dosage, rows=haplotypes, cols=individuals. Character format:
+nucleotide sequences, rows=haplotypes, cols=individuals.
 
 - [`write_haplotype_numeric()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.md)
-  : Write Haplotype Matrix as Numeric CSV
-- [`write_haplotype_hapmap()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_hapmap.md)
-  : Write Haplotype Matrix in HapMap Format
+  : Write Haplotype Feature Matrix as Numeric Dosage Table
+- [`write_haplotype_character()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_character.md)
+  : Write Haplotype Character (Nucleotide) Matrix
 - [`write_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_diversity.md)
   : Write Haplotype Diversity Table
 

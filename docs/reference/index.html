@@ -65,7 +65,7 @@
       </dl></div><div class="section level2">
       <h2 id="main-pipeline">Main pipeline<a class="anchor" aria-label="anchor" href="#main-pipeline"></a></h2>
 
-      <div class="section-desc"><p>High-level functions for genome-wide LD block detection. <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> is the recommended entry point.</p></div>
+      <div class="section-desc"><p>High-level functions for genome-wide LD block detection. run_Big_LD_all_chr() is the recommended entry point. run_ldx_pipeline() runs the complete end-to-end workflow from a single file path.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -78,20 +78,6 @@
 
         </dt>
         <dd>Genome-Wide LD Block Detection by Chromosome</dd>
-
-        <dt>
-
-          <code><a href="Big_LD.html">Big_LD()</a></code>
-
-        </dt>
-        <dd>LD Block Segmentation (r^2 or rV^2, C++ accelerated)</dd>
-
-        <dt>
-
-          <code><a href="CLQD.html">CLQD()</a></code>
-
-        </dt>
-        <dd>Clique-Based LD Block Detection</dd>
 
         <dt>
 
@@ -153,7 +139,7 @@
       </dl></div><div class="section level2">
       <h2 id="ld-computation">LD computation<a class="anchor" aria-label="anchor" href="#ld-computation"></a></h2>
 
-      <div class="section-desc"><p>LD matrix computation: standard r² and kinship-adjusted rV².</p></div>
+      <div class="section-desc"><p>LD matrix computation: standard r2 and kinship-adjusted rV2.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -161,13 +147,6 @@
 
 
       <dl><dt>
-
-          <code><a href="compute_ld.html">compute_ld()</a></code>
-
-        </dt>
-        <dd>Compute LD Matrix: Standard r^2 or Kinship-Adjusted rV^2</dd>
-
-        <dt>
 
           <code><a href="compute_r2.html">compute_r2()</a></code>
 
@@ -224,17 +203,10 @@
 
         </dt>
         <dd>Pedigree-Based Allele Transmission Phasing</dd>
-
-        <dt>
-
-          <code><a href="unphase_to_dosage.html">unphase_to_dosage()</a></code>
-
-        </dt>
-        <dd>Collapse Phased Gametes to 0/1/2 Dosage</dd>
       </dl></div><div class="section level2">
       <h2 id="haplotype-analysis">Haplotype analysis<a class="anchor" aria-label="anchor" href="#haplotype-analysis"></a></h2>
 
-      <div class="section-desc"><p>Extract haplotypes within LD blocks (phased or unphased), compute diversity metrics, map GWAS hits to QTL regions, and build feature matrices for genomic prediction.</p></div>
+      <div class="section-desc"><p>Extract haplotypes within LD blocks (phased or unphased), decode haplotype strings to nucleotide sequences, compute diversity metrics, map GWAS hits to QTL regions, and build feature matrices for genomic prediction.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -247,6 +219,13 @@
 
         </dt>
         <dd>Extract Haplotype Strings Within LD Blocks</dd>
+
+        <dt>
+
+          <code><a href="decode_haplotype_strings.html">decode_haplotype_strings()</a></code>
+
+        </dt>
+        <dd>Decode Haplotype Strings to Nucleotide Sequences</dd>
 
         <dt>
 
@@ -271,7 +250,7 @@
       </dl></div><div class="section level2">
       <h2 id="haplotype-output-writers">Haplotype output writers<a class="anchor" aria-label="anchor" href="#haplotype-output-writers"></a></h2>
 
-      <div class="section-desc"><p>Write haplotype matrices and diversity tables to disk in formats compatible with TASSEL, GAPIT, rrBLUP, BGLR, and ASReml-R.</p></div>
+      <div class="section-desc"><p>Write haplotype matrices and diversity tables to disk. Numeric format: 0/1/2/NA dosage, rows=haplotypes, cols=individuals. Character format: nucleotide sequences, rows=haplotypes, cols=individuals.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -283,14 +262,14 @@
           <code><a href="write_haplotype_numeric.html">write_haplotype_numeric()</a></code>
 
         </dt>
-        <dd>Write Haplotype Matrix as Numeric CSV</dd>
+        <dd>Write Haplotype Feature Matrix as Numeric Dosage Table</dd>
 
         <dt>
 
-          <code><a href="write_haplotype_hapmap.html">write_haplotype_hapmap()</a></code>
+          <code><a href="write_haplotype_character.html">write_haplotype_character()</a></code>
 
         </dt>
-        <dd>Write Haplotype Matrix in HapMap Format</dd>
+        <dd>Write Haplotype Character (Nucleotide) Matrix</dd>
 
         <dt>
 

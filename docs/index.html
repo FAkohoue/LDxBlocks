@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>LDxBlocks — Genome-Wide LD Block Detection • LDxBlocks</title>
+<title>LDxBlocks -- Genome-Wide LD Block Detection • LDxBlocks</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -15,10 +15,10 @@
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="LDxBlocks — Genome-Wide LD Block Detection">
-<meta name="description" content="Fast, scalable LD block detection using r² or kinship-adjusted rV², with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype analysis (phased and unphased), post-GWAS QTL mapping, and genomic prediction feature engineering.
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="LDxBlocks -- Genome-Wide LD Block Detection">
+<meta name="description" content="Fast, scalable LD block detection using r2 or kinship-adjusted rV2, with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype analysis (phased and unphased), post-GWAS QTL mapping, and genomic prediction feature engineering.
 ">
-<meta property="og:description" content="Fast, scalable LD block detection using r² or kinship-adjusted rV², with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype analysis (phased and unphased), post-GWAS QTL mapping, and genomic prediction feature engineering.
+<meta property="og:description" content="Fast, scalable LD block detection using r2 or kinship-adjusted rV2, with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype analysis (phased and unphased), post-GWAS QTL mapping, and genomic prediction feature engineering.
 ">
 <meta property="og:image" content="https://FAkohoue.github.io/LDxBlocks/logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -82,7 +82,7 @@
 </h1>
 </div>
 <p align="center">
-<img src="reference/figures/logo.png" alt="LDxBlocks logo" width="190px"></p>
+<img src="reference/figures/logo.png" alt="LDxBlocks logo" width="300px"></p>
 <!-- badges: start -->
 
 <hr>
@@ -286,7 +286,7 @@
 <tr>
 <td>Output writers</td>
 <td>No</td>
-<td>Numeric CSV, HapMap, diversity CSV — compatible with TASSEL, GAPIT, rrBLUP</td>
+<td>Numeric dosage matrix, nucleotide character matrix, diversity CSV</td>
 </tr>
 <tr>
 <td>Parameter auto-tuning</td>
@@ -872,7 +872,7 @@
 <p>The resulting matrix has dimension n_individuals × (n_blocks × top_n):</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Build a haplotype-GRM for use in GBLUP</span></span>
-<span><span class="va">feat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">feat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># haplotype GRM</span></span>
 <span><span class="co"># ... feed G_hap to rrBLUP::kinship.BLUP or ASReml-R</span></span></code></pre></div>
 <p><strong>Why haplotype features outperform single-SNP models.</strong> Single-SNP additive models miss multi-locus epistatic effects and are sensitive to the choice of which tag SNP represents a block. Haplotype dosages implicitly encode the joint configuration of all SNPs in the block, capturing dominance and inter-SNP interactions without explicit interaction terms. Calus et al. (2008) and de Roos et al. (2009) demonstrated consistent accuracy improvements of 2–8% over SNP-based models in livestock panels; the advantage is greatest for traits with strong dominance or in populations where blocks are well-defined by long-range LD.</p>
@@ -1291,7 +1291,7 @@
 <tbody>
 <tr>
 <td><code><a href="reference/compute_ld.html">compute_ld()</a></code></td>
-<td>Unified dispatcher: routes to <code>compute_r2_cpp()</code> or <code>compute_rV2_cpp()</code> based on <code>method =</code>.</td>
+<td>Internal dispatcher (not exported). Use <code><a href="reference/compute_r2.html">compute_r2()</a></code> or <code><a href="reference/compute_rV2.html">compute_rV2()</a></code> directly.</td>
 </tr>
 <tr>
 <td><code><a href="reference/compute_r2.html">compute_r2()</a></code></td>
@@ -1672,7 +1672,7 @@
 </h3>
 <p>LDxBlocks enforces a strict memory contract: <strong>the full genotype matrix is never held in RAM at once for any dataset size or format.</strong></p>
 <p><strong>Numeric dosage CSV</strong> — Two-pass chunked reading following the OptSLDP pattern (Akohoue et al. 2026): Pass 1 scans the header and counts rows with zero data loading. A single pre-allocated matrix is then filled in 50,000-row chunks via successive <code><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">data.table::fread()</a></code> calls. Peak RAM = one chunk (not 2× the file). <code>gc(FALSE)</code> is called after each chunk.</p>
-<p><strong>VCF and HapMap</strong> — Auto-converted to a SNPRelate GDS cache on first call (placed next to the source file). Subsequent calls reuse the cache. All access is streaming via <code><a href="reference/read_chunk.html">read_chunk()</a></code>.</p>
+<p><strong>VCF and HapMap</strong> — Auto-converted to a SNPRelate GDS cache on first call (placed next to the source file; <code>.gds</code> extension). Subsequent calls reuse the cache automatically. All access is streaming via <code><a href="reference/read_chunk.html">read_chunk()</a></code>.</p>
 <p><strong>GDS and PLINK BED</strong> — <code>read_chunk(backend, col_idx)</code> is called once per sub-segment per chromosome. With <code>subSegmSize = 1500</code> and 50,000 SNPs per chromosome, this is approximately 33 disk reads per chromosome. Each read loads only a 1,500-column slice; the rest of the genome remains on disk.</p>
 <p><strong>Chromosome loop</strong> — In <code><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> and <code><a href="reference/extract_haplotypes.html">extract_haplotypes()</a></code>, each chromosome is extracted, processed, freed with <code><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm()</a></code>, and <code>gc(FALSE)</code> is called before the next chromosome is touched, preventing heap fragmentation from accumulating across 20–30 chromosome passes.</p>
 </div>

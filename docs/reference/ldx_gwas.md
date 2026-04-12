@@ -33,7 +33,9 @@ A `data.frame` with 20 rows and 5 columns:
 
 - `P`:
 
-  Numeric. Toy p-value in (1e-8, 0.001).
+  Numeric. Toy p-value. Eight markers have P \< 1e-6 (clearly
+  significant), seven have P in (1e-5, 1e-3) (suggestive), and five have
+  P in (1e-3, 0.05) (sub-threshold).
 
 - `trait`:
 

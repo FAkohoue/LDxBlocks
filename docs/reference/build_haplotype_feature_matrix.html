@@ -77,7 +77,7 @@ encoding="presence_02" (kernel methods, random forest):
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">build_haplotype_feature_matrix</span><span class="op">(</span></span>
 <span>  <span class="va">haplotypes</span>,</span>
-<span>  top_n <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  top_n <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  encoding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"additive_012"</span>, <span class="st">"presence_02"</span><span class="op">)</span>,</span>
 <span>  missing_string <span class="op">=</span> <span class="st">"."</span>,</span>
 <span>  scale_features <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -94,7 +94,12 @@ encoding="presence_02" (kernel methods, random forest):
 
 
 <dt id="arg-top-n">top_n<a class="anchor" aria-label="anchor" href="#arg-top-n"></a></dt>
-<dd><p>Top haplotype alleles per block. Default 5L.</p></dd>
+<dd><p>Integer or <code>NULL</code>. Maximum number of haplotype alleles
+to retain per block, ranked by frequency. <code>NULL</code> (default) retains
+all alleles that pass <code>min_freq</code> – recommended for most analyses.
+Set an integer cap (e.g. <code>top_n = 5L</code>) only when you need to limit
+matrix width for memory reasons on panels with thousands of blocks and
+highly diverse haplotypes (many rare alleles above <code>min_freq</code>).</p></dd>
 
 
 <dt id="arg-encoding">encoding<a class="anchor" aria-label="anchor" href="#arg-encoding"></a></dt>

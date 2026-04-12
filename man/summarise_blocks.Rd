@@ -24,7 +24,7 @@ A \code{data.frame} with one row per chromosome (plus one row for
 }
 \description{
 Computes per-chromosome and genome-wide summary statistics for a block table
-returned by \code{\link{run_Big_LD_all_chr}} or \code{\link{Big_LD}}.
+returned by \code{\link{run_Big_LD_all_chr}}.
 }
 \examples{
 \donttest{

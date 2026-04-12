@@ -21,7 +21,7 @@ A `data.frame` with 9 rows and 8 columns:
 - `start`:
 
   Integer. Index of the first SNP in the block (1-based, over the full
-  200-SNP set).
+  230-SNP set).
 
 - `end`:
 

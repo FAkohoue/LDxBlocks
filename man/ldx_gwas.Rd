@@ -11,7 +11,9 @@ A \code{data.frame} with 20 rows and 5 columns:
     \code{ldx_snp_info$SNP}.}
   \item{\code{CHR}}{Character. Chromosome label.}
   \item{\code{POS}}{Integer. Base-pair position.}
-  \item{\code{P}}{Numeric. Toy p-value in (1e-8, 0.001).}
+  \item{\code{P}}{Numeric. Toy p-value. Eight markers have P < 1e-6
+    (clearly significant), seven have P in (1e-5, 1e-3) (suggestive),
+    and five have P in (1e-3, 0.05) (sub-threshold).}
   \item{\code{trait}}{Character. Toy trait label (\code{"TraitA"} or
     \code{"TraitB"}), assigned randomly at 60/40 probability. Used to
     demonstrate multi-trait pleiotropic block detection in

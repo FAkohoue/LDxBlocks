@@ -292,53 +292,70 @@ test_that("build_haplotype_feature_matrix: column names reference block IDs", {
 
 # ── output writers ────────────────────────────────────────────────────────────
 
-test_that("write_haplotype_numeric: file exists and is readable", {
+test_that("write_haplotype_numeric: file exists and has correct orientation", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
   feat <- build_haplotype_feature_matrix(haps, top_n=2)
   tmp  <- tempfile(fileext=".csv")
-  write_haplotype_numeric(feat, tmp, verbose=FALSE)
+  write_haplotype_numeric(feat, tmp,
+                          haplotypes = haps, snp_info = ldx_snp_info,
+                          verbose = FALSE)
   expect_true(file.exists(tmp))
-  df <- read.csv(tmp, check.names=FALSE)
-  expect_equal(nrow(df), nrow(feat))
-  expect_equal(ncol(df), ncol(feat) + 1L)  # +1 for Sample column
-  expect_equal(df$Sample, rownames(feat))
+  df <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE)
+  # Rows = haplotype alleles; cols = metadata + individuals
+  expect_equal(nrow(df), ncol(feat))          # one row per haplotype allele
+  expect_true("hap_id" %in% names(df))
+  expect_true("CHR"    %in% names(df))
+  expect_true("start_bp" %in% names(df))
+  expect_true("end_bp"   %in% names(df))
+  expect_true("n_snps"   %in% names(df))
+  expect_true("alleles"  %in% names(df))
+  # Individual columns: total cols = 8 metadata + n_individuals
+  n_meta <- 7L  # hap_id, CHR, start_bp, end_bp, n_snps, alleles, frequency
+  expect_true(ncol(df) > n_meta)
   unlink(tmp)
 })
 
-test_that("write_haplotype_numeric: values survive round-trip", {
+test_that("write_haplotype_numeric: dosage values are 0/2/NA", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
   feat <- build_haplotype_feature_matrix(haps, top_n=2)
   tmp  <- tempfile(fileext=".csv")
   write_haplotype_numeric(feat, tmp, verbose=FALSE)
-  df   <- read.csv(tmp, check.names=FALSE)
-  vals <- unlist(df[, -1])
-  vals_clean <- as.numeric(vals[vals != "NA"])
+  df   <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE)
+  # Individual columns start after metadata (find by name)
+  meta_cols <- c("hap_id","CHR","start_bp","end_bp","n_snps","alleles","frequency")
+  ind_cols  <- setdiff(names(df), meta_cols)
+  vals      <- unlist(df[, ind_cols])
+  vals_num  <- suppressWarnings(as.numeric(vals))
+  vals_clean <- vals_num[!is.na(vals_num)]
   expect_true(all(vals_clean %in% c(0, 2)))
   unlink(tmp)
 })
 
-test_that("write_haplotype_hapmap: file has correct structure", {
+test_that("write_haplotype_character: file has correct structure", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=2)
-  tmp  <- tempfile(fileext=".hmp.txt")
-  write_haplotype_hapmap(feat, tmp, verbose=FALSE)
+  tmp  <- tempfile(fileext=".txt")
+  write_haplotype_character(haps, ldx_snp_info, tmp, verbose=FALSE)
   expect_true(file.exists(tmp))
-  hmp  <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE, comment.char="")
-  expect_true("rs#" %in% names(hmp))
-  expect_equal(nrow(hmp), ncol(feat))   # rows = haplotype alleles
-  # Sample columns: ncol(hmp) = 11 header cols + n_individuals
-  expect_equal(ncol(hmp), 11L + nrow(feat))
+  mat  <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE)
+  # Metadata cols: hap_id, CHR, start_bp, end_bp, n_snps, Alleles
+  expect_true(all(c("hap_id","CHR","start_bp","end_bp","n_snps","Alleles")
+                  %in% names(mat)))
+  # Individual columns follow metadata cols
+  n_meta <- 6L
+  expect_equal(ncol(mat) - n_meta, nrow(ldx_geno))
   unlink(tmp)
 })
 
-test_that("write_haplotype_hapmap: nucleotide encoding is HH/HA/AA/NN", {
+test_that("write_haplotype_character: individual cells are sequence or - or .", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=2)
-  tmp  <- tempfile(fileext=".hmp.txt")
-  write_haplotype_hapmap(feat, tmp, verbose=FALSE)
-  hmp  <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE, comment.char="")
-  geno_calls <- unlist(hmp[, 12:ncol(hmp)])
-  expect_true(all(geno_calls %in% c("HH","HA","AA","NN")))
+  tmp  <- tempfile(fileext=".txt")
+  write_haplotype_character(haps, ldx_snp_info, tmp, verbose=FALSE)
+  mat  <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE)
+  ind_vals <- unique(unlist(mat[, 7:ncol(mat)]))
+  # Each cell is either "-" (absent), "." (missing), or a nucleotide string
+  non_marker <- ind_vals[!ind_vals %in% c("-", ".")]
+  # Nucleotide strings contain only A, T, C, G, N, /
+  expect_true(all(grepl("^[ATCGN/]+$", non_marker)))
   unlink(tmp)
 })
 

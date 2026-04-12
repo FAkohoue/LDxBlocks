@@ -8,7 +8,7 @@
 A \code{data.frame} with 9 rows and 8 columns:
 \describe{
   \item{\code{start}}{Integer. Index of the first SNP in the block
-    (1-based, over the full 200-SNP set).}
+    (1-based, over the full 230-SNP set).}
   \item{\code{end}}{Integer. Index of the last SNP.}
   \item{\code{start.rsID}}{Character. SNP ID at the block start.}
   \item{\code{end.rsID}}{Character. SNP ID at the block end.}

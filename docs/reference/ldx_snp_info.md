@@ -11,7 +11,7 @@ ldx_snp_info
 
 ## Format
 
-A `data.frame` with 200 rows and 5 columns:
+A `data.frame` with 230 rows and 5 columns:
 
 - `SNP`:
 
@@ -19,8 +19,8 @@ A `data.frame` with 200 rows and 5 columns:
 
 - `CHR`:
 
-  Character. Chromosome label (`"1"`, `"2"`, or `"3"`). No `chr` prefix
-  — consistent with the normalisation applied by
+  Character. Chromosome label (`"1"`, `"2"`, or `"3"`). No `chr`
+  prefix - consistent with the normalisation applied by
   [`read_geno`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md).
 
 - `POS`:
@@ -58,7 +58,7 @@ head(ldx_snp_info)
 #> 4 rs1004   1 4067   A   G
 #> 5 rs1005   1 5246   G   A
 #> 6 rs1006   1 6312   C   T
-table(ldx_snp_info$CHR)   # 70 70 60
+table(ldx_snp_info$CHR)   # 80 80 70
 #> 
 #>  1  2  3 
 #> 80 80 70 

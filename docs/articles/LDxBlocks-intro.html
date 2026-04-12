@@ -668,10 +668,15 @@ schemes and both phased and unphased input:</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat_pa</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120  45</span></span></code></pre></div>
-<p>Write the feature matrix in numeric or HapMap format:</p>
+<p>Write the feature matrix:</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric</a></span><span class="op">(</span><span class="va">feat_add</span>, <span class="st">"hap_matrix_numeric.csv"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/write_haplotype_hapmap.html">write_haplotype_hapmap</a></span><span class="op">(</span><span class="va">feat_add</span>, <span class="st">"hap_matrix.hmp.txt"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># Numeric: rows=haplotypes, cols=individuals, values=0/1/2/NA dosage</span></span>
+<span><span class="fu"><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric</a></span><span class="op">(</span><span class="va">feat_add</span>, <span class="st">"hap_matrix_numeric.csv"</span>,</span>
+<span>                         haplotypes <span class="op">=</span> <span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">ldx_snp_info</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Character: nucleotide sequence per individual per haplotype allele</span></span>
+<span><span class="fu"><a href="../reference/write_haplotype_character.html">write_haplotype_character</a></span><span class="op">(</span>haplotypes <span class="op">=</span> <span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span>
+<span>                           out_file <span class="op">=</span> <span class="st">"hap_matrix_character.txt"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="building-a-haplotype-grm-for-gblup">Building a haplotype GRM for GBLUP<a class="anchor" aria-label="anchor" href="#building-a-haplotype-grm-for-gblup"></a>
 </h3>
@@ -763,11 +768,22 @@ schemes and both phased and unphased input:</p>
 <span><span class="va">div</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity</a></span><span class="op">(</span><span class="va">haps</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/write_haplotype_diversity.html">write_haplotype_diversity</a></span><span class="op">(</span><span class="va">div</span>, <span class="st">"diversity.csv"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>,</span>
+<span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>,</span>
 <span>                                        encoding <span class="op">=</span> <span class="st">"additive_012"</span>,</span>
 <span>                                        scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric</a></span><span class="op">(</span><span class="va">feat</span>, <span class="st">"hap_matrix.csv"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/write_haplotype_hapmap.html">write_haplotype_hapmap</a></span><span class="op">(</span><span class="va">feat</span>, <span class="st">"hap_matrix.hmp.txt"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Numeric dosage matrix: rows=haplotypes, cols=individuals, values=0/1/2/NA</span></span>
+<span><span class="fu"><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric</a></span><span class="op">(</span><span class="va">feat</span>, <span class="st">"hap_matrix_numeric.csv"</span>,</span>
+<span>                         haplotypes <span class="op">=</span> <span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Nucleotide character matrix: shows actual allele sequence per individual</span></span>
+<span><span class="fu"><a href="../reference/write_haplotype_character.html">write_haplotype_character</a></span><span class="op">(</span>haplotypes <span class="op">=</span> <span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span>,</span>
+<span>                           out_file <span class="op">=</span> <span class="st">"hap_matrix_character.txt"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Decode haplotype strings to nucleotide sequences (for biological interpretation)</span></span>
+<span><span class="va">decoded</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/decode_haplotype_strings.html">decode_haplotype_strings</a></span><span class="op">(</span><span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">decoded</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"hap_rank"</span>,<span class="st">"dosage_string"</span>,</span>
+<span>                  <span class="st">"nucleotide_sequence"</span>,<span class="st">"frequency"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span></span></code></pre></div>
 <hr>
@@ -776,17 +792,35 @@ schemes and both phased and unphased input:</p>
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
-<li>Kim S-A et al. (2018) <em>Bioinformatics</em>
-<strong>34</strong>(4):588–596.</li>
-<li>VanRaden PM (2008) <em>J. Dairy Sci.</em>
-<strong>91</strong>(11):4414–4423.</li>
-<li>Calus MPL et al. (2008) <em>Genetics</em>
-<strong>178</strong>(1):553–561.</li>
-<li>de Roos APW et al. (2009) <em>Genetics</em>
-<strong>183</strong>(4):1545–1553.</li>
-<li>Nei M (1973) <em>PNAS</em> <strong>70</strong>(12):3321–3323.</li>
-<li>Tong J et al. (2024) <em>Theor Appl Genet</em>
-<strong>137</strong>:274. <a href="https://doi.org/10.1007/s00122-024-04784-w" class="external-link uri">https://doi.org/10.1007/s00122-024-04784-w</a>
+<li>Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype
+block detection method for dense genome sequencing data based on
+interval graph modeling and dynamic programming. <em>Bioinformatics</em>
+<strong>34</strong>(4):588-596. <a href="https://doi.org/10.1093/bioinformatics/btx609" class="external-link uri">https://doi.org/10.1093/bioinformatics/btx609</a>
+</li>
+<li>Mangin B, Siberchicot A, Nicolas S, Doligez A, This P,
+Cierco-Ayrolles C (2012). Novel measures of linkage disequilibrium that
+correct the bias due to population structure and relatedness.
+<em>Heredity</em> <strong>108</strong>(3):285-291. <a href="https://doi.org/10.1038/hdy.2011.73" class="external-link uri">https://doi.org/10.1038/hdy.2011.73</a>
+</li>
+<li>VanRaden PM (2008). Efficient methods to compute genomic
+predictions. <em>Journal of Dairy Science</em>
+<strong>91</strong>(11):4414-4423. <a href="https://doi.org/10.3168/jds.2007-0980" class="external-link uri">https://doi.org/10.3168/jds.2007-0980</a>
+</li>
+<li>Calus MPL, Meuwissen THE, de Roos APW, Veerkamp RF (2008). Accuracy
+of genomic selection using different methods to define haplotypes.
+<em>Genetics</em> <strong>178</strong>(1):553-561. <a href="https://doi.org/10.1534/genetics.107.080838" class="external-link uri">https://doi.org/10.1534/genetics.107.080838</a>
+</li>
+<li>de Roos APW, Hayes BJ, Goddard ME (2009). Reliability of genomic
+predictions across multiple populations. <em>Genetics</em>
+<strong>183</strong>(4):1545-1553. <a href="https://doi.org/10.1534/genetics.109.104935" class="external-link uri">https://doi.org/10.1534/genetics.109.104935</a>
+</li>
+<li>Nei M (1973). Analysis of gene diversity in subdivided populations.
+<em>Proceedings of the National Academy of Sciences</em>
+<strong>70</strong>(12):3321-3323. <a href="https://doi.org/10.1073/pnas.70.12.3321" class="external-link uri">https://doi.org/10.1073/pnas.70.12.3321</a>
+</li>
+<li>Tong J, Gorjanc G, Li Z, et al. (2024). Haplotype-based prediction
+of genomic breeding values in plant and animal populations.
+<em>Theoretical and Applied Genetics</em> <strong>137</strong>:274. <a href="https://doi.org/10.1007/s00122-024-04784-w" class="external-link uri">https://doi.org/10.1007/s00122-024-04784-w</a>
 </li>
 </ul>
 </div>

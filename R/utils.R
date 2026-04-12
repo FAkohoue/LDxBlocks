@@ -1,13 +1,13 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# utils.R  –  Summary statistics and visualisation helpers
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# utils.R  -  Summary statistics and visualisation helpers
+# -----------------------------------------------------------------------------
 
 
 #' Summarise LD Block Characteristics
 #'
 #' @description
 #' Computes per-chromosome and genome-wide summary statistics for a block table
-#' returned by \code{\link{run_Big_LD_all_chr}} or \code{\link{Big_LD}}.
+#' returned by \code{\link{run_Big_LD_all_chr}}.
 #'
 #' @param blocks Data frame of LD blocks. Must contain at least
 #'   \code{start.bp}, \code{end.bp}. If a \code{CHR} column is present,
@@ -116,7 +116,7 @@ plot_ld_blocks <- function(
 
   blocks$length_bp  <- as.numeric(blocks$end.bp) - as.numeric(blocks$start.bp) + 1L
   blocks$CHR        <- factor(as.character(blocks$CHR),
-                               levels = mixsort(unique(as.character(blocks$CHR))))
+                              levels = mixsort(unique(as.character(blocks$CHR))))
 
   scale_div <- if (mb_scale) 1e6 else 1
   x_label   <- if (mb_scale) "Position (Mb)" else "Position (bp)"
@@ -156,7 +156,7 @@ plot_ld_blocks <- function(
 }
 
 
-# ── Internal helper: natural sort of chromosome names ────────────────────────
+# -- Internal helper: natural sort of chromosome names ------------------------
 mixsort <- function(x) {
   x[order(
     suppressWarnings(as.integer(gsub("[^0-9]", "", x))),

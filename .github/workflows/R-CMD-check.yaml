@@ -60,7 +60,7 @@ jobs:
             libtiff5-dev \
             libjpeg-dev
 
-      - name: Install Bioconductor packages (Linux / macOS)
+      - name: Install Bioconductor packages
         if: runner.os != 'Windows'
         shell: Rscript {0}
         run: |
@@ -73,7 +73,7 @@ jobs:
           if (length(to_install))
             BiocManager::install(to_install, ask = FALSE, update = FALSE)
 
-      - name: Install Bioconductor packages (Windows)
+      - name: Install Bioconductor packages
         if: runner.os == 'Windows'
         shell: Rscript {0}
         run: |

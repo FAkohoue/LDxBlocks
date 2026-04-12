@@ -52,15 +52,16 @@
 <div class="section level3">
 <h3 id="breaking-changes-0-3-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-3-0"></a></h3>
 <ul><li>
-<code><a href="../reference/read_geno.html">read_geno()</a></code>: removed <code>pheno_ids</code> parameter. Sample subsetting is the caller’s responsibility — use <code>be$sample_ids</code> to match externally.</li>
+<code><a href="../reference/read_geno.html">read_geno()</a></code>: removed <code>pheno_ids</code> parameter. Sample subsetting is the caller’s responsibility – use <code>be$sample_ids</code> to match externally.</li>
 <li>Removed <code>read_pheno()</code> and <code>align_geno_pheno()</code> entirely. Phenotype handling is not part of LD block detection and these functions had no algorithmic role.</li>
 <li>
 <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: parameter <code>rV2method</code> renamed to <code>kin_method</code>.</li>
 <li>
 <code>digits</code> default changed from <code>6</code> to <code>-1</code> (no rounding) throughout.</li>
+<li>SeqArray backend replaced by SNPRelate throughout. GDS files are now created via <code><a href="https://rdrr.io/pkg/SNPRelate/man/snpgdsVCF2GDS.html" class="external-link">SNPRelate::snpgdsVCF2GDS()</a></code> and read via <code><a href="https://rdrr.io/pkg/SNPRelate/man/snpgdsGetGeno.html" class="external-link">SNPRelate::snpgdsGetGeno()</a></code>. Existing <code>.gds</code> files created by SeqArray are not compatible; delete and re-convert with <code>read_geno(..., verbose = TRUE)</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="new-features--haplotype-module-comprehensive-rewrite-0-3-0">New features — haplotype module (comprehensive rewrite)<a class="anchor" aria-label="anchor" href="#new-features--haplotype-module-comprehensive-rewrite-0-3-0"></a></h3>
+<h3 id="new-features--haplotype-module-comprehensive-rewrite-0-3-0">New features – haplotype module (comprehensive rewrite)<a class="anchor" aria-label="anchor" href="#new-features--haplotype-module-comprehensive-rewrite-0-3-0"></a></h3>
 <ul><li>
 <strong>Phasing functions</strong>:
 <ul><li>
@@ -70,7 +71,7 @@
 <li>
 <code><a href="../reference/phase_with_pedigree.html">phase_with_pedigree()</a></code>: Mendelian allele transmission phasing within parent-offspring trios; exact when parents are homozygous.</li>
 <li>
-<code><a href="../reference/unphase_to_dosage.html">unphase_to_dosage()</a></code>: collapse phased gamete matrices back to 0/1/2.</li>
+<code><a href="../reference/unphase_to_dosage.html">unphase_to_dosage()</a></code>: collapse phased gamete matrices back to 0/1/2 (internal helper; not exported).</li>
 </ul></li>
 <li>
 <strong>Haplotype extraction</strong> (<code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>):
@@ -80,6 +81,11 @@
 <li>Blocks are strictly per-chromosome; cross-chromosome blocks are architecturally impossible.</li>
 </ul></li>
 <li>
+<strong>Haplotype string decoder</strong> (<code><a href="../reference/decode_haplotype_strings.html">decode_haplotype_strings()</a></code>):
+<ul><li>Converts raw dosage strings (e.g. <code>"02110"</code>) to nucleotide sequences (e.g. <code>"AGTTA"</code>) using REF/ALT from <code>snp_info</code>.</li>
+<li>Returns a data frame: block_id, CHR, start_bp, end_bp, hap_rank, hap_id, dosage_string, nucleotide_sequence, frequency, n_carriers, snp_positions, snp_alleles.</li>
+</ul></li>
+<li>
 <strong>Feature matrix</strong> (<code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>):
 <ul><li>New <code>encoding =</code> parameter: <code>"additive_012"</code> (default) or <code>"presence_02"</code>.</li>
 <li>Phased + <code>"additive_012"</code>: true 0/1/2 allele counts per gamete.</li>
@@ -87,31 +93,37 @@
 <li>
 <code>"presence_02"</code>: 0/2 presence/absence for kernel methods or random forests.</li>
 <li>New <code>min_freq =</code> parameter to drop rare haplotype allele columns.</li>
+<li>
+<code>top_n</code> default changed from <code>5L</code> to <code>NULL</code> (retain all alleles above <code>min_freq</code>).</li>
 </ul></li>
 <li>
 <strong>QTL region definition</strong> (<code><a href="../reference/define_qtl_regions.html">define_qtl_regions()</a></code>):
 <ul><li>Maps significant GWAS markers onto LD blocks post-GWAS.</li>
 <li>Flags pleiotropic blocks (significant hits from multiple traits).</li>
-<li>Implements the haploblock-based QTL cataloguing approach of Tong et al. (2024) <em>Theor Appl Genet</em> 137:274.</li>
+<li>Implements the haploblock-based QTL cataloguing approach of Tong et al. (2024) <em>Theoretical and Applied Genetics</em> 137:274.</li>
 </ul></li>
 <li>
-<strong>Output writers</strong>:
+<strong>Output writers</strong> (all produce rows = haplotype alleles, cols = individuals, with metadata columns hap_id, CHR, start_bp, end_bp, n_snps before individual columns):
 <ul><li>
-<code><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric()</a></code>: CSV with rows = individuals, columns = haplotype alleles (0/1/2 or 0/2); compatible with rrBLUP, BGLR, ASReml-R.</li>
+<code><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric()</a></code>: tab-delimited dosage matrix (0/1/2/NA). Metadata column <code>alleles</code> shows the nucleotide sequence of this allele. Compatible with rrBLUP, BGLR, ASReml-R.</li>
 <li>
-<code><a href="../reference/write_haplotype_hapmap.html">write_haplotype_hapmap()</a></code>: HapMap tab-delimited format with rows = haplotype alleles, columns = individuals; nucleotide encoding 0→HH, 1→HA, 2→AA, NA→NN; compatible with TASSEL and GAPIT.</li>
+<code><a href="../reference/write_haplotype_character.html">write_haplotype_character()</a></code>: tab-delimited nucleotide matrix. Each cell shows the nucleotide sequence if the individual carries that allele, <code>"-"</code> if absent, <code>"."</code> if missing. <code>Alleles</code> column shows all REF/ALT at every block SNP (semicolon-separated).</li>
 <li>
 <code><a href="../reference/write_haplotype_diversity.html">write_haplotype_diversity()</a></code>: CSV of per-block diversity metrics with optional genome-wide mean summary row.</li>
+<li>
+<code>write_haplotype_hapmap()</code> is <strong>removed</strong>. The diploid AA/AT/TT HapMap encoding was not meaningful for multi-SNP haplotype alleles.</li>
 </ul></li>
 <li>
-<strong>End-to-end pipeline</strong> (<code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>): single-call wrapper from genotype file to all outputs (blocks, diversity, haplotype matrix).</li>
+<strong>Haplotype string decoder</strong> (<code><a href="../reference/decode_haplotype_strings.html">decode_haplotype_strings()</a></code>): exported function mapping dosage strings to nucleotide sequences with full SNP-level metadata.</li>
+<li>
+<strong>End-to-end pipeline</strong> (<code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>): single-call wrapper from genotype file to all outputs. <code>hap_format = "hapmap"</code> renamed to <code>hap_format = "character"</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="new-features--io-and-backend-0-3-0">New features — I/O and backend<a class="anchor" aria-label="anchor" href="#new-features--io-and-backend-0-3-0"></a></h3>
+<h3 id="new-features--io-and-backend-0-3-0">New features – I/O and backend<a class="anchor" aria-label="anchor" href="#new-features--io-and-backend-0-3-0"></a></h3>
 <ul><li>
-<strong>Multi-format I/O</strong>: <code><a href="../reference/read_geno.html">read_geno()</a></code> supports numeric dosage CSV, HapMap, VCF / bgzipped VCF, SeqArray GDS, PLINK BED/BIM/FAM, and plain R matrices.</li>
+<strong>Multi-format I/O</strong>: <code><a href="../reference/read_geno.html">read_geno()</a></code> supports numeric dosage CSV, HapMap, VCF / bgzipped VCF, SNPRelate GDS, PLINK BED/BIM/FAM, and plain R matrices.</li>
 <li>
-<strong>GDS streaming backend</strong>: peak RAM proportional to one window.</li>
+<strong>SNPRelate GDS streaming backend</strong>: peak RAM proportional to one window. Replaces the previous SeqArray backend entirely.</li>
 <li>
 <strong>PLINK BED backend</strong>: <code>BEDMatrix</code>-backed memory-mapped access.</li>
 <li>
@@ -121,29 +133,31 @@
 <li>
 <strong><code>min_snps_chr</code></strong> parameter: skip scaffolds with fewer SNPs (default 10).</li>
 <li>
-<strong><code>ldx_gwas</code></strong> example dataset now includes a <code>trait</code> column (<code>"TraitA"</code> / <code>"TraitB"</code>) to demonstrate multi-trait pleiotropic block detection via <code>define_qtl_regions(trait_col = "trait")</code>. For single-trait GWAS the argument is omitted entirely.</li>
+<strong><code>clean_malformed</code></strong> parameter in <code><a href="../reference/read_geno.html">read_geno()</a></code>, <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>, and <code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>: streams input files to remove malformed lines before GDS conversion (for NGSEP and some GATK-origin VCFs).</li>
+<li>
+<strong><code>chr</code></strong> parameter in <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> and <code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>: restrict processing to specific chromosomes.</li>
+<li>
+<strong><code>ldx_gwas</code></strong> example dataset now includes a <code>trait</code> column (<code>"TraitA"</code> / <code>"TraitB"</code>) to demonstrate multi-trait pleiotropic block detection via <code>define_qtl_regions(trait_col = "trait")</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="performance-improvements--c-core-0-3-0">Performance improvements — C++ core<a class="anchor" aria-label="anchor" href="#performance-improvements--c-core-0-3-0"></a></h3>
+<h3 id="performance-improvements--c-core-0-3-0">Performance improvements – C++ core<a class="anchor" aria-label="anchor" href="#performance-improvements--c-core-0-3-0"></a></h3>
 <ul><li>
-<code>boundary_scan_cpp()</code>: C++ boundary scan replaces R inner loop.</li>
+<code>boundary_scan_cpp()</code>: C++ boundary scan replaces R inner loop (~20x faster).</li>
 <li>
-<code>maf_filter_cpp()</code>: combined MAF + monomorphic filter, single O(np) pass.</li>
+<code>maf_filter_cpp()</code>: combined MAF + monomorphic filter, single O(np) pass (~10x faster for panels &gt; 100 k SNPs).</li>
 <li>
-<code>build_adj_matrix_cpp()</code>: in-place adjacency construction.</li>
+<code>build_adj_matrix_cpp()</code>: in-place adjacency construction, eliminates intermediate allocation.</li>
 <li>
-<code>compute_r2_sparse_cpp()</code>: sparse r² within bp window.</li>
+<code>compute_r2_sparse_cpp()</code>: sparse r² within bp window, avoids O(p²) cost for large sub-segments.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="performance-improvements--never-full-genome-memory-model-optsldp-inspired-0-3-0">Performance improvements — never-full-genome memory model (OptSLDP-inspired)<a class="anchor" aria-label="anchor" href="#performance-improvements--never-full-genome-memory-model-optsldp-inspired-0-3-0"></a></h3>
+<h3 id="performance-improvements--never-full-genome-memory-model-0-3-0">Performance improvements – never-full-genome memory model<a class="anchor" aria-label="anchor" href="#performance-improvements--never-full-genome-memory-model-0-3-0"></a></h3>
 <ul><li>
-<strong>Chunked pre-allocated numeric CSV reader</strong> (<code><a href="../reference/read_geno.html">read_geno()</a></code> numeric path): two-pass strategy — header scan only in Pass 1, then fixed 50,000-row chunks fill a single pre-allocated matrix in Pass 2. Peak RAM = one chunk, not 2× the file. <code>gc(FALSE)</code> called after each chunk. Directly follows the <code>.read_dosage_chunked()</code> pattern of Akohoue et al. (2026) <em>OptSLDP</em>.</li>
+<strong>Chunked pre-allocated numeric CSV reader</strong>: two-pass strategy – header scan only in Pass 1, then fixed 50,000-row chunks fill a single pre-allocated matrix in Pass 2. Peak RAM = one chunk, not 2x the file.</li>
 <li>
-<strong>VCF and HapMap mandatory GDS auto-conversion</strong>: <code><a href="../reference/read_geno.html">read_geno()</a></code> for VCF and HapMap auto-converts to a SeqArray GDS cache (placed next to the source file) when SeqArray is available, transparently switching to the streaming GDS backend. Cache reused on subsequent calls.</li>
+<strong>VCF and HapMap mandatory SNPRelate GDS auto-conversion</strong>: transparent streaming GDS backend on first call; cache reused on subsequent calls.</li>
 <li>
-<strong>Explicit per-chromosome gc()</strong> in <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>: <code>rm(geno_chr,   info_chr)</code> and <code>gc(FALSE)</code> called after each chromosome’s block detection completes, preventing heap fragmentation across 20–30 chromosome passes.</li>
-<li>
-<strong>Backend streaming path in <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code></strong>: when an <code>LDxBlocks_backend</code> object is passed (instead of a matrix), haplotypes are extracted one chromosome at a time using <code><a href="../reference/read_chunk.html">read_chunk()</a></code>. Each chromosome is freed with <code><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm()</a></code> and <code>gc(FALSE)</code> before the next chromosome is loaded. The full genome is never in RAM simultaneously.</li>
+<strong>Explicit per-chromosome gc()</strong> in <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> and <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>: prevents heap fragmentation across 20-30 chromosome passes.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="tests-0-3-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-3-0"></a></h3>
@@ -154,7 +168,7 @@
 <li>
 <code>test-io.R</code>: all I/O format round-trip tests via tempfiles.</li>
 <li>
-<code>test-haplotypes.R</code>: haplotype extraction, diversity, QTL, feature matrix, and all three output writers.</li>
+<code>test-haplotypes.R</code>: haplotype extraction, diversity, QTL, feature matrix, and output writers (<code>write_haplotype_numeric</code>, <code>write_haplotype_character</code>, <code>write_haplotype_diversity</code>).</li>
 </ul><hr></div>
 </div>
     <div class="section level2">
