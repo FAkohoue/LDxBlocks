@@ -2,12 +2,12 @@
 % Please edit documentation in R/compute_ld.R
 \name{compute_ld}
 \alias{compute_ld}
-\title{Compute LD Matrix: Standard r² or Kinship-Adjusted rV²}
+\title{Compute LD Matrix: Standard r^2 or Kinship-Adjusted rV^2}
 \usage{
 compute_ld(X, method = c("r2", "rV2"), digits = -1L, n_threads = 1L)
 }
 \arguments{
-\item{X}{NumericMatrix (individuals × SNPs).
+\item{X}{NumericMatrix (individuals x SNPs).
 For \code{method = "r2"}: raw or mean-centred genotypes (0/1/2).
 For \code{method = "rV2"}: the pre-whitened matrix
 \eqn{V^{-1/2} \tilde{G}} produced by \code{prepare_geno()}.}
@@ -20,7 +20,7 @@ For \code{method = "rV2"}: the pre-whitened matrix
 Use \code{parallel::detectCores()} to choose automatically.}
 }
 \value{
-Symmetric p × p numeric matrix, diagonal 0, values in [0, 1].
+Symmetric p x p numeric matrix, diagonal 0, values in [0, 1].
 }
 \description{
 Unified dispatcher. With \code{method = "r2"} (default and recommended
@@ -29,13 +29,17 @@ squared Pearson correlations. With \code{method = "rV2"} it applies kinship
 whitening first and then the same C++ correlation kernel.
 }
 \examples{
+\dontrun{
+# Internal function — use compute_r2() or compute_rV2() instead
 set.seed(1)
 G <- matrix(sample(0:2, 60 * 20, replace = TRUE), 60, 20)
-ld_r2  <- compute_ld(G, method = "r2")
+ld_r2  <- LDxBlocks:::compute_ld(G, method = "r2")
 range(ld_r2)
+}
 
 }
 \seealso{
 \code{\link{compute_r2}}, \code{\link{compute_rV2}},
   \code{\link{prepare_geno}}, \code{\link{Big_LD}}
 }
+\keyword{internal}

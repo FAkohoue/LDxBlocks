@@ -1,4 +1,4 @@
-# LD Block Segmentation (r² or rV², C++ accelerated)
+# LD Block Segmentation (r^2 or rV^2, C++ accelerated)
 
 Core per-chromosome LD block detection. Two LD metrics are supported:
 
@@ -88,7 +88,7 @@ Big_LD(
 - singleton_as_block:
 
   Logical. If `TRUE`, every SNP that passes MAF filtering but has
-  pairwise r² below `CLQcut` with all neighbours (i.e. is not assigned
+  pairwise r^2 below `CLQcut` with all neighbours (i.e. is not assigned
   to any clique) is returned as a single-SNP block with `start == end`
   and `length_bp == 1`. Default `FALSE`. These blocks are excluded from
   haplotype analysis by the default `min_snps = 3` threshold in
@@ -151,7 +151,7 @@ VanRaden PM (2008) J. Dairy Sci. 91(11):4414-4423.
 ## Examples
 
 ``` r
-# \donttest{
+if (FALSE) { # \dontrun{
 set.seed(1)
 m <- 80; b1 <- 60; b2 <- 60
 make_block <- function(m, size, p, flip = 0.03) {
@@ -168,11 +168,8 @@ colnames(G) <- paste0("rs", seq_len(ncol(G)))
 rownames(G) <- paste0("ind", seq_len(nrow(G)))
 pos <- c(seq(1, by = 1000, length.out = b1), seq(5e6, by = 1000, length.out = b2))
 SNPinfo <- data.frame(SNP = colnames(G), POS = pos)
-blocks <- Big_LD(G, SNPinfo, method = "r2", CLQcut = 0.6,
+blocks <- LDxBlocks:::Big_LD(G, SNPinfo, method = "r2", CLQcut = 0.6,
                  leng = 30, subSegmSize = 120, verbose = FALSE)
 head(blocks)
-#>   start end start.rsID end.rsID start.bp  end.bp
-#> 1     1  60        rs1     rs60    1e+00   59001
-#> 2    61 120       rs61    rs120    5e+06 5059000
-# }
+} # }
 ```

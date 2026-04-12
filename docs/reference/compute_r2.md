@@ -1,9 +1,9 @@
-# Compute Standard r² LD Matrix
+# Compute Standard r^2 LD Matrix
 
 Fast C++/Armadillo implementation of the standard pairwise squared
-Pearson correlation (r²) for a window of SNP columns. Missing genotypes
+Pearson correlation (r^2) for a window of SNP columns. Missing genotypes
 (NA) are mean-imputed per column before computation. This is the default
-LD metric in LDxBlocks and is 10–50× faster than
+LD metric in LDxBlocks and is 10-50x faster than
 [`stats::cor()`](https://rdrr.io/r/stats/cor.html).
 
 ## Usage
@@ -16,7 +16,7 @@ compute_r2(X, digits = -1L, n_threads = 1L)
 
 - X:
 
-  NumericMatrix (individuals × SNPs). Values 0/1/2. NA allowed.
+  NumericMatrix (individuals x SNPs). Values 0/1/2. NA allowed.
 
 - digits:
 
@@ -28,11 +28,11 @@ compute_r2(X, digits = -1L, n_threads = 1L)
 
 ## Value
 
-Symmetric p × p NumericMatrix, diagonal 0, values in \[0, 1\].
+Symmetric p x p NumericMatrix, diagonal 0, values in \[0, 1\].
 
-## When to use r² vs rV²
+## When to use r^2 vs rV^2
 
-- r²:
+- r^2:
 
   Use for large unstructured datasets (\> 500 k markers), random mating
   populations, or whenever speed matters. The standard estimator is
@@ -40,12 +40,12 @@ Symmetric p × p NumericMatrix, diagonal 0, values in \[0, 1\].
   usually leads to slightly more conservative (larger) blocks rather
   than catastrophically wrong ones.
 
-- rV²:
+- rV^2:
 
   Use for highly structured / related populations (livestock, inbred
   lines, family-based human cohorts) where kinship inflation would
   meaningfully distort block boundaries. Requires computing and
-  inverting the GRM — prohibitive beyond ~5 k individuals.
+  inverting the GRM - prohibitive beyond ~5 k individuals.
 
 ## See also
 

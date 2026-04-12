@@ -98,6 +98,13 @@
 #' @param sample_ids Character vector. Override sample IDs extracted from the
 #'   file. Length must equal number of samples.
 #' @param sep Character. Field separator for \code{"numeric"} format.
+#' @param clean_malformed Logical. If \code{TRUE}, the input file is
+#'   stream-cleaned before reading: any line whose delimiter-separated column
+#'   count does not match the header is silently removed. This adds one extra
+#'   streaming pass over the file but is required for files produced by some
+#'   variant callers (e.g. NGSEP) that embed extra characters in FORMAT fields.
+#'   Applies to numeric dosage CSV, HapMap, and VCF formats. Default
+#'   \code{FALSE}.
 #' @param gds_cache Character or \code{NULL}. Path where a GDS cache file
 #'   should be written when \code{format = "vcf"} and SNPRelate is available.
 #'   If \code{NULL} (default), the GDS file is placed next to the VCF with a
@@ -137,19 +144,42 @@
 #' @export
 read_geno <- function(
     path,
-    format      = NULL,
-    snp_info    = NULL,
-    sample_ids  = NULL,
-    sep         = ",",
-    na_strings  = c("NA", "N", "NN", "./.", ".", ""),
-    gds_cache   = NULL,
-    verbose     = FALSE
+    format         = NULL,
+    snp_info       = NULL,
+    sample_ids     = NULL,
+    sep            = ",",
+    na_strings     = c("NA", "N", "NN", "./.", ".", ""),
+    gds_cache      = NULL,
+    clean_malformed = FALSE,
+    verbose        = FALSE
 ) {
   # -- Dispatch on format ------------------------------------------------------
   if (is.matrix(path) || is.data.frame(path)) {
     fmt <- "matrix"
   } else {
     fmt <- if (!is.null(format)) tolower(format) else .detect_format(path)
+  }
+
+  # -- Optional: stream-clean the file before reading -------------------------
+  # Removes lines whose column count does not match the header.
+  # Covers numeric CSV (comma-separated), HapMap (tab), and VCF (tab).
+  # The separator is inferred from the format; cleaned tempfile is auto-deleted.
+  if (isTRUE(clean_malformed) && fmt %in% c("numeric","hapmap","vcf") &&
+      !is.matrix(path) && !is.data.frame(path)) {
+    sep_clean <- switch(fmt,
+                        vcf     = "\t",
+                        hapmap  = "\t",
+                        numeric = if (identical(sep, ",")) "," else "\t"
+    )
+    ext_clean <- switch(fmt,
+                        vcf     = ".vcf",
+                        hapmap  = ".hmp.txt",
+                        numeric = ".csv"
+    )
+    cleaned_path <- tempfile(fileext = ext_clean)
+    on.exit(if (file.exists(cleaned_path)) unlink(cleaned_path), add = TRUE)
+    .clean_genotype_file(path, cleaned_path, sep = sep_clean, verbose = verbose)
+    path <- cleaned_path
   }
 
   # -- Auto-convert VCF or HapMap to GDS for streaming access ---------------
@@ -190,12 +220,14 @@ read_geno <- function(
       if (fmt == "vcf") {
         # SNPRelate::snpgdsVCF2GDS is the CRAN-friendly replacement for
         # SNPRelate::snpgdsVCF2GDS. Both produce GDS files readable by gdsfmt.
-        SNPRelate::snpgdsVCF2GDS(
-          vcf.fn      = path,
-          out.fn      = cache_path,
-          method      = "biallelic.only",
-          snpfirstdim = FALSE,
-          verbose     = isTRUE(verbose)
+        suppressMessages(
+          SNPRelate::snpgdsVCF2GDS(
+            vcf.fn      = path,
+            out.fn      = cache_path,
+            method      = "biallelic.only",
+            snpfirstdim = FALSE,
+            verbose     = isTRUE(verbose)
+          )
         )
       } else {
         # HapMap: decode to VCF then convert via SNPRelate
@@ -239,6 +271,76 @@ read_geno <- function(
 # -----------------------------------------------------------------------------
 # Format readers
 # -----------------------------------------------------------------------------
+
+# -- 0. Internal stream-cleaner (OptSLDP-inspired) ----------------------------
+# Streams through any flat genotype file (numeric CSV, HapMap, VCF / .gz)
+# in chunk_size-line batches, keeping only lines whose delimiter-separated
+# field count matches the header. Produces a cleaned tempfile that the caller
+# reads normally. Adds one streaming pass; safe for files > 10 GB.
+#
+# Separator detection:
+#   VCF / HapMap  -> tab
+#   Numeric CSV   -> comma (or the sep argument)
+#   VCF comment (#) lines are always passed through; column count is set from
+#   the #CHROM header line. For non-VCF formats the first non-blank line is
+#   the header.
+.clean_genotype_file <- function(file_in, file_out,
+                                 sep        = ",",
+                                 chunk_size = 50000L,
+                                 verbose    = FALSE) {
+  is_vcf <- grepl("\\.vcf(\\.gz)?$", tolower(file_in))
+  con_in  <- gzfile(file_in,  "r")
+  con_out <- file(file_out, "w")
+  on.exit({ try(close(con_in), silent=TRUE); try(close(con_out), silent=TRUE) },
+          add = TRUE)
+
+  n_total <- 0L; n_removed <- 0L
+  expected_cols <- NULL
+  header_done   <- FALSE
+
+  if (isTRUE(verbose))
+    message("[clean_genotype_file] Scanning ", basename(file_in),
+            " (sep=", if (sep=="\t") "tab" else sep, ") ...")
+
+  repeat {
+    lines <- readLines(con_in, n = chunk_size, warn = FALSE)
+    if (!length(lines)) break
+    keep <- character(0L)
+
+    for (ln in lines) {
+      # VCF comment / meta lines
+      if (is_vcf && startsWith(ln, "#")) {
+        if (startsWith(ln, "#CHROM"))
+          expected_cols <- length(strsplit(ln, sep, fixed=TRUE)[[1L]])
+        keep <- c(keep, ln)
+        next
+      }
+      # First data line sets column count for non-VCF formats
+      if (!is_vcf && !header_done) {
+        expected_cols <- length(strsplit(ln, sep, fixed=TRUE)[[1L]])
+        header_done   <- TRUE
+        keep <- c(keep, ln)
+        next
+      }
+      n_total <- n_total + 1L
+      if (!is.null(expected_cols)) {
+        n_cols <- length(strsplit(ln, sep, fixed=TRUE)[[1L]])
+        if (n_cols != expected_cols) { n_removed <- n_removed + 1L; next }
+      }
+      keep <- c(keep, ln)
+    }
+    if (length(keep)) writeLines(keep, con_out)
+    if (isTRUE(verbose) && n_total > 0L && n_total %% 500000L < chunk_size)
+      message("  [clean_genotype_file] ", n_total, " data lines, ",
+              n_removed, " removed ...")
+  }
+  close(con_in); close(con_out)
+  if (isTRUE(verbose))
+    message("[clean_genotype_file] Done: ", n_total, " lines checked, ",
+            n_removed, " malformed removed.")
+  invisible(c(total=n_total, removed=n_removed, kept=n_total-n_removed))
+}
+
 
 # -- 1. Numeric dosage (CSV/TXT) -----------------------------------------------
 .read_numeric <- function(path, sep, na_strings, verbose,
@@ -805,12 +907,14 @@ summary.LDxBlocks_backend <- function(object, ...) {
   writeLines(c(header, data_rows), vcf_tmp)
 
   if (isTRUE(verbose)) message("[.hapmap_to_gds] Converting VCF -> GDS: ", basename(gds_path))
-  SNPRelate::snpgdsVCF2GDS(
-    vcf.fn      = vcf_tmp,
-    out.fn      = gds_path,
-    method      = "biallelic.only",
-    snpfirstdim = FALSE,
-    verbose     = isTRUE(verbose)
+  suppressMessages(
+    SNPRelate::snpgdsVCF2GDS(
+      vcf.fn      = vcf_tmp,
+      out.fn      = gds_path,
+      method      = "biallelic.only",
+      snpfirstdim = FALSE,
+      verbose     = isTRUE(verbose)
+    )
   )
   if (isTRUE(verbose)) message("[.hapmap_to_gds] Done.")
   invisible(gds_path)

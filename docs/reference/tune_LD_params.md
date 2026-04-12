@@ -42,7 +42,7 @@ tune_LD_params(
 
 - geno_matrix:
 
-  Numeric matrix (individuals × SNPs; 0/1/2), genome-wide.
+  Numeric matrix (individuals x SNPs; 0/1/2), genome-wide.
 
 - snp_info:
 
@@ -66,7 +66,7 @@ tune_LD_params(
 - target_bp_band:
 
   Length-2 numeric vector: preferred median block size range in base
-  pairs. Default `c(5e4, 5e5)` (50 kb – 500 kb).
+  pairs. Default `c(5e4, 5e5)` (50 kb - 500 kb).
 
 - parallel:
 

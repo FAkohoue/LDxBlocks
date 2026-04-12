@@ -21,7 +21,8 @@ run_ldx_pipeline(
   top_n = 5L,
   scale_hap_matrix = FALSE,
   chr = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  clean_malformed = FALSE
 )
 }
 \arguments{
@@ -83,6 +84,10 @@ GBLUP-style models. Default `FALSE`.}
 `NULL` (default) processes all chromosomes.}
 
 \item{verbose}{Logical. Print timestamped progress. Default `TRUE`.}
+
+\item{clean_malformed}{Logical. Stream-clean the input file before reading
+by removing any lines whose column count does not match the header. Needed
+for files from NGSEP and some variant callers. Default \code{FALSE}.}
 }
 \value{
 A named list (invisibly) with elements:

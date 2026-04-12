@@ -14,7 +14,7 @@ get_V_inv_sqrt(V, method = c("chol", "eigen"))
 
 - V:
 
-  Symmetric positive-definite matrix (n × n). Typically a VanRaden GRM
+  Symmetric positive-definite matrix (n x n). Typically a VanRaden GRM
   after bending/tuning.
 
 - method:
@@ -24,4 +24,4 @@ get_V_inv_sqrt(V, method = c("chol", "eigen"))
 
 ## Value
 
-Numeric matrix A (n × n).
+Numeric matrix A (n x n).

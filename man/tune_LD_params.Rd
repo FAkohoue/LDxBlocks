@@ -18,7 +18,7 @@ tune_LD_params(
 )
 }
 \arguments{
-\item{geno_matrix}{Numeric matrix (individuals × SNPs; 0/1/2), genome-wide.}
+\item{geno_matrix}{Numeric matrix (individuals x SNPs; 0/1/2), genome-wide.}
 
 \item{snp_info}{Data frame with columns \code{SNP}, \code{CHR}, \code{POS}.}
 
@@ -32,7 +32,7 @@ combination; columns must match parameter names of \code{Big_LD}. If
 in tuning. \code{NULL} uses all chromosomes in \code{snp_info}.}
 
 \item{target_bp_band}{Length-2 numeric vector: preferred median block size
-range in base pairs. Default \code{c(5e4, 5e5)} (50 kb – 500 kb).}
+range in base pairs. Default \code{c(5e4, 5e5)} (50 kb - 500 kb).}
 
 \item{parallel}{Logical. If \code{TRUE}, uses
 \code{future.apply::future_lapply} for parallelism (user must set a

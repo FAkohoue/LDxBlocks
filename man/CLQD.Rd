@@ -52,3 +52,4 @@ Partitions SNPs in a genomic window into LD cliques. The LD matrix is
 computed by the C++ Armadillo kernel; adjacency is built by
 \code{build_adj_matrix_cpp}; cliques are found by igraph.
 }
+\keyword{internal}

@@ -12,19 +12,19 @@ prepare_geno(
 )
 }
 \arguments{
-\item{geno}{Numeric matrix (individuals × SNPs), 0/1/2.}
+\item{geno}{Numeric matrix (individuals x SNPs), 0/1/2.}
 
 \item{method}{Character. \code{"r2"} or \code{"rV2"}.}
 
-\item{kin_method}{Character. Whitening decomposition for rV²:
+\item{kin_method}{Character. Whitening decomposition for rV^2:
 \code{"chol"} or \code{"eigen"}.}
 
 \item{verbose}{Logical. Print progress.}
 }
 \value{
 Named list:
-  \item{adj_geno}{n × p numeric matrix ready for \code{compute_ld()}.}
-  \item{V_inv_sqrt}{n × n whitening matrix, or \code{NULL} for r².}
+  \item{adj_geno}{n x p numeric matrix ready for \code{compute_ld()}.}
+  \item{V_inv_sqrt}{n x n whitening matrix, or \code{NULL} for r^2.}
 }
 \description{
 Central preparation function called inside \code{\link{Big_LD}} and
@@ -32,7 +32,7 @@ Central preparation function called inside \code{\link{Big_LD}} and
 
 \describe{
   \item{\code{"r2"}}{Mean-centres each SNP column. No kinship needed.
-    Returns the centred matrix directly. Fast — O(np).}
+    Returns the centred matrix directly. Fast - O(np).}
   \item{\code{"rV2"}}{Computes VanRaden GRM via AGHmatrix, tunes it
     via ASRgenomics, inverts via Cholesky/eigen, and left-multiplies
     the centred genotype matrix. Returns the whitened matrix and the

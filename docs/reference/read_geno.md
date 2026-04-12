@@ -16,6 +16,7 @@ read_geno(
   sep = ",",
   na_strings = c("NA", "N", "NN", "./.", ".", ""),
   gds_cache = NULL,
+  clean_malformed = FALSE,
   verbose = FALSE
 )
 ```
@@ -60,6 +61,15 @@ read_geno(
   instead. When the cache file already exists it is reused without
   re-converting (fast subsequent calls). Ignored for all non-VCF
   formats. Default `","`.
+
+- clean_malformed:
+
+  Logical. If `TRUE`, the input file is stream-cleaned before reading:
+  any line whose delimiter-separated column count does not match the
+  header is silently removed. This adds one extra streaming pass over
+  the file but is required for files produced by some variant callers
+  (e.g. NGSEP) that embed extra characters in FORMAT fields. Applies to
+  numeric dosage CSV, HapMap, and VCF formats. Default `FALSE`.
 
 - verbose:
 

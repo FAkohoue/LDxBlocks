@@ -8,7 +8,7 @@ Depending on `method`:
 - `"r2"`:
 
   Mean-centres each SNP column. No kinship needed. Returns the centred
-  matrix directly. Fast — O(np).
+  matrix directly. Fast - O(np).
 
 - `"rV2"`:
 
@@ -32,7 +32,7 @@ prepare_geno(
 
 - geno:
 
-  Numeric matrix (individuals × SNPs), 0/1/2.
+  Numeric matrix (individuals x SNPs), 0/1/2.
 
 - method:
 
@@ -40,7 +40,7 @@ prepare_geno(
 
 - kin_method:
 
-  Character. Whitening decomposition for rV²: `"chol"` or `"eigen"`.
+  Character. Whitening decomposition for rV^2: `"chol"` or `"eigen"`.
 
 - verbose:
 
@@ -52,9 +52,9 @@ Named list:
 
 - adj_geno:
 
-  n × p numeric matrix ready for
+  n x p numeric matrix ready for
   [`compute_ld()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.md).
 
 - V_inv_sqrt:
 
-  n × n whitening matrix, or `NULL` for r².
+  n x n whitening matrix, or `NULL` for r^2.

@@ -2,7 +2,7 @@
 % Please edit documentation in R/Big_LD.R
 \name{Big_LD}
 \alias{Big_LD}
-\title{LD Block Segmentation (r² or rV², C++ accelerated)}
+\title{LD Block Segmentation (r^2 or rV^2, C++ accelerated)}
 \usage{
 Big_LD(
   geno,
@@ -46,7 +46,7 @@ as individual IDs; auto-generated if absent.}
 \item{appendrare}{Logical. Append rare SNPs after block detection. Default FALSE.}
 
 \item{singleton_as_block}{Logical. If \code{TRUE}, every SNP that passes MAF
-filtering but has pairwise r² below \code{CLQcut} with all neighbours
+filtering but has pairwise r^2 below \code{CLQcut} with all neighbours
 (i.e. is not assigned to any clique) is returned as a single-SNP block with
 \code{start == end} and \code{length_bp == 1}. Default \code{FALSE}.
 These blocks are excluded from haplotype analysis by the default
@@ -93,7 +93,7 @@ For genome-wide analyses use \code{\link{run_Big_LD_all_chr}}.
 For automatic parameter tuning use \code{\link{tune_LD_params}}.
 }
 \examples{
-\donttest{
+\dontrun{
 set.seed(1)
 m <- 80; b1 <- 60; b2 <- 60
 make_block <- function(m, size, p, flip = 0.03) {
@@ -110,7 +110,7 @@ colnames(G) <- paste0("rs", seq_len(ncol(G)))
 rownames(G) <- paste0("ind", seq_len(nrow(G)))
 pos <- c(seq(1, by = 1000, length.out = b1), seq(5e6, by = 1000, length.out = b2))
 SNPinfo <- data.frame(SNP = colnames(G), POS = pos)
-blocks <- Big_LD(G, SNPinfo, method = "r2", CLQcut = 0.6,
+blocks <- LDxBlocks:::Big_LD(G, SNPinfo, method = "r2", CLQcut = 0.6,
                  leng = 30, subSegmSize = 120, verbose = FALSE)
 head(blocks)
 }
@@ -124,3 +124,4 @@ VanRaden PM (2008) J. Dairy Sci. 91(11):4414-4423.
   \code{\link{compute_r2}}, \code{\link{compute_rV2}},
   \code{\link{tune_LD_params}}
 }
+\keyword{internal}

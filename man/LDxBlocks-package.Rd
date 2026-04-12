@@ -8,17 +8,17 @@
 \description{
 Fast, scalable linkage disequilibrium (LD) block detection for genome-wide
 SNP data using a C++/Armadillo computational core and two LD metrics:
-standard r² and kinship-adjusted rV². Includes haplotype reconstruction,
+standard r^2 and kinship-adjusted rV^2. Includes haplotype reconstruction,
 diversity metrics, prediction feature matrices, and multi-format genotype I/O.
 }
-\section{Choosing between r² and rV²}{
+\section{Choosing between r^2 and rV^2}{
 
 \describe{
-  \item{r² (\code{method = "r2"})}{Standard squared Pearson correlation.
+  \item{r^2 (\code{method = "r2"})}{Standard squared Pearson correlation.
     No kinship matrix required. C++ kernel via RcppArmadillo + OpenMP.
     Suitable for unstructured populations and large datasets (10 M+ markers).}
-  \item{rV² (\code{method = "rV2"})}{Kinship-whitened squared correlation
-    (Kim et al. 2018). Corrects LD inflation from relatedness. For livestock,
+  \item{rV^2 (\code{method = "rV2"})}{Kinship-whitened squared correlation
+    (Mangin et al. 2012, Heredity 108:285-291). Corrects LD inflation from relatedness. For livestock,
     inbred lines, or family-based cohorts with < 200 k markers per chromosome.}
 }
 }
@@ -26,7 +26,7 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.
 \section{Pipeline overview}{
 
 \enumerate{
-  \item Read genotype data: \code{\link{read_geno}} — auto-detects CSV,
+  \item Read genotype data: \code{\link{read_geno}} - auto-detects CSV,
     HapMap, VCF, GDS, BED, or plain matrix.
   \item Detect LD blocks chromosome-wise: \code{\link{run_Big_LD_all_chr}}.
   \item Optionally auto-tune parameters: \code{\link{tune_LD_params}}.
@@ -40,7 +40,7 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.
 \section{Example data}{
 
 \describe{
-  \item{\code{\link{ldx_geno}}}{120 × 200 genotype matrix, 3 chromosomes,
+  \item{\code{\link{ldx_geno}}}{120 x 200 genotype matrix, 3 chromosomes,
     9 simulated LD blocks.}
   \item{\code{\link{ldx_snp_info}}}{SNP metadata (SNP, CHR, POS, REF, ALT).}
   \item{\code{\link{ldx_blocks}}}{Reference block table for \code{ldx_geno}.}
@@ -49,10 +49,13 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.
 }
 
 \references{
-Kim S-A et al. (2018) Bioinformatics 34(4):588–596.
+Kim S-A et al. (2018) Bioinformatics 34(4):588-596.
 \doi{10.1093/bioinformatics/btx609}
 
-VanRaden PM (2008) J. Dairy Sci. 91(11):4414–4423.
+Mangin B et al. (2012) Heredity 108(3):285-291.
+\doi{10.1038/hdy.2011.73}
+
+VanRaden PM (2008) J. Dairy Sci. 91(11):4414-4423.
 \doi{10.3168/jds.2007-0980}
 }
 \seealso{

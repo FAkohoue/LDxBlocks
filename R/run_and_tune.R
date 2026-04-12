@@ -1,6 +1,6 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# run_Big_LD_all_chr.R  –  Chromosome-wise wrapper
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# run_Big_LD_all_chr.R  -  Chromosome-wise wrapper
+# -----------------------------------------------------------------------------
 
 #' Genome-Wide LD Block Detection by Chromosome
 #'
@@ -9,7 +9,7 @@
 #' returns a single tidy data frame annotated with chromosome and block length.
 #' This is the recommended entry point for genome-wide analyses.
 #'
-#' @param geno_matrix Numeric matrix (individuals × SNPs; values 0/1/2),
+#' @param geno_matrix Numeric matrix (individuals x SNPs; values 0/1/2),
 #'   spanning all chromosomes.
 #' @param snp_info Data frame with columns \code{CHR}, \code{SNP}, \code{POS}.
 #'   Column order is flexible; columns are matched by name.
@@ -21,7 +21,20 @@
 #' @param min_snps_chr Integer. Chromosomes with fewer SNPs than this after
 #'   MAF filtering are skipped. Default \code{10L}. Increase to skip small
 #'   scaffolds in whole-genome datasets.
-#' @param CLQcut,clstgap,leng,subSegmSize,MAFcut,appendrare,singleton_as_block,checkLargest,CLQmode,kin_method,split,digits,seed,verbose
+#' @param chr Character vector or \code{NULL}. If supplied, only the named
+#'   chromosomes are processed. Labels must match the values in
+#'   \code{snp_info$CHR} after normalisation (no \code{chr} prefix). E.g.
+#'   \code{chr = c("1","3","5")} or \code{chr = "X"}. Default \code{NULL}
+#'   processes all chromosomes.
+#' @param clean_malformed Logical. If \code{TRUE}, stream-clean the input file
+#'   before reading by removing lines whose column count does not match the
+#'   header. Only relevant when \code{geno_matrix} is a file path wrapped into
+#'   a backend. Default \code{FALSE}.
+#' @param singleton_as_block Logical. If \code{TRUE}, SNPs that pass MAF
+#'   filtering but are not assigned to any clique are returned as single-SNP
+#'   blocks (\code{start == end}, \code{length_bp == 1}). Default \code{FALSE}.
+#'   See \code{\link{Big_LD}} for details.
+#' @param CLQcut,clstgap,leng,subSegmSize,MAFcut,appendrare,checkLargest,CLQmode,kin_method,split,digits,seed,verbose
 #'   Forwarded to \code{\link{Big_LD}}. See that function's documentation for
 #'   details.
 #'
@@ -51,26 +64,28 @@
 #' @export
 run_Big_LD_all_chr <- function(
     geno_matrix,
-    snp_info    = NULL,
-    CLQcut       = 0.5,
-    method       = c("r2", "rV2"),
-    n_threads    = 1L,
-    clstgap      = 40000,
-    leng         = 200,
-    subSegmSize  = 1500,
-    MAFcut       = 0.05,
-    appendrare   = FALSE,
+    snp_info        = NULL,
+    CLQcut          = 0.5,
+    method          = c("r2", "rV2"),
+    n_threads       = 1L,
+    clstgap         = 40000,
+    leng            = 200,
+    subSegmSize     = 1500,
+    MAFcut          = 0.05,
+    appendrare      = FALSE,
     singleton_as_block = FALSE,
-    checkLargest = FALSE,
-    CLQmode      = "Density",
-    kin_method   = "chol",
-    split        = FALSE,
-    digits       = -1L,
-    seed         = NULL,
-    min_snps_chr = 10L,
-    verbose      = FALSE
+    checkLargest    = FALSE,
+    CLQmode         = "Density",
+    kin_method      = "chol",
+    split           = FALSE,
+    digits          = -1L,
+    seed            = NULL,
+    min_snps_chr    = 10L,
+    chr             = NULL,
+    clean_malformed = FALSE,
+    verbose         = FALSE
 ) {
-  # ── Accept either a plain matrix+snp_info OR an LDxBlocks_backend ──────────
+  # -- Accept either a plain matrix+snp_info OR an LDxBlocks_backend ----------
   if (inherits(geno_matrix, "LDxBlocks_backend")) {
     backend  <- geno_matrix
     snp_info <- backend$snp_info
@@ -81,10 +96,24 @@ run_Big_LD_all_chr <- function(
     req_cols <- c("CHR", "SNP", "POS")
     if (!all(req_cols %in% names(snp_info)))
       stop("snp_info must contain columns: ", paste(req_cols, collapse = ", "))
-    backend <- read_geno(geno_matrix, format = "matrix", snp_info = snp_info)
+    backend <- read_geno(geno_matrix, format = "matrix", snp_info = snp_info,
+                         clean_malformed = clean_malformed)
   }
 
-  chromosomes   <- unique(as.character(snp_info$CHR))
+  chromosomes <- unique(as.character(snp_info$CHR))
+
+  # -- Optional: restrict to user-specified chromosomes ----------------------
+  if (!is.null(chr)) {
+    chr_req <- as.character(chr)
+    missing_chr <- setdiff(chr_req, chromosomes)
+    if (length(missing_chr))
+      warning("Chromosomes not found in data and will be skipped: ",
+              paste(missing_chr, collapse = ", "), call. = FALSE)
+    chromosomes <- intersect(chr_req, chromosomes)
+    if (!length(chromosomes))
+      stop("None of the requested chromosomes exist in the data.", call. = FALSE)
+  }
+
   ld_blocks_all <- vector("list", length(chromosomes))
   names(ld_blocks_all) <- chromosomes
 
@@ -135,11 +164,11 @@ run_Big_LD_all_chr <- function(
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# tune_LD_params.R  –  Grid-search auto-tuner
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# tune_LD_params.R  -  Grid-search auto-tuner
+# -----------------------------------------------------------------------------
 
-# ── Unexported helpers ────────────────────────────────────────────────────────
+# -- Unexported helpers --------------------------------------------------------
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
 .build_blocks_chr <- function(geno_chr, info_chr, params) {
@@ -252,7 +281,7 @@ run_Big_LD_all_chr <- function(
 #' \code{\link{run_Big_LD_all_chr}} on all chromosomes and assigns every GWAS
 #' marker to a block, returning the final blocks and assignments.
 #'
-#' @param geno_matrix Numeric matrix (individuals × SNPs; 0/1/2), genome-wide.
+#' @param geno_matrix Numeric matrix (individuals x SNPs; 0/1/2), genome-wide.
 #' @param snp_info Data frame with columns \code{SNP}, \code{CHR}, \code{POS}.
 #' @param gwas_df Data frame with columns \code{Marker}, \code{CHR}, \code{POS}.
 #' @param grid Optional data frame of parameter combinations. Each row is one
@@ -261,7 +290,7 @@ run_Big_LD_all_chr <- function(
 #' @param chromosomes Optional character vector of chromosome names to include
 #'   in tuning. \code{NULL} uses all chromosomes in \code{snp_info}.
 #' @param target_bp_band Length-2 numeric vector: preferred median block size
-#'   range in base pairs. Default \code{c(5e4, 5e5)} (50 kb – 500 kb).
+#'   range in base pairs. Default \code{c(5e4, 5e5)} (50 kb - 500 kb).
 #' @param parallel Logical. If \code{TRUE}, uses
 #'   \code{future.apply::future_lapply} for parallelism (user must set a
 #'   \code{future} plan before calling). Default \code{FALSE}.
@@ -402,7 +431,7 @@ tune_LD_params <- function(
     "checkLargest", "MAFcut", "CLQmode", "kin_method", "digits", "appendrare"
   )])
 
-  # ── Final run with best params (all chromosomes) ───────────────────────────
+  # -- Final run with best params (all chromosomes) ---------------------------
   all_chr        <- unique(as.character(snp_info$CHR))
   final_ld_by_chr <- vector("list", length(all_chr))
   names(final_ld_by_chr) <- all_chr

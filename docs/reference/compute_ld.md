@@ -1,4 +1,4 @@
-# Compute LD Matrix: Standard r² or Kinship-Adjusted rV²
+# Compute LD Matrix: Standard r^2 or Kinship-Adjusted rV^2
 
 Unified dispatcher. With `method = "r2"` (default and recommended for
 large datasets) it calls the C++ Armadillo back-end for fast standard
@@ -15,7 +15,7 @@ compute_ld(X, method = c("r2", "rV2"), digits = -1L, n_threads = 1L)
 
 - X:
 
-  NumericMatrix (individuals × SNPs). For `method = "r2"`: raw or
+  NumericMatrix (individuals x SNPs). For `method = "r2"`: raw or
   mean-centred genotypes (0/1/2). For `method = "rV2"`: the pre-whitened
   matrix \\V^{-1/2} \tilde{G}\\ produced by
   [`prepare_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md).
@@ -36,7 +36,7 @@ compute_ld(X, method = c("r2", "rV2"), digits = -1L, n_threads = 1L)
 
 ## Value
 
-Symmetric p × p numeric matrix, diagonal 0, values in \[0, 1\].
+Symmetric p x p numeric matrix, diagonal 0, values in \[0, 1\].
 
 ## See also
 
@@ -48,9 +48,11 @@ Symmetric p × p numeric matrix, diagonal 0, values in \[0, 1\].
 ## Examples
 
 ``` r
+if (FALSE) { # \dontrun{
+# Internal function — use compute_r2() or compute_rV2() instead
 set.seed(1)
 G <- matrix(sample(0:2, 60 * 20, replace = TRUE), 60, 20)
-ld_r2  <- compute_ld(G, method = "r2")
+ld_r2  <- LDxBlocks:::compute_ld(G, method = "r2")
 range(ld_r2)
-#> [1] 0.0000000 0.1180212
+} # }
 ```

@@ -142,7 +142,7 @@ phase_with_pedigree <- function(dosage_mat, pedigree, resolve_het=FALSE,
 #' Collapse Phased Gametes to 0/1/2 Dosage
 #' @param phased_list List from read_phased_vcf() or phase_with_pedigree().
 #' @return Numeric matrix (individuals x SNPs, 0/1/2/NA).
-#' @export
+#' @keywords internal
 unphase_to_dosage <- function(phased_list) {
   if (!all(c("hap1","hap2")%in%names(phased_list)))
     stop("Need hap1 and hap2 elements.",call.=FALSE)

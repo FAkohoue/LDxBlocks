@@ -23,7 +23,7 @@
 #' @param verbose Logical.
 #'
 #' @return Integer vector length p: clique ID per SNP, NA = singleton.
-#' @export
+#' @keywords internal
 CLQD <- function(
     subgeno,
     subSNPinfo,

@@ -23,17 +23,19 @@ run_Big_LD_all_chr(
   digits = -1L,
   seed = NULL,
   min_snps_chr = 10L,
+  chr = NULL,
+  clean_malformed = FALSE,
   verbose = FALSE
 )
 }
 \arguments{
-\item{geno_matrix}{Numeric matrix (individuals × SNPs; values 0/1/2),
+\item{geno_matrix}{Numeric matrix (individuals x SNPs; values 0/1/2),
 spanning all chromosomes.}
 
 \item{snp_info}{Data frame with columns \code{CHR}, \code{SNP}, \code{POS}.
 Column order is flexible; columns are matched by name.}
 
-\item{CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare, singleton_as_block, checkLargest, CLQmode, kin_method, split, digits, seed, verbose}{Forwarded to \code{\link{Big_LD}}. See that function's documentation for
+\item{CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare, checkLargest, CLQmode, kin_method, split, digits, seed, verbose}{Forwarded to \code{\link{Big_LD}}. See that function's documentation for
 details.}
 
 \item{method}{Character. LD metric: \code{"r2"} (default, standard squared
@@ -43,9 +45,25 @@ Pearson correlation) or \code{"rV2"} (kinship-adjusted). See
 \item{n_threads}{Integer. Number of OpenMP threads for the C++ LD kernel.
 Default \code{1L}. Increase for multi-core systems.}
 
+\item{singleton_as_block}{Logical. If \code{TRUE}, SNPs that pass MAF
+filtering but are not assigned to any clique are returned as single-SNP
+blocks (\code{start == end}, \code{length_bp == 1}). Default \code{FALSE}.
+See \code{\link{Big_LD}} for details.}
+
 \item{min_snps_chr}{Integer. Chromosomes with fewer SNPs than this after
 MAF filtering are skipped. Default \code{10L}. Increase to skip small
 scaffolds in whole-genome datasets.}
+
+\item{chr}{Character vector or \code{NULL}. If supplied, only the named
+chromosomes are processed. Labels must match the values in
+\code{snp_info$CHR} after normalisation (no \code{chr} prefix). E.g.
+\code{chr = c("1","3","5")} or \code{chr = "X"}. Default \code{NULL}
+processes all chromosomes.}
+
+\item{clean_malformed}{Logical. If \code{TRUE}, stream-clean the input file
+before reading by removing lines whose column count does not match the
+header. Only relevant when \code{geno_matrix} is a file path wrapped into
+a backend. Default \code{FALSE}.}
 }
 \value{
 A \code{data.frame} with columns:

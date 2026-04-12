@@ -913,8 +913,8 @@ blocks <- run_Big_LD_all_chr(
 | Function | Description |
 |----------|-------------|
 | `run_Big_LD_all_chr()` | Chromosome-wise LD block detection. Accepts both plain matrices and `LDxBlocks_backend` objects. **Recommended entry point.** |
-| `Big_LD()` | Core per-chromosome segmentation. Exposed for fine-grained control or single-chromosome analyses. |
-| `CLQD()` | Clique detection within one sub-segment. Returns integer bin vector. |
+| `Big_LD()` | Core per-chromosome segmentation. Called internally by `run_Big_LD_all_chr()`. Not exported — use `run_Big_LD_all_chr()` directly. |
+| `CLQD()` | Clique detection within one sub-segment. Called internally by `Big_LD()`. Not exported. |
 | `tune_LD_params()` | Grid-search auto-tuner minimising unassigned GWAS marker placements. |
 
 ### I/O

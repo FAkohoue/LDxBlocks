@@ -15,8 +15,8 @@ metrics are available:
   table.
 
 The C++/Armadillo computational core makes the algorithm approximately
-40x faster than the original original Big-LD implementation (no compiled
-code) for typical window sizes.
+40x faster than the original Big-LD implementation (no compiled code)
+for typical window sizes.
 
 This vignette covers the complete pipeline – reading genotype data,
 block detection, haplotype analysis, and parameter tuning – using the
@@ -100,11 +100,11 @@ feat <- build_haplotype_feature_matrix(haps, top_n = 5, encoding = "additive_012
 
 The following components are unchanged from Kim et al. (2018):
 
-- [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md):
-  bin vector assignment via maximal clique enumeration and greedy
-  density/maximal priority selection
-- `constructLDblock()`: maximum-weight independent set via dynamic
-  programming
+- [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md)
+  (internal): bin vector assignment via maximal clique enumeration and
+  greedy density/maximal priority selection
+- `constructLDblock()` (internal): maximum-weight independent set via
+  dynamic programming on sorted interval sequences
 - All `CLQmode`, `clstgap`, and `split` logic
 - Block table column format (`start`, `end`, `start.rsID`, `end.rsID`,
   `start.bp`, `end.bp`) – drop-in compatible with tools that accept
@@ -241,19 +241,28 @@ head(blocks)
 
 ### Single chromosome
 
+Use the `chr` parameter of
+[`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
+to restrict detection to one or more specific chromosomes. This uses the
+same streaming memory model and produces the same output columns as a
+genome-wide run.
+
 ``` r
-chr1_idx    <- which(ldx_snp_info$CHR == "1")
-blocks_chr1 <- Big_LD(
-  geno        = ldx_geno[, chr1_idx],
-  SNPinfo     = ldx_snp_info[chr1_idx, c("SNP", "POS")],
+blocks_chr1 <- run_Big_LD_all_chr(
+  ldx_geno,
+  snp_info    = ldx_snp_info,
   method      = "r2",
   CLQcut      = 0.55,
   leng        = 15L,
   subSegmSize = 100L,
+  chr         = "1",         # restrict to chromosome 1 only
+  n_threads   = 1L,
   verbose     = FALSE
 )
 nrow(blocks_chr1)
 #> [1] 3
+unique(blocks_chr1$CHR)      # confirms only chr 1 processed
+#> [1] "1"
 ```
 
 ------------------------------------------------------------------------

@@ -15,3 +15,4 @@ Numeric matrix (individuals x SNPs, 0/1/2/NA).
 \description{
 Collapse Phased Gametes to 0/1/2 Dosage
 }
+\keyword{internal}

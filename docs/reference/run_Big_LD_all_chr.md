@@ -28,6 +28,8 @@ run_Big_LD_all_chr(
   digits = -1L,
   seed = NULL,
   min_snps_chr = 10L,
+  chr = NULL,
+  clean_malformed = FALSE,
   verbose = FALSE
 )
 ```
@@ -36,7 +38,7 @@ run_Big_LD_all_chr(
 
 - geno_matrix:
 
-  Numeric matrix (individuals × SNPs; values 0/1/2), spanning all
+  Numeric matrix (individuals x SNPs; values 0/1/2), spanning all
   chromosomes.
 
 - snp_info:
@@ -44,9 +46,8 @@ run_Big_LD_all_chr(
   Data frame with columns `CHR`, `SNP`, `POS`. Column order is flexible;
   columns are matched by name.
 
-- CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare,
-  singleton_as_block, checkLargest, CLQmode, kin_method, split, digits,
-  seed, verbose:
+- CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare, checkLargest,
+  CLQmode, kin_method, split, digits, seed, verbose:
 
   Forwarded to
   [`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md).
@@ -64,11 +65,33 @@ run_Big_LD_all_chr(
   Integer. Number of OpenMP threads for the C++ LD kernel. Default `1L`.
   Increase for multi-core systems.
 
+- singleton_as_block:
+
+  Logical. If `TRUE`, SNPs that pass MAF filtering but are not assigned
+  to any clique are returned as single-SNP blocks (`start == end`,
+  `length_bp == 1`). Default `FALSE`. See
+  [`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
+  for details.
+
 - min_snps_chr:
 
   Integer. Chromosomes with fewer SNPs than this after MAF filtering are
   skipped. Default `10L`. Increase to skip small scaffolds in
   whole-genome datasets.
+
+- chr:
+
+  Character vector or `NULL`. If supplied, only the named chromosomes
+  are processed. Labels must match the values in `snp_info$CHR` after
+  normalisation (no `chr` prefix). E.g. `chr = c("1","3","5")` or
+  `chr = "X"`. Default `NULL` processes all chromosomes.
+
+- clean_malformed:
+
+  Logical. If `TRUE`, stream-clean the input file before reading by
+  removing lines whose column count does not match the header. Only
+  relevant when `geno_matrix` is a file path wrapped into a backend.
+  Default `FALSE`.
 
 ## Value
 

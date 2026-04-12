@@ -7,14 +7,14 @@
 get_V_inv_sqrt(V, method = c("chol", "eigen"))
 }
 \arguments{
-\item{V}{Symmetric positive-definite matrix (n × n). Typically a VanRaden
+\item{V}{Symmetric positive-definite matrix (n x n). Typically a VanRaden
 GRM after bending/tuning.}
 
 \item{method}{Character. \code{"chol"} (default, faster) or
 \code{"eigen"} (more robust for near-singular matrices).}
 }
 \value{
-Numeric matrix A (n × n).
+Numeric matrix A (n x n).
 }
 \description{
 Returns \eqn{A} such that \eqn{A V A^\top = I}. Used by

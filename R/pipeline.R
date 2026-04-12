@@ -144,6 +144,9 @@
 #' This encoding is directly compatible with genomic prediction software
 #' (ASReml-R, rrBLUP, BGLR, GBLUP) without further transformation.
 #'
+#' @param clean_malformed   Logical. Stream-clean the input file before reading
+#'   by removing any lines whose column count does not match the header. Needed
+#'   for files from NGSEP and some variant callers. Default \code{FALSE}.
 #' @param geno_file         Path to genotype file. Supported formats: numeric
 #'   dosage CSV (`.csv`), HapMap (`.hmp.txt`), VCF (`.vcf`, `.vcf.gz`),
 #'   SNPRelate GDS (`.gds`), PLINK BED (`.bed`). Format is detected
@@ -244,7 +247,8 @@ run_ldx_pipeline <- function(
     top_n            = 5L,
     scale_hap_matrix = FALSE,
     chr              = NULL,
-    verbose          = TRUE
+    verbose          = TRUE,
+    clean_malformed  = FALSE
 ) {
   hap_format <- match.arg(hap_format)
   method     <- match.arg(method)
@@ -257,7 +261,7 @@ run_ldx_pipeline <- function(
 
   # -- Step 1: Open backend (auto-detect format) ------------------------------
   .ldx_log("Opening genotype file: ", basename(geno_file))
-  be <- read_geno(geno_file, verbose = verbose)
+  be <- read_geno(geno_file, clean_malformed = clean_malformed, verbose = verbose)
   .ldx_log("Backend: ", be$type, " | ",
            be$n_samples, " individuals | ", be$n_snps, " SNPs")
 
@@ -294,7 +298,7 @@ run_ldx_pipeline <- function(
   col_idx  <- which(be$snp_info$SNP %in% be$snp_info$SNP)
 
   # Re-read from original backend using filtered column indices
-  be_full  <- read_geno(geno_file, verbose = FALSE)
+  be_full  <- read_geno(geno_file, clean_malformed = clean_malformed, verbose = FALSE)
   full_idx <- match(be$snp_info$SNP, be_full$snp_info$SNP)
   geno_mat <- read_chunk(be_full, full_idx)        # individuals x SNPs
   close_backend(be_full)

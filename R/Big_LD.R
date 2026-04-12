@@ -1,10 +1,10 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Big_LD.R  –  Core per-chromosome LD block segmentation
-#              Supports standard r² (default) and kinship-adjusted rV²
+# -----------------------------------------------------------------------------
+# Big_LD.R  -  Core per-chromosome LD block segmentation
+#              Supports standard r^2 (default) and kinship-adjusted rV^2
 #              C++ kernels used throughout for speed
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
-#' LD Block Segmentation (r² or rV², C++ accelerated)
+#' LD Block Segmentation (r^2 or rV^2, C++ accelerated)
 #'
 #' @description
 #' Core per-chromosome LD block detection. Two LD metrics are supported:
@@ -34,7 +34,7 @@
 #' @param MAFcut Numeric. Minor allele frequency minimum. Default 0.05.
 #' @param appendrare Logical. Append rare SNPs after block detection. Default FALSE.
 #' @param singleton_as_block Logical. If \code{TRUE}, every SNP that passes MAF
-#'   filtering but has pairwise r² below \code{CLQcut} with all neighbours
+#'   filtering but has pairwise r^2 below \code{CLQcut} with all neighbours
 #'   (i.e. is not assigned to any clique) is returned as a single-SNP block with
 #'   \code{start == end} and \code{length_bp == 1}. Default \code{FALSE}.
 #'   These blocks are excluded from haplotype analysis by the default
@@ -63,7 +63,7 @@
 #' VanRaden PM (2008) J. Dairy Sci. 91(11):4414-4423.
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' set.seed(1)
 #' m <- 80; b1 <- 60; b2 <- 60
 #' make_block <- function(m, size, p, flip = 0.03) {
@@ -80,11 +80,11 @@
 #' rownames(G) <- paste0("ind", seq_len(nrow(G)))
 #' pos <- c(seq(1, by = 1000, length.out = b1), seq(5e6, by = 1000, length.out = b2))
 #' SNPinfo <- data.frame(SNP = colnames(G), POS = pos)
-#' blocks <- Big_LD(G, SNPinfo, method = "r2", CLQcut = 0.6,
+#' blocks <- LDxBlocks:::Big_LD(G, SNPinfo, method = "r2", CLQcut = 0.6,
 #'                  leng = 30, subSegmSize = 120, verbose = FALSE)
 #' head(blocks)
 #' }
-#' @export
+#' @keywords internal
 Big_LD <- function(
     geno,
     SNPinfo,
@@ -117,15 +117,15 @@ Big_LD <- function(
   ids <- rownames(geno)
   if (is.null(ids)) { ids <- sprintf("ind%04d", seq_len(nrow(geno))); rownames(geno) <- ids }
 
-  # ── Prepare (centre or whiten) ────────────────────────────────────────────
+  # -- Prepare (centre or whiten) --------------------------------------------
   prep       <- prepare_geno(geno, method = method, kin_method = kin_method, verbose = verbose)
   adj_geno   <- prep$adj_geno
-  V_inv_sqrt <- prep$V_inv_sqrt   # NULL for r²
+  V_inv_sqrt <- prep$V_inv_sqrt   # NULL for r^2
 
   Ogeno    <- geno
   OSNPinfo <- SNPinfo
 
-  # ── MAF + monomorphic filter (C++) ───────────────────────────────────────
+  # -- MAF + monomorphic filter (C++) ---------------------------------------
   keep_poly <- maf_filter_cpp(geno, maf_cut = MAFcut)
   monoSNPs  <- OSNPinfo[!keep_poly, , drop = FALSE]
   geno      <- geno[, keep_poly, drop = FALSE]
@@ -139,11 +139,11 @@ Big_LD <- function(
                       start.bp = numeric(), end.bp = numeric()))
   }
 
-  # ══════════════════════════════════════════════════════════════════════════
+  # ==========================================================================
   # Internal helpers
-  # ══════════════════════════════════════════════════════════════════════════
+  # ==========================================================================
 
-  # ── cutsequence.modi: find weak-LD boundaries using C++ boundary_scan ────
+  # -- cutsequence.modi: find weak-LD boundaries using C++ boundary_scan ----
   cutsequence.modi <- function(geno, adj_geno, leng, subSegmSize, CLQcut, digits, n_threads) {
     p <- ncol(geno)
     if (p <= subSegmSize) return(list(p, NULL))
@@ -160,7 +160,7 @@ Big_LD <- function(
         r_start <- i + 1L;     r_end <- i + j
         if (r_end > p) next
 
-        # C++ cross-boundary r² check
+        # C++ cross-boundary r^2 check
         sub_cols  <- l_start:r_end
         sub_adj   <- adj_geno[, sub_cols, drop = FALSE]
         cross_r2  <- compute_r2_cpp(sub_adj,
@@ -232,7 +232,7 @@ Big_LD <- function(
     list(cutpoints, atfcut)
   }
 
-  # ── intervalCliqueList ────────────────────────────────────────────────────
+  # -- intervalCliqueList ----------------------------------------------------
   intervalCliqueList <- function(clstlist, allsnps, onlybp) {
     bp.clstlist <- lapply(clstlist, function(x) onlybp[x])
     bp.allsnps  <- lapply(allsnps,  function(x) onlybp[x])
@@ -259,7 +259,7 @@ Big_LD <- function(
     list(intervals[info_idx], ri[info_idx, 3L])
   }
 
-  # ── find.maximum.indept ───────────────────────────────────────────────────
+  # -- find.maximum.indept ---------------------------------------------------
   find.maximum.indept <- function(sample.itv, sample.weight) {
     n              <- length(sample.itv)
     interval.range <- t(vapply(sample.itv, range, numeric(2L)))
@@ -295,7 +295,7 @@ Big_LD <- function(
     }
   }
 
-  # ── constructLDblock ──────────────────────────────────────────────────────
+  # -- constructLDblock ------------------------------------------------------
   constructLDblock <- function(clstlist, subSNPinfo) {
     safe_range <- function(v) {
       y <- as.numeric(stats::na.omit(v))
@@ -330,7 +330,7 @@ Big_LD <- function(
     Total
   }
 
-  # ── subBigLD ──────────────────────────────────────────────────────────────
+  # -- subBigLD --------------------------------------------------------------
   subBigLD <- function(sg, si, ag, CLQcut, clstgap, CLQmode, checkLargest, split, digits, n_threads) {
     bv   <- CLQD(sg, si, ag, CLQcut = CLQcut, clstgap = clstgap, CLQmode = CLQmode,
                  codechange = FALSE, checkLargest = checkLargest, split = split,
@@ -344,7 +344,7 @@ Big_LD <- function(
     nowLD[order(nowLD[,1L]), , drop = FALSE]
   }
 
-  # ── appendSGTs ────────────────────────────────────────────────────────────
+  # -- appendSGTs ------------------------------------------------------------
   appendSGTs <- function(LDblocks, Ogeno, OSNPinfo, CLQcut, clstgap,
                          checkLargest, CLQmode, prep_full, split, digits, n_threads) {
     if (isTRUE(verbose)) message("[Big_LD] appendSGTs: assigning rare SNPs.")
@@ -454,9 +454,9 @@ Big_LD <- function(
                end.bp     = as.numeric(OSNPinfo[[2L]][expandB[,2L]]))
   }
 
-  # ══════════════════════════════════════════════════════════════════════════
+  # ==========================================================================
   # Main loop
-  # ══════════════════════════════════════════════════════════════════════════
+  # ==========================================================================
 
   cuts      <- cutsequence.modi(geno, adjN, leng, subSegmSize, CLQcut, digits, n_threads)
   cutpoints <- setdiff(cuts[[1L]], 0L)
@@ -505,7 +505,7 @@ Big_LD <- function(
 
   done <- LDblocks[!is.na(LDblocks[,1L]), , drop = FALSE]
 
-  # ── Optional re-merge across forced cut-points ────────────────────────────
+  # -- Optional re-merge across forced cut-points ----------------------------
   if (length(atfcut)) {
     newLDblocks <- matrix(NA_integer_, nrow(SNPinfo), 2L)
     consec <- 0L
@@ -539,7 +539,7 @@ Big_LD <- function(
   LDblocks <- LDblocks[!is.na(LDblocks[,1L]),,drop=FALSE]
   LDblocks <- LDblocks[order(LDblocks[,1L]),,drop=FALSE]
 
-  # ── Merge overlapping blocks ──────────────────────────────────────────────
+  # -- Merge overlapping blocks ----------------------------------------------
   i <- 1L
   while (i < nrow(LDblocks)) {
     if (LDblocks[i,2L] < LDblocks[i+1L,1L]) { i <- i+1L; next }
@@ -549,7 +549,7 @@ Big_LD <- function(
     LDblocks <- LDblocks[!is.na(LDblocks[,1L]),,drop=FALSE]
   }
 
-  # ── Build output data.frame ───────────────────────────────────────────────
+  # -- Build output data.frame -----------------------------------------------
   out <- data.frame(
     start      = LDblocks[,1L],
     end        = LDblocks[,2L],
@@ -573,9 +573,9 @@ Big_LD <- function(
                       CLQmode, prep_full, split, digits, n_threads)
   }
 
-  # ── Optional: include singletons as single-SNP blocks ─────────────────────
+  # -- Optional: include singletons as single-SNP blocks ---------------------
   # Each SNP that passed MAF filtering but was not assigned to any clique
-  # (no r² >= CLQcut partner within its sub-segment) becomes its own block.
+  # (no r^2 >= CLQcut partner within its sub-segment) becomes its own block.
   # start == end, length_bp == 1, start.rsID == end.rsID.
   # These are biologically meaningful: they mark low-LD regions, recombination
   # hotspots, or rapidly-evolving loci. They are excluded from haplotype

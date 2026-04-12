@@ -2,38 +2,38 @@
 % Please edit documentation in R/compute_ld.R
 \name{compute_r2}
 \alias{compute_r2}
-\title{Compute Standard r² LD Matrix}
+\title{Compute Standard r^2 LD Matrix}
 \usage{
 compute_r2(X, digits = -1L, n_threads = 1L)
 }
 \arguments{
-\item{X}{NumericMatrix (individuals × SNPs). Values 0/1/2. NA allowed.}
+\item{X}{NumericMatrix (individuals x SNPs). Values 0/1/2. NA allowed.}
 
 \item{digits}{Integer. Rounding decimal places. \code{-1} (default) = none.}
 
 \item{n_threads}{Integer. OpenMP threads. Default 1.}
 }
 \value{
-Symmetric p × p NumericMatrix, diagonal 0, values in [0, 1].
+Symmetric p x p NumericMatrix, diagonal 0, values in [0, 1].
 }
 \description{
 Fast C++/Armadillo implementation of the standard pairwise squared Pearson
-correlation (r²) for a window of SNP columns. Missing genotypes (NA) are
+correlation (r^2) for a window of SNP columns. Missing genotypes (NA) are
 mean-imputed per column before computation. This is the default LD metric
-in \pkg{LDxBlocks} and is 10–50× faster than \code{stats::cor()}.
+in \pkg{LDxBlocks} and is 10-50x faster than \code{stats::cor()}.
 }
-\section{When to use r² vs rV²}{
+\section{When to use r^2 vs rV^2}{
 
 \describe{
-  \item{r²}{Use for large unstructured datasets (> 500 k markers), random
+  \item{r^2}{Use for large unstructured datasets (> 500 k markers), random
     mating populations, or whenever speed matters. The standard estimator
     is inflated in related populations (i.e. will over-estimate LD) but
     this usually leads to slightly more conservative (larger) blocks rather
     than catastrophically wrong ones.}
-  \item{rV²}{Use for highly structured / related populations (livestock,
+  \item{rV^2}{Use for highly structured / related populations (livestock,
     inbred lines, family-based human cohorts) where kinship inflation
     would meaningfully distort block boundaries. Requires computing and
-    inverting the GRM — prohibitive beyond ~5 k individuals.}
+    inverting the GRM - prohibitive beyond ~5 k individuals.}
 }
 }
 

@@ -4,7 +4,7 @@ run_Big_LD_all_chr. Depending on method:
 
   "r2"
 Mean-centres each SNP column. No kinship needed.
-    Returns the centred matrix directly. Fast — O(np).
+    Returns the centred matrix directly. Fast - O(np).
 
   "rV2"
 Computes VanRaden GRM via AGHmatrix, tunes it
@@ -19,7 +19,7 @@ run_Big_LD_all_chr. Depending on method:
 
   "r2"
 Mean-centres each SNP column. No kinship needed.
-    Returns the centred matrix directly. Fast — O(np).
+    Returns the centred matrix directly. Fast - O(np).
 
   "rV2"
 Computes VanRaden GRM via AGHmatrix, tunes it
@@ -83,7 +83,7 @@ Computes VanRaden GRM via AGHmatrix, tunes it
 <code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></code>. Depending on <code>method</code>:</p>
 <dl><dt><code>"r2"</code></dt>
 <dd><p>Mean-centres each SNP column. No kinship needed.
-    Returns the centred matrix directly. Fast — O(np).</p></dd>
+    Returns the centred matrix directly. Fast - O(np).</p></dd>
 
   <dt><code>"rV2"</code></dt>
 <dd><p>Computes VanRaden GRM via AGHmatrix, tunes it
@@ -109,7 +109,7 @@ Computes VanRaden GRM via AGHmatrix, tunes it
 
 
 <dl><dt id="arg-geno">geno<a class="anchor" aria-label="anchor" href="#arg-geno"></a></dt>
-<dd><p>Numeric matrix (individuals × SNPs), 0/1/2.</p></dd>
+<dd><p>Numeric matrix (individuals x SNPs), 0/1/2.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
@@ -117,7 +117,7 @@ Computes VanRaden GRM via AGHmatrix, tunes it
 
 
 <dt id="arg-kin-method">kin_method<a class="anchor" aria-label="anchor" href="#arg-kin-method"></a></dt>
-<dd><p>Character. Whitening decomposition for rV²:
+<dd><p>Character. Whitening decomposition for rV^2:
 <code>"chol"</code> or <code>"eigen"</code>.</p></dd>
 
 
@@ -129,10 +129,10 @@ Computes VanRaden GRM via AGHmatrix, tunes it
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Named list:</p>
 <dl><dt>adj_geno</dt>
-<dd><p>n × p numeric matrix ready for <code><a href="compute_ld.html">compute_ld()</a></code>.</p></dd>
+<dd><p>n x p numeric matrix ready for <code><a href="compute_ld.html">compute_ld()</a></code>.</p></dd>
 
   <dt>V_inv_sqrt</dt>
-<dd><p>n × n whitening matrix, or <code>NULL</code> for r².</p></dd>
+<dd><p>n x n whitening matrix, or <code>NULL</code> for r^2.</p></dd>
 
 </dl></div>
 

@@ -990,8 +990,8 @@ blocks <- run_Big_LD_all_chr(
 | Function | Description |
 |----|----|
 | [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md) | Chromosome-wise LD block detection. Accepts both plain matrices and `LDxBlocks_backend` objects. **Recommended entry point.** |
-| [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md) | Core per-chromosome segmentation. Exposed for fine-grained control or single-chromosome analyses. |
-| [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md) | Clique detection within one sub-segment. Returns integer bin vector. |
+| [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md) | Core per-chromosome segmentation. Called internally by [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md). Not exported — use [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md) directly. |
+| [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md) | Clique detection within one sub-segment. Called internally by [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md). Not exported. |
 | [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md) | Grid-search auto-tuner minimising unassigned GWAS marker placements. |
 
 ### I/O

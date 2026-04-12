@@ -1,6 +1,6 @@
 ## tests/testthat/test-algorithm.R
 ## ─────────────────────────────────────────────────────────────────────────────
-## Tests for the Big-LD segmentation algorithm: Big_LD(), CLQD(),
+## Tests for the Big-LD segmentation algorithm: LDxBlocks:::Big_LD(), LDxBlocks:::CLQD(),
 ## run_Big_LD_all_chr(), summarise_blocks(), plot_ld_blocks().
 ## Uses ldx_* example data and small synthetic fixtures.
 ## ─────────────────────────────────────────────────────────────────────────────
@@ -18,7 +18,7 @@ test_that("CLQD: returns integer vector of correct length", {
   g    <- ldx_geno[, 1:25]
   info <- ldx_snp_info[1:25, c("SNP","POS")]
   Gc   <- scale(g, center = TRUE, scale = FALSE)
-  bv   <- CLQD(g, info, Gc, CLQcut = 0.4, verbose = FALSE)
+  bv   <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4, verbose = FALSE)
   expect_equal(length(bv), 25L)
   expect_type(bv, "integer")
 })
@@ -27,7 +27,7 @@ test_that("CLQD: all values are positive integers or NA", {
   g    <- ldx_geno[, 1:25]
   info <- ldx_snp_info[1:25, c("SNP","POS")]
   Gc   <- scale(g, center = TRUE, scale = FALSE)
-  bv   <- CLQD(g, info, Gc, CLQcut = 0.4, verbose = FALSE)
+  bv   <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4, verbose = FALSE)
   non_na <- bv[!is.na(bv)]
   expect_true(all(non_na >= 1L))
 })
@@ -36,8 +36,8 @@ test_that("CLQD: high CLQcut produces many singletons (NAs)", {
   g    <- ldx_geno[, 1:20]
   info <- ldx_snp_info[1:20, c("SNP","POS")]
   Gc   <- scale(g, center = TRUE, scale = FALSE)
-  bv_low  <- CLQD(g, info, Gc, CLQcut = 0.2, verbose = FALSE)
-  bv_high <- CLQD(g, info, Gc, CLQcut = 0.99, verbose = FALSE)
+  bv_low  <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.2, verbose = FALSE)
+  bv_high <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.99, verbose = FALSE)
   # High threshold should produce more NAs (fewer cliques)
   expect_true(sum(is.na(bv_high)) >= sum(is.na(bv_low)))
 })
@@ -46,8 +46,8 @@ test_that("CLQD: Density mode vs Maximal mode produce valid bin vectors", {
   g    <- ldx_geno[, 1:30]
   info <- ldx_snp_info[1:30, c("SNP","POS")]
   Gc   <- scale(g, center = TRUE, scale = FALSE)
-  bv_d <- CLQD(g, info, Gc, CLQcut = 0.4, CLQmode = "Density",  verbose = FALSE)
-  bv_m <- CLQD(g, info, Gc, CLQcut = 0.4, CLQmode = "Maximal",  verbose = FALSE)
+  bv_d <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4, CLQmode = "Density",  verbose = FALSE)
+  bv_m <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4, CLQmode = "Maximal",  verbose = FALSE)
   expect_equal(length(bv_d), 30L)
   expect_equal(length(bv_m), 30L)
 })
@@ -56,10 +56,10 @@ test_that("CLQD: Density mode vs Maximal mode produce valid bin vectors", {
 
 test_that("Big_LD: returns data.frame with required columns", {
   idx  <- which(ldx_snp_info$CHR == "1")
-  blks <- Big_LD(ldx_geno[, idx],
-                 ldx_snp_info[idx, c("SNP","POS")],
-                 method = "r2", CLQcut = 0.5,
-                 leng = 10, subSegmSize = 70, verbose = FALSE)
+  blks <- LDxBlocks:::Big_LD(ldx_geno[, idx],
+                             ldx_snp_info[idx, c("SNP","POS")],
+                             method = "r2", CLQcut = 0.5,
+                             leng = 10, subSegmSize = 70, verbose = FALSE)
   req <- c("start","end","start.rsID","end.rsID","start.bp","end.bp")
   expect_true(all(req %in% names(blks)))
   expect_s3_class(blks, "data.frame")
@@ -67,20 +67,20 @@ test_that("Big_LD: returns data.frame with required columns", {
 
 test_that("Big_LD: start <= end for every block", {
   idx  <- which(ldx_snp_info$CHR == "1")
-  blks <- Big_LD(ldx_geno[, idx],
-                 ldx_snp_info[idx, c("SNP","POS")],
-                 method = "r2", CLQcut = 0.5,
-                 leng = 10, subSegmSize = 70, verbose = FALSE)
+  blks <- LDxBlocks:::Big_LD(ldx_geno[, idx],
+                             ldx_snp_info[idx, c("SNP","POS")],
+                             method = "r2", CLQcut = 0.5,
+                             leng = 10, subSegmSize = 70, verbose = FALSE)
   expect_true(all(blks$start    <= blks$end))
   expect_true(all(blks$start.bp <= blks$end.bp))
 })
 
 test_that("Big_LD: blocks are non-overlapping (sorted by start.bp)", {
   idx  <- which(ldx_snp_info$CHR == "1")
-  blks <- Big_LD(ldx_geno[, idx],
-                 ldx_snp_info[idx, c("SNP","POS")],
-                 method = "r2", CLQcut = 0.5,
-                 leng = 10, subSegmSize = 70, verbose = FALSE)
+  blks <- LDxBlocks:::Big_LD(ldx_geno[, idx],
+                             ldx_snp_info[idx, c("SNP","POS")],
+                             method = "r2", CLQcut = 0.5,
+                             leng = 10, subSegmSize = 70, verbose = FALSE)
   if (nrow(blks) > 1L) {
     expect_true(all(blks$start.bp[-1] >= blks$end.bp[-nrow(blks)]))
   }
@@ -92,8 +92,8 @@ test_that("Big_LD: fewer than 2 polymorphic SNPs returns empty df with warning",
   colnames(G_mono) <- paste0("rs",  1:5)
   info_mono <- data.frame(SNP=colnames(G_mono), POS=1:5*1000)
   expect_warning(
-    blks <- Big_LD(G_mono, info_mono, method="r2",
-                   leng=2, subSegmSize=5, verbose=FALSE),
+    blks <- LDxBlocks:::Big_LD(G_mono, info_mono, method="r2",
+                               leng=2, subSegmSize=5, verbose=FALSE),
     "Fewer than 2 polymorphic SNPs"
   )
   expect_equal(nrow(blks), 0L)
@@ -102,32 +102,32 @@ test_that("Big_LD: fewer than 2 polymorphic SNPs returns empty df with warning",
 test_that("Big_LD: detectes known block structure in simulated data", {
   # Chr1 has 3 blocks. We should detect at least 3 blocks.
   idx  <- which(ldx_snp_info$CHR == "1")
-  blks <- Big_LD(ldx_geno[, idx],
-                 ldx_snp_info[idx, c("SNP","POS")],
-                 method = "r2", CLQcut = 0.5,
-                 leng = 10, subSegmSize = 70, verbose = FALSE)
+  blks <- LDxBlocks:::Big_LD(ldx_geno[, idx],
+                             ldx_snp_info[idx, c("SNP","POS")],
+                             method = "r2", CLQcut = 0.5,
+                             leng = 10, subSegmSize = 70, verbose = FALSE)
   expect_true(nrow(blks) >= 3L)
 })
 
 test_that("Big_LD: appendrare=TRUE does not error", {
   idx  <- which(ldx_snp_info$CHR == "1")
   expect_no_error(
-    blks <- Big_LD(ldx_geno[, idx],
-                   ldx_snp_info[idx, c("SNP","POS")],
-                   method = "r2", CLQcut = 0.5, MAFcut = 0.20,
-                   appendrare = TRUE,
-                   leng = 10, subSegmSize = 70, verbose = FALSE)
+    blks <- LDxBlocks:::Big_LD(ldx_geno[, idx],
+                               ldx_snp_info[idx, c("SNP","POS")],
+                               method = "r2", CLQcut = 0.5, MAFcut = 0.20,
+                               appendrare = TRUE,
+                               leng = 10, subSegmSize = 70, verbose = FALSE)
   )
 })
 
 test_that("Big_LD: split=TRUE with clstgap runs without error", {
   idx  <- which(ldx_snp_info$CHR == "1")
   expect_no_error(
-    blks <- Big_LD(ldx_geno[, idx],
-                   ldx_snp_info[idx, c("SNP","POS")],
-                   method = "r2", CLQcut = 0.5, split = TRUE,
-                   clstgap = 30000L,
-                   leng = 10, subSegmSize = 70, verbose = FALSE)
+    blks <- LDxBlocks:::Big_LD(ldx_geno[, idx],
+                               ldx_snp_info[idx, c("SNP","POS")],
+                               method = "r2", CLQcut = 0.5, split = TRUE,
+                               clstgap = 30000L,
+                               leng = 10, subSegmSize = 70, verbose = FALSE)
   )
 })
 

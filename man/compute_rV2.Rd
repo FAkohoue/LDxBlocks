@@ -2,31 +2,31 @@
 % Please edit documentation in R/compute_ld.R
 \name{compute_rV2}
 \alias{compute_rV2}
-\title{Compute Kinship-Adjusted rV² LD Matrix}
+\title{Compute Kinship-Adjusted rV^2 LD Matrix}
 \usage{
 compute_rV2(X, digits = -1L, n_threads = 1L)
 }
 \arguments{
-\item{X}{NumericMatrix (n × p). Pre-whitened, mean-centred genotype matrix.}
+\item{X}{NumericMatrix (n x p). Pre-whitened, mean-centred genotype matrix.}
 
 \item{digits}{Integer. Rounding. \code{-1} = none.}
 
 \item{n_threads}{Integer. OpenMP threads.}
 }
 \value{
-Symmetric p × p NumericMatrix, diagonal 0.
+Symmetric p x p NumericMatrix, diagonal 0.
 }
 \description{
-Computes the kinship-adjusted squared correlation (rV²) for a
+Computes the kinship-adjusted squared correlation (rV^2) for a
 pre-whitened genotype matrix \eqn{X = V^{-1/2} \tilde{G}}.
 The whitening step must be performed first via \code{\link{prepare_geno}}.
 
 Mathematically identical to \code{\link{compute_r2}} applied to \eqn{X}
 because the whitening already removes kinship structure. The C++ kernel
-is the same — the distinction is purely in the preparation step.
+is the same - the distinction is purely in the preparation step.
 }
 \references{
-Kim S-A et al. (2018) GENETICS 209(3):855–868.
+Kim S-A et al. (2018) GENETICS 209(3):855-868.
 }
 \seealso{
 \code{\link{compute_r2}}, \code{\link{prepare_geno}}

@@ -17,7 +17,7 @@ is the recommended entry point.
 - [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
   : Genome-Wide LD Block Detection by Chromosome
 - [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-  : LD Block Segmentation (r² or rV², C++ accelerated)
+  : LD Block Segmentation (r^2 or rV^2, C++ accelerated)
 - [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md) :
   Clique-Based LD Block Detection
 - [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md)
@@ -46,11 +46,11 @@ GDS, PLINK BED, R matrix) through a unified backend interface.
 LD matrix computation: standard r² and kinship-adjusted rV².
 
 - [`compute_ld()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.md)
-  : Compute LD Matrix: Standard r² or Kinship-Adjusted rV²
+  : Compute LD Matrix: Standard r^2 or Kinship-Adjusted rV^2
 - [`compute_r2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.md)
-  : Compute Standard r² LD Matrix
+  : Compute Standard r^2 LD Matrix
 - [`compute_rV2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_rV2.md)
-  : Compute Kinship-Adjusted rV² LD Matrix
+  : Compute Kinship-Adjusted rV^2 LD Matrix
 - [`prepare_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md)
   : Prepare Genotype Matrix for LD Computation
 - [`get_V_inv_sqrt()`](https://FAkohoue.github.io/LDxBlocks/reference/get_V_inv_sqrt.md)
