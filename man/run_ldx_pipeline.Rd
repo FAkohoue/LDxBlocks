@@ -61,8 +61,8 @@ threshold are removed before block detection. Default `0.05`.}
 \item{CLQcut}{r^2 threshold for clique edges in CLQD. Higher
 values produce tighter, smaller blocks. Default `0.5`.}
 
-\item{method}{LD metric: `"r2"` (default) or `"rV2"` (requires
-kinship matrix; see `Big_LD()`).}
+\item{method}{LD metric: \code{"r2"} (default) or \code{"rV2"}
+(requires kinship matrix; see \code{\link{run_Big_LD_all_chr}}).}
 
 \item{leng}{Boundary scan half-window in SNPs. Default `200L`.
 Reduce to 50-100 for very dense WGS panels.}
@@ -78,8 +78,10 @@ this. Default `10L`. Increase to skip unplaced scaffolds.}
 \item{min_snps_block}{Minimum SNPs per haplotype block. Blocks smaller
 than this are excluded from haplotype analysis. Default `3L`.}
 
-\item{top_n}{Number of top haplotype alleles to retain per block
-in the output matrix. Default `5L`.}
+\item{top_n}{Integer or \code{NULL}. Maximum haplotype alleles per
+block in the output matrix. \code{NULL} (default) retains all alleles
+above \code{min_freq} -- no cap. Set an integer (e.g. \code{5L}) only to
+limit column count for memory reasons.}
 
 \item{scale_hap_matrix}{Logical. If `TRUE`, scale the haplotype matrix
 columns to zero mean and unit variance before writing. Useful for
@@ -160,7 +162,8 @@ res <- run_ldx_pipeline(
   leng           = 10L,
   subSegmSize    = 80L,
   min_snps_block = 3L,
-  # top_n          = 5L,       # optional integer cap; NULL = all above min_freq
+#'   # top_n       = 5L,          # optional integer cap; NULL = all above min_freq
+  # hap_format  = "character", # or "numeric" (default)
   verbose        = FALSE
 )
 

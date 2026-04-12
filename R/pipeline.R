@@ -119,8 +119,8 @@
 #'   threshold are removed before block detection. Default `0.05`.
 #' @param CLQcut            r^2 threshold for clique edges in CLQD. Higher
 #'   values produce tighter, smaller blocks. Default `0.5`.
-#' @param method            LD metric: `"r2"` (default) or `"rV2"` (requires
-#'   kinship matrix; see `Big_LD()`).
+#' @param method            LD metric: \code{"r2"} (default) or \code{"rV2"}
+#'   (requires kinship matrix; see \code{\link{run_Big_LD_all_chr}}).
 #' @param leng              Boundary scan half-window in SNPs. Default `200L`.
 #'   Reduce to 50-100 for very dense WGS panels.
 #' @param subSegmSize       Maximum SNPs per CLQD sub-segment. Controls peak
@@ -130,8 +130,10 @@
 #'   this. Default `10L`. Increase to skip unplaced scaffolds.
 #' @param min_snps_block    Minimum SNPs per haplotype block. Blocks smaller
 #'   than this are excluded from haplotype analysis. Default `3L`.
-#' @param top_n             Number of top haplotype alleles to retain per block
-#'   in the output matrix. Default `5L`.
+#' @param top_n             Integer or \code{NULL}. Maximum haplotype alleles per
+#'   block in the output matrix. \code{NULL} (default) retains all alleles
+#'   above \code{min_freq} -- no cap. Set an integer (e.g. \code{5L}) only to
+#'   limit column count for memory reasons.
 #' @param scale_hap_matrix  Logical. If `TRUE`, scale the haplotype matrix
 #'   columns to zero mean and unit variance before writing. Useful for
 #'   GBLUP-style models. Default `FALSE`.
@@ -169,8 +171,8 @@
 #'   leng           = 10L,
 #'   subSegmSize    = 80L,
 #'   min_snps_block = 3L,
-#'   # top_n          = 5L,       # optional integer cap; NULL = all above min_freq
-# hap_format     = "character",  # or "numeric" (default)
+#' #'   # top_n       = 5L,          # optional integer cap; NULL = all above min_freq
+#'   # hap_format  = "character", # or "numeric" (default)
 #'   verbose        = FALSE
 #' )
 #'
@@ -219,6 +221,10 @@ run_ldx_pipeline <- function(
            be$n_samples, " individuals | ", be$n_snps, " SNPs")
 
   # -- Step 2: MAF filtering --------------------------------------------------
+  # Store the original full SNP info before filtering — needed in Step 4
+  # to map filtered SNP IDs back to correct column indices in the backend.
+  orig_snp_info <- be$snp_info
+
   .ldx_log("MAF filtering (>= ", maf_cut, ") ...")
   snp_info_filtered <- .maf_filter_backend(be, maf_cut = maf_cut,
                                            verbose = verbose)
@@ -242,21 +248,19 @@ run_ldx_pipeline <- function(
   }
 
   # -- Step 4: Load genotype matrix for block detection ----------------------
-  # For streaming backends we load chromosome by chromosome inside
-  # run_Big_LD_all_chr; here we assemble the full filtered matrix.
-  # For very large datasets users should use the GDS backend which handles
-  # chunking internally via read_chunk().
+  # Read the MAF-filtered SNPs from the already-open backend `be`.
+  # We do NOT open a second backend — on Windows, opening a second connection
+  # to the same GDS file while `be` is open causes a file-lock error.
+  # The backend's snp_info was updated in Step 2 to the filtered set;
+  # read_chunk() with the original full-genome SNP indices loads only those.
   .ldx_log("Loading filtered genotype matrix ...")
-  snp_idx  <- match(be$snp_info$SNP, be$snp_info$SNP)  # all, in order
-  col_idx  <- which(be$snp_info$SNP %in% be$snp_info$SNP)
 
-  # Re-read from original backend using filtered column indices
-  be_full  <- read_geno(geno_file, clean_malformed = clean_malformed, verbose = FALSE)
-  full_idx <- match(be$snp_info$SNP, be_full$snp_info$SNP)
-  geno_mat <- read_chunk(be_full, full_idx)        # individuals x SNPs
-  close_backend(be_full)
-
-  rownames(geno_mat) <- be_full$sample_ids
+  # Map filtered SNP IDs back to column positions in the original full backend
+  # We need the original (pre-filter) snp_info to get correct column indices.
+  # Since be$snp_info is now filtered, we stored the original before filtering.
+  full_idx <- match(be$snp_info$SNP, orig_snp_info$SNP)
+  geno_mat <- read_chunk(be, full_idx)             # individuals x filtered SNPs
+  rownames(geno_mat) <- be$sample_ids
   colnames(geno_mat) <- be$snp_info$SNP
   .ldx_log("Genotype matrix: ", nrow(geno_mat), " x ", ncol(geno_mat))
 

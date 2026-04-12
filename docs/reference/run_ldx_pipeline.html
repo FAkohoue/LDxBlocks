@@ -146,8 +146,8 @@ values produce tighter, smaller blocks. Default `0.5`.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
-<dd><p>LD metric: `"r2"` (default) or `"rV2"` (requires
-kinship matrix; see `Big_LD()`).</p></dd>
+<dd><p>LD metric: <code>"r2"</code> (default) or <code>"rV2"</code>
+(requires kinship matrix; see <code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></code>).</p></dd>
 
 
 <dt id="arg-leng">leng<a class="anchor" aria-label="anchor" href="#arg-leng"></a></dt>
@@ -175,8 +175,10 @@ than this are excluded from haplotype analysis. Default `3L`.</p></dd>
 
 
 <dt id="arg-top-n">top_n<a class="anchor" aria-label="anchor" href="#arg-top-n"></a></dt>
-<dd><p>Number of top haplotype alleles to retain per block
-in the output matrix. Default `5L`.</p></dd>
+<dd><p>Integer or <code>NULL</code>. Maximum haplotype alleles per
+block in the output matrix. <code>NULL</code> (default) retains all alleles
+above <code>min_freq</code> – no cap. Set an integer (e.g. <code>5L</code>) only to
+limit column count for memory reasons.</p></dd>
 
 
 <dt id="arg-scale-hap-matrix">scale_hap_matrix<a class="anchor" aria-label="anchor" href="#arg-scale-hap-matrix"></a></dt>
@@ -275,7 +277,8 @@ columns, with four metadata columns before the individual columns:
 <span class="r-in"><span>  leng           <span class="op">=</span> <span class="fl">10L</span>,</span></span>
 <span class="r-in"><span>  subSegmSize    <span class="op">=</span> <span class="fl">80L</span>,</span></span>
 <span class="r-in"><span>  min_snps_block <span class="op">=</span> <span class="fl">3L</span>,</span></span>
-<span class="r-in"><span>  <span class="co"># top_n          = 5L,       # optional integer cap; NULL = all above min_freq</span></span></span>
+<span class="r-in"><span><span class="co">#'   # top_n       = 5L,          # optional integer cap; NULL = all above min_freq</span></span></span>
+<span class="r-in"><span>  <span class="co"># hap_format  = "character", # or "numeric" (default)</span></span></span>
 <span class="r-in"><span>  verbose        <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>

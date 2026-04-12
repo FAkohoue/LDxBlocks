@@ -86,8 +86,8 @@ run_ldx_pipeline(
 
 - method:
 
-  LD metric: \`"r2"\` (default) or \`"rV2"\` (requires kinship matrix;
-  see \`Big_LD()\`).
+  LD metric: `"r2"` (default) or `"rV2"` (requires kinship matrix; see
+  [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)).
 
 - leng:
 
@@ -115,8 +115,10 @@ run_ldx_pipeline(
 
 - top_n:
 
-  Number of top haplotype alleles to retain per block in the output
-  matrix. Default \`5L\`.
+  Integer or `NULL`. Maximum haplotype alleles per block in the output
+  matrix. `NULL` (default) retains all alleles above `min_freq` – no
+  cap. Set an integer (e.g. `5L`) only to limit column count for memory
+  reasons.
 
 - scale_hap_matrix:
 
@@ -223,7 +225,8 @@ res <- run_ldx_pipeline(
   leng           = 10L,
   subSegmSize    = 80L,
   min_snps_block = 3L,
-  # top_n          = 5L,       # optional integer cap; NULL = all above min_freq
+#'   # top_n       = 5L,          # optional integer cap; NULL = all above min_freq
+  # hap_format  = "character", # or "numeric" (default)
   verbose        = FALSE
 )
 
