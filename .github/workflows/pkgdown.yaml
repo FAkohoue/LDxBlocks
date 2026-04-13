@@ -69,6 +69,21 @@ jobs:
           if (length(to_install))
             install.packages(to_install, repos = "https://cloud.r-project.org")
 
+      - name: Remove compiled artifacts
+        run: |
+          find . -type f \( \
+            -name "*.o" -o \
+            -name "*.obj" -o \
+            -name "*.so" -o \
+            -name "*.dll" -o \
+            -name "*.a" -o \
+            -name "*.lib" -o \
+            -name "*.def" -o \
+            -name "*.exp" -o \
+            -name "*.dylib" \
+          \) -print -delete
+          rm -rf src-i386 src-x64 libs
+
       - name: Install LDxBlocks
         # R CMD INSTALL is the only reliable way to get the package into
         # the default library so that library("LDxBlocks") works in the
