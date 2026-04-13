@@ -1,7 +1,7 @@
 # LDxBlocks — Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic Prediction Features
 
 <p align="center">
-  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="300px">
+  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="70%">
 </p>
 
 <!-- badges: start -->
@@ -713,8 +713,12 @@ founder effect in the region.
 `build_haplotype_feature_matrix()` converts haplotype strings to a numeric
 dosage matrix suitable for GBLUP, BayesB, random forests, or any other genomic
 prediction framework. For each block, the `top_n` most frequent haplotypes are
-selected as reference haplotypes and each individual receives a dosage of 2
-(homozygous match) or 0 (absent) for each reference.
+selected as reference haplotypes and each individual receives a dosage of:
+- **Phased data**: 0 (absent), 1 (one gamete), or 2 (both gametes)
+- **Unphased data**: 0 (absent) or 1 (present)
+
+The value 2 is not used for unphased data — the two chromosomes
+cannot be distinguished from unphased dosage strings.
 
 The resulting matrix has dimension n_individuals × (n_blocks × top_n):
 
@@ -952,8 +956,20 @@ blocks <- run_Big_LD_all_chr(
 | Function | Description |
 |----------|-------------|
 | `extract_haplotypes()` | Phase-free diploid allele strings per block × individual. |
-| `compute_haplotype_diversity()` | Per-block richness, He, Shannon entropy, dominant haplotype frequency. |
-| `build_haplotype_feature_matrix()` | Haplotype dosage matrix (individuals × haplotype features) for genomic prediction. |
+| `compute_haplotype_diversity()` | Per-block richness, He, n_eff_alleles, Shannon, sweep_flag. |
+| `build_haplotype_feature_matrix()` | Haplotype dosage matrix for genomic prediction (additive_012 or presence_01). |
+| `compute_haplotype_grm()` | VanRaden GRM from haplotype feature matrix. |
+| `decode_haplotype_strings()` | Decode dosage strings to nucleotide sequences. |
+| `write_haplotype_numeric()` | Write haplotype dosage matrix to file. |
+| `write_haplotype_character()` | Write nucleotide character matrix to file. |
+| `write_haplotype_diversity()` | Write diversity table to CSV. |
+| `define_qtl_regions()` | Map GWAS hits to LD blocks; detect pleiotropic blocks. |
+| `backsolve_snp_effects()` | Derive per-SNP effects from GEBV (Tong et al. 2025). |
+| `compute_local_gebv()` | Local haplotype GEBV per block per individual. |
+| `prepare_gblup_inputs()` | Align phenotype data and GRM for external GBLUP tools. |
+| `run_haplotype_prediction()` | Full Tong et al. (2025) pipeline from BLUEs to block importance. |
+| `integrate_gwas_haplotypes()` | Combine GWAS, variance, and diversity evidence per block. |
+| `rank_haplotype_blocks()` | Unified block ranking across 3 use cases (diversity/GWAS/phenotype). |
 
 ### Utilities
 
@@ -1011,11 +1027,18 @@ A `data.frame` with one row per detected LD block:
 | Column | Description |
 |--------|-------------|
 | `block_id` | Block name matching `names(haplotypes)`. |
+| `CHR` | Chromosome (normalised, no `chr` prefix). |
+| `start_bp` | Block start position in base pairs. |
+| `end_bp` | Block end position in base pairs. |
+| `n_snps` | Number of SNPs in the block. |
 | `n_ind` | Individuals with non-missing haplotypes. |
 | `n_haplotypes` | Richness: number of unique haplotype strings. |
-| `He` | Expected heterozygosity (Nei 1973), corrected for sample size. |
+| `He` | Expected heterozygosity (Nei 1973), sample-size corrected. |
 | `Shannon` | Shannon entropy in bits. |
+| `n_eff_alleles` | Effective number of alleles = 1/Σpᵢ². |
 | `freq_dominant` | Frequency of the most common haplotype. |
+| `sweep_flag` | TRUE when freq_dominant ≥ 0.90 (possible sweep). |
+| `phased` | Logical: was phased input used? |
 
 ### `read_geno()` — LDxBlocks_backend
 
@@ -1178,6 +1201,32 @@ Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block
 detection method for dense genome sequencing data based on interval graph
 modeling and dynamic programming. *Bioinformatics* **34**(4):588-596.
 <https://doi.org/10.1093/bioinformatics/btx609>
+
+Difabachew YF, Frisch M, Langstroff AL, Stahl A, Wittkop B, Snowdon RJ,
+Koch M, Kirchhoff M, Csélényi L, Wolf M, Förster J, Weber S, Okoye UJ,
+Zenke-Philippi C (2023). Genomic prediction with haplotype blocks in wheat.
+*Frontiers in Plant Science* **14**:1168547.
+<https://doi.org/10.3389/fpls.2023.1168547>
+
+Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype blocks for
+genomic prediction: a comparative evaluation in multiple crop datasets.
+*Frontiers in Plant Science* **14**:1217589.
+<https://doi.org/10.3389/fpls.2023.1217589>
+
+Pook T, Schlather M, de los Campos G, Mayer M, Schoen CC, Simianer H (2019).
+HaploBlocker: Creation of subgroup-specific haplotype blocks and libraries.
+*Genetics* **212**(4):1045-1061.
+<https://doi.org/10.1534/genetics.119.302283>
+
+Tong J, Tarekegn ZT, Jambuthenne D, Alahmad S, Periyannan S, Hickey L,
+Dinglasan E, Hayes B (2024). Stacking beneficial haplotypes from the Vavilov
+wheat collection to accelerate breeding for multiple disease resistance.
+*Theoretical and Applied Genetics* **137**:274.
+<https://doi.org/10.1007/s00122-024-04784-w>
+
+Tong J et al. (2025). Haplotype stacking to improve stability of stripe rust
+resistance in wheat. *Theoretical and Applied Genetics* **138**:267.
+<https://doi.org/10.1007/s00122-025-05045-0>
 
 Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles C (2012).
 Novel measures of linkage disequilibrium that correct the bias due to population

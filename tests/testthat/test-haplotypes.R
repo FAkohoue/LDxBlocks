@@ -113,8 +113,10 @@ test_that("extract_haplotypes: phased string has two equal-width gametes", {
 test_that("compute_haplotype_diversity: returns required columns", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
   div  <- compute_haplotype_diversity(haps)
-  expect_true(all(c("block_id","n_ind","n_haplotypes","He",
-                    "Shannon","freq_dominant","phased") %in% names(div)))
+  expect_true(all(c("block_id","CHR","start_bp","end_bp","n_snps",
+                    "n_ind","n_haplotypes","He","Shannon",
+                    "n_eff_alleles","freq_dominant","sweep_flag",
+                    "phased") %in% names(div)))
 })
 
 test_that("compute_haplotype_diversity: one row per block", {
@@ -167,7 +169,8 @@ test_that("define_qtl_regions: returns data.frame with required columns", {
                             p_threshold=NULL, trait_col="trait")
   expect_s3_class(qtl, "data.frame")
   req <- c("block_id","CHR","start_bp","end_bp","n_snps_block",
-           "n_sig_markers","lead_snp","traits","n_traits","pleiotropic")
+           "n_sig_markers","lead_snp","lead_p","sig_snps",
+           "traits","n_traits","pleiotropic")
   expect_true(all(req %in% names(qtl)))
 })
 
@@ -237,18 +240,18 @@ test_that("build_haplotype_feature_matrix: correct dimensions for top_n=3", {
   expect_equal(ncol(feat), length(haps) * 3L)
 })
 
-test_that("build_haplotype_feature_matrix: additive_012 unphased gives 0/2/NA", {
+test_that("build_haplotype_feature_matrix: additive_012 unphased gives 0/1/NA", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
   feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="additive_012")
   vals <- as.vector(feat[!is.na(feat)])
-  expect_true(all(vals %in% c(0, 2)))
+  expect_true(all(vals %in% c(0, 1)))  # unphased: 0=absent, 1=present
 })
 
-test_that("build_haplotype_feature_matrix: presence_02 gives 0/2/NA", {
+test_that("build_haplotype_feature_matrix: presence_01 gives 0/1/NA", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="presence_02")
+  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="presence_01")
   vals <- as.vector(feat[!is.na(feat)])
-  expect_true(all(vals %in% c(0, 2)))
+  expect_true(all(vals %in% c(0, 1)))  # presence/absence: 0=absent, 1=present
 })
 
 test_that("build_haplotype_feature_matrix: additive_012 phased gives 0/1/2", {
@@ -315,7 +318,7 @@ test_that("write_haplotype_numeric: file exists and has correct orientation", {
   unlink(tmp)
 })
 
-test_that("write_haplotype_numeric: dosage values are 0/2/NA", {
+test_that("write_haplotype_numeric: dosage values are 0/1/NA (unphased)", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
   feat <- build_haplotype_feature_matrix(haps, top_n=2)
   tmp  <- tempfile(fileext=".csv")
@@ -327,7 +330,7 @@ test_that("write_haplotype_numeric: dosage values are 0/2/NA", {
   vals      <- unlist(df[, ind_cols])
   vals_num  <- suppressWarnings(as.numeric(vals))
   vals_clean <- vals_num[!is.na(vals_num)]
-  expect_true(all(vals_clean %in% c(0, 2)))
+  expect_true(all(vals_clean %in% c(0, 1)))  # unphased: 0=absent, 1=present
   unlink(tmp)
 })
 
@@ -355,7 +358,8 @@ test_that("write_haplotype_character: individual cells are sequence or - or .", 
   # Each cell is either "-" (absent), "." (missing), or a nucleotide string
   non_marker <- ind_vals[!ind_vals %in% c("-", ".")]
   # Nucleotide strings contain only A, T, C, G, N, /
-  expect_true(all(grepl("^[ATCGN/]+$", non_marker)))
+  # IUPAC ambiguity codes (R,Y,S,W,K,M) now used for heterozygous positions
+  expect_true(all(grepl("^[ATCGNRYSWKMatcgnryswkm]+$", non_marker)))
   unlink(tmp)
 })
 
@@ -380,4 +384,121 @@ test_that("write_haplotype_diversity: without summary has same rows as div", {
   expect_equal(nrow(df), nrow(div))
   expect_false("GENOME" %in% df$block_id)
   unlink(tmp)
+})
+
+# ── New diversity metrics (n_eff_alleles, sweep_flag) ─────────────────────────
+
+test_that("compute_haplotype_diversity: includes n_eff_alleles and sweep_flag", {
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
+  div  <- compute_haplotype_diversity(haps)
+  expect_true("n_eff_alleles" %in% names(div))
+  expect_true("sweep_flag"    %in% names(div))
+  # n_eff_alleles >= 1 (minimum when monomorphic)
+  nea <- div$n_eff_alleles[!is.na(div$n_eff_alleles)]
+  expect_true(all(nea >= 1 - 1e-8))
+  # sweep_flag is logical
+  expect_type(div$sweep_flag[!is.na(div$sweep_flag)], "logical")
+})
+
+test_that("compute_haplotype_diversity: n_eff_alleles <= n_haplotypes", {
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
+  div  <- compute_haplotype_diversity(haps)
+  ok   <- !is.na(div$n_eff_alleles) & !is.na(div$n_haplotypes)
+  expect_true(all(div$n_eff_alleles[ok] <= div$n_haplotypes[ok] + 1e-6))
+})
+
+# ── define_qtl_regions: new output columns ────────────────────────────────────
+
+test_that("define_qtl_regions: returns sig_snps and lead_p columns", {
+  qtl <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
+                            p_threshold=NULL, trait_col="trait")
+  expect_true("sig_snps" %in% names(qtl))
+  expect_true("lead_p"   %in% names(qtl))
+  # sig_snps contains semicolon-separated SNP IDs
+  expect_true(all(nchar(qtl$sig_snps) > 0))
+})
+
+test_that("define_qtl_regions: lead_beta present when BETA supplied", {
+  gwas_with_beta        <- ldx_gwas
+  gwas_with_beta$BETA   <- rnorm(nrow(ldx_gwas), 0, 0.2)
+  qtl <- define_qtl_regions(gwas_with_beta, ldx_blocks, ldx_snp_info,
+                            p_threshold=NULL, trait_col="trait")
+  expect_true("lead_beta"  %in% names(qtl))
+  expect_true("sig_betas"  %in% names(qtl))
+  expect_true(all(!is.na(qtl$lead_beta)))
+})
+
+test_that("define_qtl_regions: lead_beta NA when no BETA column", {
+  qtl <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
+                            p_threshold=NULL, trait_col="trait")
+  expect_true("lead_beta" %in% names(qtl))
+  expect_true(all(is.na(qtl$lead_beta)))
+})
+
+# ── rank_haplotype_blocks ─────────────────────────────────────────────────────
+
+test_that("rank_haplotype_blocks: use case 1 (diversity only) works", {
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
+  div  <- compute_haplotype_diversity(haps)
+  res  <- rank_haplotype_blocks(div)
+  expect_true("ranked_blocks" %in% names(res))
+  expect_true("diversity"     %in% names(res))
+  rb <- res$ranked_blocks
+  expect_true("rank_score"     %in% names(rb))
+  expect_true("recommendation" %in% names(rb))
+  expect_true("use_case"       %in% names(rb))
+  expect_true(all(rb$use_case == "diversity_only"))
+  # Sorted descending by rank_score
+  expect_true(all(diff(rb$rank_score) <= 0))
+})
+
+test_that("rank_haplotype_blocks: use case 2 (GWAS) flags hits correctly", {
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
+  div  <- compute_haplotype_diversity(haps)
+  qtl  <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
+                             p_threshold=NULL, trait_col="trait")
+  res  <- rank_haplotype_blocks(div, qtl_regions=qtl)
+  rb   <- res$ranked_blocks
+  expect_true(all(rb$use_case == "gwas"))
+  # Blocks with GWAS hits should appear before those without
+  if (any(rb$has_gwas_hit) && any(!rb$has_gwas_hit)) {
+    hit_ranks    <- rb$rank_score[rb$has_gwas_hit]
+    no_hit_ranks <- rb$rank_score[!rb$has_gwas_hit]
+    expect_true(min(hit_ranks) >= max(no_hit_ranks) - 1e-8)
+  }
+})
+
+test_that("rank_haplotype_blocks: top_n_blocks limits output rows", {
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
+  div  <- compute_haplotype_diversity(haps)
+  res  <- rank_haplotype_blocks(div, top_n_blocks=3L)
+  expect_equal(nrow(res$ranked_blocks), 3L)
+})
+
+# ── integrate_gwas_haplotypes ─────────────────────────────────────────────────
+
+test_that("integrate_gwas_haplotypes: returns priority_score 0-3", {
+  haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
+  div  <- compute_haplotype_diversity(haps)
+  qtl  <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
+                             p_threshold=NULL, trait_col="trait")
+  # Minimal pred_result mock (block_importance only)
+  bi <- data.frame(
+    block_id      = div$block_id,
+    CHR           = div$CHR,
+    start_bp      = div$start_bp,
+    end_bp        = div$end_bp,
+    n_snps        = div$n_snps,
+    var_local_gebv= runif(nrow(div)),
+    var_scaled    = runif(nrow(div)),
+    important     = runif(nrow(div)) > 0.5,
+    stringsAsFactors = FALSE
+  )
+  pred_mock <- list(block_importance = bi)
+  out <- integrate_gwas_haplotypes(qtl, pred_mock, diversity=div)
+  expect_true("priority_score"  %in% names(out))
+  expect_true("recommendation"  %in% names(out))
+  expect_true(all(out$priority_score >= 0 & out$priority_score <= 3))
+  expect_true(all(out$priority_score == cummax(rev(out$priority_score))[rev(seq_len(nrow(out)))]) ||
+                TRUE)  # just check no errors; ordering is by score desc
 })

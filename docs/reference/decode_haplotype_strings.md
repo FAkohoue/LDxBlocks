@@ -97,7 +97,7 @@ block:
 
 - `"0"` = homozygous REF -\> REF nucleotide (e.g. `A`)
 
-- `"1"` = heterozygous -\> REF/ALT (e.g. `A/G`)
+- `"1"` = heterozygous -\> IUPAC ambiguity code (e.g. `R` for A/G)
 
 - `"2"` = homozygous ALT -\> ALT nucleotide (e.g. `G`)
 
@@ -123,18 +123,11 @@ head(decoded[, c("block_id","hap_rank","dosage_string",
 #> 4 block_1_1000_25535        4 0000000100000000000000000
 #> 5 block_1_1000_25535        5 0000000000000000000000001
 #> 6 block_1_1000_25535        6 0000000000000000010000000
-#>                                                           nucleotide_sequence
-#> 1                                                   GCTAGCTAGAGCTAGCTAGAGCTAG
-#> 2 G/CC/GT/AA/GG/AC/TT/CA/CG/TA/TG/CC/GT/AA/GG/AC/TT/CA/CG/TA/TG/CC/GT/AA/GG/A
-#> 3                                                   CGAGATCCTTCGAGATCCTTCGAGA
-#> 4                                                 GCTAGCTA/CGAGCTAGCTAGAGCTAG
-#> 5                                                 GCTAGCTAGAGCTAGCTAGAGCTAG/A
-#> 6                                                 GCTAGCTAGAGCTAGCTA/CGAGCTAG
-#>   frequency
-#> 1    0.4831
-#> 2    0.1910
-#> 3    0.0899
-#> 4    0.0337
-#> 5    0.0225
-#> 6    0.0225
+#>         nucleotide_sequence frequency
+#> 1 GCTAGCTAGAGCTAGCTAGAGCTAG    0.4831
+#> 2 SSWRRYYMKWSSWRRYYMKWSSWRR    0.1910
+#> 3 CGAGATCCTTCGAGATCCTTCGAGA    0.0899
+#> 4 GCTAGCTMGAGCTAGCTAGAGCTAG    0.0337
+#> 5 GCTAGCTAGAGCTAGCTAGAGCTAR    0.0225
+#> 6 GCTAGCTAGAGCTAGCTMGAGCTAG    0.0225
 ```

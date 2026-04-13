@@ -14,27 +14,68 @@ define_qtl_regions(
 )
 }
 \arguments{
-\item{gwas_results}{Data frame: SNP, CHR, POS. Optional: P, trait.}
+\item{gwas_results}{Data frame with columns \code{SNP} (or \code{Marker}),
+\code{CHR}, \code{POS}. Optional columns: \code{P} (p-value),
+\code{BETA} (additive effect estimate), \code{trait}.}
 
-\item{blocks}{LD block data frame from run_Big_LD_all_chr().}
+\item{blocks}{LD block data frame from \code{\link{run_Big_LD_all_chr}}.}
 
 \item{snp_info}{Full SNP metadata data frame.}
 
-\item{p_threshold}{Significance threshold. Default 5e-8. NULL = use all markers.}
+\item{p_threshold}{Significance threshold. Default \code{5e-8}.
+\code{NULL} uses all markers regardless of p-value.}
 
-\item{trait_col}{Trait column name. Default "trait".}
+\item{trait_col}{Trait column name in \code{gwas_results}. Default
+\code{"trait"}.}
 
-\item{min_snps}{Minimum block SNP count. Default 3L.}
+\item{min_snps}{Minimum SNPs per block. Default \code{3L}.}
 }
 \value{
-Data frame: block_id, CHR, start_bp, end_bp, n_snps_block,
-  n_sig_markers, lead_snp, lead_p, traits, n_traits, pleiotropic.
+Data frame with one row per block containing significant markers:
+  \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+  \code{n_snps_block}, \code{n_sig_markers}, \code{lead_snp},
+  \code{lead_p}, \code{lead_beta} (if BETA supplied), \code{sig_snps},
+  \code{sig_betas} (if BETA supplied), \code{traits}, \code{n_traits},
+  \code{pleiotropic}.
 }
 \description{
 Maps significant GWAS markers onto LD blocks to define QTL
   regions. Blocks with significant markers from multiple traits are flagged
   pleiotropic. Implements the approach of Tong et al. (2024).
 }
+\section{Block effect estimation}{
+
+When multiple SNPs within a block are GWAS-significant, their marginal
+BETA values are correlated (due to LD) and cannot be summed directly.
+LDxBlocks returns three complementary columns when \code{BETA} is
+present in \code{gwas_results}:
+\describe{
+  \item{\code{lead_beta}}{BETA of the lead (lowest-p) SNP. The simplest
+    proxy for the block effect -- assumes the lead SNP fully tags the
+    causal variant. Underestimates the block effect when multiple
+    independent signals exist.}
+  \item{\code{sig_snps}}{Semicolon-separated IDs of all significant SNPs
+    in the block. Pass these to a conditional/joint analysis tool (e.g.
+    COJO, SuSiE, finemap) to obtain independent within-block effects.}
+  \item{\code{sig_betas}}{Semicolon-separated marginal BETA values for
+    all significant SNPs (same order as \code{sig_snps}). Their absolute
+    values are an upper bound on the true block effect because they
+    include LD-induced inflation; use \code{lead_beta} or joint analysis
+    for calibrated estimates.}
+}
+For the biologically correct block-level effect, fit a haplotype model:
+\code{build_haplotype_feature_matrix()} produces the 0/1/2 dosage columns
+whose regression coefficients (alpha_h) are the true per-allele effects.
+}
+
 \references{
-Tong et al. (2024) Theor Appl Genet 137:274.
+Tong J, Tarekegn ZT, Jambuthenne D, Alahmad S, Periyannan S,
+Hickey L, Dinglasan E, Hayes B (2024). Stacking beneficial haplotypes
+from the Vavilov wheat collection to accelerate breeding for multiple
+disease resistance. \emph{Theoretical and Applied Genetics}
+\strong{137}:274. \doi{10.1007/s00122-024-04784-w}
+
+Yang J et al. (2012). Conditional and joint multiple-SNP analysis of GWAS
+summary statistics identifies additional variants influencing complex traits.
+\emph{Nature Genetics} \strong{44}(4):369-375. \doi{10.1038/ng.2213}
 }

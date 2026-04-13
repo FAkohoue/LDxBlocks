@@ -138,7 +138,7 @@ alleles of each SNP in the block.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Each character in a haplotype string is the dosage at one SNP in the block:</p><ul><li><p><code>"0"</code> = homozygous REF  -&gt; REF nucleotide (e.g. <code>A</code>)</p></li>
-<li><p><code>"1"</code> = heterozygous    -&gt; REF/ALT (e.g. <code>A/G</code>)</p></li>
+<li><p><code>"1"</code> = heterozygous    -&gt; IUPAC ambiguity code (e.g. <code>R</code> for A/G)</p></li>
 <li><p><code>"2"</code> = homozygous ALT  -&gt; ALT nucleotide (e.g. <code>G</code>)</p></li>
 <li><p><code>"."</code> = missing         -&gt; <code>N</code></p></li>
 </ul><p>The result is a data frame with one row per unique haplotype allele per
@@ -161,20 +161,13 @@ haplotype allele actually encodes biologically.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4 block_1_1000_25535        4 0000000100000000000000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5 block_1_1000_25535        5 0000000000000000000000001</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 6 block_1_1000_25535        6 0000000000000000010000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                                           nucleotide_sequence</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                                                   GCTAGCTAGAGCTAGCTAGAGCTAG</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 G/CC/GT/AA/GG/AC/TT/CA/CG/TA/TG/CC/GT/AA/GG/AC/TT/CA/CG/TA/TG/CC/GT/AA/GG/A</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                                                   CGAGATCCTTCGAGATCCTTCGAGA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                                                 GCTAGCTA/CGAGCTAGCTAGAGCTAG</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                                 GCTAGCTAGAGCTAGCTAGAGCTAG/A</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                                 GCTAGCTAGAGCTAGCTA/CGAGCTAG</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   frequency</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    0.4831</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2    0.1910</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3    0.0899</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4    0.0337</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5    0.0225</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6    0.0225</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         nucleotide_sequence frequency</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 GCTAGCTAGAGCTAGCTAGAGCTAG    0.4831</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 SSWRRYYMKWSSWRRYYMKWSSWRR    0.1910</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 CGAGATCCTTCGAGATCCTTCGAGA    0.0899</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 GCTAGCTMGAGCTAGCTAGAGCTAG    0.0337</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 GCTAGCTAGAGCTAGCTAGAGCTAR    0.0225</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 GCTAGCTAGAGCTAGCTMGAGCTAG    0.0225</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

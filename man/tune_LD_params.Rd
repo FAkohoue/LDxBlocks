@@ -26,7 +26,12 @@ tune_LD_params(
 
 \item{grid}{Optional data frame of parameter combinations. Each row is one
 combination; columns must match parameter names of \code{Big_LD}. If
-\code{NULL} (default), a sensible four-point grid on \code{CLQcut} is used.}
+\code{NULL} (default), a sensible grid over \code{CLQcut} (4 values)
+and \code{min_freq} (2 values) is used, giving 8 combinations. Both
+are treated as hyperparameters following Weber SE et al. (2023,
+\emph{Front. Plant Sci.} \strong{14}:1217589,
+\doi{10.3389/fpls.2023.1217589}), who show that no single threshold
+is universally optimal across datasets and traits.}
 
 \item{chromosomes}{Optional character vector of chromosome names to include
 in tuning. \code{NULL} uses all chromosomes in \code{snp_info}.}
@@ -75,6 +80,16 @@ unassigned and zero forced assignments are prioritised among the above.
 After selecting the best parameter set, \code{tune_LD_params} runs
 \code{\link{run_Big_LD_all_chr}} on all chromosomes and assigns every GWAS
 marker to a block, returning the final blocks and assignments.
+}
+\references{
+Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype
+blocks for genomic prediction: a comparative evaluation in multiple
+crop datasets. \emph{Frontiers in Plant Science} \strong{14}:1217589.
+\doi{10.3389/fpls.2023.1217589}
+
+Difabachew YF et al. (2023). Genomic prediction with haplotype
+blocks in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
+\doi{10.3389/fpls.2023.1168547}
 }
 \seealso{
 \code{\link{run_Big_LD_all_chr}}, \code{\link{Big_LD}}

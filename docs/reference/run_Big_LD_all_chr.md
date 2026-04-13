@@ -109,17 +109,28 @@ A `data.frame` with columns: `start`, `end`, `start.rsID`, `end.rsID`,
 
 ``` r
 # \donttest{
-set.seed(42)
-geno <- matrix(sample(0:2, 80 * 300, replace = TRUE), 80, 300)
-rownames(geno) <- paste0("ind", 1:80)
-colnames(geno) <- paste0("rs", 1:300)
-snp_info <- data.frame(
-  CHR = rep(paste0("chr", 1:3), each = 100),
-  SNP = colnames(geno),
-  POS = unlist(lapply(1:3, function(i) sort(sample(1e6:200e6, 100))))
+# Use the package example data — 120 individuals, 230 SNPs, 3 chromosomes,
+# 9 simulated LD blocks (3 per chromosome).
+data(ldx_geno,     package = "LDxBlocks")
+data(ldx_snp_info, package = "LDxBlocks")
+blocks <- run_Big_LD_all_chr(
+  ldx_geno, ldx_snp_info,
+  method = "r2", CLQcut = 0.55, leng = 15L,
+  subSegmSize = 100L, verbose = FALSE
 )
-blocks <- run_Big_LD_all_chr(geno, snp_info, CLQcut = 0.6, verbose = FALSE)
 head(blocks)
-#> data frame with 0 columns and 0 rows
+#>   start end start.rsID end.rsID start.bp end.bp CHR length_bp
+#> 1     1  25     rs1001   rs1025     1000  25535   1     24536
+#> 2    31  50     rs1031   rs1050    81986 100878   1     18893
+#> 3    56  80     rs1056   rs1080   156776 181114   1     24339
+#> 4     1  30     rs2001   rs2030     1000  29445   2     28446
+#> 5    36  55     rs2036   rs2055    85463 104532   2     19070
+#> 6    61  80     rs2061   rs2080   160237 178996   2     18760
+summarise_blocks(blocks)
+#>      CHR n_blocks min_bp median_bp  mean_bp max_bp total_bp_covered
+#> 1      1        3  18893     24339 22589.33  24536            67768
+#> 2      2        3  18760     19070 22092.00  28446            66276
+#> 3      3        3  18995     19653 19481.33  19796            58444
+#> 4 GENOME        9  18760     19653 21387.56  28446           192488
 # }
 ```

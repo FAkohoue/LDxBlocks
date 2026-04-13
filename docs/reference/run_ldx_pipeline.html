@@ -81,12 +81,21 @@ intermediate steps run transparently.</p>
 <span>  maf_cut <span class="op">=</span> <span class="fl">0.05</span>,</span>
 <span>  CLQcut <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"r2"</span>, <span class="st">"rV2"</span><span class="op">)</span>,</span>
+<span>  kin_method <span class="op">=</span> <span class="st">"chol"</span>,</span>
+<span>  CLQmode <span class="op">=</span> <span class="st">"Density"</span>,</span>
 <span>  leng <span class="op">=</span> <span class="fl">200L</span>,</span>
 <span>  subSegmSize <span class="op">=</span> <span class="fl">1500L</span>,</span>
+<span>  clstgap <span class="op">=</span> <span class="fl">40000L</span>,</span>
+<span>  split <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  appendrare <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  singleton_as_block <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  checkLargest <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  digits <span class="op">=</span> <span class="op">-</span><span class="fl">1L</span>,</span>
 <span>  n_threads <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  min_snps_chr <span class="op">=</span> <span class="fl">10L</span>,</span>
 <span>  min_snps_block <span class="op">=</span> <span class="fl">3L</span>,</span>
 <span>  top_n <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  min_freq <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  scale_hap_matrix <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  chr <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -113,8 +122,14 @@ automatically from the file extension.</p></dd>
 
 <dt id="arg-out-diversity">out_diversity<a class="anchor" aria-label="anchor" href="#arg-out-diversity"></a></dt>
 <dd><p>Path for the haplotype diversity table CSV.
-Columns: `block_id`, `n_ind`, `n_haplotypes`, `He`, `Shannon`,
-`freq_dominant`.</p></dd>
+Columns: <code>block_id</code>, <code>CHR</code>, <code>start_bp</code>,
+<code>end_bp</code>, <code>n_snps</code>, <code>n_ind</code>,
+<code>n_haplotypes</code>, <code>He</code> (Nei 1973 corrected),
+<code>Shannon</code>, <code>n_eff_alleles</code> (effective number of
+alleles = 1/\(\sum p_i^2\)), <code>freq_dominant</code>,
+<code>sweep_flag</code> (<code>TRUE</code> when freq_dominant &gt;= 0.90,
+indicating a possible selective sweep or strong founder effect),
+<code>phased</code>.</p></dd>
 
 
 <dt id="arg-out-hap-matrix">out_hap_matrix<a class="anchor" aria-label="anchor" href="#arg-out-hap-matrix"></a></dt>
@@ -150,6 +165,18 @@ values produce tighter, smaller blocks. Default `0.5`.</p></dd>
 (requires kinship matrix; see <code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></code>).</p></dd>
 
 
+<dt id="arg-kin-method">kin_method<a class="anchor" aria-label="anchor" href="#arg-kin-method"></a></dt>
+<dd><p>Whitening method for <code>rV2</code>: <code>"chol"</code>
+(Cholesky, default, faster) or <code>"eigen"</code> (eigendecomposition,
+more stable for near-singular kinship matrices).</p></dd>
+
+
+<dt id="arg-clqmode">CLQmode<a class="anchor" aria-label="anchor" href="#arg-clqmode"></a></dt>
+<dd><p>Clique scoring mode: <code>"Density"</code> (default,
+prefers compact high-density cliques – recommended for most analyses)
+or <code>"Maximal"</code> (prefers the largest cliques regardless of span).</p></dd>
+
+
 <dt id="arg-leng">leng<a class="anchor" aria-label="anchor" href="#arg-leng"></a></dt>
 <dd><p>Boundary scan half-window in SNPs. Default `200L`.
 Reduce to 50-100 for very dense WGS panels.</p></dd>
@@ -158,6 +185,43 @@ Reduce to 50-100 for very dense WGS panels.</p></dd>
 <dt id="arg-subsegmsize">subSegmSize<a class="anchor" aria-label="anchor" href="#arg-subsegmsize"></a></dt>
 <dd><p>Maximum SNPs per CLQD sub-segment. Controls peak
 RAM: `subSegmSize x n_individuals x 8` bytes. Default `1500L`.</p></dd>
+
+
+<dt id="arg-clstgap">clstgap<a class="anchor" aria-label="anchor" href="#arg-clstgap"></a></dt>
+<dd><p>Maximum base-pair gap allowed within a clique
+before it is split. Default <code>40000L</code> (40 kb). Increase for
+populations with long-range LD (e.g. inbred lines); decrease for
+high-recombination panels.</p></dd>
+
+
+<dt id="arg-split">split<a class="anchor" aria-label="anchor" href="#arg-split"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, split cliques whose
+SNP span exceeds <code>clstgap</code> bp at the largest internal gap.
+Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-appendrare">appendrare<a class="anchor" aria-label="anchor" href="#arg-appendrare"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, SNPs that fail MAF
+filtering are appended to the nearest block after detection. Default
+<code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-singleton-as-block">singleton_as_block<a class="anchor" aria-label="anchor" href="#arg-singleton-as-block"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, SNPs that receive
+no clique assignment (singletons at recombination hotspots) are
+returned as single-SNP blocks in the block table. Default <code>FALSE</code>
+(original Big-LD behaviour – singletons are silently dropped).</p></dd>
+
+
+<dt id="arg-checklargest">checkLargest<a class="anchor" aria-label="anchor" href="#arg-checklargest"></a></dt>
+<dd><p>Logical. If <code>TRUE</code>, apply a dense-core
+pre-pass before clique enumeration on sub-segments with &gt;=500 SNPs to
+prevent exponential blowup. Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-digits">digits<a class="anchor" aria-label="anchor" href="#arg-digits"></a></dt>
+<dd><p>Integer. Round r^2 values to this many decimal
+places before clique detection. <code>-1L</code> (default) disables rounding.</p></dd>
 
 
 <dt id="arg-n-threads">n_threads<a class="anchor" aria-label="anchor" href="#arg-n-threads"></a></dt>
@@ -179,6 +243,15 @@ than this are excluded from haplotype analysis. Default `3L`.</p></dd>
 block in the output matrix. <code>NULL</code> (default) retains all alleles
 above <code>min_freq</code> – no cap. Set an integer (e.g. <code>5L</code>) only to
 limit column count for memory reasons.</p></dd>
+
+
+<dt id="arg-min-freq">min_freq<a class="anchor" aria-label="anchor" href="#arg-min-freq"></a></dt>
+<dd><p>Minimum haplotype allele frequency (0–1). Alleles
+observed at lower frequency than this threshold are dropped before building
+the feature matrix and output files. Default <code>0.01</code> (1%). Rare
+alleles below this threshold cannot be estimated reliably in typical
+training sets and add noise. Lower values retain more rare alleles;
+higher values (e.g. <code>0.05</code>) match the MAF filter applied to SNPs.</p></dd>
 
 
 <dt id="arg-scale-hap-matrix">scale_hap_matrix<a class="anchor" aria-label="anchor" href="#arg-scale-hap-matrix"></a></dt>
@@ -204,29 +277,51 @@ for files from NGSEP and some variant callers. Default <code>FALSE</code>.</p></
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A named list (invisibly) with elements:</p><dl><dt>`blocks`</dt>
-<dd><p>`data.frame` of LD blocks.</p></dd>
+    <p>A named list (invisibly) with elements:</p><dl><dt><code>blocks</code></dt>
+<dd><p>Data frame of LD blocks from <code>run_Big_LD_all_chr</code>.</p></dd>
 
-  <dt>`diversity`</dt>
-<dd><p>`data.frame` of per-block haplotype diversity metrics.</p></dd>
+  <dt><code>diversity</code></dt>
+<dd><p>Data frame of per-block haplotype diversity
+    metrics: <code>block_id</code>, <code>CHR</code>, <code>start_bp</code>,
+    <code>end_bp</code>, <code>n_snps</code>, <code>n_ind</code>, <code>n_haplotypes</code>,
+    <code>He</code> (sample-size corrected expected heterozygosity),
+    <code>Shannon</code>, <code>n_eff_alleles</code>, <code>freq_dominant</code>,
+    <code>sweep_flag</code>, <code>phased</code>.</p></dd>
 
-  <dt>hap_matrix</dt>
-<dd><p>Numeric matrix of haplotype dosages
-    (individuals x haplotype alleles, 0/1/2/NA). Always returned
-    regardless of <code>hap_format</code>. Use this for downstream modelling.</p></dd>
+  <dt><code>hap_matrix</code></dt>
+<dd><p>Numeric matrix (individuals x haplotype
+    allele columns) — the dimensionality-reduced genotype matrix for
+    genomic prediction. Always returned as a numeric R matrix
+    regardless of <code>hap_format</code> (which only controls the
+    <em>file</em> written to <code>out_hap_matrix</code>). Dosage values:
+    0/1/2/NA for phased data; 0/1/NA for unphased data.
+    Compatible with rrBLUP, BGLR, sommer, ASReml-R.</p></dd>
 
-  <dt>haplotypes</dt>
-<dd><p>Named list of haplotype strings from
-    <code><a href="extract_haplotypes.html">extract_haplotypes()</a></code>. Useful for <code><a href="decode_haplotype_strings.html">decode_haplotype_strings()</a></code>.</p></dd>
+  <dt><code>haplotypes</code></dt>
+<dd><p>Named list of per-block haplotype dosage strings
+    from <code><a href="extract_haplotypes.html">extract_haplotypes()</a></code>. Pass to
+    <code><a href="decode_haplotype_strings.html">decode_haplotype_strings()</a></code> for nucleotide sequences, or to
+    <code><a href="rank_haplotype_blocks.html">rank_haplotype_blocks()</a></code> for evidence-based ranking.</p></dd>
 
-  <dt>`snp_info_filtered`</dt>
-<dd><p>`data.frame` of SNP metadata after MAF filter.</p></dd>
+  <dt><code>snp_info_filtered</code></dt>
+<dd><p>Data frame of SNP metadata after
+    MAF filtering: <code>SNP</code>, <code>CHR</code>, <code>POS</code>, and any
+    additional columns from the input file.</p></dd>
 
-  <dt>`n_blocks`</dt>
-<dd><p>Integer. Total blocks detected.</p></dd>
+  <dt><code>geno_matrix</code></dt>
+<dd><p>Numeric matrix (individuals x SNPs) of
+    MAF-filtered genotypes (0/1/2/NA). Needed directly by
+    <code><a href="tune_LD_params.html">tune_LD_params</a></code> and
+    <code><a href="run_haplotype_prediction.html">run_haplotype_prediction</a></code> — avoids reloading
+    the genotype file after the pipeline completes.</p></dd>
 
-  <dt>`n_hap_columns`</dt>
-<dd><p>Integer. Total haplotype allele columns.</p></dd>
+  <dt><code>n_blocks</code></dt>
+<dd><p>Integer. Total LD blocks detected genome-wide.</p></dd>
+
+  <dt><code>n_hap_columns</code></dt>
+<dd><p>Integer. Total haplotype allele columns
+    after <code>min_freq</code> filtering — the effective number of predictors
+    for genomic prediction.</p></dd>
 
 
 </dl></div>
@@ -245,19 +340,33 @@ via `SNPRelate` is used automatically if the `SNPRelate` package is installed.</
 
 
 <p>Both output formats have haplotype alleles as rows and individuals as
-columns, with four metadata columns before the individual columns:
-<code>hap_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>,
-<code>n_snps</code>, <code>alleles</code> (nucleotide sequence), <code>frequency</code>.</p><ul><li><p><code>"numeric"</code>: individual cells are 0/1/2/NA dosage.
-    0 = does not carry this allele, 2 = carries it (unphased), 1 = one
-    gamete carries it (phased only). Compatible with rrBLUP, BGLR, ASReml-R.</p></li>
-<li><p><code>"character"</code>: individual cells are the nucleotide sequence
-    (e.g. <code>"AGTTA"</code>) if the individual carries this allele, <code>"-"</code>
-    if absent, <code>"."</code> if missing.</p></li>
+columns, preceded by metadata columns: <code>hap_id</code>, <code>CHR</code>,
+<code>start_bp</code>, <code>end_bp</code>, <code>n_snps</code>, <code>alleles</code>
+(nucleotide sequence of this allele), <code>frequency</code>.</p><ul><li><p><code>"numeric"</code>: individual cells are haplotype dosage values:</p><ul><li><p><strong>Phased data</strong>: 0/1/2/NA — 0 = neither gamete carries
+        this allele, 1 = one gamete carries it (heterozygous),
+        2 = both gametes carry it (homozygous).</p></li>
+<li><p><strong>Unphased data</strong>: 0/1/NA — 0 = absent, 1 = present
+        (individual's block-level string matches this allele exactly).
+        The value 2 is not used for unphased data because the two
+        chromosomes cannot be distinguished — an individual homozygous
+        for this allele and one heterozygous for it produce different
+        observable strings and are treated as different alleles.</p></li>
+</ul><p>Compatible with rrBLUP, BGLR, sommer, ASReml-R.</p></li>
+<li><p><code>"character"</code>: individual cells are the full nucleotide
+    sequence of the allele (e.g. <code>"AGTTA"</code>) if the individual
+    carries it, <code>"-"</code> if absent, <code>"."</code> if missing.
+    Heterozygous positions use IUPAC ambiguity codes
+    (R=A/G, Y=C/T, S=G/C, W=A/T, K=G/T, M=A/C).</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>[run_Big_LD_all_chr()], [extract_haplotypes()],
-  [compute_haplotype_diversity()], [build_haplotype_feature_matrix()]</p></div>
+    <div class="dont-index"><p><code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></code>,
+  <code><a href="extract_haplotypes.html">extract_haplotypes</a></code>,
+  <code><a href="compute_haplotype_diversity.html">compute_haplotype_diversity</a></code>,
+  <code><a href="build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></code>,
+  <code><a href="rank_haplotype_blocks.html">rank_haplotype_blocks</a></code>,
+  <code><a href="run_haplotype_prediction.html">run_haplotype_prediction</a></code>,
+  <code><a href="tune_LD_params.html">tune_LD_params</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -277,8 +386,8 @@ columns, with four metadata columns before the individual columns:
 <span class="r-in"><span>  leng           <span class="op">=</span> <span class="fl">10L</span>,</span></span>
 <span class="r-in"><span>  subSegmSize    <span class="op">=</span> <span class="fl">80L</span>,</span></span>
 <span class="r-in"><span>  min_snps_block <span class="op">=</span> <span class="fl">3L</span>,</span></span>
-<span class="r-in"><span><span class="co">#'   # top_n       = 5L,          # optional integer cap; NULL = all above min_freq</span></span></span>
-<span class="r-in"><span>  <span class="co"># hap_format  = "character", # or "numeric" (default)</span></span></span>
+<span class="r-in"><span>  <span class="co"># top_n       = 5L,   # optional integer cap; NULL = all above min_freq</span></span></span>
+<span class="r-in"><span>  <span class="co"># hap_format  = "character",  # alternative to "numeric"</span></span></span>
 <span class="r-in"><span>  verbose        <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
@@ -292,19 +401,19 @@ columns, with four metadata columns before the individual columns:
 <span class="r-out co"><span class="r-pr">#&gt;</span> 6    61  80     rs2061   rs2080   160237 178996   2     18760</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">diversity</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                block_id CHR start_bp end_bp n_snps n_ind n_haplotypes        He</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8418056</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8390278</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8752778</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8793056</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8463889</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8413889</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    Shannon freq_dominant phased</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 2.768290     0.3583333  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 2.654193     0.3000000  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 2.966925     0.2916667  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 3.108972     0.2833333  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 2.649231     0.2833333  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 2.604423     0.3083333  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8488796</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8460784</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8826331</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8866947</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8535014</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8484594</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    Shannon n_eff_alleles freq_dominant sweep_flag phased</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 2.768290         6.321     0.3583333      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 2.654193         6.212     0.3000000      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 2.966925         8.018     0.2916667      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 3.108972         8.285     0.2833333      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 2.649231         6.510     0.2833333      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 2.604423         6.305     0.3083333      FALSE  FALSE</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">hap_matrix</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 120  85</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>

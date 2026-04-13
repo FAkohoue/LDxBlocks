@@ -7,7 +7,7 @@
 build_haplotype_feature_matrix(
   haplotypes,
   top_n = NULL,
-  encoding = c("additive_012", "presence_02"),
+  encoding = c("additive_012", "presence_01"),
   missing_string = ".",
   scale_features = FALSE,
   min_freq = 0.01
@@ -23,7 +23,25 @@ Set an integer cap (e.g. \code{top_n = 5L}) only when you need to limit
 matrix width for memory reasons on panels with thousands of blocks and
 highly diverse haplotypes (many rare alleles above \code{min_freq}).}
 
-\item{encoding}{"additive_012" (default) or "presence_02".}
+\item{encoding}{Dosage encoding for the feature matrix:
+\itemize{
+  \item \code{"additive_012"} (default): values are 0, 1, or 2 for
+    \strong{phased} data (0 = neither gamete, 1 = one gamete,
+    2 = both gametes carry this allele); values are 0 or 2 for
+    \strong{unphased} data (0 = absent, 2 = homozygous for this allele).
+    For \strong{unphased} data the value is 0 or 1/NA: 1 = the
+    individual's haplotype string matches this allele exactly,
+    0 = it does not. The value 2 is not used for unphased data
+    because we cannot confirm both chromosomes carry the same
+    allele from unphased dosage strings. Compatible with
+    rrBLUP, BGLR, sommer, ASReml-R.
+  \item \code{"presence_01"}: values are 0 or 1 — clean presence/absence
+    encoding. For phased data: 1 if either gamete carries the allele.
+    For unphased data: 1 if the individual's allele string matches.
+    Loses copy-number information compared to \code{"additive_012"}
+    but may be preferable for Bayesian variable selection models
+    (BayesB, BayesC) where the prior expects binary indicators.
+}}
 
 \item{missing_string}{Missing data marker. Default ".".}
 
@@ -38,11 +56,21 @@ Numeric matrix (individuals x haplotype allele columns).
 Converts haplotype strings to a numeric matrix for genomic
   prediction. Supports phased and unphased input with two encoding schemes.
 
-  encoding="additive_012" (default, recommended for GBLUP/rrBLUP/BGLR):
+  \code{encoding="additive_012"} (default, recommended for GBLUP/rrBLUP/BGLR):
     Phased:   0=0 copies, 1=1 copy (het), 2=2 copies (hom)
     Unphased: 0=no match, 2=match (1 not identifiable without phase)
 
   encoding="presence_02" (kernel methods, random forest):
     Phased:   2=either gamete matches, 0=neither, NA=missing
     Unphased: 2=match, 0=no match, NA=missing
+}
+\references{
+Difabachew YF et al. (2023). Genomic prediction with haplotype
+blocks in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
+\doi{10.3389/fpls.2023.1168547}
+
+Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype
+blocks for genomic prediction: a comparative evaluation in multiple
+crop datasets. \emph{Frontiers in Plant Science} \strong{14}:1217589.
+\doi{10.3389/fpls.2023.1217589}
 }

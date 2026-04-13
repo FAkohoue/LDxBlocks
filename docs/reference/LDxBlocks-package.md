@@ -45,18 +45,30 @@ multi-format genotype I/O.
 7.  Build prediction feature matrix:
     [`build_haplotype_feature_matrix`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md).
 
-8.  Write outputs:
-    [`write_haplotype_numeric`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.md),
-    [`write_haplotype_character`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_character.md).
+8.  Map GWAS hits to QTL regions:
+    [`define_qtl_regions`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md).
 
-9.  Or run everything at once:
+9.  Genomic prediction (Tong et al. 2024/2025):
+    [`run_haplotype_prediction`](https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_prediction.md)
+    – full pipeline from BLUEs to block importance; or step-by-step via
+    [`compute_haplotype_grm`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_grm.md),
+    [`backsolve_snp_effects`](https://FAkohoue.github.io/LDxBlocks/reference/backsolve_snp_effects.md),
+    [`compute_local_gebv`](https://FAkohoue.github.io/LDxBlocks/reference/compute_local_gebv.md),
+    [`rank_haplotype_blocks`](https://FAkohoue.github.io/LDxBlocks/reference/rank_haplotype_blocks.md).
+
+10. Write outputs:
+    [`write_haplotype_numeric`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.md),
+    [`write_haplotype_character`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_character.md),
+    [`write_haplotype_diversity`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_diversity.md).
+
+11. Or run everything at once:
     [`run_ldx_pipeline`](https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.md).
 
 ## Example data
 
 - [`ldx_geno`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_geno.md):
 
-  120 x 200 genotype matrix, 3 chromosomes, 9 simulated LD blocks.
+  120 x 230 genotype matrix, 3 chromosomes, 9 simulated LD blocks.
 
 - [`ldx_snp_info`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_snp_info.md):
 
@@ -72,14 +84,42 @@ multi-format genotype I/O.
 
 ## References
 
-Kim S-A et al. (2018) Bioinformatics 34(4):588-596.
+Kim S-A et al. (2018). A new haplotype block detection method for dense
+genome sequencing data based on interval graph modeling and dynamic
+programming. *Bioinformatics* **34**(4):588-596.
 [doi:10.1093/bioinformatics/btx609](https://doi.org/10.1093/bioinformatics/btx609)
 
-Mangin B et al. (2012) Heredity 108(3):285-291.
+Mangin B et al. (2012). Novel measures of linkage disequilibrium that
+correct the bias due to population structure and relatedness. *Heredity*
+**108**(3):285-291.
 [doi:10.1038/hdy.2011.73](https://doi.org/10.1038/hdy.2011.73)
 
-VanRaden PM (2008) J. Dairy Sci. 91(11):4414-4423.
+VanRaden PM (2008). Efficient methods to compute genomic predictions.
+*Journal of Dairy Science* **91**(11):4414-4423.
 [doi:10.3168/jds.2007-0980](https://doi.org/10.3168/jds.2007-0980)
+
+Difabachew YF et al. (2023). Genomic prediction with haplotype blocks in
+wheat. *Frontiers in Plant Science* **14**:1168547.
+[doi:10.3389/fpls.2023.1168547](https://doi.org/10.3389/fpls.2023.1168547)
+
+Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype blocks
+for genomic prediction: a comparative evaluation in multiple crop
+datasets. *Frontiers in Plant Science* **14**:1217589.
+[doi:10.3389/fpls.2023.1217589](https://doi.org/10.3389/fpls.2023.1217589)
+
+Pook T et al. (2019). HaploBlocker: Creation of subgroup-specific
+haplotype blocks and libraries. *Genetics* **212**(4):1045-1061.
+[doi:10.1534/genetics.119.302283](https://doi.org/10.1534/genetics.119.302283)
+
+Tong J et al. (2024). Stacking beneficial haplotypes from the Vavilov
+wheat collection to accelerate breeding for multiple disease resistance.
+*Theoretical and Applied Genetics* **137**:274.
+[doi:10.1007/s00122-024-04784-w](https://doi.org/10.1007/s00122-024-04784-w)
+
+Tong J et al. (2025). Haplotype stacking to improve stability of stripe
+rust resistance in wheat. *Theoretical and Applied Genetics*
+**138**:267.
+[doi:10.1007/s00122-025-05045-0](https://doi.org/10.1007/s00122-025-05045-0)
 
 ## See also
 

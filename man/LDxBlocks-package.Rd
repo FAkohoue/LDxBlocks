@@ -36,8 +36,17 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.
   \item Compute diversity metrics: \code{\link{compute_haplotype_diversity}}.
   \item Build prediction feature matrix:
     \code{\link{build_haplotype_feature_matrix}}.
+  \item Map GWAS hits to QTL regions: \code{\link{define_qtl_regions}}.
+  \item Genomic prediction (Tong et al. 2024/2025):
+    \code{\link{run_haplotype_prediction}} -- full pipeline from BLUEs to
+    block importance; or step-by-step via
+    \code{\link{compute_haplotype_grm}},
+    \code{\link{backsolve_snp_effects}},
+    \code{\link{compute_local_gebv}},
+    \code{\link{rank_haplotype_blocks}}.
   \item Write outputs: \code{\link{write_haplotype_numeric}},
-    \code{\link{write_haplotype_character}}.
+    \code{\link{write_haplotype_character}},
+    \code{\link{write_haplotype_diversity}}.
   \item Or run everything at once: \code{\link{run_ldx_pipeline}}.
 }
 }
@@ -45,7 +54,7 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.
 \section{Example data}{
 
 \describe{
-  \item{\code{\link{ldx_geno}}}{120 x 200 genotype matrix, 3 chromosomes,
+  \item{\code{\link{ldx_geno}}}{120 x 230 genotype matrix, 3 chromosomes,
     9 simulated LD blocks.}
   \item{\code{\link{ldx_snp_info}}}{SNP metadata (SNP, CHR, POS, REF, ALT).}
   \item{\code{\link{ldx_blocks}}}{Reference block table for \code{ldx_geno}.}
@@ -54,14 +63,40 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.
 }
 
 \references{
-Kim S-A et al. (2018) Bioinformatics 34(4):588-596.
+Kim S-A et al. (2018). A new haplotype block detection method for dense
+genome sequencing data based on interval graph modeling and dynamic
+programming. \emph{Bioinformatics} \strong{34}(4):588-596.
 \doi{10.1093/bioinformatics/btx609}
 
-Mangin B et al. (2012) Heredity 108(3):285-291.
-\doi{10.1038/hdy.2011.73}
+Mangin B et al. (2012). Novel measures of linkage disequilibrium that
+correct the bias due to population structure and relatedness.
+\emph{Heredity} \strong{108}(3):285-291. \doi{10.1038/hdy.2011.73}
 
-VanRaden PM (2008) J. Dairy Sci. 91(11):4414-4423.
+VanRaden PM (2008). Efficient methods to compute genomic predictions.
+\emph{Journal of Dairy Science} \strong{91}(11):4414-4423.
 \doi{10.3168/jds.2007-0980}
+
+Difabachew YF et al. (2023). Genomic prediction with haplotype blocks
+in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
+\doi{10.3389/fpls.2023.1168547}
+
+Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype blocks
+for genomic prediction: a comparative evaluation in multiple crop datasets.
+\emph{Frontiers in Plant Science} \strong{14}:1217589.
+\doi{10.3389/fpls.2023.1217589}
+
+Pook T et al. (2019). HaploBlocker: Creation of subgroup-specific
+haplotype blocks and libraries. \emph{Genetics} \strong{212}(4):1045-1061.
+\doi{10.1534/genetics.119.302283}
+
+Tong J et al. (2024). Stacking beneficial haplotypes from the Vavilov
+wheat collection to accelerate breeding for multiple disease resistance.
+\emph{Theoretical and Applied Genetics} \strong{137}:274.
+\doi{10.1007/s00122-024-04784-w}
+
+Tong J et al. (2025). Haplotype stacking to improve stability of stripe
+rust resistance in wheat. \emph{Theoretical and Applied Genetics}
+\strong{138}:267. \doi{10.1007/s00122-025-05045-0}
 }
 \seealso{
 Useful links:

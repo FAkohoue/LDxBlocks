@@ -267,13 +267,40 @@ extract_haplotypes <- function(geno, snp_info, blocks,
 }
 
 #' Compute Haplotype Diversity Per Block
-#' @description Calculates n_haplotypes, He, Shannon entropy, and
-#'   freq_dominant per block. Phased data contributes two gamete observations
-#'   per individual.
-#' @param haplotypes List from extract_haplotypes().
-#' @param missing_string Missing data marker. Default ".".
-#' @return Data frame with block_id, CHR, start_bp, end_bp, n_snps, n_ind,
-#'   n_haplotypes, He, Shannon, freq_dominant, phased.
+#'
+#' @description
+#' Calculates per-block haplotype diversity metrics: richness
+#' (n_haplotypes), expected heterozygosity (He, Nei 1973 sample-size
+#' corrected), Shannon entropy, effective number of alleles
+#' (1/\eqn{\sum p_i^2}), dominant haplotype frequency, and a sweep
+#' flag (TRUE when freq_dominant \eqn{\geq} 0.90). These metrics
+#' directly correspond to those used to characterise block diversity
+#' and identify selection signatures in Difabachew et al. (2023) and
+#' Tong et al. (2024). Phased data contributes two gamete observations
+#' per individual, doubling the effective sample size.
+#'
+#' @param haplotypes Named list from \code{\link{extract_haplotypes}}.
+#' @param missing_string Missing data marker. Default \code{"."}.
+#'
+#' @return Data frame with one row per block: \code{block_id},
+#'   \code{CHR}, \code{start_bp}, \code{end_bp}, \code{n_snps},
+#'   \code{n_ind}, \code{n_haplotypes}, \code{He} (corrected),
+#'   \code{Shannon}, \code{n_eff_alleles}, \code{freq_dominant},
+#'   \code{sweep_flag}, \code{phased}.
+#'
+#' @references
+#' Nei M (1973). Analysis of gene diversity in subdivided populations.
+#' \emph{Proceedings of the National Academy of Sciences}
+#' \strong{70}(12):3321-3323. \doi{10.1073/pnas.70.12.3321}
+#'
+#' Difabachew YF et al. (2023). Genomic prediction with haplotype
+#' blocks in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
+#' \doi{10.3389/fpls.2023.1168547}
+#'
+#' Tong J et al. (2024). Stacking beneficial haplotypes from the Vavilov
+#' wheat collection to accelerate breeding for multiple disease resistance.
+#' \emph{Theoretical and Applied Genetics} \strong{137}:274.
+#' \doi{10.1007/s00122-024-04784-w}
 #' @export
 compute_haplotype_diversity <- function(haplotypes, missing_string=".") {
   bi <- attr(haplotypes,"block_info")
@@ -289,17 +316,31 @@ compute_haplotype_diversity <- function(haplotypes, missing_string=".") {
                                         start_bp=if(!is.null(blk))blk$start_bp[1] else NA,
                                         end_bp=if(!is.null(blk))blk$end_bp[1] else NA,
                                         n_snps=if(!is.null(blk))blk$n_snps[1] else NA,
-                                        n_ind=0L,n_haplotypes=NA,He=NA,Shannon=NA,freq_dominant=NA,
-                                        phased=phased,stringsAsFactors=FALSE))
+                                        n_ind=0L, n_haplotypes=NA, He=NA, Shannon=NA,
+                                        n_eff_alleles=NA, freq_dominant=NA, sweep_flag=NA,
+                                        phased=phased, stringsAsFactors=FALSE))
     tbl <- table(obs); freq <- as.numeric(tbl)/sum(tbl)
-    He <- 1-sum(freq^2); Sh <- -sum(freq*log(pmax(freq,.Machine$double.eps)))
+    He  <- 1 - sum(freq^2)
+    # Nei (1973) sample-size correction
+    He_corr <- if (ni > 1L) (ni / (ni - 1L)) * He else He
+    Sh  <- -sum(freq * log(pmax(freq, .Machine$double.eps)))
+    # Effective number of alleles: reciprocal of homozygosity (Hill 1973)
+    # Ranges from 1 (monomorphic) to n_haplotypes (equal frequencies)
+    n_eff <- 1 / sum(freq^2)
+    # Sweep flag: dominant haplotype > 90% suggests selective sweep or
+    # strong founder effect in the region (Difabachew et al. 2023)
+    sweep <- max(freq) >= 0.90
     data.frame(block_id=bn,
                CHR=if(!is.null(blk))blk$CHR[1] else NA,
                start_bp=if(!is.null(blk))blk$start_bp[1] else NA,
                end_bp=if(!is.null(blk))blk$end_bp[1] else NA,
                n_snps=if(!is.null(blk))blk$n_snps[1] else NA,
-               n_ind=ni,n_haplotypes=length(tbl),He=He,Shannon=Sh,freq_dominant=max(freq),
-               phased=phased,stringsAsFactors=FALSE)
+               n_ind=ni, n_haplotypes=length(tbl),
+               He=He_corr, Shannon=Sh,
+               n_eff_alleles=round(n_eff, 3),
+               freq_dominant=max(freq),
+               sweep_flag=sweep,
+               phased=phased, stringsAsFactors=FALSE)
   })
   do.call(rbind,rows)
 }
@@ -308,15 +349,56 @@ compute_haplotype_diversity <- function(haplotypes, missing_string=".") {
 #' @description Maps significant GWAS markers onto LD blocks to define QTL
 #'   regions. Blocks with significant markers from multiple traits are flagged
 #'   pleiotropic. Implements the approach of Tong et al. (2024).
-#' @param gwas_results Data frame: SNP, CHR, POS. Optional: P, trait.
-#' @param blocks LD block data frame from run_Big_LD_all_chr().
+#' @param gwas_results Data frame with columns \code{SNP} (or \code{Marker}),
+#'   \code{CHR}, \code{POS}. Optional columns: \code{P} (p-value),
+#'   \code{BETA} (additive effect estimate), \code{trait}.
+#' @param blocks LD block data frame from \code{\link{run_Big_LD_all_chr}}.
 #' @param snp_info Full SNP metadata data frame.
-#' @param p_threshold Significance threshold. Default 5e-8. NULL = use all markers.
-#' @param trait_col Trait column name. Default "trait".
-#' @param min_snps Minimum block SNP count. Default 3L.
-#' @return Data frame: block_id, CHR, start_bp, end_bp, n_snps_block,
-#'   n_sig_markers, lead_snp, lead_p, traits, n_traits, pleiotropic.
-#' @references Tong et al. (2024) Theor Appl Genet 137:274.
+#' @param p_threshold Significance threshold. Default \code{5e-8}.
+#'   \code{NULL} uses all markers regardless of p-value.
+#' @param trait_col Trait column name in \code{gwas_results}. Default
+#'   \code{"trait"}.
+#' @param min_snps Minimum SNPs per block. Default \code{3L}.
+#'
+#' @section Block effect estimation:
+#' When multiple SNPs within a block are GWAS-significant, their marginal
+#' BETA values are correlated (due to LD) and cannot be summed directly.
+#' LDxBlocks returns three complementary columns when \code{BETA} is
+#' present in \code{gwas_results}:
+#' \describe{
+#'   \item{\code{lead_beta}}{BETA of the lead (lowest-p) SNP. The simplest
+#'     proxy for the block effect -- assumes the lead SNP fully tags the
+#'     causal variant. Underestimates the block effect when multiple
+#'     independent signals exist.}
+#'   \item{\code{sig_snps}}{Semicolon-separated IDs of all significant SNPs
+#'     in the block. Pass these to a conditional/joint analysis tool (e.g.
+#'     COJO, SuSiE, finemap) to obtain independent within-block effects.}
+#'   \item{\code{sig_betas}}{Semicolon-separated marginal BETA values for
+#'     all significant SNPs (same order as \code{sig_snps}). Their absolute
+#'     values are an upper bound on the true block effect because they
+#'     include LD-induced inflation; use \code{lead_beta} or joint analysis
+#'     for calibrated estimates.}
+#' }
+#' For the biologically correct block-level effect, fit a haplotype model:
+#' \code{build_haplotype_feature_matrix()} produces the 0/1/2 dosage columns
+#' whose regression coefficients (alpha_h) are the true per-allele effects.
+#'
+#' @return Data frame with one row per block containing significant markers:
+#'   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+#'   \code{n_snps_block}, \code{n_sig_markers}, \code{lead_snp},
+#'   \code{lead_p}, \code{lead_beta} (if BETA supplied), \code{sig_snps},
+#'   \code{sig_betas} (if BETA supplied), \code{traits}, \code{n_traits},
+#'   \code{pleiotropic}.
+#' @references
+#' Tong J, Tarekegn ZT, Jambuthenne D, Alahmad S, Periyannan S,
+#' Hickey L, Dinglasan E, Hayes B (2024). Stacking beneficial haplotypes
+#' from the Vavilov wheat collection to accelerate breeding for multiple
+#' disease resistance. \emph{Theoretical and Applied Genetics}
+#' \strong{137}:274. \doi{10.1007/s00122-024-04784-w}
+#'
+#' Yang J et al. (2012). Conditional and joint multiple-SNP analysis of GWAS
+#' summary statistics identifies additional variants influencing complex traits.
+#' \emph{Nature Genetics} \strong{44}(4):369-375. \doi{10.1038/ng.2213}
 #' @export
 define_qtl_regions <- function(gwas_results, blocks, snp_info,
                                p_threshold=5e-8, trait_col="trait", min_snps=3L) {
@@ -341,14 +423,23 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
     if (nb<min_snps) next
     traits <- unique(hits[[trait_col]])
     li <- if("P"%in%names(hits)) which.min(hits$P) else 1L
+    has_beta <- "BETA" %in% names(hits)
     rows[[length(rows)+1L]] <- data.frame(
-      block_id=paste0("block_",ch,"_",sb,"_",eb), CHR=ch,
-      start_bp=as.integer(sb), end_bp=as.integer(eb),
-      n_snps_block=nb, n_sig_markers=nrow(hits),
-      lead_snp=hits$SNP[li],
-      lead_p=if("P"%in%names(hits))hits$P[li] else NA_real_,
-      traits=paste(sort(traits),collapse=","), n_traits=length(traits),
-      pleiotropic=length(traits)>1L, stringsAsFactors=FALSE)
+      block_id      = paste0("block_",ch,"_",sb,"_",eb),
+      CHR           = ch,
+      start_bp      = as.integer(sb),
+      end_bp        = as.integer(eb),
+      n_snps_block  = nb,
+      n_sig_markers = nrow(hits),
+      lead_snp      = hits$SNP[li],
+      lead_p        = if ("P" %in% names(hits)) hits$P[li] else NA_real_,
+      lead_beta     = if (has_beta) hits$BETA[li] else NA_real_,
+      sig_snps      = paste(hits$SNP, collapse = ";"),
+      sig_betas     = if (has_beta) paste(round(hits$BETA, 6), collapse = ";") else NA_character_,
+      traits        = paste(sort(traits), collapse = ","),
+      n_traits      = length(traits),
+      pleiotropic   = length(traits) > 1L,
+      stringsAsFactors = FALSE)
   }
   if (!length(rows)){message("[define_qtl_regions] No overlapping blocks.");return(data.frame())}
   out <- do.call(rbind,rows); out[order(out$CHR,out$start_bp),]
@@ -358,7 +449,7 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
 #' @description Converts haplotype strings to a numeric matrix for genomic
 #'   prediction. Supports phased and unphased input with two encoding schemes.
 #'
-#'   encoding="additive_012" (default, recommended for GBLUP/rrBLUP/BGLR):
+#'   \code{encoding="additive_012"} (default, recommended for GBLUP/rrBLUP/BGLR):
 #'     Phased:   0=0 copies, 1=1 copy (het), 2=2 copies (hom)
 #'     Unphased: 0=no match, 2=match (1 not identifiable without phase)
 #'
@@ -373,17 +464,46 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
 #'   Set an integer cap (e.g. \code{top_n = 5L}) only when you need to limit
 #'   matrix width for memory reasons on panels with thousands of blocks and
 #'   highly diverse haplotypes (many rare alleles above \code{min_freq}).
-#' @param encoding "additive_012" (default) or "presence_02".
+#' @param encoding     Dosage encoding for the feature matrix:
+#'   \itemize{
+#'     \item \code{"additive_012"} (default): values are 0, 1, or 2 for
+#'       \strong{phased} data (0 = neither gamete, 1 = one gamete,
+#'       2 = both gametes carry this allele); values are 0 or 2 for
+#'       \strong{unphased} data (0 = absent, 2 = homozygous for this allele).
+#'       For \strong{unphased} data the value is 0 or 1/NA: 1 = the
+#'       individual's haplotype string matches this allele exactly,
+#'       0 = it does not. The value 2 is not used for unphased data
+#'       because we cannot confirm both chromosomes carry the same
+#'       allele from unphased dosage strings. Compatible with
+#'       rrBLUP, BGLR, sommer, ASReml-R.
+#'     \item \code{"presence_01"}: values are 0 or 1 — clean presence/absence
+#'       encoding. For phased data: 1 if either gamete carries the allele.
+#'       For unphased data: 1 if the individual's allele string matches.
+#'       Loses copy-number information compared to \code{"additive_012"}
+#'       but may be preferable for Bayesian variable selection models
+#'       (BayesB, BayesC) where the prior expects binary indicators.
+#'   }
 #' @param missing_string Missing data marker. Default ".".
 #' @param scale_features Center and scale columns. Default FALSE.
 #' @param min_freq Minimum allele frequency to include. Default 0.01.
 #' @return Numeric matrix (individuals x haplotype allele columns).
+#' @references
+#' Difabachew YF et al. (2023). Genomic prediction with haplotype
+#' blocks in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
+#' \doi{10.3389/fpls.2023.1168547}
+#'
+#' Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype
+#' blocks for genomic prediction: a comparative evaluation in multiple
+#' crop datasets. \emph{Frontiers in Plant Science} \strong{14}:1217589.
+#' \doi{10.3389/fpls.2023.1217589}
 #' @export
 build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
-                                           encoding=c("additive_012","presence_02"),
+                                           encoding=c("additive_012","presence_01"),
                                            missing_string=".", scale_features=FALSE,
                                            min_freq=0.01) {
   encoding <- match.arg(encoding)
+  # "presence_02" is a legacy alias accepted for backward compatibility
+  if (identical(encoding, "presence_02")) encoding <- "presence_01"
   bi       <- attr(haplotypes,"block_info")
   inames   <- names(haplotypes[[1L]])
   mats     <- vector("list",length(haplotypes))
@@ -406,12 +526,19 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
                   dimnames=list(inames,paste0(bn,"__hap",seq_along(tops))))
     for (j in seq_along(tops)) {
       ref <- tops[j]
-      d <- if (identical(encoding,"additive_012")) {
-        if (phased) ifelse(miss,NA_real_,(g1==ref)*1+(g2==ref)*1)
-        else ifelse(miss,NA_real_,ifelse(hap==ref,2,0))
-      } else {
-        if (phased) ifelse(miss,NA_real_,ifelse(g1==ref|g2==ref,2,0))
-        else ifelse(miss,NA_real_,ifelse(hap==ref,2,0))
+      # Dosage encoding:
+      # additive_012 + phased:   0/1/2/NA  (gamete 1 + gamete 2 copy counts)
+      # additive_012 + unphased: 0/1/NA    (1 = present, 0 = absent)
+      # presence_01  + phased:   0/1/NA    (present on either gamete)
+      # presence_01  + unphased: 0/1/NA    (present = exact string match)
+      # Using 2 for unphased presence would falsely imply homozygosity
+      # which cannot be inferred from unphased data.
+      d <- if (identical(encoding, "additive_012")) {
+        if (phased) ifelse(miss, NA_real_, (g1==ref)*1L + (g2==ref)*1L)
+        else        ifelse(miss, NA_real_, ifelse(hap==ref, 1L, 0L))
+      } else {  # presence_01
+        if (phased) ifelse(miss, NA_real_, ifelse(g1==ref | g2==ref, 1L, 0L))
+        else        ifelse(miss, NA_real_, ifelse(hap==ref, 1L, 0L))
       }
       mat[,j] <- d
     }
@@ -421,7 +548,107 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
   if (!length(mats)) stop("No columns produced. Lower min_freq.",call.=FALSE)
   feat <- do.call(cbind,mats)
   if (scale_features) { feat <- scale(feat); feat[is.nan(feat)] <- 0 }
+
+  # Diagnostic: warn if total predictor count is too low or high.
+  # Difabachew et al. (2023) show < 500 total haplotype predictors
+  # collapses genomic prediction accuracy relative to single-SNP baseline.
+  # Weber et al. (2023) show very large blocks lose relationship information.
+  n_pred <- ncol(feat)
+  n_blks <- length(mats)
+  # Only warn when the dataset is large enough that 500 columns is achievable
+  # (requires >= 20 blocks at 25 alleles each). On small example datasets
+  # (< 20 blocks) the threshold cannot be reached regardless of parameters,
+  # so the advice is not actionable and the warning would just be noise.
+  if (n_pred < 500L && n_blks >= 20L)
+    warning(
+      "build_haplotype_feature_matrix: only ", n_pred, " predictor columns ",
+      "from ", n_blks, " blocks. Difabachew et al. (2023) show that < 500 ",
+      "haplotype predictors reduce genomic prediction accuracy below the ",
+      "single-SNP baseline. Consider lowering CLQcut or min_freq.",
+      call. = FALSE)
   feat
+}
+
+
+#' Compute Haplotype-Based Genomic Relationship Matrix
+#'
+#' @description
+#' Computes the additive genomic relationship matrix (GRM) from a haplotype
+#' feature matrix using the VanRaden (2008) method extended to multi-allelic
+#' haplotype blocks. The resulting G matrix can be used directly in GBLUP,
+#' rrBLUP, ASReml-R, or any software that accepts a realized relationship
+#' matrix.
+#'
+#' @details
+#' The GRM is computed as:
+#' \deqn{G = \frac{ZZ^\top}{2\sum_j p_j(1-p_j)}}
+#' where \eqn{Z} is the centred haplotype dosage matrix (columns centred by
+#' \eqn{2p_j}) and \eqn{p_j} is the frequency of haplotype allele \eqn{j}.
+#' This matches the standard G matrix of Weber et al. (2023) and Difabachew
+#' et al. (2023), ensuring the relationship scale is compatible with
+#' conventional SNP-based GRMs.
+#'
+#' Missing dosage values (\code{NA}) are mean-imputed per column before
+#' centering.
+#'
+#' @param hap_matrix Numeric matrix (individuals x haplotype alleles) from
+#'   \code{\link{build_haplotype_feature_matrix}}.
+#' @param bend Logical. If \code{TRUE}, add a small constant to the diagonal
+#'   to ensure positive-definiteness: \code{diag(G) + 0.001}. Useful when
+#'   passing G to mixed model solvers. Default \code{FALSE}.
+#'
+#' @return Symmetric n x n numeric matrix (individuals x individuals).
+#'   Row and column names match \code{rownames(hap_matrix)}.
+#'
+#' @references
+#' VanRaden PM (2008). Efficient methods to compute genomic predictions.
+#' \emph{Journal of Dairy Science} \strong{91}(11):4414-4423.
+#' \doi{10.3168/jds.2007-0980}
+#'
+#' Weber SE et al. (2023). Haplotype blocks for genomic prediction: a
+#' comparative evaluation in multiple crop datasets.
+#' \emph{Frontiers in Plant Science} \strong{14}:1217589.
+#' \doi{10.3389/fpls.2023.1217589}
+#'
+#' @examples
+#' data(ldx_geno, ldx_snp_info, ldx_blocks, package = "LDxBlocks")
+#' haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3)
+#' feat <- build_haplotype_feature_matrix(haps, top_n = 5)
+#' G    <- compute_haplotype_grm(feat)
+#' dim(G)
+#' round(range(diag(G)), 3)  # diagonal ~= 1 for typical populations
+#'
+#' @export
+compute_haplotype_grm <- function(hap_matrix, bend = FALSE) {
+  if (!is.matrix(hap_matrix))
+    hap_matrix <- as.matrix(hap_matrix)
+
+  # Mean-impute NA per column
+  for (j in seq_len(ncol(hap_matrix))) {
+    na_j <- is.na(hap_matrix[, j])
+    if (any(na_j))
+      hap_matrix[na_j, j] <- mean(hap_matrix[, j], na.rm = TRUE)
+  }
+
+  # Haplotype allele frequencies (dosage scale: 0/1/2 -> p = mean/2)
+  p <- colMeans(hap_matrix) / 2
+  p <- pmax(pmin(p, 1 - 1e-6), 1e-6)  # clamp for numerical safety
+
+  # Centre: Z_ij = x_ij - 2*p_j
+  Z <- sweep(hap_matrix, 2, 2 * p, "-")
+
+  # Scaling denominator
+  denom <- 2 * sum(p * (1 - p))
+  if (denom < .Machine$double.eps)
+    stop("All haplotype alleles are monomorphic. Cannot compute GRM.",
+         call. = FALSE)
+
+  G <- tcrossprod(Z) / denom
+
+  if (bend) diag(G) <- diag(G) + 0.001
+
+  dimnames(G) <- list(rownames(hap_matrix), rownames(hap_matrix))
+  G
 }
 
 #' Write Haplotype Character (Nucleotide) Matrix
@@ -441,6 +668,11 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
 #'   \item \code{"-"} if the individual does not carry that allele.
 #'   \item \code{"."} if the individual has missing data in that block.
 #' }
+#'
+#' Heterozygous positions (dosage = 1, phased data only) are encoded using
+#' IUPAC ambiguity codes: R=A/G, Y=C/T, S=G/C, W=A/T, K=G/T, M=A/C.
+#' This keeps the nucleotide string the same length as \code{n_snps}
+#' regardless of how many heterozygous positions are present.
 #'
 #' @param haplotypes List from \code{\link{extract_haplotypes}}.
 #' @param snp_info   Data frame with \code{SNP}, \code{CHR}, \code{POS},
@@ -473,7 +705,12 @@ write_haplotype_character <- function(haplotypes, snp_info, out_file,
       switch(chars[i],
              "0" = ref_v[i],
              "2" = alt_v[i],
-             "1" = paste0(ref_v[i], "/", alt_v[i]),
+             "1" = {
+               key <- paste0(ref_v[i], alt_v[i])
+               iupac <- c(AG="R",GA="R",CT="Y",TC="Y",GC="S",CG="S",
+                          AT="W",TA="W",GT="K",TG="K",AC="M",CA="M")
+               if (!is.na(iupac[key])) unname(iupac[key]) else "N"
+             },
              "N")
     }, character(1L)) |> paste(collapse = "")
   }
@@ -644,14 +881,18 @@ write_haplotype_numeric <- function(hap_matrix, out_file,
   # because extract_haplotypes() already splits phased strings into individual
   # gametes before tabling frequencies. So tops[] always contains single-strand
   # gametic dosage strings regardless of phasing.
-  # "0" -> REF, "2" -> ALT, "1" -> REF/ALT (het, phased), "." -> N
+  # "0" -> REF, "2" -> ALT, "1" -> IUPAC ambiguity code (het, phased only), "." -> N
   decode_str <- function(dstr, ref_v, alt_v) {
     chars <- strsplit(dstr, "", fixed = TRUE)[[1L]]
     n     <- min(length(chars), length(ref_v))
-    paste(vapply(seq_len(n), function(i)
+    iupac <- c(AG="R",GA="R",CT="Y",TC="Y",GC="S",CG="S",
+               AT="W",TA="W",GT="K",TG="K",AC="M",CA="M")
+    paste(vapply(seq_len(n), function(i) {
       switch(chars[i], "0"=ref_v[i], "2"=alt_v[i],
-             "1"=paste0(ref_v[i],"/",alt_v[i]), "N"), character(1L)),
-      collapse="")
+             "1"={ key <- paste0(ref_v[i],alt_v[i])
+             if (!is.na(iupac[key])) unname(iupac[key]) else "N" },
+             "N")
+    }, character(1L)), collapse="")
   }
 
   # Compute metadata per haplotype allele
@@ -740,7 +981,7 @@ write_haplotype_numeric <- function(hap_matrix, out_file,
 #' Each character in a haplotype string is the dosage at one SNP in the block:
 #' \itemize{
 #'   \item \code{"0"} = homozygous REF  -> REF nucleotide (e.g. \code{A})
-#'   \item \code{"1"} = heterozygous    -> REF/ALT (e.g. \code{A/G})
+#'   \item \code{"1"} = heterozygous    -> IUPAC ambiguity code (e.g. \code{R} for A/G)
 #'   \item \code{"2"} = homozygous ALT  -> ALT nucleotide (e.g. \code{G})
 #'   \item \code{"."} = missing         -> \code{N}
 #' }
@@ -835,14 +1076,16 @@ decode_haplotype_strings <- function(haplotypes, snp_info,
     # Decode each top haplotype string to nucleotides
     decode_one <- function(dstr) {
       chars <- strsplit(dstr, "", fixed = TRUE)[[1L]]
-      # Pad or trim if lengths differ (safety guard)
-      n <- min(length(chars), n_snps)
-      nuc <- character(n)
+      n     <- min(length(chars), n_snps)
+      iupac <- c(AG="R",GA="R",CT="Y",TC="Y",GC="S",CG="S",
+                 AT="W",TA="W",GT="K",TG="K",AC="M",CA="M")
+      nuc   <- character(n)
       for (i in seq_len(n)) {
         nuc[i] <- switch(chars[i],
                          "0" = ref_v[i],
                          "2" = alt_v[i],
-                         "1" = paste0(ref_v[i], "/", alt_v[i]),
+                         "1" = { key <- paste0(ref_v[i], alt_v[i])
+                         if (!is.na(iupac[key])) unname(iupac[key]) else "N" },
                          "." = "N",
                          "N"
         )
@@ -894,11 +1137,1107 @@ write_haplotype_diversity <- function(diversity, out_file,
                      n_haplotypes=round(mean(diversity$n_haplotypes,na.rm=TRUE),1),
                      He=mean(diversity$He,na.rm=TRUE),
                      Shannon=mean(diversity$Shannon,na.rm=TRUE),
+                     n_eff_alleles=round(mean(diversity$n_eff_alleles,na.rm=TRUE),3),
                      freq_dominant=mean(diversity$freq_dominant,na.rm=TRUE),
+                     sweep_flag=NA,
                      phased=NA,stringsAsFactors=FALSE)
     diversity <- rbind(diversity,sr)
   }
   data.table::fwrite(diversity,out_file,sep=",",quote=FALSE,na="NA")
   if(verbose) message("[write_haplotype_diversity] ",out_file)
   invisible(out_file)
+}
+
+
+# ==============================================================================
+# Tong et al. (2025) Haplotype Stacking Module
+# Theor Appl Genet 138:267. https://doi.org/10.1007/s00122-025-05045-0
+# ==============================================================================
+
+
+#' Backsolve SNP Effects from GEBV (Tong et al. 2025)
+#'
+#' @description
+#' Derives per-SNP additive effect estimates from genome-wide genomic estimated
+#' breeding values (GEBV) without re-fitting a marker model. This implements
+#' Step 2 of the Tong et al. (2025) haplotype stacking pipeline:
+#'
+#' \deqn{\hat{\alpha} = \frac{M^\top G^{-1} \hat{g}}{2 \sum_t p_t(1-p_t)}}
+#'
+#' where \eqn{M} is the centred genotype matrix, \eqn{G} is the VanRaden GRM,
+#' \eqn{\hat{g}} are the GEBV, and \eqn{p_t} are allele frequencies.
+#'
+#' @details
+#' This approach is preferred over direct marker-effect estimation when GEBV
+#' are already available from a GBLUP run (e.g. from ASReml-R, sommer, or
+#' rrBLUP). It avoids refitting the marker model and produces marker effects
+#' on the same scale as the original GEBV.
+#'
+#' Missing genotype values are mean-imputed per column before computation.
+#'
+#' @param geno_matrix Numeric matrix (individuals x SNPs), values 0/1/2/NA.
+#'   Row names must match names of \code{gebv}.
+#' @param gebv Named numeric vector of GEBV, one per individual. Names must
+#'   match \code{rownames(geno_matrix)}.
+#' @param G Optional pre-computed VanRaden GRM (n x n). If \code{NULL}
+#'   (default), computed internally via \code{compute_haplotype_grm()}-style
+#'   logic. Supply your own if you used a bended or tuned G in the GBLUP.
+#'
+#' @return Named numeric vector of length p (SNPs), one effect per SNP.
+#'   Names match \code{colnames(geno_matrix)}.
+#'
+#' @references
+#' Tong J et al. (2025). Haplotype stacking to improve stability of stripe
+#' rust resistance in wheat. \emph{Theoretical and Applied Genetics}
+#' \strong{138}:267. \doi{10.1007/s00122-025-05045-0}
+#'
+#' VanRaden PM (2008). Efficient methods to compute genomic predictions.
+#' \emph{Journal of Dairy Science} \strong{91}(11):4414-4423.
+#' \doi{10.3168/jds.2007-0980}
+#'
+#' @examples
+#' \dontrun{
+#' # After fitting GBLUP with rrBLUP:
+#' # fit  <- rrBLUP::kin.blup(data, geno="id", pheno="trait", K=G)
+#' # gebv <- fit$g
+#' snp_fx <- backsolve_snp_effects(geno_matrix = my_geno, gebv = gebv)
+#' head(sort(abs(snp_fx), decreasing = TRUE))
+#' }
+#'
+#' @export
+backsolve_snp_effects <- function(geno_matrix, gebv, G = NULL) {
+  if (!is.matrix(geno_matrix))
+    geno_matrix <- as.matrix(geno_matrix)
+
+  # Align individuals
+  common <- intersect(rownames(geno_matrix), names(gebv))
+  if (length(common) == 0L)
+    stop("No matching individuals between geno_matrix rownames and gebv names.",
+         call. = FALSE)
+  geno_matrix <- geno_matrix[common, , drop = FALSE]
+  g_hat       <- gebv[common]
+
+  # Mean-impute NA per column
+  for (j in seq_len(ncol(geno_matrix))) {
+    na_j <- is.na(geno_matrix[, j])
+    if (any(na_j))
+      geno_matrix[na_j, j] <- mean(geno_matrix[, j], na.rm = TRUE)
+  }
+
+  # Allele frequencies and scaling denominator
+  p     <- colMeans(geno_matrix) / 2
+  p     <- pmax(pmin(p, 1 - 1e-8), 1e-8)
+  denom <- 2 * sum(p * (1 - p))
+
+  # Centre genotype matrix: M_ij = g_ij - 2*p_j
+  M <- sweep(geno_matrix, 2, 2 * p, "-")
+
+  # Compute or use supplied GRM
+  if (is.null(G)) {
+    G <- tcrossprod(M) / denom
+  } else {
+    G <- G[common, common, drop = FALSE]
+  }
+
+  # Invert G (add small ridge for numerical stability)
+  G_inv <- tryCatch(
+    solve(G + diag(1e-6, nrow(G))),
+    error = function(e)
+      stop("GRM inversion failed. Try supplying a pre-bended G via the G= argument.",
+           call. = FALSE)
+  )
+
+  # Backsolve: alpha = M' G^{-1} g_hat / denom
+  alpha <- as.numeric(crossprod(M, G_inv %*% g_hat)) / denom
+  names(alpha) <- colnames(geno_matrix)
+  alpha
+}
+
+
+#' Compute Local Haplotype GEBV per Block (Tong et al. 2025)
+#'
+#' @description
+#' For each LD block, computes the local GEBV (haplotype effect) for every
+#' individual by summing the per-SNP additive effects of the alleles they
+#' carry within the block:
+#'
+#' \deqn{\text{local GEBV}_f = \sum_{t \in f} \left[ h_t \alpha_{1t} +
+#'   (1-h_t)\alpha_{0t} \right]}
+#'
+#' where \eqn{h_t \in \{0, 0.5, 1\}} is the allele dosage at SNP \eqn{t}
+#' scaled to [0,1], \eqn{\alpha_{1t}} is the ALT allele effect, and
+#' \eqn{\alpha_{0t} = -\alpha_{1t}} is the REF allele effect (by symmetry
+#' of the additive model).
+#'
+#' Blocks are ranked by \code{Var(local GEBV)} — blocks with high variance
+#' contribute strongly to trait differences among individuals and likely
+#' harbour causal loci (Tong et al. 2025).
+#'
+#' @param geno_matrix Numeric matrix (individuals x SNPs), values 0/1/2/NA.
+#' @param snp_info Data frame with columns \code{SNP}, \code{CHR}, \code{POS}.
+#' @param blocks Block table from \code{\link{run_Big_LD_all_chr}}.
+#' @param snp_effects Named numeric vector of per-SNP additive effects from
+#'   \code{\link{backsolve_snp_effects}} or from a marker model directly.
+#' @param scale Logical. If \code{TRUE} (default), scale \code{Var(local GEBV)}
+#'   to [0,1] so blocks are comparable across traits and datasets.
+#'
+#' @return A list with two elements:
+#' \describe{
+#'   \item{\code{local_gebv}}{Numeric matrix (individuals x blocks) of per-block
+#'     local GEBV values.}
+#'   \item{\code{block_importance}}{Data frame with one row per block: block_id,
+#'     CHR, start_bp, end_bp, n_snps, var_local_gebv, var_scaled, important
+#'     (logical: scaled variance >= 0.9).}
+#' }
+#'
+#' @references
+#' Tong J et al. (2025). Haplotype stacking to improve stability of stripe
+#' rust resistance in wheat. \emph{Theoretical and Applied Genetics}
+#' \strong{138}:267. \doi{10.1007/s00122-025-05045-0}
+#'
+#' @examples
+#' \dontrun{
+#' snp_fx  <- backsolve_snp_effects(my_geno, gebv)
+#' loc     <- compute_local_gebv(my_geno, snp_info, blocks, snp_fx)
+#' # Blocks with scaled variance >= 0.9 are most important
+#' head(loc$block_importance[loc$block_importance$important, ])
+#' }
+#'
+#' @export
+compute_local_gebv <- function(geno_matrix, snp_info, blocks,
+                               snp_effects, scale = TRUE) {
+  if (!is.matrix(geno_matrix))
+    geno_matrix <- as.matrix(geno_matrix)
+
+  snp_info$CHR <- .norm_chr_hap(as.character(snp_info$CHR))
+  blocks$CHR   <- .norm_chr_hap(as.character(blocks$CHR))
+
+  n_ind   <- nrow(geno_matrix)
+  n_blk   <- nrow(blocks)
+  ind_ids <- rownames(geno_matrix)
+
+  local_mat  <- matrix(NA_real_, nrow = n_ind, ncol = n_blk,
+                       dimnames = list(ind_ids, NULL))
+  importance <- vector("list", n_blk)
+
+  for (b in seq_len(n_blk)) {
+    blk <- blocks[b, ]
+    chr <- as.character(blk$CHR)
+    sb  <- as.numeric(blk$start.bp)
+    eb  <- as.numeric(blk$end.bp)
+
+    # SNPs in this block
+    blk_idx <- which(snp_info$CHR == chr &
+                       snp_info$POS >= sb &
+                       snp_info$POS <= eb)
+    if (!length(blk_idx)) next
+
+    blk_snps <- snp_info$SNP[blk_idx]
+    # Only SNPs with known effects
+    blk_snps <- intersect(blk_snps, names(snp_effects))
+    if (!length(blk_snps)) next
+
+    blk_snps_in_geno <- intersect(blk_snps, colnames(geno_matrix))
+    if (!length(blk_snps_in_geno)) next
+
+    G_sub  <- geno_matrix[, blk_snps_in_geno, drop = FALSE]
+    alpha  <- snp_effects[blk_snps_in_geno]
+
+    # Mean-impute NA
+    for (j in seq_len(ncol(G_sub))) {
+      na_j <- is.na(G_sub[, j])
+      if (any(na_j)) G_sub[na_j, j] <- mean(G_sub[, j], na.rm = TRUE)
+    }
+
+    # local GEBV_f = sum_t [ h_t * alpha_1t + (1-h_t) * alpha_0t ]
+    # With additive coding: alpha_0t = -alpha_1t (REF effect = -ALT effect)
+    # dosage 0 -> contribution = -alpha, 1 -> 0, 2 -> +alpha
+    # equivalently: local_gebv = (G_sub - 1) %*% alpha  (centred at het)
+    # But Tong et al. use: h_t in {0, 0.5, 1}, so scale dosage by 0.5
+    h    <- G_sub / 2          # scale to [0, 1]
+    local_mat[, b] <- as.numeric(h %*% alpha + (1 - h) %*% (-alpha))
+
+    bid <- paste0("block_", chr, "_", sb, "_", eb)
+    importance[[b]] <- data.frame(
+      block_id  = bid,
+      CHR       = chr,
+      start_bp  = as.integer(sb),
+      end_bp    = as.integer(eb),
+      n_snps    = length(blk_snps_in_geno),
+      var_local_gebv = var(local_mat[, b], na.rm = TRUE),
+      stringsAsFactors = FALSE
+    )
+    colnames(local_mat)[b] <- bid
+  }
+
+  importance <- do.call(rbind, Filter(Negate(is.null), importance))
+  if (is.null(importance) || !nrow(importance))
+    stop("No blocks could be evaluated. Check that SNP names match between ",
+         "geno_matrix, snp_info, and snp_effects.", call. = FALSE)
+
+  # Scale variance to [0,1]
+  max_var <- max(importance$var_local_gebv, na.rm = TRUE)
+  importance$var_scaled <- if (max_var > 0)
+    importance$var_local_gebv / max_var else 0
+  importance$important <- importance$var_scaled >= 0.9
+  importance <- importance[order(importance$CHR, importance$start_bp), ]
+
+  # Trim local_mat to blocks that were evaluated
+  valid_blk_ids <- importance$block_id
+  local_mat <- local_mat[, colnames(local_mat) %in% valid_blk_ids, drop = FALSE]
+
+  list(local_gebv = local_mat, block_importance = importance)
+}
+
+
+#' Prepare Genomic Prediction Inputs for External GBLUP Software
+#'
+#' @description
+#' Assembles the inputs required to fit a GBLUP model in external software
+#' (rrBLUP, sommer, ASReml-R, BGLR) and subsequently run the Tong et al.
+#' (2025) haplotype stacking pipeline. Returns the VanRaden GRM computed
+#' from the haplotype feature matrix, aligned with a user-supplied phenotype
+#' table.
+#'
+#' @section Workflow:
+#' LDxBlocks handles genotype processing and block detection. Phenotype
+#' handling and GBLUP fitting are intentionally left to dedicated R packages
+#' because phenotype data requires preprocessing (multi-environment adjustment,
+#' outlier removal, covariate inclusion) that is dataset-specific. The
+#' handoff is:
+#'
+#' \enumerate{
+#'   \item \strong{LDxBlocks} (this function): produce aligned G matrix and
+#'     phenotype vector.
+#'   \item \strong{External GBLUP} (rrBLUP / sommer / ASReml-R / BGLR):
+#'     fit the model, obtain GEBV.
+#'   \item \strong{LDxBlocks} (\code{\link{backsolve_snp_effects}} +
+#'     \code{\link{compute_local_gebv}}): derive block-level haplotype effects
+#'     from the GEBV.
+#' }
+#'
+#' @section Example GBLUP calls after this function:
+#' \preformatted{
+#' # rrBLUP
+#' library(rrBLUP)
+#' fit  <- kin.blup(data = inp$pheno_df, geno = "id",
+#'                  pheno = "trait", K = inp$G)
+#' gebv <- fit$g
+#'
+#' # sommer
+#' library(sommer)
+#' fit  <- mmer(trait ~ 1, random = ~vsr(id, Gu = inp$G),
+#'              data = inp$pheno_df)
+#' gebv <- fit$U$`u:id`$trait
+#'
+#' # BGLR
+#' library(BGLR)
+#' fit  <- BGLR(y = inp$y_vec, ETA = list(list(K = inp$G, model = "RKHS")))
+#' gebv <- fit$yHat
+#' }
+#'
+#' @param hap_matrix Numeric matrix (individuals x haplotype alleles) from
+#'   \code{\link{build_haplotype_feature_matrix}}.
+#' @param pheno_df Data frame of phenotypes. Must contain an ID column matching
+#'   \code{rownames(hap_matrix)} and at least one numeric trait column.
+#' @param id_col Name of the individual ID column in \code{pheno_df}.
+#'   Default \code{"id"}.
+#' @param trait_col Name of the trait column to extract as a numeric vector.
+#'   Default \code{NULL} — no \code{y_vec} is returned, only the aligned data
+#'   frame.
+#' @param bend Logical. Add 0.001 to diagonal of G for positive-definiteness.
+#'   Default \code{TRUE} (recommended for mixed model solvers).
+#'
+#' @return A named list:
+#' \describe{
+#'   \item{\code{G}}{VanRaden GRM (n x n), aligned to individuals present
+#'     in both \code{hap_matrix} and \code{pheno_df}.}
+#'   \item{\code{pheno_df}}{Phenotype data frame subset and reordered to match
+#'     rows of \code{G}.}
+#'   \item{\code{y_vec}}{Named numeric vector of the requested trait (only if
+#'     \code{trait_col} is supplied). \code{NA} values are preserved so the
+#'     user can decide how to handle them (e.g. set to \code{NA} for
+#'     prediction-only individuals in a training/validation split).}
+#'   \item{\code{n_train}}{Number of individuals with non-missing trait values.}
+#'   \item{\code{n_predict}}{Number of individuals with missing trait values
+#'     (prediction candidates).}
+#' }
+#'
+#' @references
+#' Tong J et al. (2025). Haplotype stacking to improve stability of stripe
+#' rust resistance in wheat. \emph{Theoretical and Applied Genetics}
+#' \strong{138}:267. \doi{10.1007/s00122-025-05045-0}
+#'
+#' VanRaden PM (2008). Efficient methods to compute genomic predictions.
+#' \emph{Journal of Dairy Science} \strong{91}(11):4414-4423.
+#' \doi{10.3168/jds.2007-0980}
+#'
+#' @examples
+#' \dontrun{
+#' # After building haplotype feature matrix:
+#' feat  <- build_haplotype_feature_matrix(haps, top_n = 5)
+#' pheno <- read.csv("phenotypes.csv")   # columns: id, YLD, PHT, ...
+#'
+#' inp <- prepare_gblup_inputs(feat, pheno, id_col = "id",
+#'                              trait_col = "YLD")
+#'
+#' # Fit GBLUP with rrBLUP
+#' library(rrBLUP)
+#' fit  <- kin.blup(data = inp$pheno_df, geno = "id",
+#'                  pheno = "YLD", K = inp$G)
+#' gebv <- fit$g
+#'
+#' # Then derive block-level haplotype effects
+#' snp_fx <- backsolve_snp_effects(geno_matrix, gebv, G = inp$G)
+#' loc    <- compute_local_gebv(geno_matrix, snp_info, blocks, snp_fx)
+#' }
+#'
+#' @export
+prepare_gblup_inputs <- function(hap_matrix, pheno_df,
+                                 id_col    = "id",
+                                 trait_col = NULL,
+                                 bend      = TRUE) {
+  if (!id_col %in% names(pheno_df))
+    stop("id_col '", id_col, "' not found in pheno_df. ",
+         "Set id_col to the column containing individual IDs.", call. = FALSE)
+
+  if (!is.null(trait_col) && !trait_col %in% names(pheno_df))
+    stop("trait_col '", trait_col, "' not found in pheno_df.", call. = FALSE)
+
+  # Align individuals present in both hap_matrix and pheno_df
+  geno_ids  <- rownames(hap_matrix)
+  pheno_ids <- as.character(pheno_df[[id_col]])
+
+  common <- intersect(geno_ids, pheno_ids)
+  if (!length(common))
+    stop("No matching individual IDs between hap_matrix rownames and ",
+         "pheno_df[[id_col]]. Check that ID formats match exactly ",
+         "(case-sensitive, no trailing spaces).", call. = FALSE)
+
+  if (length(common) < length(geno_ids))
+    message("[prepare_gblup_inputs] ", length(geno_ids) - length(common),
+            " genotyped individuals not in pheno_df -- excluded from G.")
+  if (length(common) < length(pheno_ids))
+    message("[prepare_gblup_inputs] ", length(pheno_ids) - length(common),
+            " phenotyped individuals not in hap_matrix -- excluded from output.")
+
+  hap_sub   <- hap_matrix[common, , drop = FALSE]
+  pheno_sub <- pheno_df[match(common, pheno_ids), , drop = FALSE]
+  rownames(pheno_sub) <- NULL
+
+  # Compute VanRaden GRM from aligned haplotype matrix
+  G <- compute_haplotype_grm(hap_sub, bend = bend)
+
+  # Build output
+  out <- list(
+    G         = G,
+    pheno_df  = pheno_sub,
+    y_vec     = NULL,
+    n_train   = NA_integer_,
+    n_predict = NA_integer_
+  )
+
+  if (!is.null(trait_col)) {
+    y <- as.numeric(pheno_sub[[trait_col]])
+    names(y)       <- common
+    out$y_vec      <- y
+    out$n_train    <- sum(!is.na(y))
+    out$n_predict  <- sum(is.na(y))
+    message("[prepare_gblup_inputs] ", out$n_train, " training individuals",
+            " (non-missing ", trait_col, "), ",
+            out$n_predict, " prediction candidates (NA).")
+  }
+
+  out
+}
+
+
+#' Haplotype Prediction and Block Importance from Pre-Adjusted Phenotypes
+#'
+#' @description
+#' Runs the complete Tong et al. (2025) haplotype stacking pipeline using
+#' pre-adjusted phenotype values (BLUEs, BLUPs, or adjusted entry means).
+#' Requires the \pkg{rrBLUP} package for REML-based GBLUP fitting.
+#'
+#' @section Input format for \code{blues}:
+#' Accepts either:
+#' \itemize{
+#'   \item A \strong{named numeric vector} where names are genotype IDs:
+#'     \code{c(G001 = 4.2, G002 = 3.8, ...)}.
+#'   \item A \strong{data frame} with one column of genotype IDs and one
+#'     column of BLUE values. Column names are specified via \code{id_col}
+#'     and \code{blue_col}. This is the natural format of field trial
+#'     output from ASReml-R, lme4, or SpATS.
+#' }
+#'
+#' @section Pipeline steps:
+#' \enumerate{
+#'   \item Extract haplotypes from LD blocks.
+#'   \item Build haplotype feature matrix.
+#'   \item Compute VanRaden GRM from haplotype features.
+#'   \item Fit GBLUP via \code{rrBLUP::kin.blup()} (REML-based).
+#'   \item Backsolve per-SNP additive effects from GEBV.
+#'   \item Compute local haplotype GEBV per block.
+#'   \item Rank blocks by \code{Var(local GEBV)}.
+#' }
+#'
+#' @param geno_matrix Numeric matrix (individuals x SNPs), values 0/1/2/NA.
+#'   Row names must be genotype IDs.
+#' @param snp_info    Data frame with columns \code{SNP}, \code{CHR},
+#'   \code{POS}.
+#' @param blocks      Block table from \code{\link{run_Big_LD_all_chr}}.
+#' @param blues       Pre-adjusted phenotype values. Either:
+#'   \itemize{
+#'     \item A \strong{named numeric vector} (names = genotype IDs), or
+#'     \item A \strong{data frame} with ID and BLUE columns specified by
+#'       \code{id_col} and \code{blue_col}.
+#'   }
+#'   Genotypes in \code{geno_matrix} but absent from \code{blues} are
+#'   treated as prediction candidates.
+#' @param id_col    Name of the ID column when \code{blues} is a data frame.
+#'   Default \code{"id"}.
+#' @param blue_col  Name of the BLUE column when \code{blues} is a data frame.
+#'   Default \code{"blue"}.
+#' @param top_n     Integer or \code{NULL}. Max haplotype alleles per block.
+#'   Default \code{NULL}.
+#' @param min_freq  Minimum haplotype allele frequency. Default \code{0.01}.
+#' @param min_snps  Minimum SNPs per block. Default \code{3L}.
+#' @param bend      Logical. Add ridge to GRM diagonal. Default \code{TRUE}.
+#' @param verbose   Logical. Print progress. Default \code{TRUE}.
+#'
+#' @return Named list containing all outputs needed for downstream
+#'   analysis, matching the structure of \code{\link{run_ldx_pipeline}}
+#'   plus prediction outputs:
+#' \describe{
+#'   \item{\code{blocks}}{LD block table from \code{run_Big_LD_all_chr}.}
+#'   \item{\code{diversity}}{Per-block diversity metrics (He, Shannon,
+#'     n_eff_alleles, freq_dominant, sweep_flag).}
+#'   \item{\code{hap_matrix}}{Numeric matrix (individuals x haplotype
+#'     allele columns) for genomic prediction — the primary output for
+#'     dimensionality-reduced GP.}
+#'   \item{\code{haplotypes}}{Raw dosage strings from
+#'     \code{extract_haplotypes} — pass to
+#'     \code{decode_haplotype_strings} for nucleotide sequences.}
+#'   \item{\code{snp_info_filtered}}{SNP metadata after MAF filter.}
+#'   \item{\code{n_blocks}, \code{n_hap_columns}}{Summary counts.}
+#'   \item{\code{gebv}}{Named numeric vector of GEBV for all genotyped
+#'     individuals (training + prediction candidates).}
+#'   \item{\code{snp_effects}}{Per-SNP additive effects backsolved from
+#'     GEBV.}
+#'   \item{\code{local_gebv}}{Matrix (individuals x blocks) of per-block
+#'     local GEBV values — quantifies each block's contribution to the
+#'     trait.}
+#'   \item{\code{block_importance}}{Data frame ranking blocks by
+#'     \code{Var(local GEBV)}: block_id, CHR, start_bp, end_bp, n_snps,
+#'     var_local_gebv, var_scaled, important (scaled >= 0.9).}
+#'   \item{\code{G}}{VanRaden GRM used in the GBLUP model.}
+#'   \item{\code{n_train}, \code{n_predict}}{Training and prediction
+#'     individual counts.}
+#' }
+#'
+#' @references
+#' Tong J et al. (2025). Haplotype stacking to improve stability of stripe
+#' rust resistance in wheat. \emph{Theoretical and Applied Genetics}
+#' \strong{138}:267. \doi{10.1007/s00122-025-05045-0}
+#'
+#' Endelman JB (2011). Ridge regression and other kernels for genomic
+#' selection with R package rrBLUP. \emph{Plant Genome} \strong{4}:250-255.
+#' \doi{10.3835/plantgenome2011.08.0024}
+#'
+#' @examples
+#' \dontrun{
+#' library(LDxBlocks)
+#'
+#' be     <- read_geno("mydata.vcf.gz")
+#' geno   <- read_chunk(be, seq_len(be$n_snps))
+#' rownames(geno) <- be$sample_ids
+#' colnames(geno) <- be$snp_info$SNP
+#' blocks <- run_Big_LD_all_chr(be, CLQcut = 0.5)
+#'
+#' # Option 1: named numeric vector (same format as GWAS input)
+#' blues_vec <- c(G001 = 4.21, G002 = 3.87, G003 = 5.14)
+#' res <- run_haplotype_prediction(geno, be$snp_info, blocks,
+#'                                  blues = blues_vec)
+#'
+#' # Option 2: data frame from field trial analysis
+#' blues_df <- read.csv("blues.csv")   # columns: Genotype, YLD_BLUE
+#' res <- run_haplotype_prediction(geno, be$snp_info, blocks,
+#'                                  blues    = blues_df,
+#'                                  id_col   = "Genotype",
+#'                                  blue_col = "YLD_BLUE")
+#'
+#' res$block_importance[res$block_importance$important, ]
+#' sort(res$gebv, decreasing = TRUE)
+#' }
+#'
+#' @export
+run_haplotype_prediction <- function(geno_matrix,
+                                     snp_info,
+                                     blocks,
+                                     blues,
+                                     id_col    = "id",
+                                     blue_col  = "blue",
+                                     top_n     = NULL,
+                                     min_freq  = 0.01,
+                                     min_snps  = 3L,
+                                     bend      = TRUE,
+                                     verbose   = TRUE) {
+
+  .log <- function(...) if (verbose) message("[run_haplotype_prediction] ", ...)
+
+  # ── Check rrBLUP ──────────────────────────────────────────────────────────
+  if (!requireNamespace("rrBLUP", quietly = TRUE))
+    stop("Package 'rrBLUP' is required. Install with: install.packages('rrBLUP')",
+         call. = FALSE)
+
+  # ── Parse blues: named vector OR data frame ────────────────────────────────
+  if (is.data.frame(blues)) {
+    if (!id_col %in% names(blues))
+      stop("id_col '", id_col, "' not found in blues. Columns: ",
+           paste(names(blues), collapse = ", "), call. = FALSE)
+    if (!blue_col %in% names(blues))
+      stop("blue_col '", blue_col, "' not found in blues. Columns: ",
+           paste(names(blues), collapse = ", "), call. = FALSE)
+    bv           <- as.numeric(blues[[blue_col]])
+    names(bv)    <- as.character(blues[[id_col]])
+    blues        <- bv
+  } else if (!is.numeric(blues) || is.null(names(blues))) {
+    stop("blues must be a named numeric vector or a data frame. ",
+         "See ?run_haplotype_prediction.", call. = FALSE)
+  }
+
+  geno_matrix <- as.matrix(geno_matrix)
+  geno_ids    <- rownames(geno_matrix)
+  if (is.null(geno_ids))
+    stop("geno_matrix must have row names (genotype IDs).", call. = FALSE)
+
+  # ── Step 1: Haplotypes ────────────────────────────────────────────────────
+  .log("Extracting haplotypes from ", nrow(blocks), " blocks ...")
+  haps <- extract_haplotypes(geno_matrix, snp_info, blocks, min_snps = min_snps)
+  .log(length(haps), " blocks extracted")
+
+  # ── Step 2: Feature matrix ────────────────────────────────────────────────
+  .log("Building haplotype feature matrix ...")
+  feat <- build_haplotype_feature_matrix(haps, top_n = top_n,
+                                         min_freq = min_freq)
+  .log(nrow(feat), " ind x ", ncol(feat), " haplotype allele columns")
+
+  # ── Step 3: VanRaden GRM ──────────────────────────────────────────────────
+  G <- compute_haplotype_grm(feat, bend = bend)
+
+  # ── Step 4: Align blues ───────────────────────────────────────────────────
+  common  <- intersect(geno_ids, names(blues))
+  n_train <- length(common)
+  n_pred  <- length(setdiff(geno_ids, names(blues)))
+  if (n_train == 0L)
+    stop("No matching IDs between geno_matrix and blues. ",
+         "IDs are case-sensitive.", call. = FALSE)
+  .log(n_train, " training individuals, ", n_pred, " prediction candidates")
+
+  pheno_df      <- data.frame(gid = geno_ids, y = NA_real_,
+                              stringsAsFactors = FALSE)
+  pheno_df$y[match(common, geno_ids)] <- blues[common]
+
+  # ── Step 5: GBLUP via rrBLUP::kin.blup() ─────────────────────────────────
+  # Uses REML to estimate variance components; handles NA (prediction
+  # candidates) natively; standard tool for plant and animal breeding.
+  .log("Fitting GBLUP via rrBLUP::kin.blup() ...")
+  fit <- tryCatch(
+    rrBLUP::kin.blup(data = pheno_df, geno = "gid", pheno = "y", K = G),
+    error = function(e)
+      stop("rrBLUP::kin.blup() failed: ", conditionMessage(e),
+           "\nTry bend = TRUE if GRM is not positive definite.", call. = FALSE)
+  )
+  gebv_all        <- fit$g
+  names(gebv_all) <- names(fit$g)
+  .log("GEBV computed for ", length(gebv_all), " individuals")
+
+  # ── Step 6: Backsolve SNP effects ─────────────────────────────────────────
+  .log("Backsolving per-SNP additive effects ...")
+  snp_fx <- backsolve_snp_effects(
+    geno_matrix[common, , drop = FALSE],
+    gebv_all[common],
+    G = G[common, common, drop = FALSE]
+  )
+
+  # ── Step 7-8: Local GEBV and block importance ─────────────────────────────
+  .log("Computing local haplotype GEBV per block ...")
+  loc <- compute_local_gebv(geno_matrix, snp_info, blocks, snp_fx)
+  .log("Done. ", sum(loc$block_importance$important, na.rm = TRUE),
+       " important blocks (scaled variance >= 0.9).")
+
+  # Compute diversity for the haplotypes used in this analysis
+  .log("Computing haplotype diversity ...")
+  diversity <- compute_haplotype_diversity(haps)
+
+  list(
+    # LD block outputs (same as run_ldx_pipeline)
+    blocks            = blocks,
+    diversity         = diversity,
+    hap_matrix        = feat,          # individuals x haplotype allele columns
+    haplotypes        = haps,          # raw dosage strings (for decode_haplotype_strings)
+    snp_info_filtered = snp_info,
+    n_blocks          = nrow(blocks),
+    n_hap_columns     = ncol(feat),
+    # Prediction outputs (Tong et al. 2025)
+    gebv              = gebv_all,
+    snp_effects       = snp_fx,
+    local_gebv        = loc$local_gebv,
+    block_importance  = loc$block_importance,
+    G                 = G,
+    n_train           = n_train,
+    n_predict         = n_pred
+  )
+}
+
+
+
+
+#' Integrate GWAS QTL Regions with Haplotype Prediction Results
+#'
+#' @description
+#' Links the output of \code{\link{define_qtl_regions}} (biological evidence
+#' from GWAS) with the output of \code{\link{run_haplotype_prediction}}
+#' (statistical evidence from haplotype variance) to identify blocks that
+#' are supported by both lines of evidence. These are the priority candidates
+#' for haplotype stacking in breeding.
+#'
+#' @details
+#' Three complementary evidence layers are combined per block:
+#' \describe{
+#'   \item{Biological (GWAS)}{Does the block contain a genome-wide significant
+#'     marker? Sourced from \code{define_qtl_regions()}.}
+#'   \item{Statistical (variance)}{Does the block explain substantial variance
+#'     in the trait? Blocks with scaled \code{Var(local GEBV)} >= 0.9 are
+#'     flagged \code{important} by \code{run_haplotype_prediction()}.}
+#'   \item{Diversity (He)}{Does the block have enough haplotype diversity to
+#'     stack favourable alleles? Sourced from
+#'     \code{compute_haplotype_diversity()}.}
+#' }
+#'
+#' The output \code{priority_score} is the sum of binary flags for each layer
+#' (0-3). Blocks scoring 3 are supported by all three lines of evidence and
+#' are the strongest candidates for haplotype stacking. Blocks scoring 2 are
+#' worth investigating. Blocks scoring 1 or 0 require caution.
+#'
+#' @section Interpretation guide:
+#' \tabular{rll}{
+#'   \strong{Score} \tab \strong{Meaning} \tab \strong{Action} \cr
+#'   3 \tab GWAS hit + high variance + diverse \tab Top priority for stacking \cr
+#'   2 (GWAS + var) \tab Real effect, low diversity \tab Select across populations \cr
+#'   2 (GWAS + div) \tab Real locus, small effect \tab Include if trait is oligogenic \cr
+#'   2 (var + div)  \tab Variance explained, no GWAS \tab May be pop. structure -- verify \cr
+#'   1 \tab Single evidence only \tab Use with caution \cr
+#'   0 \tab No evidence \tab Exclude from stacking \cr
+#' }
+#'
+#' @param qtl_regions   Data frame from \code{\link{define_qtl_regions}}.
+#' @param pred_result   List from \code{\link{run_haplotype_prediction}}.
+#' @param diversity     Data frame from \code{\link{compute_haplotype_diversity}}.
+#'   Optional. If supplied, adds He and sweep_flag to the output.
+#' @param He_threshold  Minimum expected heterozygosity to flag a block as
+#'   sufficiently diverse for haplotype stacking. Default \code{0.3}.
+#'
+#' @return Data frame with one row per block that appears in at least one of
+#'   the input sources, with columns:
+#'   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+#'   \code{n_snps}, \code{has_gwas_hit} (logical),
+#'   \code{lead_snp}, \code{lead_p}, \code{lead_beta},
+#'   \code{n_sig_markers}, \code{is_important} (logical, scaled var >= 0.9),
+#'   \code{var_scaled}, \code{He}, \code{sweep_flag},
+#'   \code{is_diverse} (logical, He >= He_threshold),
+#'   \code{priority_score} (0-3),
+#'   \code{recommendation} (character label).
+#'   Sorted by \code{priority_score} descending, then \code{var_scaled}
+#'   descending.
+#'
+#' @references
+#' Difabachew YF et al. (2023). Genomic prediction with haplotype
+#' blocks in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
+#' \doi{10.3389/fpls.2023.1168547}
+#'
+#' Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype
+#' blocks for genomic prediction: a comparative evaluation in multiple
+#' crop datasets. \emph{Frontiers in Plant Science} \strong{14}:1217589.
+#' \doi{10.3389/fpls.2023.1217589}
+#'
+#' Tong J et al. (2024). Stacking beneficial haplotypes from the Vavilov
+#' wheat collection. \emph{Theoretical and Applied Genetics} \strong{137}:274.
+#' \doi{10.1007/s00122-024-04784-w}
+#'
+#' Tong J et al. (2025). Haplotype stacking to improve stability of stripe
+#' rust resistance in wheat. \emph{Theoretical and Applied Genetics}
+#' \strong{138}:267. \doi{10.1007/s00122-025-05045-0}
+#'
+#' @examples
+#' \dontrun{
+#' # 1. GWAS integration
+#' gwas   <- read.csv("gwas_results.csv")   # SNP, CHR, POS, P, BETA
+#' qtl    <- define_qtl_regions(gwas, blocks, snp_info, p_threshold = 5e-8)
+#'
+#' # 2. Haplotype prediction
+#' blues  <- read.csv("blues.csv")
+#' pred   <- run_haplotype_prediction(geno, snp_info, blocks,
+#'                                     blues    = blues,
+#'                                     id_col   = "id",
+#'                                     blue_col = "YLD")
+#'
+#' # 3. Haplotype diversity
+#' haps   <- extract_haplotypes(geno, snp_info, blocks, min_snps = 3)
+#' div    <- compute_haplotype_diversity(haps)
+#'
+#' # 4. Integrate all three
+#' priority <- integrate_gwas_haplotypes(qtl, pred, diversity = div)
+#'
+#' # Top priority blocks for haplotype stacking
+#' priority[priority$priority_score == 3, ]
+#' }
+#'
+#' @export
+integrate_gwas_haplotypes <- function(qtl_regions,
+                                      pred_result,
+                                      diversity    = NULL,
+                                      He_threshold = 0.3) {
+
+  # ── Validate inputs ────────────────────────────────────────────────────────
+  if (!is.data.frame(qtl_regions))
+    stop("qtl_regions must be a data frame from define_qtl_regions().",
+         call. = FALSE)
+  if (!is.list(pred_result) || !"block_importance" %in% names(pred_result))
+    stop("pred_result must be the list returned by run_haplotype_prediction().",
+         call. = FALSE)
+
+  bi <- pred_result$block_importance
+
+  # ── Build unified block table from prediction results ──────────────────────
+  out <- data.frame(
+    block_id      = bi$block_id,
+    CHR           = bi$CHR,
+    start_bp      = bi$start_bp,
+    end_bp        = bi$end_bp,
+    n_snps        = bi$n_snps,
+    has_gwas_hit  = FALSE,
+    lead_snp      = NA_character_,
+    lead_p        = NA_real_,
+    lead_beta     = NA_real_,
+    n_sig_markers = NA_integer_,
+    is_important  = bi$important,
+    var_scaled    = bi$var_scaled,
+    He            = NA_real_,
+    sweep_flag    = NA,
+    stringsAsFactors = FALSE
+  )
+
+  # ── Merge GWAS evidence ────────────────────────────────────────────────────
+  if (nrow(qtl_regions) > 0L) {
+    for (i in seq_len(nrow(qtl_regions))) {
+      qr  <- qtl_regions[i, ]
+      idx <- which(out$block_id == qr$block_id)
+      if (!length(idx)) {
+        # Block has GWAS evidence but was not in pred_result (e.g. < min_snps)
+        # Add it with NA prediction columns
+        new_row <- data.frame(
+          block_id      = qr$block_id,
+          CHR           = qr$CHR,
+          start_bp      = qr$start_bp,
+          end_bp        = qr$end_bp,
+          n_snps        = qr$n_snps_block,
+          has_gwas_hit  = TRUE,
+          lead_snp      = qr$lead_snp,
+          lead_p        = if ("lead_p"    %in% names(qr)) qr$lead_p    else NA_real_,
+          lead_beta     = if ("lead_beta" %in% names(qr)) qr$lead_beta else NA_real_,
+          n_sig_markers = qr$n_sig_markers,
+          is_important  = FALSE,
+          var_scaled    = NA_real_,
+          He            = NA_real_,
+          sweep_flag    = NA,
+          stringsAsFactors = FALSE
+        )
+        out <- rbind(out, new_row)
+      } else {
+        out$has_gwas_hit [idx] <- TRUE
+        out$lead_snp     [idx] <- qr$lead_snp
+        out$lead_p       [idx] <- if ("lead_p"    %in% names(qr)) qr$lead_p    else NA_real_
+        out$lead_beta    [idx] <- if ("lead_beta" %in% names(qr)) qr$lead_beta else NA_real_
+        out$n_sig_markers[idx] <- qr$n_sig_markers
+      }
+    }
+  }
+
+  # ── Merge diversity evidence ───────────────────────────────────────────────
+  if (!is.null(diversity) && nrow(diversity) > 0L) {
+    div_match <- match(out$block_id, diversity$block_id)
+    if ("He"         %in% names(diversity)) out$He         <- diversity$He        [div_match]
+    if ("sweep_flag" %in% names(diversity)) out$sweep_flag <- diversity$sweep_flag[div_match]
+  }
+
+  # ── Compute priority score and recommendation ──────────────────────────────
+  out$is_diverse <- !is.na(out$He) & out$He >= He_threshold
+
+  out$priority_score <- as.integer(out$has_gwas_hit) +
+    as.integer(!is.na(out$is_important) & out$is_important) +
+    as.integer(out$is_diverse)
+
+  out$recommendation <- dplyr::case_when(
+    out$priority_score == 3L                                       ~ "Top priority: stack",
+    out$priority_score == 2L &  out$has_gwas_hit & out$is_important  ~ "Strong: real effect, low diversity",
+    out$priority_score == 2L &  out$has_gwas_hit & out$is_diverse    ~ "Moderate: real locus, small effect",
+    out$priority_score == 2L & !out$has_gwas_hit                  ~ "Verify: variance explained, no GWAS hit",
+    out$priority_score == 1L &  out$has_gwas_hit                  ~ "GWAS only: effect may be small",
+    out$priority_score == 1L &  out$is_important                  ~ "Variance only: check for structure",
+    out$priority_score == 1L &  out$is_diverse                    ~ "Diverse only: no trait evidence",
+    TRUE                                                           ~ "Low priority"
+  )
+
+  # Sort: priority descending, then variance descending
+  out <- out[order(-out$priority_score,
+                   -ifelse(is.na(out$var_scaled), -1, out$var_scaled)), ]
+  rownames(out) <- NULL
+  out
+}
+
+
+#' Rank Haplotype Blocks by Evidence Strength
+#'
+#' @description
+#' Provides a unified block ranking that works across three use cases,
+#' depending on what data the user has available. In all cases,
+#' \code{min_freq} filtering inside
+#' \code{\link{build_haplotype_feature_matrix}} is applied first as a hard
+#' population-level filter — equivalent to MAF filtering for single SNPs.
+#' Blocks are ranked only among those that survive this filter.
+#'
+#' @section The three use cases:
+#' \enumerate{
+#'   \item \strong{Genotype only} (no GWAS, no phenotype): blocks ranked by
+#'     haplotype diversity (He, effective number of alleles). Blocks with
+#'     high diversity have the most potential for haplotype stacking.
+#'   \item \strong{Genotype + GWAS} (no phenotype): blocks are binary-flagged
+#'     by whether they contain a GWAS-significant marker. Within the
+#'     GWAS-hit group and within the non-hit group, blocks are further
+#'     ordered by He. The p-value is not used for ranking — a marker either
+#'     crosses the significance threshold or it does not.
+#'   \item \strong{Genotype + phenotype} (± GWAS): blocks ranked by scaled
+#'     \code{Var(local GEBV)} from \code{\link{run_haplotype_prediction}}.
+#'     When GWAS results are also available, the binary GWAS flag is added
+#'     as a secondary layer via \code{\link{integrate_gwas_haplotypes}}.
+#' }
+#'
+#' @section Link to \code{min_freq}:
+#' \code{min_freq} is a hard population-level pre-filter identical in
+#' purpose to MAF filtering for single SNPs: haplotype alleles observed
+#' at frequency below this threshold cannot have their effects reliably
+#' estimated regardless of trait association, and are dropped before the
+#' dosage matrix is built. \code{rank_haplotype_blocks} operates entirely
+#' downstream of this filter — it ranks blocks that have already passed
+#' \code{min_freq}, not individual alleles. A block survives as long as
+#' at least one of its alleles passes \code{min_freq}.
+#'
+#' @param diversity     Data frame from \code{\link{compute_haplotype_diversity}}.
+#'   Required for all three use cases.
+#' @param qtl_regions   Optional. Data frame from
+#'   \code{\link{define_qtl_regions}}. When supplied, blocks are
+#'   binary-flagged as containing a GWAS hit or not. The p-value is not
+#'   used for ranking. Default \code{NULL}.
+#' @param pred_result   Optional. List from
+#'   \code{\link{run_haplotype_prediction}}. When supplied, blocks are
+#'   ranked by \code{Var(local GEBV)}. Default \code{NULL}.
+#' @param He_threshold  Minimum He to consider a block diverse enough for
+#'   haplotype stacking. Default \code{0.3}.
+#' @param top_n_blocks  Return only the top n blocks. Default \code{NULL}
+#'   (return all).
+#'
+#' @return Data frame with one row per block, sorted by evidence strength,
+#'   with columns: \code{block_id}, \code{CHR}, \code{start_bp},
+#'   \code{end_bp}, \code{n_snps}, \code{He}, \code{n_eff_alleles},
+#'   \code{freq_dominant}, \code{sweep_flag}, \code{is_diverse},
+#'   \code{has_gwas_hit} (if \code{qtl_regions} supplied),
+#'   \code{lead_snp}, \code{lead_beta}, \code{n_sig_markers}
+#'   (if \code{qtl_regions} supplied),
+#'   \code{var_scaled}, \code{is_important}
+#'   (if \code{pred_result} supplied),
+#'   \code{use_case}, \code{rank_score}, \code{recommendation}.
+#'
+#' @references
+#' Difabachew YF et al. (2023). Genomic prediction with haplotype
+#' blocks in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
+#' \doi{10.3389/fpls.2023.1168547}
+#'
+#' Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype
+#' blocks for genomic prediction: a comparative evaluation in multiple
+#' crop datasets. \emph{Frontiers in Plant Science} \strong{14}:1217589.
+#' \doi{10.3389/fpls.2023.1217589}
+#'
+#' Tong J et al. (2024). Stacking beneficial haplotypes from the Vavilov
+#' wheat collection. \emph{Theoretical and Applied Genetics} \strong{137}:274.
+#' \doi{10.1007/s00122-024-04784-w}
+#'
+#' Tong J et al. (2025). Haplotype stacking to improve stability of
+#' stripe rust resistance in wheat. \emph{Theoretical and Applied
+#' Genetics} \strong{138}:267. \doi{10.1007/s00122-025-05045-0}
+#'
+#' @examples
+#' \dontrun{
+#' haps <- extract_haplotypes(geno, snp_info, blocks)
+#' div  <- compute_haplotype_diversity(haps)
+#'
+#' # Use case 1: genotype only — rank by diversity
+#' ranked <- rank_haplotype_blocks(div)
+#'
+#' # Use case 2: genotype + GWAS — binary flag, then diversity within groups
+#' qtl    <- define_qtl_regions(gwas_df, blocks, snp_info)
+#' ranked <- rank_haplotype_blocks(div, qtl_regions = qtl)
+#'
+#' # Use case 3: genotype + phenotype — rank by Var(local GEBV)
+#' pred   <- run_haplotype_prediction(geno, snp_info, blocks, blues = blues)
+#' ranked <- rank_haplotype_blocks(div, qtl_regions = qtl, pred_result = pred)
+#'
+#' # Top 20 blocks
+#' ranked <- rank_haplotype_blocks(div, pred_result = pred, top_n_blocks = 20)
+#' }
+#'
+#' @export
+rank_haplotype_blocks <- function(diversity,
+                                  qtl_regions  = NULL,
+                                  pred_result  = NULL,
+                                  He_threshold = 0.3,
+                                  top_n_blocks = NULL) {
+
+  if (!is.data.frame(diversity))
+    stop("diversity must be a data frame from compute_haplotype_diversity().",
+         call. = FALSE)
+
+  # ── Base table from diversity (all blocks that passed min_freq) ────────────
+  out <- data.frame(
+    block_id      = diversity$block_id,
+    CHR           = diversity$CHR,
+    start_bp      = diversity$start_bp,
+    end_bp        = diversity$end_bp,
+    n_snps        = diversity$n_snps,
+    He            = diversity$He,
+    n_eff_alleles = if ("n_eff_alleles" %in% names(diversity))
+      diversity$n_eff_alleles else NA_real_,
+    freq_dominant = diversity$freq_dominant,
+    sweep_flag    = if ("sweep_flag" %in% names(diversity))
+      diversity$sweep_flag else NA,
+    stringsAsFactors = FALSE
+  )
+  out$is_diverse <- !is.na(out$He) & out$He >= He_threshold
+
+  has_gwas <- !is.null(qtl_regions) && is.data.frame(qtl_regions) &&
+    nrow(qtl_regions) > 0L
+  has_pred <- !is.null(pred_result) && is.list(pred_result) &&
+    "block_importance" %in% names(pred_result)
+
+  # ── GWAS flag (binary: hit or no hit, p-value not used for ranking) ────────
+  out$has_gwas_hit  <- FALSE
+  out$lead_snp      <- NA_character_
+  out$lead_beta     <- NA_real_
+  out$n_sig_markers <- NA_integer_
+
+  if (has_gwas) {
+    qtl_match             <- match(out$block_id, qtl_regions$block_id)
+    out$has_gwas_hit      <- !is.na(qtl_match)
+    out$lead_snp          <- qtl_regions$lead_snp     [qtl_match]
+    out$n_sig_markers     <- qtl_regions$n_sig_markers[qtl_match]
+    if ("lead_beta" %in% names(qtl_regions))
+      out$lead_beta       <- qtl_regions$lead_beta[qtl_match]
+  }
+
+  # ── Use case 3: phenotype available ───────────────────────────────────────
+  if (has_pred) {
+    bi           <- pred_result$block_importance
+    bi_match     <- match(out$block_id, bi$block_id)
+    out$var_scaled   <- bi$var_scaled[bi_match]
+    out$is_important <- bi$important [bi_match]
+    out$is_important[is.na(out$is_important)] <- FALSE
+    out$use_case     <- "phenotype"
+
+    # Primary sort: var_scaled (trait evidence)
+    # Secondary sort within tied var_scaled: gwas_hit flag, then He
+    out$rank_score <- ifelse(is.na(out$var_scaled), 0, out$var_scaled) +
+      ifelse(out$has_gwas_hit, 0.001, 0) +   # tiny tiebreaker only
+      ifelse(out$is_diverse,   0.001, 0)
+
+    out$recommendation <- dplyr::case_when(
+      out$is_important &  out$has_gwas_hit &  out$is_diverse ~
+        "Top priority: high variance + GWAS hit + diverse",
+      out$is_important &  out$has_gwas_hit & !out$is_diverse ~
+        "Strong: high variance + GWAS hit, low diversity",
+      out$is_important & !out$has_gwas_hit &  out$is_diverse ~
+        "Good: high variance + diverse, no GWAS hit",
+      out$is_important & !out$has_gwas_hit & !out$is_diverse ~
+        "Moderate: high variance, no GWAS hit, low diversity",
+      !out$is_important &  out$has_gwas_hit &  out$is_diverse ~
+        "Moderate: GWAS hit + diverse, low variance",
+      !out$is_important &  out$has_gwas_hit & !out$is_diverse ~
+        "Low: GWAS hit only",
+      TRUE ~
+        "Low priority"
+    )
+
+    # ── Use case 2: GWAS only, no phenotype ───────────────────────────────────
+  } else if (has_gwas) {
+    out$use_case <- "gwas"
+
+    # Primary sort: GWAS hit (binary)
+    # Secondary sort within each group: He (diversity)
+    out$rank_score <- as.integer(out$has_gwas_hit) +
+      ifelse(is.na(out$He), 0, out$He / 10)  # He as tiebreaker only
+
+    out$recommendation <- dplyr::case_when(
+      out$has_gwas_hit &  out$is_diverse  ~ "GWAS hit + diverse: good stacking candidate",
+      out$has_gwas_hit & !out$is_diverse  ~ "GWAS hit, low diversity: limited stacking potential",
+      !out$has_gwas_hit &  out$is_diverse  ~ "No GWAS hit, diverse: background block",
+      TRUE                                ~ "No evidence"
+    )
+
+    # ── Use case 1: diversity only ─────────────────────────────────────────────
+  } else {
+    out$use_case <- "diversity_only"
+
+    # Rank by He, with n_eff_alleles as tiebreaker
+    max_neff <- max(out$n_eff_alleles, na.rm = TRUE)
+    if (is.infinite(max_neff) || max_neff == 0) max_neff <- 1
+    out$rank_score <- ifelse(is.na(out$He), 0, out$He) +
+      ifelse(is.na(out$n_eff_alleles), 0,
+             out$n_eff_alleles / max_neff) / 10
+
+    out$recommendation <- dplyr::case_when(
+      out$is_diverse & !is.na(out$sweep_flag) & !out$sweep_flag ~
+        "Diverse, no sweep: good candidate",
+      out$is_diverse  ~
+        "Diverse: candidate (verify sweep status)",
+      TRUE            ~
+        "Low diversity: limited stacking potential"
+    )
+  }
+
+  # ── Sort and trim ──────────────────────────────────────────────────────────
+  out <- out[order(-out$rank_score), ]
+  rownames(out) <- NULL
+
+  if (!is.null(top_n_blocks))
+    out <- utils::head(out, as.integer(top_n_blocks))
+
+  # Return ranked table plus all standard outputs for downstream use.
+  # hap_matrix is the dimensionality-reduced genotype matrix for GP.
+  # blocks, diversity, haplotypes are passed through unchanged so the
+  # user does not need to keep multiple result objects.
+  result <- list(ranked_blocks = out)
+
+  # Pass through outputs from run_haplotype_prediction if supplied
+  if (has_pred) {
+    pred_passthrough <- c("blocks", "diversity", "hap_matrix", "haplotypes",
+                          "snp_info_filtered", "n_blocks", "n_hap_columns",
+                          "gebv", "snp_effects", "local_gebv",
+                          "block_importance", "G", "n_train", "n_predict")
+    for (nm in pred_passthrough)
+      if (nm %in% names(pred_result)) result[[nm]] <- pred_result[[nm]]
+  }
+
+  # Always attach diversity for use cases 1 and 2
+  if (!"diversity" %in% names(result)) result$diversity <- diversity
+
+  result
 }

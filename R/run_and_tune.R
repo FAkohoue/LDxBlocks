@@ -48,17 +48,17 @@
 #'
 #' @examples
 #' \donttest{
-#' set.seed(42)
-#' geno <- matrix(sample(0:2, 80 * 300, replace = TRUE), 80, 300)
-#' rownames(geno) <- paste0("ind", 1:80)
-#' colnames(geno) <- paste0("rs", 1:300)
-#' snp_info <- data.frame(
-#'   CHR = rep(paste0("chr", 1:3), each = 100),
-#'   SNP = colnames(geno),
-#'   POS = unlist(lapply(1:3, function(i) sort(sample(1e6:200e6, 100))))
+#' # Use the package example data — 120 individuals, 230 SNPs, 3 chromosomes,
+#' # 9 simulated LD blocks (3 per chromosome).
+#' data(ldx_geno,     package = "LDxBlocks")
+#' data(ldx_snp_info, package = "LDxBlocks")
+#' blocks <- run_Big_LD_all_chr(
+#'   ldx_geno, ldx_snp_info,
+#'   method = "r2", CLQcut = 0.55, leng = 15L,
+#'   subSegmSize = 100L, verbose = FALSE
 #' )
-#' blocks <- run_Big_LD_all_chr(geno, snp_info, CLQcut = 0.6, verbose = FALSE)
 #' head(blocks)
+#' summarise_blocks(blocks)
 #' }
 #'
 #' @export
@@ -144,7 +144,7 @@ run_Big_LD_all_chr <- function(
         NULL
       }
     )
-    if (!is.null(blk)) { blk$CHR <- chr; ld_blocks_all[[chr]] <- blk }
+    if (!is.null(blk) && nrow(blk) > 0L) { blk$CHR <- chr; ld_blocks_all[[chr]] <- blk }
 
     # Free chromosome genotype matrix immediately after use.
     # gc(FALSE) is called to release allocator pressure without a full GC cycle.
@@ -286,7 +286,12 @@ run_Big_LD_all_chr <- function(
 #' @param gwas_df Data frame with columns \code{Marker}, \code{CHR}, \code{POS}.
 #' @param grid Optional data frame of parameter combinations. Each row is one
 #'   combination; columns must match parameter names of \code{Big_LD}. If
-#'   \code{NULL} (default), a sensible four-point grid on \code{CLQcut} is used.
+#'   \code{NULL} (default), a sensible grid over \code{CLQcut} (4 values)
+#'   and \code{min_freq} (2 values) is used, giving 8 combinations. Both
+#'   are treated as hyperparameters following Weber SE et al. (2023,
+#'   \emph{Front. Plant Sci.} \strong{14}:1217589,
+#'   \doi{10.3389/fpls.2023.1217589}), who show that no single threshold
+#'   is universally optimal across datasets and traits.
 #' @param chromosomes Optional character vector of chromosome names to include
 #'   in tuning. \code{NULL} uses all chromosomes in \code{snp_info}.
 #' @param target_bp_band Length-2 numeric vector: preferred median block size
@@ -312,6 +317,16 @@ run_Big_LD_all_chr <- function(
 #'     \item{\code{gwas_assigned}}{Input \code{gwas_df} with an added column
 #'       \code{LD_block}. Entries ending in \code{*} denote forced assignments.}
 #'   }
+#'
+#' @references
+#' Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype
+#' blocks for genomic prediction: a comparative evaluation in multiple
+#' crop datasets. \emph{Frontiers in Plant Science} \strong{14}:1217589.
+#' \doi{10.3389/fpls.2023.1217589}
+#'
+#' Difabachew YF et al. (2023). Genomic prediction with haplotype
+#' blocks in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
+#' \doi{10.3389/fpls.2023.1168547}
 #'
 #' @seealso \code{\link{run_Big_LD_all_chr}}, \code{\link{Big_LD}}
 #'
@@ -342,6 +357,7 @@ tune_LD_params <- function(
   if (is.null(grid)) {
     grid <- expand.grid(
       CLQcut       = c(0.65, 0.70, 0.75, 0.80),
+      min_freq     = c(0.01, 0.05),
       clstgap      = 2e6,
       leng         = 1000,
       subSegmSize  = 10000,
@@ -366,6 +382,7 @@ tune_LD_params <- function(
 
   eval_one_combo <- function(row_idx) {
     params     <- as.list(grid[row_idx, , drop = FALSE])
+    if (is.null(params$min_freq)) params$min_freq <- 0.01  # backward compat
     ld_by_chr  <- vector("list", length(chromosomes))
     names(ld_by_chr) <- chromosomes
 
@@ -377,7 +394,7 @@ tune_LD_params <- function(
       info_chr <- snp_info[idx, c("SNP", "POS")]
       if (!is.numeric(info_chr$POS)) info_chr$POS <- as.numeric(info_chr$POS)
       blk <- try(.build_blocks_chr(geno_chr, info_chr, params), silent = TRUE)
-      if (!inherits(blk, "try-error") && !is.null(blk)) {
+      if (!inherits(blk, "try-error") && !is.null(blk) && nrow(blk) > 0L) {
         blk$CHR <- chr
         ld_by_chr[[k]] <- blk
       }
@@ -389,6 +406,7 @@ tune_LD_params <- function(
     data.frame(
       row             = row_idx,
       CLQcut          = params$CLQcut,
+      min_freq        = params$min_freq,
       clstgap         = params$clstgap,
       leng            = params$leng,
       subSegmSize     = params$subSegmSize,
@@ -427,7 +445,7 @@ tune_LD_params <- function(
   }
 
   best_params <- as.list(best[1L, c(
-    "CLQcut", "clstgap", "leng", "subSegmSize", "split",
+    "CLQcut", "min_freq", "clstgap", "leng", "subSegmSize", "split",
     "checkLargest", "MAFcut", "CLQmode", "kin_method", "digits", "appendrare"
   )])
 

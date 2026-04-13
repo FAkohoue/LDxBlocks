@@ -29,9 +29,9 @@ returned by \code{\link{run_Big_LD_all_chr}}.
 \examples{
 \donttest{
 blocks <- data.frame(
-  CHR      = c("chr1","chr1","chr2"),
-  start.bp = c(1000, 500000, 2000),
-  end.bp   = c(80000, 650000, 200000)
+  CHR      = c("1", "1", "2"),
+  start.bp = c(1000L, 500000L, 2000L),
+  end.bp   = c(80000L, 650000L, 200000L)
 )
 summarise_blocks(blocks)
 }

@@ -201,7 +201,8 @@ test_that("compute_haplotype_diversity returns valid metrics", {
   data(ldx_blocks,   package = "LDxBlocks")
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=3)
   div  <- compute_haplotype_diversity(haps)
-  expect_true(all(c("block_id","He","Shannon","freq_dominant") %in% names(div)))
+  expect_true(all(c("block_id","He","Shannon","n_eff_alleles",
+                    "freq_dominant","sweep_flag") %in% names(div)))
   expect_true(all(div$He[!is.na(div$He)] >= 0))
 })
 
@@ -214,17 +215,17 @@ test_that("build_haplotype_feature_matrix: correct dimensions, additive_012", {
   expect_equal(nrow(feat), 120L)
   expect_equal(ncol(feat), length(haps) * 3L)
   vals <- as.vector(feat[!is.na(feat)])
-  expect_true(all(vals %in% c(0, 2)))  # unphased: only 0 or 2
+  expect_true(all(vals %in% c(0, 1)))  # unphased: 0=absent, 1=present
 })
 
-test_that("build_haplotype_feature_matrix: presence_02 encoding", {
+test_that("build_haplotype_feature_matrix: presence_01 encoding", {
   data(ldx_geno,     package = "LDxBlocks")
   data(ldx_snp_info, package = "LDxBlocks")
   data(ldx_blocks,   package = "LDxBlocks")
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=3)
-  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="presence_02")
+  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="presence_01")
   vals <- as.vector(feat[!is.na(feat)])
-  expect_true(all(vals %in% c(0, 2)))
+  expect_true(all(vals %in% c(0, 1)))  # presence/absence: 0 or 1
 })
 
 # ── define_qtl_regions ────────────────────────────────────────────────────────

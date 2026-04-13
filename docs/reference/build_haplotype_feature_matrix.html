@@ -65,7 +65,7 @@ encoding="presence_02" (kernel methods, random forest):
     <div class="ref-description section level2">
     <p>Converts haplotype strings to a numeric matrix for genomic
   prediction. Supports phased and unphased input with two encoding schemes.</p>
-<p>encoding="additive_012" (default, recommended for GBLUP/rrBLUP/BGLR):
+<p><code>encoding="additive_012"</code> (default, recommended for GBLUP/rrBLUP/BGLR):
     Phased:   0=0 copies, 1=1 copy (het), 2=2 copies (hom)
     Unphased: 0=no match, 2=match (1 not identifiable without phase)</p>
 <p>encoding="presence_02" (kernel methods, random forest):
@@ -78,7 +78,7 @@ encoding="presence_02" (kernel methods, random forest):
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">build_haplotype_feature_matrix</span><span class="op">(</span></span>
 <span>  <span class="va">haplotypes</span>,</span>
 <span>  top_n <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  encoding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"additive_012"</span>, <span class="st">"presence_02"</span><span class="op">)</span>,</span>
+<span>  encoding <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"additive_012"</span>, <span class="st">"presence_01"</span><span class="op">)</span>,</span>
 <span>  missing_string <span class="op">=</span> <span class="st">"."</span>,</span>
 <span>  scale_features <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  min_freq <span class="op">=</span> <span class="fl">0.01</span></span>
@@ -103,7 +103,23 @@ highly diverse haplotypes (many rare alleles above <code>min_freq</code>).</p></
 
 
 <dt id="arg-encoding">encoding<a class="anchor" aria-label="anchor" href="#arg-encoding"></a></dt>
-<dd><p>"additive_012" (default) or "presence_02".</p></dd>
+<dd><p>Dosage encoding for the feature matrix:</p><ul><li><p><code>"additive_012"</code> (default): values are 0, 1, or 2 for
+    <strong>phased</strong> data (0 = neither gamete, 1 = one gamete,
+    2 = both gametes carry this allele); values are 0 or 2 for
+    <strong>unphased</strong> data (0 = absent, 2 = homozygous for this allele).
+    For <strong>unphased</strong> data the value is 0 or 1/NA: 1 = the
+    individual's haplotype string matches this allele exactly,
+    0 = it does not. The value 2 is not used for unphased data
+    because we cannot confirm both chromosomes carry the same
+    allele from unphased dosage strings. Compatible with
+    rrBLUP, BGLR, sommer, ASReml-R.</p></li>
+<li><p><code>"presence_01"</code>: values are 0 or 1 — clean presence/absence
+    encoding. For phased data: 1 if either gamete carries the allele.
+    For unphased data: 1 if the individual's allele string matches.
+    Loses copy-number information compared to <code>"additive_012"</code>
+    but may be preferable for Bayesian variable selection models
+    (BayesB, BayesC) where the prior expects binary indicators.</p></li>
+</ul></dd>
 
 
 <dt id="arg-missing-string">missing_string<a class="anchor" aria-label="anchor" href="#arg-missing-string"></a></dt>
@@ -121,6 +137,16 @@ highly diverse haplotypes (many rare alleles above <code>min_freq</code>).</p></
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Numeric matrix (individuals x haplotype allele columns).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Difabachew YF et al. (2023). Genomic prediction with haplotype
+blocks in wheat. <em>Frontiers in Plant Science</em> <strong>14</strong>:1168547.
+<a href="https://doi.org/10.3389/fpls.2023.1168547" class="external-link">doi:10.3389/fpls.2023.1168547</a></p>
+<p>Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype
+blocks for genomic prediction: a comparative evaluation in multiple
+crop datasets. <em>Frontiers in Plant Science</em> <strong>14</strong>:1217589.
+<a href="https://doi.org/10.3389/fpls.2023.1217589" class="external-link">doi:10.3389/fpls.2023.1217589</a></p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

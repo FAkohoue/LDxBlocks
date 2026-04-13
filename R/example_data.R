@@ -63,7 +63,7 @@
 #' Example SNP Information Table
 #'
 #' @description
-#' Genomic metadata for the 200 SNPs in \code{\link{ldx_geno}}.
+#' Genomic metadata for the 230 SNPs in \code{\link{ldx_geno}}.
 #'
 #' @format A \code{data.frame} with 230 rows and 5 columns:
 #' \describe{

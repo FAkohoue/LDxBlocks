@@ -122,7 +122,11 @@ individuals carry it.</p>
     gamete for phased).</p></li>
 <li><p><code>"-"</code> if the individual does not carry that allele.</p></li>
 <li><p><code>"."</code> if the individual has missing data in that block.</p></li>
-</ul></div>
+</ul><p>Heterozygous positions (dosage = 1, phased data only) are encoded using
+IUPAC ambiguity codes: R=A/G, Y=C/T, S=G/C, W=A/T, K=G/T, M=A/C.
+This keeps the nucleotide string the same length as <code>n_snps</code>
+regardless of how many heterozygous positions are present.</p>
+    </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

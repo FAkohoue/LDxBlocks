@@ -26,9 +26,9 @@
 #' @examples
 #' \donttest{
 #' blocks <- data.frame(
-#'   CHR      = c("chr1","chr1","chr2"),
-#'   start.bp = c(1000, 500000, 2000),
-#'   end.bp   = c(80000, 650000, 200000)
+#'   CHR      = c("1", "1", "2"),
+#'   start.bp = c(1000L, 500000L, 2000L),
+#'   end.bp   = c(80000L, 650000L, 200000L)
 #' )
 #' summarise_blocks(blocks)
 #' }
@@ -78,9 +78,9 @@ summarise_blocks <- function(blocks) {
 #'   \code{end.bp}, and \code{CHR}.
 #' @param colour_by Character. One of \code{"length_bp"} (default, colours by
 #'   block size) or \code{"CHR"} (distinct colour per chromosome).
-#' @param highlight_blocks Optional character vector of block IDs (from
-#'   \code{block_name} column) to highlight with a border. \code{NULL}
-#'   (default) highlights nothing.
+#' @param highlight_blocks Optional integer vector of row indices in
+#'   \code{blocks} to highlight with a solid border outline.
+#'   \code{NULL} (default) highlights nothing.
 #' @param mb_scale Logical. If \code{TRUE} (default), x-axis is in Megabases.
 #'
 #' @return A \code{ggplot} object.
@@ -89,7 +89,7 @@ summarise_blocks <- function(blocks) {
 #' \donttest{
 #' if (requireNamespace("ggplot2", quietly = TRUE)) {
 #'   blocks <- data.frame(
-#'     CHR = c("chr1","chr1","chr2","chr2"),
+#'     CHR      = c("1", "1", "2", "2"),
 #'     start.bp = c(1e5, 6e5, 2e5, 8e5),
 #'     end.bp   = c(5e5, 9e5, 7e5, 1.5e6)
 #'   )
@@ -151,6 +151,16 @@ plot_ld_blocks <- function(
 
   if (colour_by == "length_bp") {
     gg <- gg + ggplot2::scale_fill_viridis_c(option = "plasma", trans = "log10")
+  }
+
+  if (!is.null(highlight_blocks)) {
+    hi <- blocks[highlight_blocks, , drop = FALSE]
+    gg <- gg + ggplot2::geom_rect(
+      data = hi,
+      ggplot2::aes(xmin = start_x, xmax = end_x,
+                   ymin = chr_int - 0.4, ymax = chr_int + 0.4),
+      fill = NA, colour = "black", linewidth = 0.7, inherit.aes = FALSE
+    )
   }
   gg
 }

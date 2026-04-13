@@ -25,7 +25,7 @@ Simulated with \code{data-raw/generate_example_data.R}.
 ldx_snp_info
 }
 \description{
-Genomic metadata for the 200 SNPs in \code{\link{ldx_geno}}.
+Genomic metadata for the 230 SNPs in \code{\link{ldx_geno}}.
 }
 \examples{
 data(ldx_snp_info)

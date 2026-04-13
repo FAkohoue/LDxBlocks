@@ -51,7 +51,7 @@ alleles of each SNP in the block.
 Each character in a haplotype string is the dosage at one SNP in the block:
 \itemize{
   \item \code{"0"} = homozygous REF  -> REF nucleotide (e.g. \code{A})
-  \item \code{"1"} = heterozygous    -> REF/ALT (e.g. \code{A/G})
+  \item \code{"1"} = heterozygous    -> IUPAC ambiguity code (e.g. \code{R} for A/G)
   \item \code{"2"} = homozygous ALT  -> ALT nucleotide (e.g. \code{G})
   \item \code{"."} = missing         -> \code{N}
 }

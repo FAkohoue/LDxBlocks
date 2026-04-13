@@ -99,13 +99,13 @@ test_that("Big_LD: fewer than 2 polymorphic SNPs returns empty df with warning",
   expect_equal(nrow(blks), 0L)
 })
 
-test_that("Big_LD: detectes known block structure in simulated data", {
-  # Chr1 has 3 blocks. We should detect at least 3 blocks.
+test_that("Big_LD: detects known block structure in simulated data", {
   idx  <- which(ldx_snp_info$CHR == "1")
   blks <- LDxBlocks:::Big_LD(ldx_geno[, idx],
                              ldx_snp_info[idx, c("SNP","POS")],
                              method = "r2", CLQcut = 0.5,
                              leng = 10, subSegmSize = 70, verbose = FALSE)
+  # Chr1 has 3 simulated blocks; should detect at least 3
   expect_true(nrow(blks) >= 3L)
 })
 
@@ -129,6 +129,28 @@ test_that("Big_LD: split=TRUE with clstgap runs without error", {
                                clstgap = 30000L,
                                leng = 10, subSegmSize = 70, verbose = FALSE)
   )
+})
+
+test_that("Big_LD: singleton_as_block=TRUE includes single-SNP entries", {
+  idx <- which(ldx_snp_info$CHR == "1")
+  # Very high CLQcut forces most SNPs to be singletons
+  blks_sing <- LDxBlocks:::Big_LD(ldx_geno[, idx],
+                                  ldx_snp_info[idx, c("SNP","POS")],
+                                  method = "r2", CLQcut = 0.99,
+                                  singleton_as_block = TRUE,
+                                  leng = 5, subSegmSize = 70,
+                                  verbose = FALSE)
+  blks_drop <- LDxBlocks:::Big_LD(ldx_geno[, idx],
+                                  ldx_snp_info[idx, c("SNP","POS")],
+                                  method = "r2", CLQcut = 0.99,
+                                  singleton_as_block = FALSE,
+                                  leng = 5, subSegmSize = 70,
+                                  verbose = FALSE)
+  # singleton_as_block=TRUE produces at least as many blocks
+  expect_true(nrow(blks_sing) >= nrow(blks_drop))
+  # Singleton blocks have start == end (same SNP index)
+  if (nrow(blks_sing) > 0L)
+    expect_true(any(blks_sing$start == blks_sing$end))
 })
 
 # ── run_Big_LD_all_chr ────────────────────────────────────────────────────────
@@ -168,7 +190,6 @@ test_that("run_Big_LD_all_chr: min_snps_chr skips small chromosomes", {
                           ALT=NA_character_, stringsAsFactors=FALSE)
   info_all  <- rbind(ldx_snp_info, info_fake)
 
-  # With min_snps_chr = 10, chr 99 (5 SNPs) should be skipped
   blks <- run_Big_LD_all_chr(g_all, snp_info=info_all, method="r2",
                              CLQcut=0.5, leng=10, subSegmSize=70,
                              min_snps_chr=10L, verbose=FALSE)
@@ -185,6 +206,16 @@ test_that("run_Big_LD_all_chr: seed produces reproducible results", {
                               leng=10, subSegmSize=70,
                               seed=7L, verbose=FALSE)
   expect_equal(blks1, blks2)
+})
+
+test_that("run_Big_LD_all_chr: chr parameter restricts to one chromosome", {
+  blks <- run_Big_LD_all_chr(ldx_geno, snp_info = ldx_snp_info,
+                             method = "r2", CLQcut = 0.5,
+                             leng = 10, subSegmSize = 70,
+                             chr = "1", verbose = FALSE)
+  expect_true(all(blks$CHR == "1"))
+  expect_false("2" %in% blks$CHR)
+  expect_false("3" %in% blks$CHR)
 })
 
 # ── summarise_blocks ──────────────────────────────────────────────────────────

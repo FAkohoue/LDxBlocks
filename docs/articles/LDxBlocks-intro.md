@@ -123,7 +123,7 @@ The following components are unchanged from Kim et al. (2018):
 | Genomic prediction | No | No | No | Yes |
 | GWAS-driven tuning | No | No | No | Yes |
 | Input formats | R matrix | PLINK, VCF | PLINK | 6 formats |
-| Output | Block table | Block table + gene regions | Block table | Block table + 8 downstream functions |
+| Output | Block table | Block table + gene regions | Block table | Block table + 18 downstream functions |
 
 ------------------------------------------------------------------------
 
@@ -375,27 +375,29 @@ sample size for frequency estimates:
 div <- compute_haplotype_diversity(haps)
 head(div)
 #>                block_id CHR start_bp end_bp n_snps n_ind n_haplotypes        He
-#> 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8418056
-#> 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8390278
-#> 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8752778
-#> 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8793056
-#> 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8463889
-#> 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8413889
-#>    Shannon freq_dominant phased
-#> 1 2.768290     0.3583333  FALSE
-#> 2 2.654193     0.3000000  FALSE
-#> 3 2.966925     0.2916667  FALSE
-#> 4 3.108972     0.2833333  FALSE
-#> 5 2.649231     0.2833333  FALSE
-#> 6 2.604423     0.3083333  FALSE
+#> 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8488796
+#> 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8460784
+#> 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8826331
+#> 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8866947
+#> 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8535014
+#> 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8484594
+#>    Shannon n_eff_alleles freq_dominant sweep_flag phased
+#> 1 2.768290         6.321     0.3583333      FALSE  FALSE
+#> 2 2.654193         6.212     0.3000000      FALSE  FALSE
+#> 3 2.966925         8.018     0.2916667      FALSE  FALSE
+#> 4 3.108972         8.285     0.2833333      FALSE  FALSE
+#> 5 2.649231         6.510     0.2833333      FALSE  FALSE
+#> 6 2.604423         6.305     0.3083333      FALSE  FALSE
 ```
 
-| Metric           | Formula                | Interpretation              |
-|------------------|------------------------|-----------------------------|
-| Richness ($`k`$) | unique strings         | High = diverse              |
-| $`H_e`$          | $`1 - \sum p_i^2`$     | Nei expected heterozygosity |
-| Shannon ($`H'`$) | $`-\sum p_i \log p_i`$ | Entropy                     |
-| $`f_{\max}`$     | $`\max_i p_i`$         | Near 1.0 = sweep            |
+| Metric             | Formula                | Interpretation              |
+|--------------------|------------------------|-----------------------------|
+| Richness ($`k`$)   | unique strings         | High = diverse              |
+| $`H_e`$            | Nei (1973) corrected   | Expected heterozygosity     |
+| Shannon ($`H'`$)   | $`-\sum p_i \log p_i`$ | Entropy                     |
+| $`n_{\text{eff}}`$ | $`1/\sum p_i^2`$       | Effective number of alleles |
+| $`f_{\max}`$       | $`\max_i p_i`$         | Near 1.0 = possible sweep   |
+| `sweep_flag`       | $`f_{\max} \geq 0.90`$ | Logical sweep indicator     |
 
 ``` r
 if (requireNamespace("ggplot2", quietly = TRUE)) {
@@ -444,8 +446,8 @@ head(qtl[, c("block_id","CHR","n_snps_block","n_sig_markers",
 #> 1       FALSE
 subset(qtl, pleiotropic)      # blocks with hits from both TraitA and TraitB
 #>  [1] block_id      CHR           start_bp      end_bp        n_snps_block 
-#>  [6] n_sig_markers lead_snp      lead_p        traits        n_traits     
-#> [11] pleiotropic  
+#>  [6] n_sig_markers lead_snp      lead_p        lead_beta     sig_snps     
+#> [11] sig_betas     traits        n_traits      pleiotropic  
 #> <0 rows> (or 0-length row.names)
 ```
 
@@ -467,11 +469,11 @@ feat_add <- build_haplotype_feature_matrix(
 dim(feat_add)
 #> [1] 120  45
 
-# Presence/absence 0/2 — for kernel methods or random forest
+# Presence/absence 0/1 — for kernel methods or random forest
 feat_pa <- build_haplotype_feature_matrix(
   haplotypes = haps,
   top_n      = 5L,
-  encoding   = "presence_02"
+  encoding   = "presence_01"
 )
 dim(feat_pa)
 #> [1] 120  45
@@ -487,6 +489,35 @@ write_haplotype_numeric(feat_add, "hap_matrix_numeric.csv",
 # Character: nucleotide sequence per individual per haplotype allele
 write_haplotype_character(haplotypes = haps, snp_info = ldx_snp_info,
                            out_file = "hap_matrix_character.txt")
+```
+
+### Haplotype prediction pipeline (Tong et al. 2025)
+
+When pre-adjusted phenotype values (BLUEs or adjusted entry means) are
+available, the full Tong et al. (2025) haplotype stacking pipeline runs
+in a single call. `blues` accepts a named numeric vector or a data frame
+with `id_col` and `blue_col` arguments:
+
+``` r
+blues <- read.csv("blues.csv")  # columns: id, YLD
+pred  <- run_haplotype_prediction(
+  geno_matrix = ldx_geno,
+  snp_info    = ldx_snp_info,
+  blocks      = blocks,
+  blues       = blues,
+  id_col      = "id",
+  blue_col    = "YLD"
+)
+pred$block_importance[pred$block_importance$important, ]
+sort(pred$gebv, decreasing = TRUE)  # ranked GEBVs
+
+# Integrate GWAS + variance + diversity evidence
+priority <- rank_haplotype_blocks(
+  diversity   = pred$diversity,
+  qtl_regions = qtl,          # from define_qtl_regions()
+  pred_result = pred
+)
+priority$ranked_blocks[priority$ranked_blocks$priority_score == 3, ]
 ```
 
 ### Building a haplotype GRM for GBLUP
@@ -523,6 +554,9 @@ result <- tune_LD_params(
 result$best_params
 #> $CLQcut
 #> [1] 0.45
+#> 
+#> $min_freq
+#> [1] 0.01
 #> 
 #> $clstgap
 #> [1] 1e+05
@@ -584,7 +618,8 @@ feat <- build_haplotype_feature_matrix(haps,
                                         encoding = "additive_012",
                                         scale_features = TRUE)
 
-# Numeric dosage matrix: rows=haplotypes, cols=individuals, values=0/1/2/NA
+# Numeric dosage matrix: rows=haplotypes, cols=individuals
+# values: 0/1/2/NA for phased data; 0/1/NA for unphased data
 write_haplotype_numeric(feat, "hap_matrix_numeric.csv",
                          haplotypes = haps, snp_info = be$snp_info)
 
@@ -608,6 +643,27 @@ close_backend(be)
   block detection method for dense genome sequencing data based on
   interval graph modeling and dynamic programming. *Bioinformatics*
   **34**(4):588-596. <https://doi.org/10.1093/bioinformatics/btx609>
+- Difabachew YF, Frisch M, Langstroff AL, Stahl A, Wittkop B, Snowdon
+  RJ, Koch M, Kirchhoff M, Csélényi L, Wolf M, Förster J, Weber S, Okoye
+  UJ, Zenke-Philippi C (2023). Genomic prediction with haplotype blocks
+  in wheat. *Frontiers in Plant Science* **14**:1168547.
+  <https://doi.org/10.3389/fpls.2023.1168547>
+- Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype blocks
+  for genomic prediction: a comparative evaluation in multiple crop
+  datasets. *Frontiers in Plant Science* **14**:1217589.
+  <https://doi.org/10.3389/fpls.2023.1217589>
+- Pook T, Schlather M, de los Campos G, Mayer M, Schoen CC, Simianer H
+  (2019). HaploBlocker: Creation of subgroup-specific haplotype blocks
+  and libraries. *Genetics* **212**(4):1045-1061.
+  <https://doi.org/10.1534/genetics.119.302283>
+- Tong J, Tarekegn ZT, Jambuthenne D, Alahmad S, Periyannan S, Hickey L,
+  Dinglasan E, Hayes B (2024). Stacking beneficial haplotypes from the
+  Vavilov wheat collection to accelerate breeding for multiple disease
+  resistance. *Theoretical and Applied Genetics* **137**:274.
+  <https://doi.org/10.1007/s00122-024-04784-w>
+- Tong J et al. (2025). Haplotype stacking to improve stability of
+  stripe rust resistance in wheat. *Theoretical and Applied Genetics*
+  **138**:267. <https://doi.org/10.1007/s00122-025-05045-0>
 - Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles
   C (2012). Novel measures of linkage disequilibrium that correct the
   bias due to population structure and relatedness. *Heredity*
@@ -625,7 +681,3 @@ close_backend(be)
 - Nei M (1973). Analysis of gene diversity in subdivided populations.
   *Proceedings of the National Academy of Sciences*
   **70**(12):3321-3323. <https://doi.org/10.1073/pnas.70.12.3321>
-- Tong J, Gorjanc G, Li Z, et al. (2024). Haplotype-based prediction of
-  genomic breeding values in plant and animal populations. *Theoretical
-  and Applied Genetics* **137**:274.
-  <https://doi.org/10.1007/s00122-024-04784-w>

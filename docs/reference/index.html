@@ -247,10 +247,17 @@
 
         </dt>
         <dd>Build Haplotype Dosage Matrix for Genomic Prediction</dd>
+
+        <dt>
+
+          <code><a href="compute_haplotype_grm.html">compute_haplotype_grm()</a></code>
+
+        </dt>
+        <dd>Compute Haplotype-Based Genomic Relationship Matrix</dd>
       </dl></div><div class="section level2">
       <h2 id="haplotype-output-writers">Haplotype output writers<a class="anchor" aria-label="anchor" href="#haplotype-output-writers"></a></h2>
 
-      <div class="section-desc"><p>Write haplotype matrices and diversity tables to disk. Numeric format: 0/1/2/NA dosage, rows=haplotypes, cols=individuals. Character format: nucleotide sequences, rows=haplotypes, cols=individuals.</p></div>
+      <div class="section-desc"><p>Write haplotype matrices and diversity tables to disk. Numeric format: phased=0/1/2/NA, unphased=0/1/NA dosage; rows=haplotypes, cols=individuals. Character format: nucleotide sequences with IUPAC ambiguity codes for heterozygous positions; rows=haplotypes, cols=individuals.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -277,6 +284,57 @@
 
         </dt>
         <dd>Write Haplotype Diversity Table</dd>
+      </dl></div><div class="section level2">
+      <h2 id="genomic-prediction-pipeline-tong-et-al-">Genomic prediction pipeline (Tong et al. 2024/2025)<a class="anchor" aria-label="anchor" href="#genomic-prediction-pipeline-tong-et-al-"></a></h2>
+
+      <div class="section-desc"><p>Functions for haplotype-based genomic prediction following Tong et al. (2024, Theor Appl Genet 137:274) and Tong et al. (2025, Theor Appl Genet 138:267). Accepts pre-adjusted phenotype values (BLUEs/BLUPs) and produces GEBV, per-SNP effects, local haplotype GEBV per block, and evidence-based block rankings.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="prepare_gblup_inputs.html">prepare_gblup_inputs()</a></code>
+
+        </dt>
+        <dd>Prepare Genomic Prediction Inputs for External GBLUP Software</dd>
+
+        <dt>
+
+          <code><a href="run_haplotype_prediction.html">run_haplotype_prediction()</a></code>
+
+        </dt>
+        <dd>Haplotype Prediction and Block Importance from Pre-Adjusted Phenotypes</dd>
+
+        <dt>
+
+          <code><a href="backsolve_snp_effects.html">backsolve_snp_effects()</a></code>
+
+        </dt>
+        <dd>Backsolve SNP Effects from GEBV (Tong et al. 2025)</dd>
+
+        <dt>
+
+          <code><a href="compute_local_gebv.html">compute_local_gebv()</a></code>
+
+        </dt>
+        <dd>Compute Local Haplotype GEBV per Block (Tong et al. 2025)</dd>
+
+        <dt>
+
+          <code><a href="integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code>
+
+        </dt>
+        <dd>Integrate GWAS QTL Regions with Haplotype Prediction Results</dd>
+
+        <dt>
+
+          <code><a href="rank_haplotype_blocks.html">rank_haplotype_blocks()</a></code>
+
+        </dt>
+        <dd>Rank Haplotype Blocks by Evidence Strength</dd>
       </dl></div><div class="section level2">
       <h2 id="utilities">Utilities<a class="anchor" aria-label="anchor" href="#utilities"></a></h2>
 

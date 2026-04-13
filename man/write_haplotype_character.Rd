@@ -50,4 +50,9 @@ The cell value for individual i at haplotype allele h is:
   \item \code{"-"} if the individual does not carry that allele.
   \item \code{"."} if the individual has missing data in that block.
 }
+
+Heterozygous positions (dosage = 1, phased data only) are encoded using
+IUPAC ambiguity codes: R=A/G, Y=C/T, S=G/C, W=A/T, K=G/T, M=A/C.
+This keeps the nucleotide string the same length as \code{n_snps}
+regardless of how many heterozygous positions are present.
 }

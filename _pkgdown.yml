@@ -93,15 +93,32 @@ reference:
       - compute_haplotype_diversity
       - define_qtl_regions
       - build_haplotype_feature_matrix
+      - compute_haplotype_grm
   - title: "Haplotype output writers"
     desc: >
       Write haplotype matrices and diversity tables to disk.
-      Numeric format: 0/1/2/NA dosage, rows=haplotypes, cols=individuals.
-      Character format: nucleotide sequences, rows=haplotypes, cols=individuals.
+      Numeric format: phased=0/1/2/NA, unphased=0/1/NA dosage;
+      rows=haplotypes, cols=individuals.
+      Character format: nucleotide sequences with IUPAC ambiguity codes
+      for heterozygous positions; rows=haplotypes, cols=individuals.
     contents:
       - write_haplotype_numeric
       - write_haplotype_character
       - write_haplotype_diversity
+  - title: "Genomic prediction pipeline (Tong et al. 2024/2025)"
+    desc: >
+      Functions for haplotype-based genomic prediction following
+      Tong et al. (2024, Theor Appl Genet 137:274) and Tong et al.
+      (2025, Theor Appl Genet 138:267). Accepts pre-adjusted phenotype
+      values (BLUEs/BLUPs) and produces GEBV, per-SNP effects, local
+      haplotype GEBV per block, and evidence-based block rankings.
+    contents:
+      - prepare_gblup_inputs
+      - run_haplotype_prediction
+      - backsolve_snp_effects
+      - compute_local_gebv
+      - integrate_gwas_haplotypes
+      - rank_haplotype_blocks
   - title: "Utilities"
     desc: Summary statistics and visualisation for block tables.
     contents:

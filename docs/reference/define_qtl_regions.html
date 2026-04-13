@@ -75,11 +75,13 @@
 
 
 <dl><dt id="arg-gwas-results">gwas_results<a class="anchor" aria-label="anchor" href="#arg-gwas-results"></a></dt>
-<dd><p>Data frame: SNP, CHR, POS. Optional: P, trait.</p></dd>
+<dd><p>Data frame with columns <code>SNP</code> (or <code>Marker</code>),
+<code>CHR</code>, <code>POS</code>. Optional columns: <code>P</code> (p-value),
+<code>BETA</code> (additive effect estimate), <code>trait</code>.</p></dd>
 
 
 <dt id="arg-blocks">blocks<a class="anchor" aria-label="anchor" href="#arg-blocks"></a></dt>
-<dd><p>LD block data frame from run_Big_LD_all_chr().</p></dd>
+<dd><p>LD block data frame from <code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></code>.</p></dd>
 
 
 <dt id="arg-snp-info">snp_info<a class="anchor" aria-label="anchor" href="#arg-snp-info"></a></dt>
@@ -87,25 +89,68 @@
 
 
 <dt id="arg-p-threshold">p_threshold<a class="anchor" aria-label="anchor" href="#arg-p-threshold"></a></dt>
-<dd><p>Significance threshold. Default 5e-8. NULL = use all markers.</p></dd>
+<dd><p>Significance threshold. Default <code>5e-8</code>.
+<code>NULL</code> uses all markers regardless of p-value.</p></dd>
 
 
 <dt id="arg-trait-col">trait_col<a class="anchor" aria-label="anchor" href="#arg-trait-col"></a></dt>
-<dd><p>Trait column name. Default "trait".</p></dd>
+<dd><p>Trait column name in <code>gwas_results</code>. Default
+<code>"trait"</code>.</p></dd>
 
 
 <dt id="arg-min-snps">min_snps<a class="anchor" aria-label="anchor" href="#arg-min-snps"></a></dt>
-<dd><p>Minimum block SNP count. Default 3L.</p></dd>
+<dd><p>Minimum SNPs per block. Default <code>3L</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Data frame: block_id, CHR, start_bp, end_bp, n_snps_block,
-  n_sig_markers, lead_snp, lead_p, traits, n_traits, pleiotropic.</p>
+    <p>Data frame with one row per block containing significant markers:
+  <code>block_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>,
+  <code>n_snps_block</code>, <code>n_sig_markers</code>, <code>lead_snp</code>,
+  <code>lead_p</code>, <code>lead_beta</code> (if BETA supplied), <code>sig_snps</code>,
+  <code>sig_betas</code> (if BETA supplied), <code>traits</code>, <code>n_traits</code>,
+  <code>pleiotropic</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="block-effect-estimation">Block effect estimation<a class="anchor" aria-label="anchor" href="#block-effect-estimation"></a></h2>
+
+
+<p>When multiple SNPs within a block are GWAS-significant, their marginal
+BETA values are correlated (due to LD) and cannot be summed directly.
+LDxBlocks returns three complementary columns when <code>BETA</code> is
+present in <code>gwas_results</code>:</p><dl><dt><code>lead_beta</code></dt>
+<dd><p>BETA of the lead (lowest-p) SNP. The simplest
+    proxy for the block effect – assumes the lead SNP fully tags the
+    causal variant. Underestimates the block effect when multiple
+    independent signals exist.</p></dd>
+
+  <dt><code>sig_snps</code></dt>
+<dd><p>Semicolon-separated IDs of all significant SNPs
+    in the block. Pass these to a conditional/joint analysis tool (e.g.
+    COJO, SuSiE, finemap) to obtain independent within-block effects.</p></dd>
+
+  <dt><code>sig_betas</code></dt>
+<dd><p>Semicolon-separated marginal BETA values for
+    all significant SNPs (same order as <code>sig_snps</code>). Their absolute
+    values are an upper bound on the true block effect because they
+    include LD-induced inflation; use <code>lead_beta</code> or joint analysis
+    for calibrated estimates.</p></dd>
+
+
+</dl><p>For the biologically correct block-level effect, fit a haplotype model:
+<code><a href="build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> produces the 0/1/2 dosage columns
+whose regression coefficients (alpha_h) are the true per-allele effects.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
-    <p>Tong et al. (2024) Theor Appl Genet 137:274.</p>
+    <p>Tong J, Tarekegn ZT, Jambuthenne D, Alahmad S, Periyannan S,
+Hickey L, Dinglasan E, Hayes B (2024). Stacking beneficial haplotypes
+from the Vavilov wheat collection to accelerate breeding for multiple
+disease resistance. <em>Theoretical and Applied Genetics</em>
+<strong>137</strong>:274. <a href="https://doi.org/10.1007/s00122-024-04784-w" class="external-link">doi:10.1007/s00122-024-04784-w</a></p>
+<p>Yang J et al. (2012). Conditional and joint multiple-SNP analysis of GWAS
+summary statistics identifies additional variants influencing complex traits.
+<em>Nature Genetics</em> <strong>44</strong>(4):369-375. <a href="https://doi.org/10.1038/ng.2213" class="external-link">doi:10.1038/ng.2213</a></p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -19,9 +19,9 @@ plot_ld_blocks(
 \item{colour_by}{Character. One of \code{"length_bp"} (default, colours by
 block size) or \code{"CHR"} (distinct colour per chromosome).}
 
-\item{highlight_blocks}{Optional character vector of block IDs (from
-\code{block_name} column) to highlight with a border. \code{NULL}
-(default) highlights nothing.}
+\item{highlight_blocks}{Optional integer vector of row indices in
+\code{blocks} to highlight with a solid border outline.
+\code{NULL} (default) highlights nothing.}
 
 \item{mb_scale}{Logical. If \code{TRUE} (default), x-axis is in Megabases.}
 }
@@ -36,7 +36,7 @@ Requires \code{ggplot2} to be installed.
 \donttest{
 if (requireNamespace("ggplot2", quietly = TRUE)) {
   blocks <- data.frame(
-    CHR = c("chr1","chr1","chr2","chr2"),
+    CHR      = c("1", "1", "2", "2"),
     start.bp = c(1e5, 6e5, 2e5, 8e5),
     end.bp   = c(5e5, 9e5, 7e5, 1.5e6)
   )

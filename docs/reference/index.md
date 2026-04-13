@@ -80,12 +80,16 @@ prediction.
   : Map GWAS Hits to LD Blocks (Post-GWAS QTL Region Definition)
 - [`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md)
   : Build Haplotype Dosage Matrix for Genomic Prediction
+- [`compute_haplotype_grm()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_grm.md)
+  : Compute Haplotype-Based Genomic Relationship Matrix
 
 ## Haplotype output writers
 
 Write haplotype matrices and diversity tables to disk. Numeric format:
-0/1/2/NA dosage, rows=haplotypes, cols=individuals. Character format:
-nucleotide sequences, rows=haplotypes, cols=individuals.
+phased=0/1/2/NA, unphased=0/1/NA dosage; rows=haplotypes,
+cols=individuals. Character format: nucleotide sequences with IUPAC
+ambiguity codes for heterozygous positions; rows=haplotypes,
+cols=individuals.
 
 - [`write_haplotype_numeric()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.md)
   : Write Haplotype Feature Matrix as Numeric Dosage Table
@@ -93,6 +97,28 @@ nucleotide sequences, rows=haplotypes, cols=individuals.
   : Write Haplotype Character (Nucleotide) Matrix
 - [`write_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_diversity.md)
   : Write Haplotype Diversity Table
+
+## Genomic prediction pipeline (Tong et al. 2024/2025)
+
+Functions for haplotype-based genomic prediction following Tong et
+al. (2024, Theor Appl Genet 137:274) and Tong et al. (2025, Theor Appl
+Genet 138:267). Accepts pre-adjusted phenotype values (BLUEs/BLUPs) and
+produces GEBV, per-SNP effects, local haplotype GEBV per block, and
+evidence-based block rankings.
+
+- [`prepare_gblup_inputs()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_gblup_inputs.md)
+  : Prepare Genomic Prediction Inputs for External GBLUP Software
+- [`run_haplotype_prediction()`](https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_prediction.md)
+  : Haplotype Prediction and Block Importance from Pre-Adjusted
+  Phenotypes
+- [`backsolve_snp_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/backsolve_snp_effects.md)
+  : Backsolve SNP Effects from GEBV (Tong et al. 2025)
+- [`compute_local_gebv()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_local_gebv.md)
+  : Compute Local Haplotype GEBV per Block (Tong et al. 2025)
+- [`integrate_gwas_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/integrate_gwas_haplotypes.md)
+  : Integrate GWAS QTL Regions with Haplotype Prediction Results
+- [`rank_haplotype_blocks()`](https://FAkohoue.github.io/LDxBlocks/reference/rank_haplotype_blocks.md)
+  : Rank Haplotype Blocks by Evidence Strength
 
 ## Utilities
 

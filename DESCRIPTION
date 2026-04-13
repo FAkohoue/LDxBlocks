@@ -25,12 +25,22 @@ Description: Fast, scalable linkage disequilibrium (LD) block detection for
     for phased and unphased data; diversity metrics (richness, expected
     heterozygosity, Shannon entropy); post-GWAS QTL region definition with
     pleiotropic block detection; haplotype feature matrices for genomic
-    prediction (additive 0/1/2 or presence/absence 0/2 encoding); and
+    prediction (additive 0/1/2 (phased) / 0/1 (unphased) or binary presence/absence 0/1 encoding); and
     output writers for numeric dosage matrices, nucleotide character
     matrices, and diversity CSV formats compatible with rrBLUP, BGLR,
     and ASReml-R; and biological decoding of haplotype strings
     to nucleotide sequences via decode_haplotype_strings().
-    Automatic parameter tuning against GWAS marker coverage is also provided.
+    Automatic parameter tuning against GWAS marker coverage is provided.
+    A complete haplotype-based genomic prediction pipeline implements the
+    Tong et al. (2025, Theor Appl Genet 138:267) haplotype stacking
+    methodology: VanRaden GRM from haplotype features
+    (compute_haplotype_grm), GBLUP via rrBLUP with pre-adjusted
+    phenotypes (BLUEs/BLUPs) as input (run_haplotype_prediction),
+    backsolved per-SNP effects (backsolve_snp_effects), local haplotype
+    GEBV per block (compute_local_gebv), and unified block ranking
+    across three evidence layers: GWAS hits, trait variance, and
+    haplotype diversity (rank_haplotype_blocks,
+    integrate_gwas_haplotypes).
 License: MIT + file LICENSE
 Depends:
     R (>= 4.2.0)
@@ -48,6 +58,7 @@ Suggests:
     gdsfmt,
     BEDMatrix,
     future.apply,
+    rrBLUP,
     ggplot2,
     parallel,
     usethis,

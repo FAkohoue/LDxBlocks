@@ -61,20 +61,6 @@ jobs:
             libjpeg-dev
 
       - name: Install Bioconductor packages
-        if: runner.os != 'Windows'
-        shell: Rscript {0}
-        run: |
-          if (!requireNamespace("BiocManager", quietly = TRUE))
-            install.packages("BiocManager", repos = "https://cloud.r-project.org")
-          BiocManager::install(ask = FALSE, update = FALSE)
-          bioc_pkgs <- c("SNPRelate", "gdsfmt")
-          to_install <- bioc_pkgs[!vapply(bioc_pkgs, requireNamespace,
-                                          logical(1L), quietly = TRUE)]
-          if (length(to_install))
-            BiocManager::install(to_install, ask = FALSE, update = FALSE)
-
-      - name: Install Bioconductor packages
-        if: runner.os == 'Windows'
         shell: Rscript {0}
         run: |
           if (!requireNamespace("BiocManager", quietly = TRUE))

@@ -280,7 +280,7 @@ original Big-LD output</li>
 <td>Block table</td>
 <td>Block table + gene regions</td>
 <td>Block table</td>
-<td>Block table + 8 downstream functions</td>
+<td>Block table + 18 downstream functions</td>
 </tr>
 </tbody>
 </table>
@@ -553,19 +553,19 @@ estimates:</p>
 <code class="sourceCode R"><span><span class="va">div</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity</a></span><span class="op">(</span><span class="va">haps</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">div</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                block_id CHR start_bp end_bp n_snps n_ind n_haplotypes        He</span></span>
-<span><span class="co">#&gt; 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8418056</span></span>
-<span><span class="co">#&gt; 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8390278</span></span>
-<span><span class="co">#&gt; 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8752778</span></span>
-<span><span class="co">#&gt; 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8793056</span></span>
-<span><span class="co">#&gt; 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8463889</span></span>
-<span><span class="co">#&gt; 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8413889</span></span>
-<span><span class="co">#&gt;    Shannon freq_dominant phased</span></span>
-<span><span class="co">#&gt; 1 2.768290     0.3583333  FALSE</span></span>
-<span><span class="co">#&gt; 2 2.654193     0.3000000  FALSE</span></span>
-<span><span class="co">#&gt; 3 2.966925     0.2916667  FALSE</span></span>
-<span><span class="co">#&gt; 4 3.108972     0.2833333  FALSE</span></span>
-<span><span class="co">#&gt; 5 2.649231     0.2833333  FALSE</span></span>
-<span><span class="co">#&gt; 6 2.604423     0.3083333  FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt; 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8488796</span></span>
+<span><span class="co">#&gt; 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8460784</span></span>
+<span><span class="co">#&gt; 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8826331</span></span>
+<span><span class="co">#&gt; 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8866947</span></span>
+<span><span class="co">#&gt; 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8535014</span></span>
+<span><span class="co">#&gt; 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8484594</span></span>
+<span><span class="co">#&gt;    Shannon n_eff_alleles freq_dominant sweep_flag phased</span></span>
+<span><span class="co">#&gt; 1 2.768290         6.321     0.3583333      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 2 2.654193         6.212     0.3000000      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 3 2.966925         8.018     0.2916667      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 4 3.108972         8.285     0.2833333      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 5 2.649231         6.510     0.2833333      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 6 2.604423         6.305     0.3083333      FALSE  FALSE</span></span></code></pre></div>
 <table class="table">
 <thead><tr class="header">
 <th>Metric</th>
@@ -581,8 +581,8 @@ estimates:</p>
 </tr>
 <tr class="even">
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mi>e</mi></msub><annotation encoding="application/x-tex">H_e</annotation></semantics></math></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mo>∑</mo><msubsup><mi>p</mi><mi>i</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">1 - \sum p_i^2</annotation></semantics></math></td>
-<td>Nei expected heterozygosity</td>
+<td>Nei (1973) corrected</td>
+<td>Expected heterozygosity</td>
 </tr>
 <tr class="odd">
 <td>Shannon
@@ -591,9 +591,19 @@ estimates:</p>
 <td>Entropy</td>
 </tr>
 <tr class="even">
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>n</mi><mtext mathvariant="normal">eff</mtext></msub><annotation encoding="application/x-tex">n_{\text{eff}}</annotation></semantics></math></td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mo>∑</mo><msubsup><mi>p</mi><mi>i</mi><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">1/\sum p_i^2</annotation></semantics></math></td>
+<td>Effective number of alleles</td>
+</tr>
+<tr class="odd">
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mo>max</mo></msub><annotation encoding="application/x-tex">f_{\max}</annotation></semantics></math></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>max</mo><mi>i</mi></msub><msub><mi>p</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\max_i p_i</annotation></semantics></math></td>
-<td>Near 1.0 = sweep</td>
+<td>Near 1.0 = possible sweep</td>
+</tr>
+<tr class="even">
+<td><code>sweep_flag</code></td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mo>max</mo></msub><mo>≥</mo><mn>0.90</mn></mrow><annotation encoding="application/x-tex">f_{\max} \geq 0.90</annotation></semantics></math></td>
+<td>Logical sweep indicator</td>
 </tr>
 </tbody>
 </table>
@@ -639,8 +649,8 @@ blocks to define QTL regions and flag pleiotropic blocks:</p>
 <span><span class="co">#&gt; 1       FALSE</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">qtl</span>, <span class="va">pleiotropic</span><span class="op">)</span>      <span class="co"># blocks with hits from both TraitA and TraitB</span></span>
 <span><span class="co">#&gt;  [1] block_id      CHR           start_bp      end_bp        n_snps_block </span></span>
-<span><span class="co">#&gt;  [6] n_sig_markers lead_snp      lead_p        traits        n_traits     </span></span>
-<span><span class="co">#&gt; [11] pleiotropic  </span></span>
+<span><span class="co">#&gt;  [6] n_sig_markers lead_snp      lead_p        lead_beta     sig_snps     </span></span>
+<span><span class="co">#&gt; [11] sig_betas     traits        n_traits      pleiotropic  </span></span>
 <span><span class="co">#&gt; &lt;0 rows&gt; (or 0-length row.names)</span></span></code></pre></div>
 <hr>
 </div>
@@ -660,11 +670,11 @@ schemes and both phased and unphased input:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat_add</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120  45</span></span>
 <span></span>
-<span><span class="co"># Presence/absence 0/2 — for kernel methods or random forest</span></span>
+<span><span class="co"># Presence/absence 0/1 — for kernel methods or random forest</span></span>
 <span><span class="va">feat_pa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span></span>
 <span>  haplotypes <span class="op">=</span> <span class="va">haps</span>,</span>
 <span>  top_n      <span class="op">=</span> <span class="fl">5L</span>,</span>
-<span>  encoding   <span class="op">=</span> <span class="st">"presence_02"</span></span>
+<span>  encoding   <span class="op">=</span> <span class="st">"presence_01"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat_pa</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120  45</span></span></code></pre></div>
@@ -678,10 +688,39 @@ schemes and both phased and unphased input:</p>
 <span><span class="fu"><a href="../reference/write_haplotype_character.html">write_haplotype_character</a></span><span class="op">(</span>haplotypes <span class="op">=</span> <span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span>
 <span>                           out_file <span class="op">=</span> <span class="st">"hap_matrix_character.txt"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
+<h3 id="haplotype-prediction-pipeline-tong-et-al--2025">Haplotype prediction pipeline (Tong et al. 2025)<a class="anchor" aria-label="anchor" href="#haplotype-prediction-pipeline-tong-et-al--2025"></a>
+</h3>
+<p>When pre-adjusted phenotype values (BLUEs or adjusted entry means)
+are available, the full Tong et al. (2025) haplotype stacking pipeline
+runs in a single call. <code>blues</code> accepts a named numeric vector
+or a data frame with <code>id_col</code> and <code>blue_col</code>
+arguments:</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues.csv"</span><span class="op">)</span>  <span class="co"># columns: id, YLD</span></span>
+<span><span class="va">pred</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span></span>
+<span>  geno_matrix <span class="op">=</span> <span class="va">ldx_geno</span>,</span>
+<span>  snp_info    <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span>
+<span>  blocks      <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  blues       <span class="op">=</span> <span class="va">blues</span>,</span>
+<span>  id_col      <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>  blue_col    <span class="op">=</span> <span class="st">"YLD"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">pred</span><span class="op">$</span><span class="va">block_importance</span><span class="op">[</span><span class="va">pred</span><span class="op">$</span><span class="va">block_importance</span><span class="op">$</span><span class="va">important</span>, <span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">pred</span><span class="op">$</span><span class="va">gebv</span>, decreasing <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>  <span class="co"># ranked GEBVs</span></span>
+<span></span>
+<span><span class="co"># Integrate GWAS + variance + diversity evidence</span></span>
+<span><span class="va">priority</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rank_haplotype_blocks.html">rank_haplotype_blocks</a></span><span class="op">(</span></span>
+<span>  diversity   <span class="op">=</span> <span class="va">pred</span><span class="op">$</span><span class="va">diversity</span>,</span>
+<span>  qtl_regions <span class="op">=</span> <span class="va">qtl</span>,          <span class="co"># from define_qtl_regions()</span></span>
+<span>  pred_result <span class="op">=</span> <span class="va">pred</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">priority</span><span class="op">$</span><span class="va">ranked_blocks</span><span class="op">[</span><span class="va">priority</span><span class="op">$</span><span class="va">ranked_blocks</span><span class="op">$</span><span class="va">priority_score</span> <span class="op">==</span> <span class="fl">3</span>, <span class="op">]</span></span></code></pre></div>
+</div>
+<div class="section level3">
 <h3 id="building-a-haplotype-grm-for-gblup">Building a haplotype GRM for GBLUP<a class="anchor" aria-label="anchor" href="#building-a-haplotype-grm-for-gblup"></a>
 </h3>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat_add</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat_add</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat_add</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat_add</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">G_hap</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120 120</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">G_hap</span><span class="op">)</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
@@ -692,7 +731,7 @@ schemes and both phased and unphased input:</p>
 <div class="section level2">
 <h2 id="step-8-parameter-auto-tuning">Step 8 — Parameter auto-tuning<a class="anchor" aria-label="anchor" href="#step-8-parameter-auto-tuning"></a>
 </h2>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html" class="external-link">expand.grid</a></span><span class="op">(</span></span>
 <span>  CLQcut <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.45</span>, <span class="fl">0.55</span>, <span class="fl">0.65</span><span class="op">)</span>, clstgap <span class="op">=</span> <span class="fl">1e5</span>, leng <span class="op">=</span> <span class="fl">15</span>,</span>
 <span>  subSegmSize <span class="op">=</span> <span class="fl">100</span>, split <span class="op">=</span> <span class="cn">FALSE</span>, checkLargest <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -712,6 +751,9 @@ schemes and both phased and unphased input:</p>
 <span><span class="va">result</span><span class="op">$</span><span class="va">best_params</span></span>
 <span><span class="co">#&gt; $CLQcut</span></span>
 <span><span class="co">#&gt; [1] 0.45</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $min_freq</span></span>
+<span><span class="co">#&gt; [1] 0.01</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $clstgap</span></span>
 <span><span class="co">#&gt; [1] 1e+05</span></span>
@@ -752,7 +794,7 @@ schemes and both phased and unphased input:</p>
 <div class="section level2">
 <h2 id="complete-pipeline-one-block">Complete pipeline (one block)<a class="anchor" aria-label="anchor" href="#complete-pipeline-one-block"></a>
 </h2>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/FAkohoue/LDxBlocks" class="external-link">LDxBlocks</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 1. Open streaming backend (VCF auto-converts to GDS cache on first call)</span></span>
@@ -772,7 +814,8 @@ schemes and both phased and unphased input:</p>
 <span>                                        encoding <span class="op">=</span> <span class="st">"additive_012"</span>,</span>
 <span>                                        scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Numeric dosage matrix: rows=haplotypes, cols=individuals, values=0/1/2/NA</span></span>
+<span><span class="co"># Numeric dosage matrix: rows=haplotypes, cols=individuals</span></span>
+<span><span class="co"># values: 0/1/2/NA for phased data; 0/1/NA for unphased data</span></span>
 <span><span class="fu"><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric</a></span><span class="op">(</span><span class="va">feat</span>, <span class="st">"hap_matrix_numeric.csv"</span>,</span>
 <span>                         haplotypes <span class="op">=</span> <span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span><span class="op">)</span></span>
 <span></span>
@@ -797,6 +840,31 @@ block detection method for dense genome sequencing data based on
 interval graph modeling and dynamic programming. <em>Bioinformatics</em>
 <strong>34</strong>(4):588-596. <a href="https://doi.org/10.1093/bioinformatics/btx609" class="external-link uri">https://doi.org/10.1093/bioinformatics/btx609</a>
 </li>
+<li>Difabachew YF, Frisch M, Langstroff AL, Stahl A, Wittkop B, Snowdon
+RJ, Koch M, Kirchhoff M, Csélényi L, Wolf M, Förster J, Weber S, Okoye
+UJ, Zenke-Philippi C (2023). Genomic prediction with haplotype blocks in
+wheat. <em>Frontiers in Plant Science</em> <strong>14</strong>:1168547.
+<a href="https://doi.org/10.3389/fpls.2023.1168547" class="external-link uri">https://doi.org/10.3389/fpls.2023.1168547</a>
+</li>
+<li>Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype
+blocks for genomic prediction: a comparative evaluation in multiple crop
+datasets. <em>Frontiers in Plant Science</em>
+<strong>14</strong>:1217589. <a href="https://doi.org/10.3389/fpls.2023.1217589" class="external-link uri">https://doi.org/10.3389/fpls.2023.1217589</a>
+</li>
+<li>Pook T, Schlather M, de los Campos G, Mayer M, Schoen CC, Simianer H
+(2019). HaploBlocker: Creation of subgroup-specific haplotype blocks and
+libraries. <em>Genetics</em> <strong>212</strong>(4):1045-1061. <a href="https://doi.org/10.1534/genetics.119.302283" class="external-link uri">https://doi.org/10.1534/genetics.119.302283</a>
+</li>
+<li>Tong J, Tarekegn ZT, Jambuthenne D, Alahmad S, Periyannan S, Hickey
+L, Dinglasan E, Hayes B (2024). Stacking beneficial haplotypes from the
+Vavilov wheat collection to accelerate breeding for multiple disease
+resistance. <em>Theoretical and Applied Genetics</em>
+<strong>137</strong>:274. <a href="https://doi.org/10.1007/s00122-024-04784-w" class="external-link uri">https://doi.org/10.1007/s00122-024-04784-w</a>
+</li>
+<li>Tong J et al. (2025). Haplotype stacking to improve stability of
+stripe rust resistance in wheat. <em>Theoretical and Applied
+Genetics</em> <strong>138</strong>:267. <a href="https://doi.org/10.1007/s00122-025-05045-0" class="external-link uri">https://doi.org/10.1007/s00122-025-05045-0</a>
+</li>
 <li>Mangin B, Siberchicot A, Nicolas S, Doligez A, This P,
 Cierco-Ayrolles C (2012). Novel measures of linkage disequilibrium that
 correct the bias due to population structure and relatedness.
@@ -817,10 +885,6 @@ predictions across multiple populations. <em>Genetics</em>
 <li>Nei M (1973). Analysis of gene diversity in subdivided populations.
 <em>Proceedings of the National Academy of Sciences</em>
 <strong>70</strong>(12):3321-3323. <a href="https://doi.org/10.1073/pnas.70.12.3321" class="external-link uri">https://doi.org/10.1073/pnas.70.12.3321</a>
-</li>
-<li>Tong J, Gorjanc G, Li Z, et al. (2024). Haplotype-based prediction
-of genomic breeding values in plant and animal populations.
-<em>Theoretical and Applied Genetics</em> <strong>137</strong>:274. <a href="https://doi.org/10.1007/s00122-024-04784-w" class="external-link uri">https://doi.org/10.1007/s00122-024-04784-w</a>
 </li>
 </ul>
 </div>

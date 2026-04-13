@@ -43,14 +43,14 @@ genome-wide summary) and columns:
 ``` r
 # \donttest{
 blocks <- data.frame(
-  CHR      = c("chr1","chr1","chr2"),
-  start.bp = c(1000, 500000, 2000),
-  end.bp   = c(80000, 650000, 200000)
+  CHR      = c("1", "1", "2"),
+  start.bp = c(1000L, 500000L, 2000L),
+  end.bp   = c(80000L, 650000L, 200000L)
 )
 summarise_blocks(blocks)
 #>      CHR n_blocks min_bp median_bp  mean_bp max_bp total_bp_covered
-#> 1   chr1        2  79001    114501 114501.0 150001           229002
-#> 2   chr2        1 198001    198001 198001.0 198001           198001
+#> 1      1        2  79001    114501 114501.0 150001           229002
+#> 2      2        1 198001    198001 198001.0 198001           198001
 #> 3 GENOME        3  79001    150001 142334.3 198001           427003
 # }
 ```

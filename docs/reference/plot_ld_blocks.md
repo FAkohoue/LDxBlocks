@@ -29,8 +29,8 @@ plot_ld_blocks(
 
 - highlight_blocks:
 
-  Optional character vector of block IDs (from `block_name` column) to
-  highlight with a border. `NULL` (default) highlights nothing.
+  Optional integer vector of row indices in `blocks` to highlight with a
+  solid border outline. `NULL` (default) highlights nothing.
 
 - mb_scale:
 
@@ -46,7 +46,7 @@ A `ggplot` object.
 # \donttest{
 if (requireNamespace("ggplot2", quietly = TRUE)) {
   blocks <- data.frame(
-    CHR = c("chr1","chr1","chr2","chr2"),
+    CHR      = c("1", "1", "2", "2"),
     start.bp = c(1e5, 6e5, 2e5, 8e5),
     end.bp   = c(5e5, 9e5, 7e5, 1.5e6)
   )

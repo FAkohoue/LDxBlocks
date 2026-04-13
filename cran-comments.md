@@ -1,9 +1,6 @@
 ## R CMD check results
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 0 note
 
-* checking for future file timestamps: unable to verify current time
-  This is a transient network issue on the check machine and is not
-  reproducible. No file in the package has a future timestamp.
 
 * This is a new submission.
 

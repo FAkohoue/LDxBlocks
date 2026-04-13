@@ -136,7 +136,7 @@ The following components are unchanged from Kim et al. (2018):
 | Genomic prediction | No | No | No | Yes |
 | GWAS-driven tuning | No | No | No | Yes |
 | Input formats | R matrix | PLINK, VCF | PLINK | 6 formats |
-| Output | Block table | Block table + gene regions | Block table | Block table + 8 downstream functions |
+| Output | Block table | Block table + gene regions | Block table | Block table + 18 downstream functions |
 
 ---
 
@@ -318,9 +318,11 @@ head(div)
 | Metric | Formula | Interpretation |
 |--------|---------|----------------|
 | Richness ($k$) | unique strings | High = diverse |
-| $H_e$ | $1 - \sum p_i^2$ | Nei expected heterozygosity |
+| $H_e$ | Nei (1973) corrected | Expected heterozygosity |
 | Shannon ($H'$) | $-\sum p_i \log p_i$ | Entropy |
-| $f_{\max}$ | $\max_i p_i$ | Near 1.0 = sweep |
+| $n_{\text{eff}}$ | $1/\sum p_i^2$ | Effective number of alleles |
+| $f_{\max}$ | $\max_i p_i$ | Near 1.0 = possible sweep |
+| `sweep_flag` | $f_{\max} \geq 0.90$ | Logical sweep indicator |
 
 ```{r diversity-plot, fig.cap="Expected heterozygosity per LD block"}
 if (requireNamespace("ggplot2", quietly = TRUE)) {
@@ -378,11 +380,11 @@ feat_add <- build_haplotype_feature_matrix(
 )
 dim(feat_add)
 
-# Presence/absence 0/2 — for kernel methods or random forest
+# Presence/absence 0/1 — for kernel methods or random forest
 feat_pa <- build_haplotype_feature_matrix(
   haplotypes = haps,
   top_n      = 5L,
-  encoding   = "presence_02"
+  encoding   = "presence_01"
 )
 dim(feat_pa)
 ```
@@ -397,6 +399,35 @@ write_haplotype_numeric(feat_add, "hap_matrix_numeric.csv",
 # Character: nucleotide sequence per individual per haplotype allele
 write_haplotype_character(haplotypes = haps, snp_info = ldx_snp_info,
                            out_file = "hap_matrix_character.txt")
+```
+
+### Haplotype prediction pipeline (Tong et al. 2025)
+
+When pre-adjusted phenotype values (BLUEs or adjusted entry means)
+are available, the full Tong et al. (2025) haplotype stacking pipeline
+runs in a single call. `blues` accepts a named numeric vector or a
+data frame with `id_col` and `blue_col` arguments:
+
+```{r hap-prediction, eval=FALSE}
+blues <- read.csv("blues.csv")  # columns: id, YLD
+pred  <- run_haplotype_prediction(
+  geno_matrix = ldx_geno,
+  snp_info    = ldx_snp_info,
+  blocks      = blocks,
+  blues       = blues,
+  id_col      = "id",
+  blue_col    = "YLD"
+)
+pred$block_importance[pred$block_importance$important, ]
+sort(pred$gebv, decreasing = TRUE)  # ranked GEBVs
+
+# Integrate GWAS + variance + diversity evidence
+priority <- rank_haplotype_blocks(
+  diversity   = pred$diversity,
+  qtl_regions = qtl,          # from define_qtl_regions()
+  pred_result = pred
+)
+priority$ranked_blocks[priority$ranked_blocks$priority_score == 3, ]
 ```
 
 ### Building a haplotype GRM for GBLUP
@@ -456,7 +487,8 @@ feat <- build_haplotype_feature_matrix(haps,
                                         encoding = "additive_012",
                                         scale_features = TRUE)
 
-# Numeric dosage matrix: rows=haplotypes, cols=individuals, values=0/1/2/NA
+# Numeric dosage matrix: rows=haplotypes, cols=individuals
+# values: 0/1/2/NA for phased data; 0/1/NA for unphased data
 write_haplotype_numeric(feat, "hap_matrix_numeric.csv",
                          haplotypes = haps, snp_info = be$snp_info)
 
@@ -478,6 +510,16 @@ close_backend(be)
 
 - Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block detection method for dense genome sequencing data based on interval graph modeling and dynamic programming. *Bioinformatics* **34**(4):588-596.
   <https://doi.org/10.1093/bioinformatics/btx609>
+- Difabachew YF, Frisch M, Langstroff AL, Stahl A, Wittkop B, Snowdon RJ, Koch M, Kirchhoff M, Csélényi L, Wolf M, Förster J, Weber S, Okoye UJ, Zenke-Philippi C (2023). Genomic prediction with haplotype blocks in wheat. *Frontiers in Plant Science* **14**:1168547.
+  <https://doi.org/10.3389/fpls.2023.1168547>
+- Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype blocks for genomic prediction: a comparative evaluation in multiple crop datasets. *Frontiers in Plant Science* **14**:1217589.
+  <https://doi.org/10.3389/fpls.2023.1217589>
+- Pook T, Schlather M, de los Campos G, Mayer M, Schoen CC, Simianer H (2019). HaploBlocker: Creation of subgroup-specific haplotype blocks and libraries. *Genetics* **212**(4):1045-1061.
+  <https://doi.org/10.1534/genetics.119.302283>
+- Tong J, Tarekegn ZT, Jambuthenne D, Alahmad S, Periyannan S, Hickey L, Dinglasan E, Hayes B (2024). Stacking beneficial haplotypes from the Vavilov wheat collection to accelerate breeding for multiple disease resistance. *Theoretical and Applied Genetics* **137**:274.
+  <https://doi.org/10.1007/s00122-024-04784-w>
+- Tong J et al. (2025). Haplotype stacking to improve stability of stripe rust resistance in wheat. *Theoretical and Applied Genetics* **138**:267.
+  <https://doi.org/10.1007/s00122-025-05045-0>
 - Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles C (2012). Novel measures of linkage disequilibrium that correct the bias due to population structure and relatedness. *Heredity* **108**(3):285-291.
   <https://doi.org/10.1038/hdy.2011.73>
 - VanRaden PM (2008). Efficient methods to compute genomic predictions. *Journal of Dairy Science* **91**(11):4414-4423.
@@ -488,5 +530,4 @@ close_backend(be)
   <https://doi.org/10.1534/genetics.109.104935>
 - Nei M (1973). Analysis of gene diversity in subdivided populations. *Proceedings of the National Academy of Sciences* **70**(12):3321-3323.
   <https://doi.org/10.1073/pnas.70.12.3321>
-- Tong J, Gorjanc G, Li Z, et al. (2024). Haplotype-based prediction of genomic breeding values in plant and animal populations. *Theoretical and Applied Genetics* **137**:274.
-  <https://doi.org/10.1007/s00122-024-04784-w>
+

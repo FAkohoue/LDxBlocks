@@ -78,17 +78,17 @@ This is the recommended entry point for genome-wide analyses.
 }
 \examples{
 \donttest{
-set.seed(42)
-geno <- matrix(sample(0:2, 80 * 300, replace = TRUE), 80, 300)
-rownames(geno) <- paste0("ind", 1:80)
-colnames(geno) <- paste0("rs", 1:300)
-snp_info <- data.frame(
-  CHR = rep(paste0("chr", 1:3), each = 100),
-  SNP = colnames(geno),
-  POS = unlist(lapply(1:3, function(i) sort(sample(1e6:200e6, 100))))
+# Use the package example data — 120 individuals, 230 SNPs, 3 chromosomes,
+# 9 simulated LD blocks (3 per chromosome).
+data(ldx_geno,     package = "LDxBlocks")
+data(ldx_snp_info, package = "LDxBlocks")
+blocks <- run_Big_LD_all_chr(
+  ldx_geno, ldx_snp_info,
+  method = "r2", CLQcut = 0.55, leng = 15L,
+  subSegmSize = 100L, verbose = FALSE
 )
-blocks <- run_Big_LD_all_chr(geno, snp_info, CLQcut = 0.6, verbose = FALSE)
 head(blocks)
+summarise_blocks(blocks)
 }
 
 }

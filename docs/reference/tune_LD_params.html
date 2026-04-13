@@ -116,7 +116,13 @@ marker to a block, returning the final blocks and assignments.</p>
 <dt id="arg-grid">grid<a class="anchor" aria-label="anchor" href="#arg-grid"></a></dt>
 <dd><p>Optional data frame of parameter combinations. Each row is one
 combination; columns must match parameter names of <code>Big_LD</code>. If
-<code>NULL</code> (default), a sensible four-point grid on <code>CLQcut</code> is used.</p></dd>
+<code>NULL</code> (default), a sensible grid over <code>CLQcut</code> (4 values)
+and <code>min_freq</code> (2 values) is used, giving 8 combinations. Both
+are treated as hyperparameters following Weber SE et al. (2023,
+<em>Front. Plant Sci.</em> <strong>14</strong>:1217589,
+<a href="https://doi.org/10.3389/fpls.2023.1217589" class="external-link">doi:10.3389/fpls.2023.1217589</a>
+), who show that no single threshold
+is universally optimal across datasets and traits.</p></dd>
 
 
 <dt id="arg-chromosomes">chromosomes<a class="anchor" aria-label="anchor" href="#arg-chromosomes"></a></dt>
@@ -172,6 +178,16 @@ combinations in the returned list. Default <code>TRUE</code>.</p></dd>
 
 
 </dl></div>
+    <div class="section level2">
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype
+blocks for genomic prediction: a comparative evaluation in multiple
+crop datasets. <em>Frontiers in Plant Science</em> <strong>14</strong>:1217589.
+<a href="https://doi.org/10.3389/fpls.2023.1217589" class="external-link">doi:10.3389/fpls.2023.1217589</a></p>
+<p>Difabachew YF et al. (2023). Genomic prediction with haplotype
+blocks in wheat. <em>Frontiers in Plant Science</em> <strong>14</strong>:1168547.
+<a href="https://doi.org/10.3389/fpls.2023.1168547" class="external-link">doi:10.3389/fpls.2023.1168547</a></p>
+    </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></code>, <code><a href="Big_LD.html">Big_LD</a></code></p></div>

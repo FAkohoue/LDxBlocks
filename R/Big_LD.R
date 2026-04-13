@@ -155,7 +155,7 @@ Big_LD <- function(
       if ((i - lastnum) > 5L * subSegmSize) { modeNum <- 2L; break }
 
       found_cut <- FALSE
-      for (j in c(1L, 10L, leng)) {
+      for (j in unique(c(1L, min(10L, leng), leng))) {
         l_start <- i - j + 1L; l_end <- i
         r_start <- i + 1L;     r_end <- i + j
         if (r_end > p) next
@@ -564,8 +564,10 @@ Big_LD <- function(
   out$start <- match(out$start.bp, all_bp)
   out$end   <- match(out$end.bp,   all_bp)
   out <- out[order(out$start),]
-  out[,c("start","end")]       <- t(apply(out[,c("start","end")],       1L, sort))
-  out[,c("start.bp","end.bp")] <- t(apply(out[,c("start.bp","end.bp")], 1L, sort))
+  if (nrow(out) > 0L) {
+    out[,c("start","end")]       <- t(apply(out[,c("start","end")],       1L, sort))
+    out[,c("start.bp","end.bp")] <- t(apply(out[,c("start.bp","end.bp")], 1L, sort))
+  }
 
   if (isTRUE(appendrare)) {
     prep_full <- list(V_inv_sqrt = V_inv_sqrt)

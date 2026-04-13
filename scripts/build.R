@@ -130,6 +130,10 @@ devtools::check()
 library(LDxBlocks)
 # Build everything except home, then build home separately
 #pkgdown::build_favicons(overwrite = TRUE)
+
+#pkgdown::check_pkgdown()
+
+
 pkgdown::build_reference()
 pkgdown::build_articles()
 pkgdown::build_news()

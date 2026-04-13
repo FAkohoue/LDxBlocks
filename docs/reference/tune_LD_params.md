@@ -56,7 +56,13 @@ tune_LD_params(
 
   Optional data frame of parameter combinations. Each row is one
   combination; columns must match parameter names of `Big_LD`. If `NULL`
-  (default), a sensible four-point grid on `CLQcut` is used.
+  (default), a sensible grid over `CLQcut` (4 values) and `min_freq` (2
+  values) is used, giving 8 combinations. Both are treated as
+  hyperparameters following Weber SE et al. (2023, *Front. Plant Sci.*
+  **14**:1217589,
+  [doi:10.3389/fpls.2023.1217589](https://doi.org/10.3389/fpls.2023.1217589)
+  ), who show that no single threshold is universally optimal across
+  datasets and traits.
 
 - chromosomes:
 
@@ -115,6 +121,17 @@ A named list:
 
   Input `gwas_df` with an added column `LD_block`. Entries ending in `*`
   denote forced assignments.
+
+## References
+
+Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype blocks
+for genomic prediction: a comparative evaluation in multiple crop
+datasets. *Frontiers in Plant Science* **14**:1217589.
+[doi:10.3389/fpls.2023.1217589](https://doi.org/10.3389/fpls.2023.1217589)
+
+Difabachew YF et al. (2023). Genomic prediction with haplotype blocks in
+wheat. *Frontiers in Plant Science* **14**:1168547.
+[doi:10.3389/fpls.2023.1168547](https://doi.org/10.3389/fpls.2023.1168547)
 
 ## See also
 

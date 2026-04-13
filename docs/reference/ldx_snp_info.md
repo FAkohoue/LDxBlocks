@@ -1,6 +1,6 @@
 # Example SNP Information Table
 
-Genomic metadata for the 200 SNPs in
+Genomic metadata for the 230 SNPs in
 [`ldx_geno`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_geno.md).
 
 ## Usage
