@@ -97,9 +97,10 @@ Big_LD <- function(
     appendrare   = FALSE,
     singleton_as_block = FALSE,
     checkLargest = FALSE,
-    CLQmode      = "Density",
-    kin_method   = "chol",
-    split        = FALSE,
+    CLQmode         = c("Density", "Maximal", "Louvain", "Leiden"),
+    kin_method      = "chol",
+    split           = FALSE,
+    max_bp_distance = 0L,
     digits       = -1L,
     n_threads    = 1L,
     seed         = NULL,
@@ -331,13 +332,15 @@ Big_LD <- function(
   }
 
   # -- subBigLD --------------------------------------------------------------
-  subBigLD <- function(sg, si, ag, CLQcut, clstgap, CLQmode, checkLargest, split, digits, n_threads) {
+  subBigLD <- function(sg, si, ag, CLQcut, clstgap, CLQmode, checkLargest, split, digits, n_threads, max_bp_distance = 0L) {
     bv   <- CLQD(sg, si, ag, CLQcut = CLQcut, clstgap = clstgap, CLQmode = CLQmode,
                  codechange = FALSE, checkLargest = checkLargest, split = split,
-                 digits = digits, n_threads = n_threads, verbose = FALSE)
+                 digits = digits, n_threads = n_threads, max_bp_distance = max_bp_distance, verbose = FALSE)
+    if (all(is.na(bv))) return(matrix(integer(0), nrow=0L, ncol=2L))
     bins <- seq_len(max(bv[!is.na(bv)]))
     cl   <- lapply(bins, function(x) sort(which(bv == x)))
-    cl   <- cl[order(vapply(cl, min, numeric(1L)))]
+    cl   <- Filter(length, cl)  # drop empty bins (Louvain IDs may not be 1..n)
+    if (length(cl)) cl <- cl[order(vapply(cl, min, numeric(1L)))]
     nowLD <- constructLDblock(cl, si)
     if (is.null(nowLD)) return(matrix(integer(0), nrow=0L, ncol=2L))
     if (!is.matrix(nowLD)) nowLD <- matrix(nowLD, nrow=1L)
@@ -346,7 +349,8 @@ Big_LD <- function(
 
   # -- appendSGTs ------------------------------------------------------------
   appendSGTs <- function(LDblocks, Ogeno, OSNPinfo, CLQcut, clstgap,
-                         checkLargest, CLQmode, prep_full, split, digits, n_threads) {
+                         checkLargest, CLQmode, prep_full, split, digits, n_threads,
+                         max_bp_distance = 0L) {
     if (isTRUE(verbose)) message("[Big_LD] appendSGTs: assigning rare SNPs.")
     expandB <- NULL
 
@@ -384,8 +388,14 @@ Big_LD <- function(
 
     if (nrow(LDblocks) > 1L) {
       for (i in seq_len(nrow(LDblocks) - 1L)) {
+        if (!length(firstSNPs)) next  # skip if first block has no SNPs in OSNPinfo
         secondB    <- LDblocks[i+1L, ]
         secondSNPs <- which(OSNPinfo[,2L] >= secondB$start.bp & OSNPinfo[,2L] <= secondB$end.bp)
+        if (!length(secondSNPs)) {
+          expandB <- rbind(expandB, range(firstSNPs))
+          firstSNPs <- firstSNPs  # no next block found; keep and skip
+          next
+        }
         OSNPs      <- setdiff(max(firstSNPs):min(secondSNPs), c(max(firstSNPs), min(secondSNPs)))
         if (length(OSNPs) == 0L) {
           expandB <- rbind(expandB, range(firstSNPs)); firstSNPs <- secondSNPs
@@ -400,23 +410,25 @@ Big_LD <- function(
           cor2ratio <- colSums(rv2 > CLQcut) / length(secondSNPs)
           cor1numT  <- c(1L, cor1ratio > 0.6, 0L)
           cor2numT  <- c(0L, cor2ratio > 0.6, 1L)
-          p1  <- max(firstSNPs) + max(which(cor1numT > 0)) - 1L
-          p2  <- max(firstSNPs) + max(which(cor2numT > 0)) - 1L
+          p1  <- min(max(firstSNPs) + max(which(cor1numT > 0)) - 1L, ncol(Ogeno))
+          p2  <- min(max(firstSNPs) + max(which(cor2numT > 0)) - 1L, ncol(Ogeno))
+          p2  <- max(p2, min(secondSNPs))  # ensure p2 <= max(secondSNPs) direction
           NF  <- min(firstSNPs):p1
-          NS  <- p2:max(secondSNPs)
+          NS  <- min(p2, max(secondSNPs)):max(secondSNPs)
           if (max(NF) < min(NS)) {
             expandB <- rbind(expandB, range(NF))
             reO <- setdiff(min(NF):max(NS), c(NF, NS))
             if (length(reO) > 1L) {
               sb <- subBigLD(Ogeno[,reO], OSNPinfo[reO,], ag_full[,reO,drop=FALSE],
                              CLQcut, clstgap, CLQmode, checkLargest, split, digits, n_threads)
-              expandB <- rbind(expandB, sb + min(reO) - 1L)
+              if (nrow(sb) > 0L) expandB <- rbind(expandB, sb + min(reO) - 1L)
             }
             firstSNPs <- NS
           } else {
             rng <- min(firstSNPs):max(secondSNPs)
             sb  <- subBigLD(Ogeno[,rng], OSNPinfo[rng,], ag_full[,rng,drop=FALSE],
                             CLQcut, clstgap, CLQmode, checkLargest, split, digits, n_threads)
+            if (nrow(sb) == 0L) { firstSNPs <- secondSNPs; next }
             sb  <- sb + min(rng) - 1L
             if (nrow(sb) == 1L) firstSNPs <- sb[1L,1L]:sb[1L,2L]
             else { expandB <- rbind(expandB, sb[-nrow(sb),]); firstSNPs <- sb[nrow(sb),1L]:sb[nrow(sb),2L] }
@@ -425,7 +437,7 @@ Big_LD <- function(
       }
     }
 
-    if (max(firstSNPs) < (ncol(Ogeno) - 1L)) {
+    if (length(firstSNPs) > 0L && max(firstSNPs) < (ncol(Ogeno) - 1L)) {
       OSNPs <- (max(firstSNPs)+1L):ncol(Ogeno)
       rv2   <- compute_r2_cpp(ag_full[,c(firstSNPs,OSNPs),drop=FALSE],
                               digits=as.integer(digits), n_threads=as.integer(n_threads))
@@ -441,10 +453,11 @@ Big_LD <- function(
                        CLQcut, clstgap, CLQmode, checkLargest, split, digits, n_threads)
         expandB <- rbind(expandB, sb + min(reO) - 1L)
       }
-    } else {
+    } else if (length(firstSNPs) > 0L) {
       expandB <- rbind(expandB, range(firstSNPs))
     }
 
+    if (is.null(expandB) || nrow(expandB) == 0L) return(LDblocks)
     expandB <- expandB[expandB[,1L] != expandB[,2L], , drop = FALSE]
     data.frame(start      = expandB[,1L],
                end        = expandB[,2L],
@@ -476,7 +489,7 @@ Big_LD <- function(
 
     bv   <- CLQD(sg, si, ag, CLQcut = CLQcut, clstgap = clstgap, CLQmode = CLQmode,
                  codechange = FALSE, checkLargest = checkLargest, split = split,
-                 digits = digits, n_threads = n_threads, verbose = verbose)
+                 digits = digits, n_threads = n_threads, max_bp_distance = max_bp_distance, verbose = verbose)
     # Collect singleton indices (NA in bin vector = no clique partner found)
     if (isTRUE(singleton_as_block)) {
       sing_local <- which(is.na(bv))           # local indices within segment
@@ -488,7 +501,8 @@ Big_LD <- function(
     if (!non_empty) { nowLD <- matrix(integer(0), nrow=0L, ncol=2L) } else {
       bins <- seq_len(max(bv[!is.na(bv)]))
       cl   <- lapply(bins, function(x) sort(which(bv == x)))
-      cl   <- cl[order(vapply(cl, min, numeric(1L)))]
+      cl   <- Filter(length, cl)  # drop empty bins (Louvain IDs may not be 1..n)
+      if (length(cl)) cl <- cl[order(vapply(cl, min, numeric(1L)))]
       nowLD <- constructLDblock(cl, si)
       if (!is.null(nowLD)) {
         if (!is.matrix(nowLD)) nowLD <- matrix(nowLD, nrow = 1L)
@@ -522,7 +536,8 @@ Big_LD <- function(
                     digits=digits, n_threads=n_threads, verbose=FALSE)
         bins <- seq_len(max(bv[!is.na(bv)]))
         cl   <- lapply(bins, function(x) sort(which(bv == x)))
-        cl   <- cl[order(vapply(cl, min, numeric(1L)))]
+        cl   <- Filter(length, cl)  # drop empty bins (Louvain IDs non-contiguous)
+        if (length(cl)) cl <- cl[order(vapply(cl, min, numeric(1L)))]
         tmp  <- constructLDblock(cl, SNPinfo[rng[1L]:rng[2L],])
         tmp  <- tmp + (rng[1L]-1L); tmp <- tmp[order(tmp[,1L]),,drop=FALSE]
         ii   <- sum(!is.na(newLDblocks[,1L])) + 1L

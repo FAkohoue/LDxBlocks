@@ -29,6 +29,7 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/integrate_gwas_haplotypes.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/LDxBlocks-package.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/ldx_blocks.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/ldx_blues.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/ldx_geno.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/ldx_gwas.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/ldx_snp_info.html</loc></url>
@@ -41,6 +42,7 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/rank_haplotype_blocks.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/read_geno.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/read_geno_bigmemory.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_prediction.html</loc></url>

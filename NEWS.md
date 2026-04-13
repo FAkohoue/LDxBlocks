@@ -1,3 +1,54 @@
+## LDxBlocks 0.3.1 (development)
+
+### WGS-scale acceleration — three new approaches
+
+- **Louvain/Leiden community detection** (`CLQmode = "Louvain"` or `"Leiden"`):
+  Polynomial-time O(n log n) community detection replaces Bron-Kerbosch
+  (`igraph::max_cliques()`) which has exponential worst-case complexity.
+  The original Big-LD run on a 3M-SNP WGS panel found 4.26 million maximal
+  cliques in a single 1500-SNP window and ran for > 1 hour without completing.
+  Louvain/Leiden finish the same window in < 1 second. Block boundaries are
+  equivalent to or better than the Density mode for WGS panels where LD
+  structure is dense. Available in `CLQD()`, `Big_LD()`, `run_Big_LD_all_chr()`,
+  `tune_LD_params()`, and `run_ldx_pipeline()`. Edge weights are inversely
+  proportional to base-pair distance so local LD structure is respected.
+
+- **Sparse LD computation** (`max_bp_distance` parameter):
+  When `max_bp_distance > 0`, only SNP pairs within that physical distance
+  have their r² computed via `compute_r2_sparse_cpp()`. Pairs beyond the
+  threshold are assumed to be in negligible LD and set to zero in the
+  adjacency matrix. This reduces O(p²) LD computation to near-O(p) for
+  WGS panels — at 500 kb, approximately 70–90% of pairs are skipped.
+  Available in `CLQD()`, propagated through all callers. Default `0L`
+  (disabled) preserves original behaviour.
+
+- **Memory-mapped genotype store** (`read_geno_bigmemory()`):
+  Wraps any genotype source in a `bigmemory::big.matrix` backed by a binary
+  file on disk. `read_chunk()` retrieves columns via OS page faults — only
+  the requested bytes are loaded into RAM. Peak RAM is proportional to
+  `n_samples × subSegmSize × 8 bytes`, not the full genome matrix.
+  Backing files persist across R sessions: supply the `.desc` path to
+  reattach without re-loading source data. Storage type `"char"` (1 byte per
+  cell) saves 8× RAM vs double for 0/1/2 dosage values.
+  Requires `bigmemory` (added to Suggests).
+
+### Recommended configuration for 3M-SNP WGS panels
+
+```r
+blocks <- run_Big_LD_all_chr(
+  be,
+  CLQmode         = "Louvain",   # polynomial — no clique blowup
+  CLQcut          = 0.70,        # sparser LD graph
+  max_bp_distance = 500000L,     # skip pairs > 500 kb
+  subSegmSize     = 500L,        # smaller windows for safety
+  leng            = 50L,         # narrow boundary scan for WGS density
+  checkLargest    = TRUE,        # belt-and-suspenders for Density mode
+  n_threads       = n_threads
+)
+```
+
+---
+
 ## LDxBlocks 0.3.0
 
 ### Breaking changes
@@ -30,6 +81,16 @@
   - Phased mode: two-gamete string `"011|100"` per individual per block.
   - Blocks are strictly per-chromosome; cross-chromosome blocks are
     architecturally impossible.
+- **Enhanced diversity metrics** (`compute_haplotype_diversity()`):
+  - `n_eff_alleles`: effective number of alleles = 1/Σpᵢ² (Hill 1973),
+    ranging from 1 (monomorphic) to k (equal frequencies).
+  - `sweep_flag`: TRUE when `freq_dominant ≥ 0.90`, flagging possible
+    selective sweeps or strong founder effects (Difabachew et al. 2023).
+  - `He` is now sample-size corrected following Nei (1973):
+    He = n/(n-1) × (1 − Σpᵢ²).
+  - Output now includes `CHR`, `start_bp`, `end_bp`, `n_snps` columns
+    for direct use in genomic region analyses.
+
 - **Haplotype string decoder** (`decode_haplotype_strings()`):
   - Converts raw dosage strings (e.g. `"02110"`) to nucleotide sequences
     (e.g. `"AGTTA"`) using REF/ALT from `snp_info`.
@@ -37,10 +98,13 @@
     dosage_string, nucleotide_sequence, frequency, n_carriers, snp_positions,
     snp_alleles.
 - **Feature matrix** (`build_haplotype_feature_matrix()`):
-  - New `encoding =` parameter: `"additive_012"` (default) or `"presence_02"`.
-  - Phased + `"additive_012"`: true 0/1/2 allele counts per gamete.
-  - Unphased + `"additive_012"`: 0 or 2 (1 not identifiable without phase).
-  - `"presence_02"`: 0/2 presence/absence for kernel methods or random forests.
+  - New `encoding =` parameter: `"additive_012"` (default) or `"presence_01"`.
+  - Phased + `"additive_012"`: true 0/1/2 allele counts per gamete (0=absent,
+    1=one gamete, 2=both gametes).
+  - Unphased + `"additive_012"`: 0/1/NA — 1=present, 0=absent. The value 2
+    is not used because homozygosity cannot be inferred from unphased strings.
+  - `"presence_01"`: 0/1 presence/absence for kernel methods or random forests
+    (formerly `"presence_02"`; `"presence_02"` accepted as a backward-compat alias).
   - New `min_freq =` parameter to drop rare haplotype allele columns.
   - `top_n` default changed from `5L` to `NULL` (retain all alleles above
     `min_freq`).
@@ -49,6 +113,11 @@
   - Flags pleiotropic blocks (significant hits from multiple traits).
   - Implements the haploblock-based QTL cataloguing approach of
     Tong et al. (2024) *Theoretical and Applied Genetics* 137:274.
+  - Now accepts optional `BETA` column in `gwas_results`. When supplied,
+    output includes: `lead_beta` (effect of lead SNP), `sig_snps`
+    (all significant SNP IDs, semicolon-separated), `sig_betas` (their
+    marginal effects). See `?define_qtl_regions` for block effect
+    estimation approaches.
 - **Output writers** (all produce rows = haplotype alleles, cols = individuals,
   with metadata columns hap_id, CHR, start_bp, end_bp, n_snps before individual
   columns):
@@ -57,17 +126,74 @@
     Compatible with rrBLUP, BGLR, ASReml-R.
   - `write_haplotype_character()`: tab-delimited nucleotide matrix. Each cell
     shows the nucleotide sequence if the individual carries that allele, `"-"`
-    if absent, `"."` if missing. `Alleles` column shows all REF/ALT at every
-    block SNP (semicolon-separated).
+    if absent, `"."` if missing. Heterozygous SNP positions are encoded with
+    IUPAC ambiguity codes (R=A/G, Y=C/T, S=G/C, W=A/T, K=G/T, M=A/C),
+    keeping the sequence the same length as `n_snps`. `Alleles` column shows
+    all REF/ALT at every block SNP (semicolon-separated).
   - `write_haplotype_diversity()`: CSV of per-block diversity metrics with
     optional genome-wide mean summary row.
   - `write_haplotype_hapmap()` is **removed**. The diploid AA/AT/TT HapMap
     encoding was not meaningful for multi-SNP haplotype alleles.
 - **Haplotype string decoder** (`decode_haplotype_strings()`): exported function
   mapping dosage strings to nucleotide sequences with full SNP-level metadata.
-- **End-to-end pipeline** (`run_ldx_pipeline()`): single-call wrapper from
-  genotype file to all outputs. `hap_format = "hapmap"` renamed to
-  `hap_format = "character"`.
+- **Multi-trait haplotype prediction** (extended `run_haplotype_prediction()`):
+  - Extends `run_haplotype_prediction()` to k traits simultaneously.
+  - One trait-agnostic GRM (computed once) shared across all traits.
+  - GBLUP solver: attempts `sommer::mmer()` multi-trait model first;
+    automatically falls back to `rrBLUP::kin.blup()` per-trait loop if
+    sommer is not installed or the model fails to converge.
+  - Block importance aggregated across traits: `var_scaled_mean`,
+    `n_traits_important`, `important_any`, `important_all` per block.
+  - `importance_rule` argument controls combined flag:
+    `'any'` (≥ 1 trait), `'all'` (all traits), `'mean'` (mean ≥ 0.9).
+  - `blues` accepts a wide data frame (one column per trait) or a named
+    list of named numeric vectors (different individuals per trait).
+  - `sommer` added to `Suggests`; `rrBLUP` is the required fallback.
+  - `run_haplotype_prediction_mt()` is removed; its functionality is
+    fully absorbed into the unified `run_haplotype_prediction()` API.
+  - Cites Covarrubias-Pazaran (2016) for sommer and Endelman (2011) for rrBLUP.
+
+- **Haplotype-based genomic prediction** (Tong et al. 2024, 2025):
+  - `compute_haplotype_grm()`: VanRaden (2008) GRM from haplotype feature
+    matrix. Mean-imputes NA, clamps frequencies, returns symmetric n×n matrix.
+  - `backsolve_snp_effects()`: derives per-SNP additive effects from GEBV
+    without refitting the marker model: α̂ = M′G⁻¹ĝ / 2Σp(1−p)
+    (Tong et al. 2025 *Theor Appl Genet* 138:267).
+  - `compute_local_gebv()`: local haplotype GEBV per block = sum of SNP
+    effects within block. Ranks blocks by Var(local GEBV); `important` flag
+    when scaled variance ≥ 0.90 (Tong et al. 2024 *Theor Appl Genet* 137:274).
+  - `prepare_gblup_inputs()`: aligns haplotype feature matrix with a
+    phenotype data frame; computes and returns a bended GRM ready for
+    rrBLUP, sommer, ASReml-R, or BGLR.
+  - `run_haplotype_prediction()`: end-to-end Tong et al. (2024/2025)
+    pipeline from pre-adjusted phenotype values (BLUEs/BLUPs) to block
+    importance. Accepts `blues` as a named numeric vector or a data frame
+    with `id_col` and `blue_col` arguments. Uses `rrBLUP::kin.blup()` for
+    REML-based GBLUP. Returns all standard pipeline outputs plus GEBV,
+    per-SNP effects, local haplotype GEBV matrix, and block importance table.
+  - `integrate_gwas_haplotypes()`: combines GWAS evidence (`has_gwas_hit`),
+    variance evidence (`is_important`, scaled Var(local GEBV) ≥ 0.9), and
+    diversity evidence (`is_diverse`, He ≥ threshold) into a `priority_score`
+    (0–3) with plain-language `recommendation` per block.
+  - `rank_haplotype_blocks()`: unified block ranking across three use cases:
+    (1) diversity-only — rank by He; (2) GWAS-only — binary GWAS-hit flag
+    then He as tiebreaker, p-value not used for ranking; (3) phenotype —
+    rank by scaled Var(local GEBV). Returns all standard pipeline outputs
+    plus `ranked_blocks` data frame.
+
+- **End-to-end pipeline** (`run_ldx_pipeline()`):
+  - `hap_format = "hapmap"` renamed to `hap_format = "character"`.
+  - All Big_LD arguments now exposed: `clstgap`, `split`, `appendrare`,
+    `singleton_as_block`, `checkLargest`, `digits`, `kin_method`, `CLQmode`.
+    Previously 8 of these were silently using Big_LD defaults.
+  - `min_freq` parameter exposed (was previously hardcoded inside
+    `build_haplotype_feature_matrix`).
+  - Return list now includes `geno_matrix` (individuals × SNPs, MAF-filtered),
+    enabling direct use with `tune_LD_params()` and `run_haplotype_prediction()`
+    without reloading the genotype file.
+  - `tune_LD_params()` default grid now jointly optimises `CLQcut` (4 values)
+    and `min_freq` (2 values), giving 8 combinations. Weber et al. (2023)
+    show both are hyperparameters requiring dataset-specific tuning.
 
 ### New features -- I/O and backend
 
@@ -111,12 +237,16 @@
 
 ### Tests
 
-- `test-basic.R`: smoke tests via example data (230 SNPs, 3 chromosomes).
-- `test-cpp.R`: property-based C++ kernel tests.
-- `test-io.R`: all I/O format round-trip tests via tempfiles.
-- `test-haplotypes.R`: haplotype extraction, diversity, QTL, feature matrix,
-  and output writers (`write_haplotype_numeric`, `write_haplotype_character`,
-  `write_haplotype_diversity`).
+- `test-basic.R`: smoke tests covering all major functions via the 230-SNP
+  example dataset (3 chromosomes, 9 LD blocks).
+- `test-algorithm.R`: property-based tests for the Big-LD segmentation
+  algorithm: `CLQD`, `Big_LD`, `run_Big_LD_all_chr`, `summarise_blocks`,
+  `plot_ld_blocks`.
+- `test-haplotypes.R`: comprehensive tests for haplotype extraction (phased
+  and unphased), diversity metrics (`n_eff_alleles`, `sweep_flag`), QTL
+  region definition (`lead_beta`, `sig_snps`, `sig_betas`), feature matrix
+  encoding (`additive_012` / `presence_01`), output writers,
+  `rank_haplotype_blocks`, and `integrate_gwas_haplotypes`.
 
 ---
 

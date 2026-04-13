@@ -42,7 +42,7 @@ scaled to [0,1], \eqn{\alpha_{1t}} is the ALT allele effect, and
 \eqn{\alpha_{0t} = -\alpha_{1t}} is the REF allele effect (by symmetry
 of the additive model).
 
-Blocks are ranked by \code{Var(local GEBV)} — blocks with high variance
+Blocks are ranked by \code{Var(local GEBV)} -- blocks with high variance
 contribute strongly to trait differences among individuals and likely
 harbour causal loci (Tong et al. 2025).
 }

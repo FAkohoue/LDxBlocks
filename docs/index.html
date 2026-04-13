@@ -16,9 +16,9 @@
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="LDxBlocks -- Genome-Wide LD Block Detection">
-<meta name="description" content="Fast, scalable LD block detection using r2 or kinship-adjusted rV2, with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype analysis (phased and unphased), post-GWAS QTL mapping, and genomic prediction feature engineering.
+<meta name="description" content="Fast, scalable LD block detection using r2 or kinship-adjusted rV2, with C++/Armadillo acceleration, multi-format I/O, and a never-full-genome memory model. WGS-scale acceleration via Louvain/Leiden community detection (polynomial-time, no clique blowup), sparse LD computation (max_bp_distance), and a bigmemory file-backed matrix store. Complete downstream pipeline: haplotype analysis (phased and unphased), diversity metrics, post-GWAS QTL mapping, single and multi-trait haplotype-based genomic prediction (rrBLUP per trait, shared GRM), and three-evidence block ranking for haplotype stacking.
 ">
-<meta property="og:description" content="Fast, scalable LD block detection using r2 or kinship-adjusted rV2, with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype analysis (phased and unphased), post-GWAS QTL mapping, and genomic prediction feature engineering.
+<meta property="og:description" content="Fast, scalable LD block detection using r2 or kinship-adjusted rV2, with C++/Armadillo acceleration, multi-format I/O, and a never-full-genome memory model. WGS-scale acceleration via Louvain/Leiden community detection (polynomial-time, no clique blowup), sparse LD computation (max_bp_distance), and a bigmemory file-backed matrix store. Complete downstream pipeline: haplotype analysis (phased and unphased), diversity metrics, post-GWAS QTL mapping, single and multi-trait haplotype-based genomic prediction (rrBLUP per trait, shared GRM), and three-evidence block ranking for haplotype stacking.
 ">
 <meta property="og:image" content="https://FAkohoue.github.io/LDxBlocks/logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,7 +32,7 @@
 
     <a class="navbar-brand me-2" href="index.html">LDxBlocks</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,6 +58,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="news/index.html">Changelog</a></li>
@@ -82,7 +83,7 @@
 </h1>
 </div>
 <p align="center">
-<img src="reference/figures/logo.png" alt="LDxBlocks logo" width="70%"></p>
+<img src="reference/figures/logo.png" alt="LDxBlocks logo" width="90%"></p>
 <!-- badges: start -->
 
 <hr>
@@ -107,7 +108,7 @@
 <div class="section level2">
 <h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
-<p><code>LDxBlocks</code> is a complete pipeline for genome-wide LD block detection in related or structured populations, with downstream haplotype analysis and genomic prediction utilities. It extends the Big-LD clique-based segmentation algorithm of Kim et al. (2018) with 12 concrete improvements:</p>
+<p><code>LDxBlocks</code> is a complete pipeline for genome-wide LD block detection in related or structured populations, with downstream haplotype analysis and genomic prediction utilities. It extends the Big-LD clique-based segmentation algorithm of Kim et al. (2018) with 15 concrete improvements:</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>Dual LD metric</strong> — standard r² (default, fast, no kinship correction, suitable for 10 M+ markers) and kinship-adjusted rV² (for structured or related populations) selectable via a single <code>method =</code> argument.</li>
@@ -133,6 +134,12 @@
 <strong>Diversity metrics</strong> — <code><a href="reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code> computes per-block richness, Nei’s expected heterozygosity, Shannon entropy, and dominant haplotype frequency.</li>
 <li>
 <strong>Prediction feature matrix</strong> — <code><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> converts haplotype strings to numeric dosage columns for GBLUP, BayesB, or machine learning models, capturing multi-locus epistatic effects implicitly.</li>
+<li>
+<strong>Polynomial community detection</strong> — <code>CLQmode = "Louvain"</code> and <code>CLQmode = "Leiden"</code> replace Bron-Kerbosch clique enumeration with O(n log n) community detection, eliminating exponential blowup on dense WGS panels (Blondel et al. 2008; Traag et al. 2019).</li>
+<li>
+<strong>Sparse LD computation</strong> — the <code>max_bp_distance</code> parameter restricts r² to SNP pairs within a physical distance window via <code>compute_r2_sparse_cpp()</code>, reducing O(p²) to near-O(p) for WGS panels (70–90% of pairs skipped at 500 kb).</li>
+<li>
+<strong>Memory-mapped genotype store</strong> — <code><a href="reference/read_geno_bigmemory.html">read_geno_bigmemory()</a></code> wraps any source in a <code><a href="https://rdrr.io/pkg/bigmemory/man/big.matrix.html" class="external-link">bigmemory::big.matrix</a></code> backed by a binary file; <code><a href="reference/read_chunk.html">read_chunk()</a></code> loads only OS pages for the requested columns, keeping peak RAM proportional to <code>n_samples × subSegmSize × 8 bytes</code>.</li>
 </ol>
 <hr>
 </div>
@@ -334,6 +341,7 @@
 <li><a href="#installation">Installation</a></li>
 <li><a href="#quick-start">Quick start</a></li>
 <li><a href="#input-formats">Input formats</a></li>
+<li><a href="#phenotype-input-format">Phenotype input format</a></li>
 <li>
 <a href="#statistical-background">Statistical background</a>
 <ul>
@@ -458,8 +466,8 @@
 <span></span>
 <span><span class="va">div</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compute_haplotype_diversity.html">compute_haplotype_diversity</a></span><span class="op">(</span><span class="va">haps</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">div</span><span class="op">)</span></span>
-<span><span class="co">#            block_id n_ind n_haplotypes    He Shannon freq_dominant</span></span>
-<span><span class="co"># block_1000_103000     500           12 0.891   3.142         0.182</span></span>
+<span><span class="co">#   block_id  CHR start_bp  end_bp n_snps n_ind n_haplotypes    He Shannon n_eff_alleles freq_dominant sweep_flag</span></span>
+<span><span class="co"># block_1_1000_103000   1     1000  103000     25   500           12 0.891   3.142         6.12         0.182      FALSE</span></span>
 <span></span>
 <span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># 500 x (n_blocks * 5)</span></span></code></pre></div>
@@ -711,6 +719,143 @@
 </div>
 </div>
 <div class="section level2">
+<h2 id="phenotype-input-format">Phenotype input format<a class="anchor" aria-label="anchor" href="#phenotype-input-format"></a>
+</h2>
+<p>The <code>blues</code> argument of <code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> and <code><a href="reference/prepare_gblup_inputs.html">prepare_gblup_inputs()</a></code> accepts pre-adjusted phenotype means (BLUEs, BLUPs, or adjusted entry means from a mixed model). Four input formats are accepted interchangeably through a single argument:</p>
+<div class="section level3">
+<h3 id="format-1--named-numeric-vector-single-trait-simplest">Format 1 — Named numeric vector (single trait, simplest)<a class="anchor" aria-label="anchor" href="#format-1--named-numeric-vector-single-trait-simplest"></a>
+</h3>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">4.21</span>, G002 <span class="op">=</span> <span class="fl">3.87</span>, G003 <span class="op">=</span> <span class="fl">5.14</span><span class="op">)</span></span>
+<span><span class="co"># names = genotype IDs; values = BLUE</span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>, blues <span class="op">=</span> <span class="va">blues</span><span class="op">)</span></span></code></pre></div>
+<p>No <code>id_col</code> or <code>blue_col</code> arguments needed.</p>
+</div>
+<div class="section level3">
+<h3 id="format-2--data-frame-single-trait">Format 2 — Data frame, single trait<a class="anchor" aria-label="anchor" href="#format-2--data-frame-single-trait"></a>
+</h3>
+<p>The most common format when reading a results file from a mixed model (ASReml-R, lme4, SpATS):</p>
+<table class="table">
+<thead><tr>
+<th>id</th>
+<th>YLD_BLUE</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>G001</td>
+<td>4.21</td>
+</tr>
+<tr>
+<td>G002</td>
+<td>3.87</td>
+</tr>
+<tr>
+<td>G003</td>
+<td>5.14</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues.csv"</span><span class="op">)</span>   <span class="co"># any column names</span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                 blues    <span class="op">=</span> <span class="va">blues</span>,</span>
+<span>                                 id_col   <span class="op">=</span> <span class="st">"id"</span>,       <span class="co"># name of the ID column</span></span>
+<span>                                 blue_col <span class="op">=</span> <span class="st">"YLD_BLUE"</span><span class="op">)</span> <span class="co"># name of the BLUE column</span></span></code></pre></div>
+<p>Column name requirements:</p>
+<ul>
+<li>
+<code>id_col</code> — any column name containing genotype/individual IDs. Must match <code>rownames(geno_matrix)</code> exactly (case-sensitive, no trimming). Default <code>"id"</code>.</li>
+<li>
+<code>blue_col</code> — any column name containing the numeric BLUE values. Default <code>"blue"</code>.</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="format-3--data-frame-multiple-traits">Format 3 — Data frame, multiple traits<a class="anchor" aria-label="anchor" href="#format-3--data-frame-multiple-traits"></a>
+</h3>
+<table class="table">
+<thead><tr>
+<th>id</th>
+<th>YLD</th>
+<th>DIS</th>
+<th>PHT</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>G001</td>
+<td>4.21</td>
+<td>0.32</td>
+<td>98.1</td>
+</tr>
+<tr>
+<td>G002</td>
+<td>3.87</td>
+<td>0.51</td>
+<td>93.4</td>
+</tr>
+<tr>
+<td>G003</td>
+<td>5.14</td>
+<td>0.28</td>
+<td>102.3</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues_mt.csv"</span><span class="op">)</span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                 blues           <span class="op">=</span> <span class="va">blues</span>,</span>
+<span>                                 id_col          <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>                                 blue_cols       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"YLD"</span>, <span class="st">"DIS"</span>, <span class="st">"PHT"</span><span class="op">)</span>,</span>
+<span>                                 importance_rule <span class="op">=</span> <span class="st">"any"</span><span class="op">)</span></span></code></pre></div>
+<p>When <code>blue_cols = NULL</code> (default), all numeric non-ID columns are treated as trait columns automatically. The function then attempts multi-trait GBLUP via <code><a href="https://rdrr.io/pkg/sommer/man/mmer.html" class="external-link">sommer::mmer()</a></code> and falls back to <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> per trait if sommer is unavailable or fails to converge.</p>
+</div>
+<div class="section level3">
+<h3 id="format-4--named-list-different-individuals-per-trait">Format 4 — Named list (different individuals per trait)<a class="anchor" aria-label="anchor" href="#format-4--named-list-different-individuals-per-trait"></a>
+</h3>
+<p>When traits were measured on different sets of individuals (unbalanced data):</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  YLD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">4.21</span>, G002 <span class="op">=</span> <span class="fl">3.87</span>, G003 <span class="op">=</span> <span class="fl">5.14</span><span class="op">)</span>,</span>
+<span>  DIS <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">0.32</span>, G003 <span class="op">=</span> <span class="fl">0.28</span>, G004 <span class="op">=</span> <span class="fl">0.67</span><span class="op">)</span>  <span class="co"># G002 missing, G004 added</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>, blues <span class="op">=</span> <span class="va">blues</span><span class="op">)</span></span></code></pre></div>
+<p>Each element is a named numeric vector for one trait. The GRM is built from all individuals genotyped, then GEBV are estimated only for individuals present in each trait’s vector.</p>
+</div>
+<div class="section level3">
+<h3 id="id-matching-rules">ID matching rules<a class="anchor" aria-label="anchor" href="#id-matching-rules"></a>
+</h3>
+<p>In all four formats, genotype IDs in the phenotype data must match <code>rownames(geno_matrix)</code> exactly. The function:</p>
+<ol style="list-style-type: decimal">
+<li>Takes the intersection of genotyped and phenotyped individuals.</li>
+<li>Issues a message for individuals present in only one source.</li>
+<li>Errors if no common individuals are found.</li>
+</ol>
+<p>Mismatches are the most common source of errors. Common causes: leading/trailing spaces, <code>"G001"</code> vs <code>"g001"</code> (case), <code>"001"</code> vs <code>"G001"</code> (prefix), Excel auto-converting <code>"001"</code> to <code>1</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="preparing-blues-from-raw-phenotype-data">Preparing BLUEs from raw phenotype data<a class="anchor" aria-label="anchor" href="#preparing-blues-from-raw-phenotype-data"></a>
+</h3>
+<p><code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> does <strong>not</strong> fit the field trial model — it takes BLUEs as input. BLUEs must be produced externally:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Example with lme4 (single environment)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lme4/lme4/" class="external-link">lme4</a></span><span class="op">)</span></span>
+<span><span class="va">m</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lme4/man/lmer.html" class="external-link">lmer</a></span><span class="op">(</span><span class="va">YLD</span> <span class="op">~</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">id</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">rep</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">field_data</span><span class="op">)</span></span>
+<span><span class="va">blues_lme4</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span><span class="op">$</span><span class="va">id</span><span class="op">[</span>, <span class="st">"(Intercept)"</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
+<span><span class="va">blues_lme4</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">blues_lme4</span><span class="op">)</span>, YLD <span class="op">=</span> <span class="va">blues_lme4</span><span class="op">[</span>,<span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Example with ASReml-R (multi-environment, recommended)</span></span>
+<span><span class="co"># asr_fit &lt;- asreml(YLD ~ env, random = ~id:env, ...)</span></span>
+<span><span class="co"># blues    &lt;- predict(asr_fit, classify = "id")$pvals</span></span></code></pre></div>
+<p>The <code>example_blues.csv</code> in <code>inst/extdata/</code> and the <code>ldx_blues</code> dataset show the expected format:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"example_blues.csv"</span>, package <span class="op">=</span> <span class="st">"LDxBlocks"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; id, YLD, RES</span></span>
+<span><span class="co">#&gt; ind001, 0.3412, -0.7821</span></span>
+<span><span class="co">#&gt; ind002, -0.5123, 1.2043</span></span></code></pre></div>
+<hr>
+</div>
+</div>
+<div class="section level2">
 <h2 id="statistical-background">Statistical background<a class="anchor" aria-label="anchor" href="#statistical-background"></a>
 </h2>
 <div class="section level3">
@@ -763,6 +908,7 @@
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">score</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left" style="text-align: left"><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">a</mi><msub><mi mathvariant="normal">n</mi><mrow><mi mathvariant="normal">k</mi><mi mathvariant="normal">b</mi></mrow></msub></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mtext mathvariant="normal">Density mode (default)</mtext></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mtext mathvariant="normal">Maximal mode</mtext></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">\text{score}(\mathcal{K}) = \begin{cases} |\mathcal{K}| / (\mathrm{span_{kb}}(\mathcal{K}) + 1) &amp; \text{Density mode (default)} \\ |\mathcal{K}| &amp; \text{Maximal mode} \end{cases}</annotation></semantics></math></p>
 <p><strong>Density mode</strong> (<code>CLQmode = "Density"</code>) prefers compact, high-density cliques that correspond to biologically meaningful LD blocks. <strong>Maximal mode</strong> (<code>CLQmode = "Maximal"</code>) prefers the largest cliques regardless of span — useful when the goal is to retain as many co-inherited SNPs as possible.</p>
 <p>A greedy assignment iteratively selects the highest-scoring clique and removes its SNPs from subsequent rounds until all SNPs are assigned or no cliques remain. The result is an integer bin vector assigning each SNP to a clique-bin or <code>NA</code> (singleton).</p>
+<p><strong>Polynomial community detection.</strong> When <code>CLQmode = "Louvain"</code> or <code>CLQmode = "Leiden"</code>, the igraph community detection algorithms replace Bron-Kerbosch entirely. Both run in polynomial time O(n log n) — they never exhibit exponential blowup regardless of window density. On a 3M-SNP WGS panel where Bron-Kerbosch found 4.26 million maximal cliques in a single 1500-SNP window (&gt; 1 hour), Louvain completes the same window in &lt; 1 second. Block boundaries are equivalent to or better than Density mode for WGS panels. Recommended setting for WGS: <code>CLQmode = "Louvain"</code>.</p>
 <p><strong>Large window optimisation.</strong> When <code>checkLargest = TRUE</code> and a sub-segment has ≥ 500 SNPs, a dense-core decomposition pre-pass runs before <code>max_cliques()</code>. The graph coreness is computed; if the largest connected component has median coreness &gt; 80 and maximum coreness &gt; 100 (indicative of a near-complete subgraph that would cause exponential blowup in clique enumeration), the hub SNP and its immediate neighbourhood are extracted as a bin and removed from the graph before clique detection proceeds.</p>
 <p><strong>Clique splitting.</strong> When <code>split = TRUE</code>, cliques whose SNP positions span more than <code>clstgap</code> base pairs (default 40,000) are split at the largest internal gap. This prevents a single bin from containing biologically unrelated SNPs that happen to share high r² due to long-range LD.</p>
 </div>
@@ -830,7 +976,7 @@
 </table>
 <p><strong>When r² produces wrong blocks.</strong> In a livestock panel where sires appear many times through progeny, r² between two SNPs in the same family cluster can reach 0.9 even when they are in different LD blocks. The whitened matrix removes this familial signal. In practice, rV² blocks are typically 10–30% smaller and more precisely delimited in related populations.</p>
 <p><strong>When r² is preferable.</strong> For large human biobank panels (n &gt; 10,000, p &gt; 1,000,000) computing and inverting the GRM is computationally infeasible. The standard r² inflates LD modestly but the effect on block boundaries is small in approximately random-mating populations, and the 50× speed advantage of the pure C++ path dominates.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Switching LD metric requires only a single argument change</span></span>
 <span><span class="va">blocks_r2</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"r2"</span>,  CLQcut <span class="op">=</span> <span class="fl">0.70</span><span class="op">)</span></span>
 <span><span class="va">blocks_rv2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"rV2"</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span>,</span>
@@ -871,12 +1017,82 @@
 <p><code><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> converts haplotype strings to a numeric dosage matrix suitable for GBLUP, BayesB, random forests, or any other genomic prediction framework. For each block, the <code>top_n</code> most frequent haplotypes are selected as reference haplotypes and each individual receives a dosage of: - <strong>Phased data</strong>: 0 (absent), 1 (one gamete), or 2 (both gametes) - <strong>Unphased data</strong>: 0 (absent) or 1 (present)</p>
 <p>The value 2 is not used for unphased data — the two chromosomes cannot be distinguished from unphased dosage strings.</p>
 <p>The resulting matrix has dimension n_individuals × (n_blocks × top_n):</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Build a haplotype-GRM for use in GBLUP</span></span>
 <span><span class="va">feat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># haplotype GRM</span></span>
+<span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># haplotype GRM</span></span>
 <span><span class="co"># ... feed G_hap to rrBLUP::kinship.BLUP or ASReml-R</span></span></code></pre></div>
 <p><strong>Why haplotype features outperform single-SNP models.</strong> Single-SNP additive models miss multi-locus epistatic effects and are sensitive to the choice of which tag SNP represents a block. Haplotype dosages implicitly encode the joint configuration of all SNPs in the block, capturing dominance and inter-SNP interactions without explicit interaction terms. Calus et al. (2008) and de Roos et al. (2009) demonstrated consistent accuracy improvements of 2–8% over SNP-based models in livestock panels; the advantage is greatest for traits with strong dominance or in populations where blocks are well-defined by long-range LD.</p>
+</div>
+<div class="section level3">
+<h3 id="haplotype-based-genomic-prediction-pipeline">Haplotype-based genomic prediction pipeline<a class="anchor" aria-label="anchor" href="#haplotype-based-genomic-prediction-pipeline"></a>
+</h3>
+<p>Beyond diversity analysis, LDxBlocks implements the complete haplotype stacking pipeline of Tong et al. (2024, 2025) for translating LD block structure into actionable breeding decisions. Given pre-adjusted phenotype values (BLUEs or BLUPs from a field trial), <code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> produces:</p>
+<ol style="list-style-type: decimal">
+<li>A <strong>VanRaden GRM from haplotype features</strong> — one trait-agnostic relationship matrix capturing multi-locus block structure for all downstream analyses.</li>
+<li>
+<strong>GEBV</strong> for all genotyped individuals via REML-based GBLUP.</li>
+<li>
+<strong>Per-SNP additive effects</strong> backsolved from GEBV without re-fitting the marker model: α̂ = M′G⁻¹ĝ / 2Σp(1−p) (Tong et al. 2025).</li>
+<li>
+<strong>Local haplotype GEBV per block</strong> — the sum of SNP effects within each block for every individual. Var(local GEBV) identifies which blocks explain the most trait variance (Tong et al. 2024).</li>
+<li>
+<strong>Block importance table</strong> ranked by scaled Var(local GEBV), flagging blocks where scaled variance ≥ 0.90 as candidates for haplotype stacking.</li>
+</ol>
+<p>For <strong>multiple traits</strong>, the same function fits all traits against the shared GRM simultaneously (<code><a href="https://rdrr.io/pkg/sommer/man/mmer.html" class="external-link">sommer::mmer()</a></code> when available, <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> per trait as fallback). Block importance is aggregated across traits into <code>var_scaled_mean</code>, <code>n_traits_important</code>, <code>important_any</code>, and <code>important_all</code> columns — blocks consistently important across all traits are the most robust stacking candidates.</p>
+<p>The <code><a href="reference/integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code> function then combines three independent evidence layers per block into a <code>priority_score</code> (0–3):</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Evidence</th>
+<th>Source</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Biological</strong></td>
+<td>GWAS</td>
+<td>Block contains a genome-wide significant marker</td>
+</tr>
+<tr>
+<td><strong>Statistical</strong></td>
+<td>Var(local GEBV)</td>
+<td>Block explains substantial trait variance</td>
+</tr>
+<tr>
+<td><strong>Diversity</strong></td>
+<td>He ≥ threshold</td>
+<td>Block has enough diversity to stack alleles</td>
+</tr>
+</tbody>
+</table>
+<p>Blocks scoring 3 — supported by all three evidence layers — are the top priority for haplotype stacking in a breeding programme.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Single trait</span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                 blues    <span class="op">=</span> <span class="va">my_blues</span>,   <span class="co"># named vector</span></span>
+<span>                                 id_col   <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>                                 blue_col <span class="op">=</span> <span class="st">"YLD"</span><span class="op">)</span></span>
+<span><span class="va">res</span><span class="op">$</span><span class="va">block_importance</span><span class="op">[</span><span class="va">res</span><span class="op">$</span><span class="va">block_importance</span><span class="op">$</span><span class="va">important</span>, <span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Multiple traits (sommer MT-GBLUP with rrBLUP fallback)</span></span>
+<span><span class="va">res_mt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                    blues           <span class="op">=</span> <span class="va">my_blues_df</span>,  <span class="co"># wide df</span></span>
+<span>                                    id_col          <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>                                    blue_cols       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"YLD"</span>,<span class="st">"DIS"</span><span class="op">)</span>,</span>
+<span>                                    importance_rule <span class="op">=</span> <span class="st">"any"</span><span class="op">)</span></span>
+<span><span class="va">res_mt</span><span class="op">$</span><span class="va">solver_used</span>   <span class="co"># 'rrBLUP'</span></span>
+<span><span class="va">res_mt</span><span class="op">$</span><span class="va">block_importance</span><span class="op">[</span><span class="va">res_mt</span><span class="op">$</span><span class="va">block_importance</span><span class="op">$</span><span class="va">important_any</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"var_scaled_YLD"</span>,<span class="st">"var_scaled_DIS"</span>,<span class="st">"var_scaled_mean"</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Integrate GWAS evidence for final priority ranking</span></span>
+<span><span class="va">qtl</span>      <span class="op">&lt;-</span> <span class="fu"><a href="reference/define_qtl_regions.html">define_qtl_regions</a></span><span class="op">(</span><span class="va">gwas</span>, <span class="va">blocks</span>, <span class="va">snp_info</span>, p_threshold <span class="op">=</span> <span class="fl">5e-8</span><span class="op">)</span></span>
+<span><span class="va">priority</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/integrate_gwas_haplotypes.html">integrate_gwas_haplotypes</a></span><span class="op">(</span><span class="va">qtl</span>, <span class="va">res</span>, diversity <span class="op">=</span> <span class="va">div</span><span class="op">)</span></span>
+<span><span class="va">priority</span><span class="op">[</span><span class="va">priority</span><span class="op">$</span><span class="va">priority_score</span> <span class="op">==</span> <span class="fl">3</span>, <span class="op">]</span>  <span class="co"># top candidates</span></span></code></pre></div>
 <hr>
 </div>
 </div>
@@ -895,7 +1111,7 @@
 <strong>Deviation from target median block size</strong> — biological plausibility via <code>target_bp_band</code> (default 50 kb – 500 kb).</li>
 </ol>
 <p>When <code>prefer_perfect = TRUE</code> (default), combinations achieving zero unassigned and zero forced assignments are isolated first and the winner is selected from that subset by criteria 3 and 4.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span></span>
 <span>  geno_matrix    <span class="op">=</span> <span class="va">my_geno</span>,</span>
 <span>  snp_info       <span class="op">=</span> <span class="va">my_snp_info</span>,</span>
@@ -914,7 +1130,7 @@
 <span><span class="va">result</span><span class="op">$</span><span class="va">gwas_assigned</span>     <span class="co"># gwas_df with LD_block column added</span></span></code></pre></div>
 <p>The default grid searches <code>CLQcut</code> ∈ {0.65, 0.70, 0.75, 0.80} with all other parameters held at their defaults. A custom grid can be supplied as a <code>data.frame</code> where each row is one parameter combination.</p>
 <p>For parallel execution across grid combinations:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">4L</span><span class="op">)</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span><span class="va">my_geno</span>, <span class="va">my_snp_info</span>, <span class="va">my_gwas</span>, parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
@@ -927,7 +1143,7 @@
 <h3 id="the-ldxblocks_backend-interface">The LDxBlocks_backend interface<a class="anchor" aria-label="anchor" href="#the-ldxblocks_backend-interface"></a>
 </h3>
 <p>All functions that require genotype data operate through the <code>LDxBlocks_backend</code> S3 object rather than directly on a matrix. This single abstraction makes all six input formats interchangeable with zero code change in the algorithm:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">be</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">"mydata.bed"</span><span class="op">)</span>      <span class="co"># opens PLINK BED, reads .bim/.fam</span></span>
 <span><span class="va">chunk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_chunk.html">read_chunk</a></span><span class="op">(</span><span class="va">be</span>, <span class="va">col_idx</span><span class="op">)</span>      <span class="co"># returns n_samples x length(col_idx) matrix</span></span>
 <span><span class="fu"><a href="reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span>                     <span class="co"># releases memory-mapped file handle</span></span></code></pre></div>
@@ -958,6 +1174,11 @@
 <td><code>"bed"</code></td>
 <td>
 <code>BEDMatrix</code> row × column index (OS-level memory mapping)</td>
+</tr>
+<tr>
+<td><code>"bigmemory"</code></td>
+<td>
+<code>bigmemory::as.matrix(bm[, col_idx])</code> — OS page faults load only requested columns</td>
 </tr>
 </tbody>
 </table>
@@ -1002,6 +1223,12 @@
 <td>~4 GB</td>
 <td>GRM n×n + whitening factor always in RAM</td>
 </tr>
+<tr>
+<td>bigmemory, r², <code>subSegmSize = 500</code>
+</td>
+<td>~0.8 MB/window</td>
+<td>OS pages only requested columns; full matrix never in RAM</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1044,14 +1271,14 @@
 <td>2 M – 10 M</td>
 <td>any</td>
 <td>
-<code>method = "r2"</code>, <code>format = "gds"</code>, <code>n_threads = 8+</code>
+<code>CLQmode = "Louvain"</code>, <code>max_bp_distance = 500000L</code>, <code>subSegmSize = 500L</code>, <code>format = "gds"</code>
 </td>
 </tr>
 <tr>
 <td>&gt; 10 M</td>
 <td>any</td>
 <td>
-<code>method = "r2"</code>, <code>format = "gds"</code>, increase <code>subSegmSize</code>
+<code>CLQmode = "Louvain"</code>, <code>max_bp_distance = 500000L</code>, <code>subSegmSize = 500L</code>, <code><a href="reference/read_geno_bigmemory.html">read_geno_bigmemory()</a></code>
 </td>
 </tr>
 </tbody>
@@ -1129,9 +1356,9 @@
 </tr>
 <tr>
 <td>10</td>
-<td>Find maximal cliques (igraph Bron-Kerbosch)</td>
+<td>Find communities/cliques: Louvain or Leiden (polynomial) or Bron-Kerbosch (exact)</td>
 <td>
-<code>checkLargest</code>, <code>CLQmode</code>
+<code>CLQmode</code>, <code>checkLargest</code>, <code>max_bp_distance</code>
 </td>
 </tr>
 <tr>
@@ -1174,7 +1401,7 @@
 </tbody>
 </table>
 <p><strong>Detailed example with all parameters:</strong></p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="co"># ── Genotype input ──────────────────────────────────────────────────────────</span></span>
 <span>  geno_matrix  <span class="op">=</span> <span class="va">be</span>,                  <span class="co"># LDxBlocks_backend or plain matrix</span></span>
@@ -1185,7 +1412,8 @@
 <span></span>
 <span>  <span class="co"># ── Clique detection ────────────────────────────────────────────────────────</span></span>
 <span>  CLQcut       <span class="op">=</span> <span class="fl">0.70</span>,                <span class="co"># r2 threshold for graph edges</span></span>
-<span>  CLQmode      <span class="op">=</span> <span class="st">"Density"</span>,           <span class="co"># "Density" (default) or "Maximal"</span></span>
+<span>  CLQmode      <span class="op">=</span> <span class="st">"Density"</span>,           <span class="co"># "Density"/"Maximal" (exact, Bron-Kerbosch)</span></span>
+<span>                                      <span class="co"># or "Louvain"/"Leiden" (polynomial, WGS-safe)</span></span>
 <span>  clstgap      <span class="op">=</span> <span class="fl">40000L</span>,              <span class="co"># max bp gap within clique (split=TRUE)</span></span>
 <span>  split        <span class="op">=</span> <span class="cn">FALSE</span>,               <span class="co"># split cliques at genomic gaps</span></span>
 <span></span>
@@ -1273,6 +1501,14 @@
 <tr>
 <td><code><a href="reference/close_backend.html">close_backend()</a></code></td>
 <td>Release file handles. No-op for in-memory backends.</td>
+</tr>
+<tr>
+<td><code><a href="reference/read_geno_bigmemory.html">read_geno_bigmemory()</a></code></td>
+<td>Create a file-backed memory-mapped store from any source.</td>
+</tr>
+<tr>
+<td>Peak RAM = columns accessed × n_samples × 8 bytes. Backing files persist across sessions.</td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -1416,22 +1652,18 @@
 </tr>
 <tr>
 <td><code><a href="reference/prepare_gblup_inputs.html">prepare_gblup_inputs()</a></code></td>
-<td>Align phenotype data and GRM for external GBLUP tools.</td>
+<td>Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, sommer, ASReml-R, BGLR). See <a href="#phenotype-input-format">Phenotype input format</a> for accepted column layouts.</td>
 </tr>
 <tr>
 <td><code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code></td>
-<td>Full Tong et al. (2025) pipeline from BLUEs to block importance.</td>
-</tr>
-<tr>
-<td><code><a href="reference/integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code></td>
-<td>Combine GWAS, variance, and diversity evidence per block.</td>
-</tr>
-<tr>
-<td><code><a href="reference/rank_haplotype_blocks.html">rank_haplotype_blocks()</a></code></td>
-<td>Unified block ranking across 3 use cases (diversity/GWAS/phenotype).</td>
+<td>Single or multi-trait Tong et al. (2025) haplotype stacking pipeline.</td>
 </tr>
 </tbody>
 </table>
+<div class="sourceCode" id="cb24"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="st">`</span><span class="at">blues</span><span class="st">`</span> accepts any of four <span class="fu">formats</span> (named vector, single<span class="sc">-</span>trait or multi<span class="sc">-</span>trait data frame, named list).</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a>See [Phenotype input format](<span class="co">#phenotype-input-format). Uses rrBLUP::kin.blup() per trait with a shared GRM. |</span></span></code></pre></div>
+<div class="line-block">
+<code><a href="reference/integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code> | Combine GWAS, variance, and diversity evidence per block. |<br><code><a href="reference/rank_haplotype_blocks.html">rank_haplotype_blocks()</a></code> | Unified block ranking across 3 use cases (diversity/GWAS/phenotype). |</div>
 </div>
 <div class="section level3">
 <h3 id="utilities">Utilities<a class="anchor" aria-label="anchor" href="#utilities"></a>
@@ -1753,7 +1985,7 @@
 <h3 id="openmp-thread-count">OpenMP thread count<a class="anchor" aria-label="anchor" href="#openmp-thread-count"></a>
 </h3>
 <p>The <code>n_threads</code> parameter controls the number of OpenMP threads in <code>compute_r2_cpp()</code>. Thread scaling is efficient up to approximately 8–16 threads for typical window sizes (1,500 SNPs). For very large windows (<code>subSegmSize = 5000+</code>), higher thread counts remain beneficial:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Auto-detect physical cores</span></span>
 <span><span class="va">n_thr</span>  <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span>logical <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, n_threads <span class="op">=</span> <span class="va">n_thr</span><span class="op">)</span></span></code></pre></div>
@@ -1766,7 +1998,7 @@
 <p>Full documentation, function reference, and tutorials are available at:</p>
 <p><a href="https://FAkohoue.github.io/LDxBlocks/" class="uri">https://FAkohoue.github.io/LDxBlocks/</a></p>
 <p>To read the vignette after installation:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"LDxBlocks-workflow"</span>, package <span class="op">=</span> <span class="st">"LDxBlocks"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -1777,7 +2009,7 @@
 <pre><code>LDxBlocks Development Team (2025).
 LDxBlocks: Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic
 Prediction Features with Kinship-Adjusted Correlations.
-R package version 0.3.0.
+R package version 0.3.1.
 https://github.com/FAkohoue/LDxBlocks</code></pre>
 <p>Please also cite the underlying methodological papers:</p>
 <pre><code>Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018).
@@ -1835,12 +2067,15 @@ https://doi.org/10.1073/pnas.70.12.3321</code></pre>
 <p>Pook T, Schlather M, de los Campos G, Mayer M, Schoen CC, Simianer H (2019). HaploBlocker: Creation of subgroup-specific haplotype blocks and libraries. <em>Genetics</em> <strong>212</strong>(4):1045-1061. <a href="https://doi.org/10.1534/genetics.119.302283" class="external-link uri">https://doi.org/10.1534/genetics.119.302283</a></p>
 <p>Tong J, Tarekegn ZT, Jambuthenne D, Alahmad S, Periyannan S, Hickey L, Dinglasan E, Hayes B (2024). Stacking beneficial haplotypes from the Vavilov wheat collection to accelerate breeding for multiple disease resistance. <em>Theoretical and Applied Genetics</em> <strong>137</strong>:274. <a href="https://doi.org/10.1007/s00122-024-04784-w" class="external-link uri">https://doi.org/10.1007/s00122-024-04784-w</a></p>
 <p>Tong J et al. (2025). Haplotype stacking to improve stability of stripe rust resistance in wheat. <em>Theoretical and Applied Genetics</em> <strong>138</strong>:267. <a href="https://doi.org/10.1007/s00122-025-05045-0" class="external-link uri">https://doi.org/10.1007/s00122-025-05045-0</a></p>
+<p>Covarrubias-Pazaran G (2016). Genome-assisted prediction of quantitative traits using the R package sommer. <em>PLOS ONE</em> <strong>11</strong>:e0156744. <a href="https://doi.org/10.1371/journal.pone.0156744" class="external-link uri">https://doi.org/10.1371/journal.pone.0156744</a></p>
 <p>Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles C (2012). Novel measures of linkage disequilibrium that correct the bias due to population structure and relatedness. <em>Heredity</em> <strong>108</strong>(3):285-291. <a href="https://doi.org/10.1038/hdy.2011.73" class="external-link uri">https://doi.org/10.1038/hdy.2011.73</a></p>
 <p>VanRaden PM (2008). Efficient methods to compute genomic predictions. <em>Journal of Dairy Science</em> <strong>91</strong>(11):4414–4423. <a href="https://doi.org/10.3168/jds.2007-0980" class="external-link uri">https://doi.org/10.3168/jds.2007-0980</a></p>
 <p>Gabriel SB, Schaffner SF, Nguyen H, et al. (2002). The structure of haplotype blocks in the human genome. <em>Science</em> <strong>296</strong>(5576):2225–2229. <a href="https://doi.org/10.1126/science.1069424" class="external-link uri">https://doi.org/10.1126/science.1069424</a></p>
 <p>Calus MPL, Meuwissen THE, de Roos APW, Veerkamp RF (2008). Accuracy of genomic selection using different methods to define haplotypes. <em>Genetics</em> <strong>178</strong>(1):553–561. <a href="https://doi.org/10.1534/genetics.107.080838" class="external-link uri">https://doi.org/10.1534/genetics.107.080838</a></p>
 <p>de Roos APW, Hayes BJ, Goddard ME (2009). Reliability of genomic predictions across multiple populations. <em>Genetics</em> <strong>183</strong>(4):1545–1553. <a href="https://doi.org/10.1534/genetics.109.104935" class="external-link uri">https://doi.org/10.1534/genetics.109.104935</a></p>
 <p>Nei M (1973). Analysis of gene diversity in subdivided populations. <em>Proceedings of the National Academy of Sciences</em> <strong>70</strong>(12):3321–3323. <a href="https://doi.org/10.1073/pnas.70.12.3321" class="external-link uri">https://doi.org/10.1073/pnas.70.12.3321</a></p>
+<p>Blondel VD, Guillaume J-L, Lambiotte R, Lefebvre E (2008). Fast unfolding of communities in large networks. <em>Journal of Statistical Mechanics: Theory and Experiment</em> <strong>2008</strong>:P10008. <a href="https://doi.org/10.1088/1742-5468/2008/10/P10008" class="external-link uri">https://doi.org/10.1088/1742-5468/2008/10/P10008</a></p>
+<p>Traag VA, Waltman L, van Eck NJ (2019). From Louvain to Leiden: guaranteeing well-connected communities. <em>Scientific Reports</em> <strong>9</strong>:5233. <a href="https://doi.org/10.1038/s41598-019-41695-z" class="external-link uri">https://doi.org/10.1038/s41598-019-41695-z</a></p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

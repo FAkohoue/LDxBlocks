@@ -30,7 +30,7 @@ whitening first and then the same C++ correlation kernel.
 }
 \examples{
 \dontrun{
-# Internal function — use compute_r2() or compute_rV2() instead
+# Internal function -- use compute_r2() or compute_rV2() instead
 set.seed(1)
 G <- matrix(sample(0:2, 60 * 20, replace = TRUE), 60, 20)
 ld_r2  <- LDxBlocks:::compute_ld(G, method = "r2")

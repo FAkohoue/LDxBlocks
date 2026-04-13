@@ -22,7 +22,7 @@ run_ldx_pipeline(
   CLQcut = 0.5,
   method = c("r2", "rV2"),
   kin_method = "chol",
-  CLQmode = "Density",
+  CLQmode = c("Density", "Maximal", "Louvain", "Leiden"),
   leng = 200L,
   subSegmSize = 1500L,
   clstgap = 40000L,
@@ -39,6 +39,7 @@ run_ldx_pipeline(
   scale_hap_matrix = FALSE,
   chr = NULL,
   verbose = TRUE,
+  max_bp_distance = 0L,
   clean_malformed = FALSE
 )
 ```
@@ -203,6 +204,13 @@ run_ldx_pipeline(
 
   Logical. Print timestamped progress. Default \`TRUE\`.
 
+- max_bp_distance:
+
+  Integer. Maximum bp distance between a SNP pair for its r\\^2\\ to be
+  computed in the LD graph. `0L` (default) computes all pairs.
+  Recommended for WGS panels: `500000L` (500 kb). Reduces O(p\\^2\\) LD
+  computation to near-O(p) when set.
+
 - clean_malformed:
 
   Logical. Stream-clean the input file before reading by removing any
@@ -226,7 +234,7 @@ A named list (invisibly) with elements:
 
 - `hap_matrix`:
 
-  Numeric matrix (individuals x haplotype allele columns) — the
+  Numeric matrix (individuals x haplotype allele columns) – the
   dimensionality-reduced genotype matrix for genomic prediction. Always
   returned as a numeric R matrix regardless of `hap_format` (which only
   controls the *file* written to `out_hap_matrix`). Dosage values:
@@ -255,7 +263,7 @@ A named list (invisibly) with elements:
   [`tune_LD_params`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md)
   and
   [`run_haplotype_prediction`](https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_prediction.md)
-  — avoids reloading the genotype file after the pipeline completes.
+  – avoids reloading the genotype file after the pipeline completes.
 
 - `n_blocks`:
 
@@ -263,7 +271,7 @@ A named list (invisibly) with elements:
 
 - `n_hap_columns`:
 
-  Integer. Total haplotype allele columns after `min_freq` filtering —
+  Integer. Total haplotype allele columns after `min_freq` filtering –
   the effective number of predictors for genomic prediction.
 
 ## Scale behaviour
@@ -284,14 +292,14 @@ columns, preceded by metadata columns: `hap_id`, `CHR`, `start_bp`,
 
 - `"numeric"`: individual cells are haplotype dosage values:
 
-  - **Phased data**: 0/1/2/NA — 0 = neither gamete carries this allele,
+  - **Phased data**: 0/1/2/NA – 0 = neither gamete carries this allele,
     1 = one gamete carries it (heterozygous), 2 = both gametes carry it
     (homozygous).
 
-  - **Unphased data**: 0/1/NA — 0 = absent, 1 = present (individual's
+  - **Unphased data**: 0/1/NA – 0 = absent, 1 = present (individual's
     block-level string matches this allele exactly). The value 2 is not
     used for unphased data because the two chromosomes cannot be
-    distinguished — an individual homozygous for this allele and one
+    distinguished – an individual homozygous for this allele and one
     heterozygous for it produce different observable strings and are
     treated as different alleles.
 

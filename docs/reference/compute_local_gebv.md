@@ -12,7 +12,7 @@ to \[0,1\], \\\alpha\_{1t}\\ is the ALT allele effect, and
 \\\alpha\_{0t} = -\alpha\_{1t}\\ is the REF allele effect (by symmetry
 of the additive model).
 
-Blocks are ranked by `Var(local GEBV)` — blocks with high variance
+Blocks are ranked by `Var(local GEBV)` – blocks with high variance
 contribute strongly to trait differences among individuals and likely
 harbour causal loci (Tong et al. 2025).
 

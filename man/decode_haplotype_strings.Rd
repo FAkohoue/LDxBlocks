@@ -34,7 +34,7 @@ A data frame with columns:
   \item{hap_rank}{Rank by frequency (1 = most common).}
   \item{hap_id}{Column name as it appears in the feature matrix.}
   \item{dosage_string}{Raw dosage string e.g. \code{"02110"}.}
-  \item{nucleotide_sequence}{Decoded nucleotide string e.g. \code{"AGTTА"}.}
+  \item{nucleotide_sequence}{Decoded nucleotide string e.g. \code{"AGTT?"}.}
   \item{frequency}{Observed frequency across non-missing individuals.}
   \item{n_carriers}{Number of individuals carrying this haplotype (dosage > 0).}
   \item{snp_positions}{Semicolon-separated CHR:POS of each SNP in the block.}
@@ -44,7 +44,7 @@ A data frame with columns:
 \description{
 Converts the dosage-encoded haplotype strings produced by
 \code{\link{extract_haplotypes}} (e.g. \code{"02110"}) into
-nucleotide sequences (e.g. \code{"AGTTА"}) using the REF and ALT
+nucleotide sequences (e.g. \code{"AGTT?"}) using the REF and ALT
 alleles of each SNP in the block.
 }
 \details{

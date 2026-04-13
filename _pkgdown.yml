@@ -19,9 +19,14 @@ home:
   title: "LDxBlocks -- Genome-Wide LD Block Detection"
   description: >
     Fast, scalable LD block detection using r2 or kinship-adjusted rV2,
-    with C++/Armadillo acceleration, multi-format I/O, comprehensive haplotype
-    analysis (phased and unphased), post-GWAS QTL mapping, and genomic
-    prediction feature engineering.
+    with C++/Armadillo acceleration, multi-format I/O, and a
+    never-full-genome memory model. WGS-scale acceleration via Louvain/Leiden
+    community detection (polynomial-time, no clique blowup), sparse LD
+    computation (max_bp_distance), and a bigmemory file-backed matrix store.
+    Complete downstream pipeline: haplotype analysis (phased and unphased),
+    diversity metrics, post-GWAS QTL mapping, single and multi-trait
+    haplotype-based genomic prediction (rrBLUP per trait, shared GRM), and three-evidence
+    block ranking for haplotype stacking.
   links:
     - text: Browse source code
       href: https://github.com/FAkohoue/LDxBlocks
@@ -59,12 +64,16 @@ reference:
     desc: >
       Read genotype data from six formats (numeric dosage CSV, HapMap,
       VCF, GDS, PLINK BED, R matrix) through a unified backend interface.
+      For WGS-scale panels where peak RAM is a constraint,
+      read_geno_bigmemory() creates a file-backed memory-mapped store
+      (requires bigmemory) with OS-page-fault column access.
     contents:
       - read_geno
       - read_chunk
       - close_backend
       - print.LDxBlocks_backend
       - summary.LDxBlocks_backend
+      - read_geno_bigmemory
   - title: "LD computation"
     desc: >
       LD matrix computation: standard r2 and kinship-adjusted rV2.
@@ -107,11 +116,12 @@ reference:
       - write_haplotype_diversity
   - title: "Genomic prediction pipeline (Tong et al. 2024/2025)"
     desc: >
-      Functions for haplotype-based genomic prediction following
-      Tong et al. (2024, Theor Appl Genet 137:274) and Tong et al.
-      (2025, Theor Appl Genet 138:267). Accepts pre-adjusted phenotype
-      values (BLUEs/BLUPs) and produces GEBV, per-SNP effects, local
-      haplotype GEBV per block, and evidence-based block rankings.
+      Haplotype-based genomic prediction following Tong et al. (2024/2025).
+      run_haplotype_prediction() accepts a single trait (named vector or
+      one-column data frame) or multiple traits (wide data frame or named
+      list). All traits are fitted via rrBLUP::kin.blup() per trait using
+      a shared GRM. Block importance is aggregated across traits
+      for robust haplotype stacking candidate identification.
     contents:
       - prepare_gblup_inputs
       - run_haplotype_prediction
@@ -133,7 +143,10 @@ reference:
       - ldx_snp_info
       - ldx_blocks
       - ldx_gwas
+      - ldx_blues
 news:
   releases:
+    - text: "LDxBlocks 0.3.1 (development)"
+      href: https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1
     - text: "LDxBlocks 0.3.0"
       href: https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0

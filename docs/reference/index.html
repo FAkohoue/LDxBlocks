@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">LDxBlocks</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,6 +29,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -95,7 +96,7 @@
       </dl></div><div class="section level2">
       <h2 id="genotype-i-o">Genotype I/O<a class="anchor" aria-label="anchor" href="#genotype-i-o"></a></h2>
 
-      <div class="section-desc"><p>Read genotype data from six formats (numeric dosage CSV, HapMap, VCF, GDS, PLINK BED, R matrix) through a unified backend interface.</p></div>
+      <div class="section-desc"><p>Read genotype data from six formats (numeric dosage CSV, HapMap, VCF, GDS, PLINK BED, R matrix) through a unified backend interface. For WGS-scale panels where peak RAM is a constraint, read_geno_bigmemory() creates a file-backed memory-mapped store (requires bigmemory) with OS-page-fault column access.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -136,6 +137,13 @@
 
         </dt>
         <dd>Summary Method for LDxBlocks Backend</dd>
+
+        <dt>
+
+          <code><a href="read_geno_bigmemory.html">read_geno_bigmemory()</a></code>
+
+        </dt>
+        <dd>Open a bigmemory-backed Genotype Store</dd>
       </dl></div><div class="section level2">
       <h2 id="ld-computation">LD computation<a class="anchor" aria-label="anchor" href="#ld-computation"></a></h2>
 
@@ -287,7 +295,7 @@
       </dl></div><div class="section level2">
       <h2 id="genomic-prediction-pipeline-tong-et-al-">Genomic prediction pipeline (Tong et al. 2024/2025)<a class="anchor" aria-label="anchor" href="#genomic-prediction-pipeline-tong-et-al-"></a></h2>
 
-      <div class="section-desc"><p>Functions for haplotype-based genomic prediction following Tong et al. (2024, Theor Appl Genet 137:274) and Tong et al. (2025, Theor Appl Genet 138:267). Accepts pre-adjusted phenotype values (BLUEs/BLUPs) and produces GEBV, per-SNP effects, local haplotype GEBV per block, and evidence-based block rankings.</p></div>
+      <div class="section-desc"><p>Haplotype-based genomic prediction following Tong et al. (2024/2025). run_haplotype_prediction() accepts a single trait (named vector or one-column data frame) or multiple traits (wide data frame or named list). All traits are fitted via rrBLUP::kin.blup() per trait using a shared GRM. Block importance is aggregated across traits for robust haplotype stacking candidate identification.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -395,6 +403,13 @@
 
         </dt>
         <dd>Example GWAS Marker Table</dd>
+
+        <dt>
+
+          <code><a href="ldx_blues.html">ldx_blues</a></code>
+
+        </dt>
+        <dd>Pre-Adjusted Phenotype Means (BLUEs) for Genomic Prediction Examples</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

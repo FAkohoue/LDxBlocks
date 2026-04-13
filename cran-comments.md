@@ -1,6 +1,9 @@
 ## R CMD check results
-0 errors | 0 warnings | 0 note
+0 errors | 0 warnings | 1 note
 
+* checking for future file timestamps: unable to verify current time
+  This is a transient network issue on the check machine and is not
+  reproducible. No file in the package has a future timestamp.
 
 * This is a new submission.
 
@@ -48,6 +51,12 @@ The following `Suggests` packages are optional:
   installed. Listed separately to make the dependency explicit.
 - `BEDMatrix` -- required only for the `"bed"` backend in `read_geno()`.
 - `future.apply` -- required only when `parallel = TRUE` in `tune_LD_params()`.
+- `rrBLUP` -- required by `run_haplotype_prediction()` for REML-based GBLUP.
+  Guarded with `requireNamespace("rrBLUP", quietly = TRUE)`.
+- `sommer` -- optional multi-trait solver in `run_haplotype_prediction()`.
+  When absent or when the multi-trait model fails to converge, the function
+  silently falls back to `rrBLUP::kin.blup()` per trait. Guarded with
+  `requireNamespace("sommer", quietly = TRUE)`.
 - `ggplot2` -- required only for `plot_ld_blocks()`.
 - `usethis` -- used only in `data-raw/generate_example_data.R`, which is
   excluded from the tarball via `.Rbuildignore`.

@@ -11,6 +11,8 @@ run_haplotype_prediction(
   blues,
   id_col = "id",
   blue_col = "blue",
+  blue_cols = NULL,
+  importance_rule = c("any", "all", "mean"),
   top_n = NULL,
   min_freq = 0.01,
   min_snps = 3L,
@@ -27,20 +29,27 @@ Row names must be genotype IDs.}
 
 \item{blocks}{Block table from \code{\link{run_Big_LD_all_chr}}.}
 
-\item{blues}{Pre-adjusted phenotype values. Either:
-\itemize{
-  \item A \strong{named numeric vector} (names = genotype IDs), or
-  \item A \strong{data frame} with ID and BLUE columns specified by
-    \code{id_col} and \code{blue_col}.
-}
-Genotypes in \code{geno_matrix} but absent from \code{blues} are
-treated as prediction candidates.}
+\item{blues}{Pre-adjusted phenotype values. See section above for
+accepted formats.}
 
-\item{id_col}{Name of the ID column when \code{blues} is a data frame.
-Default \code{"id"}.}
+\item{id_col}{Name of the ID column when \code{blues} is a data
+frame. Default \code{"id"}.}
 
-\item{blue_col}{Name of the BLUE column when \code{blues} is a data frame.
+\item{blue_col}{Name of the BLUE column for single-trait data frames.
 Default \code{"blue"}.}
+
+\item{blue_cols}{Character vector of trait column names for multi-trait
+data frames. Default \code{NULL} -- all numeric non-ID columns are used.}
+
+\item{importance_rule}{How to set the combined \code{important} flag for
+multi-trait results:
+\itemize{
+  \item \code{"any"} (default): TRUE if important for >= 1 trait.
+  \item \code{"all"}: TRUE only if important for all traits.
+  \item \code{"mean"}: TRUE if \code{var_scaled_mean} >= 0.9.
+}
+Ignored for single-trait runs (single-trait \code{important} is always
+scaled variance >= 0.9).}
 
 \item{top_n}{Integer or \code{NULL}. Max haplotype alleles per block.
 Default \code{NULL}.}
@@ -54,91 +63,138 @@ Default \code{NULL}.}
 \item{verbose}{Logical. Print progress. Default \code{TRUE}.}
 }
 \value{
-Named list containing all outputs needed for downstream
-  analysis, matching the structure of \code{\link{run_ldx_pipeline}}
-  plus prediction outputs:
+Named list. For single-trait runs, contains:
 \describe{
-  \item{\code{blocks}}{LD block table from \code{run_Big_LD_all_chr}.}
-  \item{\code{diversity}}{Per-block diversity metrics (He, Shannon,
-    n_eff_alleles, freq_dominant, sweep_flag).}
-  \item{\code{hap_matrix}}{Numeric matrix (individuals x haplotype
-    allele columns) for genomic prediction — the primary output for
-    dimensionality-reduced GP.}
-  \item{\code{haplotypes}}{Raw dosage strings from
-    \code{extract_haplotypes} — pass to
-    \code{decode_haplotype_strings} for nucleotide sequences.}
-  \item{\code{snp_info_filtered}}{SNP metadata after MAF filter.}
+  \item{\code{blocks}, \code{diversity}, \code{hap_matrix},
+    \code{haplotypes}, \code{G}}{Core pipeline outputs.}
   \item{\code{n_blocks}, \code{n_hap_columns}}{Summary counts.}
-  \item{\code{gebv}}{Named numeric vector of GEBV for all genotyped
-    individuals (training + prediction candidates).}
-  \item{\code{snp_effects}}{Per-SNP additive effects backsolved from
-    GEBV.}
-  \item{\code{local_gebv}}{Matrix (individuals x blocks) of per-block
-    local GEBV values — quantifies each block's contribution to the
-    trait.}
-  \item{\code{block_importance}}{Data frame ranking blocks by
-    \code{Var(local GEBV)}: block_id, CHR, start_bp, end_bp, n_snps,
-    var_local_gebv, var_scaled, important (scaled >= 0.9).}
-  \item{\code{G}}{VanRaden GRM used in the GBLUP model.}
-  \item{\code{n_train}, \code{n_predict}}{Training and prediction
-    individual counts.}
+  \item{\code{n_traits}}{Integer: 1 for single-trait.}
+  \item{\code{traits}}{Character vector of trait names.}
+  \item{\code{solver_used}}{Character: always \code{"rrBLUP"}.}
+  \item{\code{gebv}}{Named numeric vector of GEBV.}
+  \item{\code{snp_effects}}{Per-SNP additive effects.}
+  \item{\code{local_gebv}}{Matrix (individuals x blocks).}
+  \item{\code{block_importance}}{Data frame with \code{block_id},
+    coordinates, \code{var_local_gebv}, \code{var_scaled},
+    \code{important}.}
+  \item{\code{n_train}, \code{n_predict}}{Training/prediction counts.}
 }
+For multi-trait runs, the same structure but \code{gebv},
+\code{snp_effects}, \code{local_gebv} are named lists (one per trait),
+and \code{block_importance} contains additional per-trait and cross-trait
+columns as described in the \emph{Block importance} section.
+\code{block_importance_list} is added as a named list of single-trait
+block importance data frames.
 }
 \description{
 Runs the complete Tong et al. (2025) haplotype stacking pipeline using
 pre-adjusted phenotype values (BLUEs, BLUPs, or adjusted entry means).
-Requires the \pkg{rrBLUP} package for REML-based GBLUP fitting.
+Accepts either a single trait or multiple traits simultaneously.
+
+When a single trait is supplied, GBLUP is fitted via
+\code{rrBLUP::kin.blup()} and block importance is ranked by
+\code{Var(local GEBV)} for that trait.
+
+When multiple traits are supplied, a single trait-agnostic GRM is computed
+once and shared across all traits. \code{rrBLUP::kin.blup()} is fitted per
+trait using this shared GRM. Block importance is summarised across traits
+with per-trait columns plus cross-trait aggregates.
 }
 \section{Input format for \code{blues}}{
 
-Accepts either:
+Accepts any of three formats:
 \itemize{
-  \item A \strong{named numeric vector} where names are genotype IDs:
-    \code{c(G001 = 4.2, G002 = 3.8, ...)}.
-  \item A \strong{data frame} with one column of genotype IDs and one
-    column of BLUE values. Column names are specified via \code{id_col}
-    and \code{blue_col}. This is the natural format of field trial
-    output from ASReml-R, lme4, or SpATS.
+  \item A \strong{named numeric vector} -- single trait, names are genotype
+    IDs: \code{c(G001 = 4.2, G002 = 3.8)}. \code{id_col}/\code{blue_col}
+    are ignored.
+  \item A \strong{data frame with one trait column} -- single trait,
+    \code{id_col} and \code{blue_col} specify the columns.
+  \item A \strong{data frame with multiple trait columns} -- multi-trait,
+    \code{id_col} names the ID column, \code{blue_cols} names the trait
+    columns (or \code{NULL} to use all numeric non-ID columns).
+  \item A \strong{named list of named numeric vectors} -- multi-trait with
+    potentially different individuals per trait:
+    \code{list(YLD = c(G001=4.2, ...), DIS = c(G001=0.3, ...))}.
 }
 }
 
-\section{Pipeline steps}{
+\section{Multi-trait GBLUP solver strategy}{
 
-\enumerate{
-  \item Extract haplotypes from LD blocks.
-  \item Build haplotype feature matrix.
-  \item Compute VanRaden GRM from haplotype features.
-  \item Fit GBLUP via \code{rrBLUP::kin.blup()} (REML-based).
-  \item Backsolve per-SNP additive effects from GEBV.
-  \item Compute local haplotype GEBV per block.
-  \item Rank blocks by \code{Var(local GEBV)}.
+All traits are fitted using \code{rrBLUP::kin.blup()} in a per-trait loop
+sharing the same GRM. This produces numerically identical results to
+\code{sommer::mmes()} for single-trait models (verified empirically to 4
+decimal places), while avoiding the multi-trait \code{cbind()} formula
+which fails in sommer <= 4.4.5 (Armadillo fixed-size matrix error in the
+C++ coefficient matrix construction). Because all traits use the same GRM,
+cross-trait block importance values are directly comparable.
+\code{solver_used} is always \code{"rrBLUP"}.
+}
+
+\section{Block importance -- single trait}{
+
+\code{Var(local GEBV)} is computed per block after backsolving per-SNP
+effects from GEBV. Blocks are scaled to [0,1]; those with scaled variance
+>= 0.9 are flagged \code{important}. This follows Tong et al. (2024).
+}
+
+\section{Block importance -- multi-trait}{
+
+Per-trait columns \code{var_scaled_<trait>} and \code{important_<trait>}
+are added for every trait. Cross-trait aggregates:
+\describe{
+  \item{\code{var_scaled_mean}}{Mean scaled variance across all traits.
+    Primary ranking criterion -- blocks consistently important across traits
+    are more robust stacking candidates.}
+  \item{\code{n_traits_important}}{Count of traits for which this block
+    is flagged important.}
+  \item{\code{important_any}}{TRUE if important for at least one trait.}
+  \item{\code{important_all}}{TRUE if important for all traits.}
+  \item{\code{important}}{Controlled by \code{importance_rule}.}
 }
 }
 
 \examples{
 \dontrun{
 library(LDxBlocks)
-
 be     <- read_geno("mydata.vcf.gz")
+blocks <- run_Big_LD_all_chr(be, CLQcut = 0.70)
 geno   <- read_chunk(be, seq_len(be$n_snps))
 rownames(geno) <- be$sample_ids
 colnames(geno) <- be$snp_info$SNP
-blocks <- run_Big_LD_all_chr(be, CLQcut = 0.5)
 
-# Option 1: named numeric vector (same format as GWAS input)
+# -- Single trait: named vector ---------------------------------------------
 blues_vec <- c(G001 = 4.21, G002 = 3.87, G003 = 5.14)
-res <- run_haplotype_prediction(geno, be$snp_info, blocks,
-                                 blues = blues_vec)
+res <- run_haplotype_prediction(geno, be$snp_info, blocks, blues = blues_vec)
+res$block_importance[res$block_importance$important, ]
+sort(res$gebv, decreasing = TRUE)
 
-# Option 2: data frame from field trial analysis
+# -- Single trait: data frame -----------------------------------------------
 blues_df <- read.csv("blues.csv")   # columns: Genotype, YLD_BLUE
 res <- run_haplotype_prediction(geno, be$snp_info, blocks,
                                  blues    = blues_df,
                                  id_col   = "Genotype",
                                  blue_col = "YLD_BLUE")
 
-res$block_importance[res$block_importance$important, ]
-sort(res$gebv, decreasing = TRUE)
+# -- Multi-trait: data frame ------------------------------------------------
+blues_mt <- read.csv("blues_mt.csv")  # columns: id, YLD, DIS, PHT
+res_mt <- run_haplotype_prediction(geno, be$snp_info, blocks,
+                                    blues           = blues_mt,
+                                    id_col          = "id",
+                                    blue_cols       = c("YLD","DIS","PHT"),
+                                    importance_rule = "any")
+res_mt$n_traits        # 3
+res_mt$solver_used     # "rrBLUP"
+res_mt$block_importance[
+  res_mt$block_importance$important_any,
+  c("block_id","var_scaled_YLD","var_scaled_DIS","var_scaled_mean",
+    "n_traits_important")]
+
+# -- Multi-trait: named list (different individuals per trait) --------------
+res_mt2 <- run_haplotype_prediction(geno, be$snp_info, blocks,
+  blues = list(
+    YLD = c(G001 = 4.2, G002 = 3.8),
+    DIS = c(G001 = 0.3, G003 = 0.7)
+  ))
 }
 
 }
@@ -147,7 +203,15 @@ Tong J et al. (2025). Haplotype stacking to improve stability of stripe
 rust resistance in wheat. \emph{Theoretical and Applied Genetics}
 \strong{138}:267. \doi{10.1007/s00122-025-05045-0}
 
+Tong J et al. (2024). Stacking beneficial haplotypes from the Vavilov
+wheat collection. \emph{Theoretical and Applied Genetics} \strong{137}:274.
+\doi{10.1007/s00122-024-04784-w}
+
 Endelman JB (2011). Ridge regression and other kernels for genomic
 selection with R package rrBLUP. \emph{Plant Genome} \strong{4}:250-255.
 \doi{10.3835/plantgenome2011.08.0024}
+
+Covarrubias-Pazaran G (2016). Genome-assisted prediction of quantitative
+traits using the R package sommer. \emph{PLOS ONE} \strong{11}:e0156744.
+\doi{10.1371/journal.pone.0156744}
 }

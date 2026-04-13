@@ -10,12 +10,13 @@ CLQD(
   adj_subgeno,
   CLQcut = 0.5,
   clstgap = 40000,
-  CLQmode = c("Density", "Maximal"),
+  CLQmode = c("Density", "Maximal", "Louvain", "Leiden"),
   codechange = FALSE,
   checkLargest = FALSE,
   split = FALSE,
   digits = -1L,
   n_threads = 1L,
+  max_bp_distance = 0L,
   verbose = FALSE
 )
 }
@@ -30,11 +31,17 @@ CLQD(
 
 \item{clstgap}{Integer. Max bp gap within clique (split=TRUE).}
 
-\item{CLQmode}{"Density" (default) or "Maximal".}
+\item{CLQmode}{Algorithm:
+\code{"Density"} (default, exact, exponential worst-case),
+\code{"Maximal"} (exact, maximality criterion),
+\code{"Louvain"} (polynomial, recommended for WGS),
+\code{"Leiden"} (polynomial, stricter communities, igraph >= 1.3.0).}
 
 \item{codechange}{Logical. Sign-flip heuristic. Default FALSE.}
 
-\item{checkLargest}{Logical. Dense-core pre-pass for >= 500 SNPs.}
+\item{checkLargest}{Logical. Dense-core pre-pass for >= 500 SNPs when
+using Density or Maximal mode. Default FALSE. Has no effect when
+CLQmode is Louvain or Leiden (already polynomial).}
 
 \item{split}{Logical. Split cliques over gaps. Default FALSE.}
 
@@ -42,14 +49,47 @@ CLQD(
 
 \item{n_threads}{Integer. OpenMP threads. Default 1.}
 
+\item{max_bp_distance}{Integer. Maximum base-pair distance between a
+SNP pair for its r? to be computed. Pairs beyond this distance are
+assumed to be in negligible LD and set to 0. Default \code{0L} =
+disabled (compute all pairs, original behaviour). Recommended value
+for WGS panels: \code{500000L} (500 kb). Has no effect when the
+window spans less than \code{max_bp_distance}.}
+
 \item{verbose}{Logical.}
 }
 \value{
-Integer vector length p: clique ID per SNP, NA = singleton.
+Integer vector length p: clique/community ID per SNP, NA = singleton.
 }
 \description{
-Partitions SNPs in a genomic window into LD cliques. The LD matrix is
-computed by the C++ Armadillo kernel; adjacency is built by
-\code{build_adj_matrix_cpp}; cliques are found by igraph.
+Partitions SNPs in a genomic window into LD cliques. Three algorithms are
+available via \code{CLQmode}:
+
+\describe{
+  \item{\code{"Density"} (default)}{Standard Big-LD clique scoring -- edges
+    built from the full r? matrix, cliques found by Bron-Kerbosch
+    (\code{igraph::max_cliques}), scored by density = size / span.
+    Exact, but exponential worst-case. Use \code{checkLargest = TRUE} to
+    guard against blowup on dense WGS panels.}
+  \item{\code{"Maximal"}}{Same algorithm as Density but scored by clique
+    size only (original Big-LD maximality criterion).}
+  \item{\code{"Louvain"}}{Louvain community detection
+    (\code{igraph::cluster_louvain}). Polynomial time O(n log n) -- never
+    exponential. Recommended for WGS panels (>500 SNPs per window) or
+    any time \code{CLQmode = "Density"} is slow. Communities are returned
+    as bin IDs matching the Density output format so all downstream code
+    is unaffected.}
+  \item{\code{"Leiden"}}{Leiden community detection
+    (\code{igraph::cluster_leiden}). Stricter than Louvain -- produces
+    well-connected communities without disconnected nodes. Requires
+    igraph >= 1.3.0. Slightly slower than Louvain but higher quality
+    communities. Recommended over Louvain when resolution matters.}
+}
+
+When \code{max_bp_distance} is supplied (> 0), only SNP pairs within that
+physical distance have their r? computed (\code{compute_r2_sparse_cpp}).
+This reduces the O(p?) LD computation to near-O(p) for WGS panels where
+long-range LD is negligible (typically > 500 kb). Applied before any
+clique algorithm.
 }
 \keyword{internal}

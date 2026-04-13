@@ -82,13 +82,13 @@
 #' \itemize{
 #'   \item \code{"numeric"}: individual cells are haplotype dosage values:
 #'     \itemize{
-#'       \item \strong{Phased data}: 0/1/2/NA — 0 = neither gamete carries
+#'       \item \strong{Phased data}: 0/1/2/NA -- 0 = neither gamete carries
 #'         this allele, 1 = one gamete carries it (heterozygous),
 #'         2 = both gametes carry it (homozygous).
-#'       \item \strong{Unphased data}: 0/1/NA — 0 = absent, 1 = present
+#'       \item \strong{Unphased data}: 0/1/NA -- 0 = absent, 1 = present
 #'         (individual's block-level string matches this allele exactly).
 #'         The value 2 is not used for unphased data because the two
-#'         chromosomes cannot be distinguished — an individual homozygous
+#'         chromosomes cannot be distinguished -- an individual homozygous
 #'         for this allele and one heterozygous for it produce different
 #'         observable strings and are treated as different alleles.
 #'     }
@@ -186,6 +186,10 @@
 #' @param scale_hap_matrix  Logical. If `TRUE`, scale the haplotype matrix
 #'   columns to zero mean and unit variance before writing. Useful for
 #'   GBLUP-style models. Default `FALSE`.
+#' @param max_bp_distance  Integer. Maximum bp distance between a SNP pair
+#'   for its r\eqn{^2} to be computed in the LD graph. \code{0L} (default)
+#'   computes all pairs. Recommended for WGS panels: \code{500000L} (500 kb).
+#'   Reduces O(p\eqn{^2}) LD computation to near-O(p) when set.
 #' @param chr               Character vector of chromosome names to process.
 #'   `NULL` (default) processes all chromosomes.
 #' @param verbose           Logical. Print timestamped progress. Default `TRUE`.
@@ -200,7 +204,7 @@
 #'     \code{Shannon}, \code{n_eff_alleles}, \code{freq_dominant},
 #'     \code{sweep_flag}, \code{phased}.}
 #'   \item{\code{hap_matrix}}{Numeric matrix (individuals x haplotype
-#'     allele columns) — the dimensionality-reduced genotype matrix for
+#'     allele columns) -- the dimensionality-reduced genotype matrix for
 #'     genomic prediction. Always returned as a numeric R matrix
 #'     regardless of \code{hap_format} (which only controls the
 #'     \emph{file} written to \code{out_hap_matrix}). Dosage values:
@@ -216,11 +220,11 @@
 #'   \item{\code{geno_matrix}}{Numeric matrix (individuals x SNPs) of
 #'     MAF-filtered genotypes (0/1/2/NA). Needed directly by
 #'     \code{\link{tune_LD_params}} and
-#'     \code{\link{run_haplotype_prediction}} — avoids reloading
+#'     \code{\link{run_haplotype_prediction}} -- avoids reloading
 #'     the genotype file after the pipeline completes.}
 #'   \item{\code{n_blocks}}{Integer. Total LD blocks detected genome-wide.}
 #'   \item{\code{n_hap_columns}}{Integer. Total haplotype allele columns
-#'     after \code{min_freq} filtering — the effective number of predictors
+#'     after \code{min_freq} filtering -- the effective number of predictors
 #'     for genomic prediction.}
 #' }
 #'
@@ -269,7 +273,7 @@ run_ldx_pipeline <- function(
     CLQcut           = 0.5,
     method           = c("r2", "rV2"),
     kin_method       = "chol",
-    CLQmode          = "Density",
+    CLQmode          = c("Density", "Maximal", "Louvain", "Leiden"),
     leng             = 200L,
     subSegmSize      = 1500L,
     clstgap          = 40000L,
@@ -286,6 +290,7 @@ run_ldx_pipeline <- function(
     scale_hap_matrix = FALSE,
     chr              = NULL,
     verbose          = TRUE,
+    max_bp_distance  = 0L,
     clean_malformed  = FALSE
 ) {
   hap_format <- match.arg(hap_format)
@@ -305,7 +310,7 @@ run_ldx_pipeline <- function(
            be$n_samples, " individuals | ", be$n_snps, " SNPs")
 
   # -- Step 2: MAF filtering --------------------------------------------------
-  # Store the original full SNP info before filtering — needed in Step 4
+  # Store the original full SNP info before filtering -- needed in Step 4
   # to map filtered SNP IDs back to correct column indices in the backend.
   orig_snp_info <- be$snp_info
 
@@ -333,7 +338,7 @@ run_ldx_pipeline <- function(
 
   # -- Step 4: Load genotype matrix for block detection ----------------------
   # Read the MAF-filtered SNPs from the already-open backend `be`.
-  # We do NOT open a second backend — on Windows, opening a second connection
+  # We do NOT open a second backend -- on Windows, opening a second connection
   # to the same GDS file while `be` is open causes a file-lock error.
   # The backend's snp_info was updated in Step 2 to the filtered set;
   # read_chunk() with the original full-genome SNP indices loads only those.
@@ -368,6 +373,7 @@ run_ldx_pipeline <- function(
     digits             = digits,
     n_threads          = n_threads,
     min_snps_chr       = min_snps_chr,
+    max_bp_distance    = max_bp_distance,
     verbose            = verbose
   )
 
@@ -400,8 +406,12 @@ run_ldx_pipeline <- function(
   .ldx_log("Computing haplotype diversity ...")
   diversity <- compute_haplotype_diversity(haplotypes)
 
-  data.table::fwrite(diversity, file = out_diversity, sep = ",",
-                     quote = FALSE, na = "NA")
+  write_haplotype_diversity(
+    diversity,
+    out_diversity,
+    append_summary = TRUE,   # adds genome-wide mean row at the bottom
+    verbose        = FALSE
+  )
   .ldx_log("Diversity table written: ", out_diversity)
 
   # -- Step 8: Build haplotype genotype matrix --------------------------------
@@ -440,6 +450,7 @@ run_ldx_pipeline <- function(
       snp_info   = be$snp_info,
       out_file   = out_hap_matrix,
       min_freq   = min_freq,
+      top_n      = top_n,
       verbose    = verbose
     )
   }

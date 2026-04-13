@@ -1,7 +1,7 @@
 # LDxBlocks — Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic Prediction Features
 
 <p align="center">
-  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="70%">
+  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="90%">
 </p>
 
 <!-- badges: start -->
@@ -80,7 +80,7 @@ pipeline that the original implementation does not provide.
 `LDxBlocks` is a complete pipeline for genome-wide LD block detection in
 related or structured populations, with downstream haplotype analysis and
 genomic prediction utilities. It extends the Big-LD clique-based segmentation
-algorithm of Kim et al. (2018) with 12 concrete improvements:
+algorithm of Kim et al. (2018) with 15 concrete improvements:
 
 1. **Dual LD metric** — standard r² (default, fast, no kinship correction,
    suitable for 10 M+ markers) and kinship-adjusted rV² (for structured or
@@ -121,6 +121,18 @@ algorithm of Kim et al. (2018) with 12 concrete improvements:
 12. **Prediction feature matrix** — `build_haplotype_feature_matrix()` converts
     haplotype strings to numeric dosage columns for GBLUP, BayesB, or machine
     learning models, capturing multi-locus epistatic effects implicitly.
+13. **Polynomial community detection** — `CLQmode = "Louvain"` and
+    `CLQmode = "Leiden"` replace Bron-Kerbosch clique enumeration with
+    O(n log n) community detection, eliminating exponential blowup on dense
+    WGS panels (Blondel et al. 2008; Traag et al. 2019).
+14. **Sparse LD computation** — the `max_bp_distance` parameter restricts r²
+    to SNP pairs within a physical distance window via `compute_r2_sparse_cpp()`,
+    reducing O(p²) to near-O(p) for WGS panels (70–90% of pairs skipped at
+    500 kb).
+15. **Memory-mapped genotype store** — `read_geno_bigmemory()` wraps any
+    source in a `bigmemory::big.matrix` backed by a binary file; `read_chunk()`
+    loads only OS pages for the requested columns, keeping peak RAM
+    proportional to `n_samples × subSegmSize × 8 bytes`.
 
 ---
 
@@ -254,25 +266,26 @@ downstream module:
 1. [Installation](#installation)
 2. [Quick start](#quick-start)
 3. [Input formats](#input-formats)
-4. [Statistical background](#statistical-background)
+4. [Phenotype input format](#phenotype-input-format)
+5. [Statistical background](#statistical-background)
    - [MAF filtering](#1-maf-filtering)
    - [Genotype preparation](#2-genotype-preparation)
    - [Subsegmentation](#3-subsegmentation)
    - [Clique detection](#4-clique-detection-clqd)
    - [Block construction](#5-block-construction)
-5. [LD metrics: r² versus rV²](#ld-metrics-r-versus-rv)
-6. [Haplotype analysis](#haplotype-analysis)
-7. [Parameter auto-tuning](#parameter-auto-tuning)
-8. [Scale strategies and backends](#scale-strategies-and-backends)
-9. [Full pipeline walkthrough](#full-pipeline-walkthrough)
-10. [Function reference](#function-reference)
-11. [Output objects](#output-objects)
-12. [Memory and performance notes](#memory-and-performance-notes)
-13. [Documentation](#documentation)
-14. [Citation](#citation)
-15. [Contributing](#contributing)
-16. [License](#license)
-17. [References](#references)
+6. [LD metrics: r² versus rV²](#ld-metrics-r-versus-rv)
+7. [Haplotype analysis](#haplotype-analysis)
+8. [Parameter auto-tuning](#parameter-auto-tuning)
+9. [Scale strategies and backends](#scale-strategies-and-backends)
+10. [Full pipeline walkthrough](#full-pipeline-walkthrough)
+11. [Function reference](#function-reference)
+12. [Output objects](#output-objects)
+13. [Memory and performance notes](#memory-and-performance-notes)
+14. [Documentation](#documentation)
+15. [Citation](#citation)
+16. [Contributing](#contributing)
+17. [License](#license)
+18. [References](#references)
 
 ---
 
@@ -390,8 +403,8 @@ haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 3)
 
 div <- compute_haplotype_diversity(haps)
 head(div)
-#            block_id n_ind n_haplotypes    He Shannon freq_dominant
-# block_1000_103000     500           12 0.891   3.142         0.182
+#   block_id  CHR start_bp  end_bp n_snps n_ind n_haplotypes    He Shannon n_eff_alleles freq_dominant sweep_flag
+# block_1_1000_103000   1     1000  103000     25   500           12 0.891   3.142         6.12         0.182      FALSE
 
 feat <- build_haplotype_feature_matrix(haps, top_n = 5, scale_features = TRUE)
 dim(feat)   # 500 x (n_blocks * 5)
@@ -481,6 +494,130 @@ of leading `chr`, `Chr`, or `CHR` so that `chr1`, `Chr01`, and `1` are all
 stored as `"1"` in `snp_info$CHR`. This applies to all six formats and ensures
 correct cross-format matching.
 
+
+---
+
+## Phenotype input format
+
+The `blues` argument of `run_haplotype_prediction()` and
+`prepare_gblup_inputs()` accepts pre-adjusted phenotype means (BLUEs, BLUPs,
+or adjusted entry means from a mixed model). Four input formats are accepted
+interchangeably through a single argument:
+
+### Format 1 — Named numeric vector (single trait, simplest)
+
+```r
+blues <- c(G001 = 4.21, G002 = 3.87, G003 = 5.14)
+# names = genotype IDs; values = BLUE
+res <- run_haplotype_prediction(geno, snp_info, blocks, blues = blues)
+```
+
+No `id_col` or `blue_col` arguments needed.
+
+### Format 2 — Data frame, single trait
+
+The most common format when reading a results file from a mixed model
+(ASReml-R, lme4, SpATS):
+
+| id | YLD_BLUE |
+|----|----------|
+| G001 | 4.21 |
+| G002 | 3.87 |
+| G003 | 5.14 |
+
+```r
+blues <- read.csv("blues.csv")   # any column names
+res <- run_haplotype_prediction(geno, snp_info, blocks,
+                                 blues    = blues,
+                                 id_col   = "id",       # name of the ID column
+                                 blue_col = "YLD_BLUE") # name of the BLUE column
+```
+
+Column name requirements:
+
+- `id_col` — any column name containing genotype/individual IDs. Must match
+  `rownames(geno_matrix)` exactly (case-sensitive, no trimming). Default
+  `"id"`.
+- `blue_col` — any column name containing the numeric BLUE values. Default
+  `"blue"`.
+
+### Format 3 — Data frame, multiple traits
+
+| id | YLD | DIS | PHT |
+|----|-----|-----|-----|
+| G001 | 4.21 | 0.32 | 98.1 |
+| G002 | 3.87 | 0.51 | 93.4 |
+| G003 | 5.14 | 0.28 | 102.3 |
+
+```r
+blues <- read.csv("blues_mt.csv")
+res <- run_haplotype_prediction(geno, snp_info, blocks,
+                                 blues           = blues,
+                                 id_col          = "id",
+                                 blue_cols       = c("YLD", "DIS", "PHT"),
+                                 importance_rule = "any")
+```
+
+When `blue_cols = NULL` (default), all numeric non-ID columns are treated as
+trait columns automatically. The function then attempts multi-trait GBLUP via
+`sommer::mmer()` and falls back to `rrBLUP::kin.blup()` per trait if sommer
+is unavailable or fails to converge.
+
+### Format 4 — Named list (different individuals per trait)
+
+When traits were measured on different sets of individuals (unbalanced data):
+
+```r
+blues <- list(
+  YLD = c(G001 = 4.21, G002 = 3.87, G003 = 5.14),
+  DIS = c(G001 = 0.32, G003 = 0.28, G004 = 0.67)  # G002 missing, G004 added
+)
+res <- run_haplotype_prediction(geno, snp_info, blocks, blues = blues)
+```
+
+Each element is a named numeric vector for one trait. The GRM is built from
+all individuals genotyped, then GEBV are estimated only for individuals
+present in each trait's vector.
+
+### ID matching rules
+
+In all four formats, genotype IDs in the phenotype data must match
+`rownames(geno_matrix)` exactly. The function:
+
+1. Takes the intersection of genotyped and phenotyped individuals.
+2. Issues a message for individuals present in only one source.
+3. Errors if no common individuals are found.
+
+Mismatches are the most common source of errors. Common causes: leading/trailing
+spaces, `"G001"` vs `"g001"` (case), `"001"` vs `"G001"` (prefix), Excel
+auto-converting `"001"` to `1`.
+
+### Preparing BLUEs from raw phenotype data
+
+`run_haplotype_prediction()` does **not** fit the field trial model — it takes
+BLUEs as input. BLUEs must be produced externally:
+
+```r
+# Example with lme4 (single environment)
+library(lme4)
+m   <- lmer(YLD ~ (1|id) + (1|rep), data = field_data)
+blues_lme4 <- coef(m)$id[, "(Intercept)", drop = FALSE]
+blues_lme4 <- data.frame(id = rownames(blues_lme4), YLD = blues_lme4[,1])
+
+# Example with ASReml-R (multi-environment, recommended)
+# asr_fit <- asreml(YLD ~ env, random = ~id:env, ...)
+# blues    <- predict(asr_fit, classify = "id")$pvals
+```
+
+The `example_blues.csv` in `inst/extdata/` and the `ldx_blues` dataset show the
+expected format:
+
+```r
+system.file("extdata", "example_blues.csv", package = "LDxBlocks")
+#> id, YLD, RES
+#> ind001, 0.3412, -0.7821
+#> ind002, -0.5123, 1.2043
+```
 
 ---
 
@@ -580,6 +717,15 @@ A greedy assignment iteratively selects the highest-scoring clique and removes
 its SNPs from subsequent rounds until all SNPs are assigned or no cliques
 remain. The result is an integer bin vector assigning each SNP to a clique-bin
 or `NA` (singleton).
+
+**Polynomial community detection.** When `CLQmode = "Louvain"` or
+`CLQmode = "Leiden"`, the igraph community detection algorithms replace
+Bron-Kerbosch entirely. Both run in polynomial time O(n log n) — they never
+exhibit exponential blowup regardless of window density. On a 3M-SNP WGS panel
+where Bron-Kerbosch found 4.26 million maximal cliques in a single 1500-SNP
+window (> 1 hour), Louvain completes the same window in < 1 second. Block
+boundaries are equivalent to or better than Density mode for WGS panels.
+Recommended setting for WGS: `CLQmode = "Louvain"`.
 
 **Large window optimisation.** When `checkLargest = TRUE` and a sub-segment
 has ≥ 500 SNPs, a dense-core decomposition pre-pass runs before `max_cliques()`.
@@ -739,6 +885,67 @@ SNP-based models in livestock panels; the advantage is greatest for traits with
 strong dominance or in populations where blocks are well-defined by long-range
 LD.
 
+### Haplotype-based genomic prediction pipeline
+
+Beyond diversity analysis, LDxBlocks implements the complete haplotype stacking
+pipeline of Tong et al. (2024, 2025) for translating LD block structure into
+actionable breeding decisions. Given pre-adjusted phenotype values (BLUEs or
+BLUPs from a field trial), `run_haplotype_prediction()` produces:
+
+1. A **VanRaden GRM from haplotype features** — one trait-agnostic relationship
+   matrix capturing multi-locus block structure for all downstream analyses.
+2. **GEBV** for all genotyped individuals via REML-based GBLUP.
+3. **Per-SNP additive effects** backsolved from GEBV without re-fitting the
+   marker model: α̂ = M′G⁻¹ĝ / 2Σp(1−p) (Tong et al. 2025).
+4. **Local haplotype GEBV per block** — the sum of SNP effects within each
+   block for every individual. Var(local GEBV) identifies which blocks explain
+   the most trait variance (Tong et al. 2024).
+5. **Block importance table** ranked by scaled Var(local GEBV), flagging
+   blocks where scaled variance ≥ 0.90 as candidates for haplotype stacking.
+
+For **multiple traits**, the same function fits all traits against the shared
+GRM simultaneously (`sommer::mmer()` when available, `rrBLUP::kin.blup()` per
+trait as fallback). Block importance is aggregated across traits into
+`var_scaled_mean`, `n_traits_important`, `important_any`, and `important_all`
+columns — blocks consistently important across all traits are the most robust
+stacking candidates.
+
+The `integrate_gwas_haplotypes()` function then combines three independent
+evidence layers per block into a `priority_score` (0–3):
+
+| Evidence | Source | Meaning |
+|---|---|---|
+| **Biological** | GWAS | Block contains a genome-wide significant marker |
+| **Statistical** | Var(local GEBV) | Block explains substantial trait variance |
+| **Diversity** | He ≥ threshold | Block has enough diversity to stack alleles |
+
+Blocks scoring 3 — supported by all three evidence layers — are the top
+priority for haplotype stacking in a breeding programme.
+
+```r
+# Single trait
+res <- run_haplotype_prediction(geno, snp_info, blocks,
+                                 blues    = my_blues,   # named vector
+                                 id_col   = "id",
+                                 blue_col = "YLD")
+res$block_importance[res$block_importance$important, ]
+
+# Multiple traits (sommer MT-GBLUP with rrBLUP fallback)
+res_mt <- run_haplotype_prediction(geno, snp_info, blocks,
+                                    blues           = my_blues_df,  # wide df
+                                    id_col          = "id",
+                                    blue_cols       = c("YLD","DIS"),
+                                    importance_rule = "any")
+res_mt$solver_used   # 'rrBLUP'
+res_mt$block_importance[res_mt$block_importance$important_any,
+  c("block_id","var_scaled_YLD","var_scaled_DIS","var_scaled_mean")]
+
+# Integrate GWAS evidence for final priority ranking
+qtl      <- define_qtl_regions(gwas, blocks, snp_info, p_threshold = 5e-8)
+priority <- integrate_gwas_haplotypes(qtl, res, diversity = div)
+priority[priority$priority_score == 3, ]  # top candidates
+```
+
 ---
 
 ## Parameter auto-tuning
@@ -815,6 +1022,7 @@ close_backend(be)                     # releases memory-mapped file handle
 | `"numeric"`, `"hapmap"`, `"vcf"`, `"matrix"` | Direct column slice of in-memory matrix |
 | `"gds"` | `snpgdsGetGeno(snp.id=..., sample.id=...)` — one call, no filter cycle |
 | `"bed"` | `BEDMatrix` row × column index (OS-level memory mapping) |
+| `"bigmemory"` | `bigmemory::as.matrix(bm[, col_idx])` — OS page faults load only requested columns |
 
 For GDS and BED backends, only the requested column slice is loaded per call.
 The genome-wide matrix never exists in RAM simultaneously.
@@ -830,6 +1038,7 @@ whole-genome dataset under different backends and methods.
 | GDS or BED backend, r², `subSegmSize = 1500` | ~300 MB | One chromosome window at a time |
 | GDS or BED backend, r², `subSegmSize = 5000` | ~1 GB | Faster; larger windows |
 | Any backend, rV², `method = "rV2"` | ~4 GB | GRM n×n + whitening factor always in RAM |
+| bigmemory, r², `subSegmSize = 500` | ~0.8 MB/window | OS pages only requested columns; full matrix never in RAM |
 
 ### Recommended configurations by dataset size
 
@@ -838,8 +1047,8 @@ whole-genome dataset under different backends and methods.
 | < 100 k | any | `method = "r2"`, `format = "matrix"` |
 | 100 k – 500 k | < 5,000 | `method = "rV2"` for structured populations |
 | 100 k – 2 M | any | `method = "r2"`, `format = "vcf"` or `"bed"` |
-| 2 M – 10 M | any | `method = "r2"`, `format = "gds"`, `n_threads = 8+` |
-| > 10 M | any | `method = "r2"`, `format = "gds"`, increase `subSegmSize` |
+| 2 M – 10 M | any | `CLQmode = "Louvain"`, `max_bp_distance = 500000L`, `subSegmSize = 500L`, `format = "gds"` |
+| > 10 M | any | `CLQmode = "Louvain"`, `max_bp_distance = 500000L`, `subSegmSize = 500L`, `read_geno_bigmemory()` |
 
 ---
 
@@ -858,7 +1067,7 @@ each chromosome in order.
 | 7 | Divide chromosome into sub-segments | `subSegmSize` |
 | 8 | Per sub-segment: compute r² or rV² matrix in C++ | `CLQcut`, `compute_r2_cpp()` |
 | 9 | Build binary adjacency matrix in C++ | `CLQcut`, `build_adj_matrix_cpp()` |
-| 10 | Find maximal cliques (igraph Bron-Kerbosch) | `checkLargest`, `CLQmode` |
+| 10 | Find communities/cliques: Louvain or Leiden (polynomial) or Bron-Kerbosch (exact) | `CLQmode`, `checkLargest`, `max_bp_distance` |
 | 11 | Greedy clique assignment → bin vector | `split`, `clstgap`, `CLQD()` |
 | 12 | MWIS block construction | internal |
 | 13 | Re-merge across forced cut-points | automatic |
@@ -880,7 +1089,8 @@ blocks <- run_Big_LD_all_chr(
 
   # ── Clique detection ────────────────────────────────────────────────────────
   CLQcut       = 0.70,                # r2 threshold for graph edges
-  CLQmode      = "Density",           # "Density" (default) or "Maximal"
+  CLQmode      = "Density",           # "Density"/"Maximal" (exact, Bron-Kerbosch)
+                                      # or "Louvain"/"Leiden" (polynomial, WGS-safe)
   clstgap      = 40000L,              # max bp gap within clique (split=TRUE)
   split        = FALSE,               # split cliques at genomic gaps
 
@@ -928,6 +1138,8 @@ blocks <- run_Big_LD_all_chr(
 | `read_geno()` | Auto-dispatch genotype reader. Returns an `LDxBlocks_backend` object. |
 | `read_chunk()` | Extract a genotype slice (n_samples × width) from any backend type. |
 | `close_backend()` | Release file handles. No-op for in-memory backends. |
+| `read_geno_bigmemory()` | Create a file-backed memory-mapped store from any source.
+    Peak RAM = columns accessed × n_samples × 8 bytes. Backing files persist across sessions. |
 
 ### LD computation
 
@@ -966,8 +1178,10 @@ blocks <- run_Big_LD_all_chr(
 | `define_qtl_regions()` | Map GWAS hits to LD blocks; detect pleiotropic blocks. |
 | `backsolve_snp_effects()` | Derive per-SNP effects from GEBV (Tong et al. 2025). |
 | `compute_local_gebv()` | Local haplotype GEBV per block per individual. |
-| `prepare_gblup_inputs()` | Align phenotype data and GRM for external GBLUP tools. |
-| `run_haplotype_prediction()` | Full Tong et al. (2025) pipeline from BLUEs to block importance. |
+| `prepare_gblup_inputs()` | Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, sommer, ASReml-R, BGLR). See [Phenotype input format](#phenotype-input-format) for accepted column layouts. |
+| `run_haplotype_prediction()` | Single or multi-trait Tong et al. (2025) haplotype stacking pipeline.
+    `blues` accepts any of four formats (named vector, single-trait or multi-trait data frame, named list).
+    See [Phenotype input format](#phenotype-input-format). Uses rrBLUP::kin.blup() per trait with a shared GRM. |
 | `integrate_gwas_haplotypes()` | Combine GWAS, variance, and diversity evidence per block. |
 | `rank_haplotype_blocks()` | Unified block ranking across 3 use cases (diversity/GWAS/phenotype). |
 
@@ -1139,7 +1353,7 @@ If you use `LDxBlocks` in published research, please cite:
 LDxBlocks Development Team (2025).
 LDxBlocks: Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic
 Prediction Features with Kinship-Adjusted Correlations.
-R package version 0.3.0.
+R package version 0.3.1.
 https://github.com/FAkohoue/LDxBlocks
 ```
 
@@ -1228,6 +1442,10 @@ Tong J et al. (2025). Haplotype stacking to improve stability of stripe rust
 resistance in wheat. *Theoretical and Applied Genetics* **138**:267.
 <https://doi.org/10.1007/s00122-025-05045-0>
 
+Covarrubias-Pazaran G (2016). Genome-assisted prediction of quantitative
+traits using the R package sommer. *PLOS ONE* **11**:e0156744.
+<https://doi.org/10.1371/journal.pone.0156744>
+
 Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles C (2012).
 Novel measures of linkage disequilibrium that correct the bias due to population
 structure and relatedness. *Heredity* **108**(3):285-291.
@@ -1252,3 +1470,12 @@ across multiple populations. *Genetics* **183**(4):1545–1553.
 Nei M (1973). Analysis of gene diversity in subdivided populations.
 *Proceedings of the National Academy of Sciences* **70**(12):3321–3323.
 <https://doi.org/10.1073/pnas.70.12.3321>
+
+Blondel VD, Guillaume J-L, Lambiotte R, Lefebvre E (2008). Fast unfolding of
+communities in large networks. *Journal of Statistical Mechanics: Theory and
+Experiment* **2008**:P10008.
+<https://doi.org/10.1088/1742-5468/2008/10/P10008>
+
+Traag VA, Waltman L, van Eck NJ (2019). From Louvain to Leiden: guaranteeing
+well-connected communities. *Scientific Reports* **9**:5233.
+<https://doi.org/10.1038/s41598-019-41695-z>

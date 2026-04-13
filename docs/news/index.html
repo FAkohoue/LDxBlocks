@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">LDxBlocks</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,6 +29,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -47,6 +48,29 @@
       <small>Source: <a href="https://github.com/FAkohoue/LDxBlocks/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.1" id="ldxblocks-031-development">LDxBlocks 0.3.1 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-031-development"></a></h2>
+<div class="section level3">
+<h3 id="wgs-scale-acceleration--three-new-approaches-0-3-1">WGS-scale acceleration — three new approaches<a class="anchor" aria-label="anchor" href="#wgs-scale-acceleration--three-new-approaches-0-3-1"></a></h3>
+<ul><li><p><strong>Louvain/Leiden community detection</strong> (<code>CLQmode = "Louvain"</code> or <code>"Leiden"</code>): Polynomial-time O(n log n) community detection replaces Bron-Kerbosch (<code><a href="https://r.igraph.org/reference/cliques.html" class="external-link">igraph::max_cliques()</a></code>) which has exponential worst-case complexity. The original Big-LD run on a 3M-SNP WGS panel found 4.26 million maximal cliques in a single 1500-SNP window and ran for &gt; 1 hour without completing. Louvain/Leiden finish the same window in &lt; 1 second. Block boundaries are equivalent to or better than the Density mode for WGS panels where LD structure is dense. Available in <code><a href="../reference/CLQD.html">CLQD()</a></code>, <code><a href="../reference/Big_LD.html">Big_LD()</a></code>, <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>, <code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>, and <code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>. Edge weights are inversely proportional to base-pair distance so local LD structure is respected.</p></li>
+<li><p><strong>Sparse LD computation</strong> (<code>max_bp_distance</code> parameter): When <code>max_bp_distance &gt; 0</code>, only SNP pairs within that physical distance have their r² computed via <code>compute_r2_sparse_cpp()</code>. Pairs beyond the threshold are assumed to be in negligible LD and set to zero in the adjacency matrix. This reduces O(p²) LD computation to near-O(p) for WGS panels — at 500 kb, approximately 70–90% of pairs are skipped. Available in <code><a href="../reference/CLQD.html">CLQD()</a></code>, propagated through all callers. Default <code>0L</code> (disabled) preserves original behaviour.</p></li>
+<li><p><strong>Memory-mapped genotype store</strong> (<code><a href="../reference/read_geno_bigmemory.html">read_geno_bigmemory()</a></code>): Wraps any genotype source in a <code><a href="https://rdrr.io/pkg/bigmemory/man/big.matrix.html" class="external-link">bigmemory::big.matrix</a></code> backed by a binary file on disk. <code><a href="../reference/read_chunk.html">read_chunk()</a></code> retrieves columns via OS page faults — only the requested bytes are loaded into RAM. Peak RAM is proportional to <code>n_samples × subSegmSize × 8 bytes</code>, not the full genome matrix. Backing files persist across R sessions: supply the <code>.desc</code> path to reattach without re-loading source data. Storage type <code>"char"</code> (1 byte per cell) saves 8× RAM vs double for 0/1/2 dosage values. Requires <code>bigmemory</code> (added to Suggests).</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="recommended-configuration-form-snp-wgs-panels-0-3-1">Recommended configuration for 3M-SNP WGS panels<a class="anchor" aria-label="anchor" href="#recommended-configuration-form-snp-wgs-panels-0-3-1"></a></h3>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
+<span>  <span class="va">be</span>,</span>
+<span>  CLQmode         <span class="op">=</span> <span class="st">"Louvain"</span>,   <span class="co"># polynomial — no clique blowup</span></span>
+<span>  CLQcut          <span class="op">=</span> <span class="fl">0.70</span>,        <span class="co"># sparser LD graph</span></span>
+<span>  max_bp_distance <span class="op">=</span> <span class="fl">500000L</span>,     <span class="co"># skip pairs &gt; 500 kb</span></span>
+<span>  subSegmSize     <span class="op">=</span> <span class="fl">500L</span>,        <span class="co"># smaller windows for safety</span></span>
+<span>  leng            <span class="op">=</span> <span class="fl">50L</span>,         <span class="co"># narrow boundary scan for WGS density</span></span>
+<span>  checkLargest    <span class="op">=</span> <span class="cn">TRUE</span>,        <span class="co"># belt-and-suspenders for Density mode</span></span>
+<span>  n_threads       <span class="op">=</span> <span class="va">n_threads</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="ldxblocks-030">LDxBlocks 0.3.0<a class="anchor" aria-label="anchor" href="#ldxblocks-030"></a></h2>
 <div class="section level3">
@@ -81,17 +105,27 @@
 <li>Blocks are strictly per-chromosome; cross-chromosome blocks are architecturally impossible.</li>
 </ul></li>
 <li>
+<strong>Enhanced diversity metrics</strong> (<code><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>):
+<ul><li>
+<code>n_eff_alleles</code>: effective number of alleles = 1/Σpᵢ² (Hill 1973), ranging from 1 (monomorphic) to k (equal frequencies).</li>
+<li>
+<code>sweep_flag</code>: TRUE when <code>freq_dominant ≥ 0.90</code>, flagging possible selective sweeps or strong founder effects (Difabachew et al. 2023).</li>
+<li>
+<code>He</code> is now sample-size corrected following Nei (1973): He = n/(n-1) × (1 − Σpᵢ²).</li>
+<li>Output now includes <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>, <code>n_snps</code> columns for direct use in genomic region analyses.</li>
+</ul></li>
+<li>
 <strong>Haplotype string decoder</strong> (<code><a href="../reference/decode_haplotype_strings.html">decode_haplotype_strings()</a></code>):
 <ul><li>Converts raw dosage strings (e.g. <code>"02110"</code>) to nucleotide sequences (e.g. <code>"AGTTA"</code>) using REF/ALT from <code>snp_info</code>.</li>
 <li>Returns a data frame: block_id, CHR, start_bp, end_bp, hap_rank, hap_id, dosage_string, nucleotide_sequence, frequency, n_carriers, snp_positions, snp_alleles.</li>
 </ul></li>
 <li>
 <strong>Feature matrix</strong> (<code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>):
-<ul><li>New <code>encoding =</code> parameter: <code>"additive_012"</code> (default) or <code>"presence_02"</code>.</li>
-<li>Phased + <code>"additive_012"</code>: true 0/1/2 allele counts per gamete.</li>
-<li>Unphased + <code>"additive_012"</code>: 0 or 2 (1 not identifiable without phase).</li>
+<ul><li>New <code>encoding =</code> parameter: <code>"additive_012"</code> (default) or <code>"presence_01"</code>.</li>
+<li>Phased + <code>"additive_012"</code>: true 0/1/2 allele counts per gamete (0=absent, 1=one gamete, 2=both gametes).</li>
+<li>Unphased + <code>"additive_012"</code>: 0/1/NA — 1=present, 0=absent. The value 2 is not used because homozygosity cannot be inferred from unphased strings.</li>
 <li>
-<code>"presence_02"</code>: 0/2 presence/absence for kernel methods or random forests.</li>
+<code>"presence_01"</code>: 0/1 presence/absence for kernel methods or random forests (formerly <code>"presence_02"</code>; <code>"presence_02"</code> accepted as a backward-compat alias).</li>
 <li>New <code>min_freq =</code> parameter to drop rare haplotype allele columns.</li>
 <li>
 <code>top_n</code> default changed from <code>5L</code> to <code>NULL</code> (retain all alleles above <code>min_freq</code>).</li>
@@ -101,13 +135,14 @@
 <ul><li>Maps significant GWAS markers onto LD blocks post-GWAS.</li>
 <li>Flags pleiotropic blocks (significant hits from multiple traits).</li>
 <li>Implements the haploblock-based QTL cataloguing approach of Tong et al. (2024) <em>Theoretical and Applied Genetics</em> 137:274.</li>
+<li>Now accepts optional <code>BETA</code> column in <code>gwas_results</code>. When supplied, output includes: <code>lead_beta</code> (effect of lead SNP), <code>sig_snps</code> (all significant SNP IDs, semicolon-separated), <code>sig_betas</code> (their marginal effects). See <code><a href="../reference/define_qtl_regions.html">?define_qtl_regions</a></code> for block effect estimation approaches.</li>
 </ul></li>
 <li>
 <strong>Output writers</strong> (all produce rows = haplotype alleles, cols = individuals, with metadata columns hap_id, CHR, start_bp, end_bp, n_snps before individual columns):
 <ul><li>
 <code><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric()</a></code>: tab-delimited dosage matrix (0/1/2/NA). Metadata column <code>alleles</code> shows the nucleotide sequence of this allele. Compatible with rrBLUP, BGLR, ASReml-R.</li>
 <li>
-<code><a href="../reference/write_haplotype_character.html">write_haplotype_character()</a></code>: tab-delimited nucleotide matrix. Each cell shows the nucleotide sequence if the individual carries that allele, <code>"-"</code> if absent, <code>"."</code> if missing. <code>Alleles</code> column shows all REF/ALT at every block SNP (semicolon-separated).</li>
+<code><a href="../reference/write_haplotype_character.html">write_haplotype_character()</a></code>: tab-delimited nucleotide matrix. Each cell shows the nucleotide sequence if the individual carries that allele, <code>"-"</code> if absent, <code>"."</code> if missing. Heterozygous SNP positions are encoded with IUPAC ambiguity codes (R=A/G, Y=C/T, S=G/C, W=A/T, K=G/T, M=A/C), keeping the sequence the same length as <code>n_snps</code>. <code>Alleles</code> column shows all REF/ALT at every block SNP (semicolon-separated).</li>
 <li>
 <code><a href="../reference/write_haplotype_diversity.html">write_haplotype_diversity()</a></code>: CSV of per-block diversity metrics with optional genome-wide mean summary row.</li>
 <li>
@@ -116,7 +151,51 @@
 <li>
 <strong>Haplotype string decoder</strong> (<code><a href="../reference/decode_haplotype_strings.html">decode_haplotype_strings()</a></code>): exported function mapping dosage strings to nucleotide sequences with full SNP-level metadata.</li>
 <li>
-<strong>End-to-end pipeline</strong> (<code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>): single-call wrapper from genotype file to all outputs. <code>hap_format = "hapmap"</code> renamed to <code>hap_format = "character"</code>.</li>
+<strong>Multi-trait haplotype prediction</strong> (extended <code><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code>):
+<ul><li>Extends <code><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> to k traits simultaneously.</li>
+<li>One trait-agnostic GRM (computed once) shared across all traits.</li>
+<li>GBLUP solver: attempts <code><a href="https://rdrr.io/pkg/sommer/man/mmer.html" class="external-link">sommer::mmer()</a></code> multi-trait model first; automatically falls back to <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> per-trait loop if sommer is not installed or the model fails to converge.</li>
+<li>Block importance aggregated across traits: <code>var_scaled_mean</code>, <code>n_traits_important</code>, <code>important_any</code>, <code>important_all</code> per block.</li>
+<li>
+<code>importance_rule</code> argument controls combined flag: <code>'any'</code> (≥ 1 trait), <code>'all'</code> (all traits), <code>'mean'</code> (mean ≥ 0.9).</li>
+<li>
+<code>blues</code> accepts a wide data frame (one column per trait) or a named list of named numeric vectors (different individuals per trait).</li>
+<li>
+<code>sommer</code> added to <code>Suggests</code>; <code>rrBLUP</code> is the required fallback.</li>
+<li>
+<code>run_haplotype_prediction_mt()</code> is removed; its functionality is fully absorbed into the unified <code><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> API.</li>
+<li>Cites Covarrubias-Pazaran (2016) for sommer and Endelman (2011) for rrBLUP.</li>
+</ul></li>
+<li>
+<strong>Haplotype-based genomic prediction</strong> (Tong et al. 2024, 2025):
+<ul><li>
+<code><a href="../reference/compute_haplotype_grm.html">compute_haplotype_grm()</a></code>: VanRaden (2008) GRM from haplotype feature matrix. Mean-imputes NA, clamps frequencies, returns symmetric n×n matrix.</li>
+<li>
+<code><a href="../reference/backsolve_snp_effects.html">backsolve_snp_effects()</a></code>: derives per-SNP additive effects from GEBV without refitting the marker model: α̂ = M′G⁻¹ĝ / 2Σp(1−p) (Tong et al. 2025 <em>Theor Appl Genet</em> 138:267).</li>
+<li>
+<code><a href="../reference/compute_local_gebv.html">compute_local_gebv()</a></code>: local haplotype GEBV per block = sum of SNP effects within block. Ranks blocks by Var(local GEBV); <code>important</code> flag when scaled variance ≥ 0.90 (Tong et al. 2024 <em>Theor Appl Genet</em> 137:274).</li>
+<li>
+<code><a href="../reference/prepare_gblup_inputs.html">prepare_gblup_inputs()</a></code>: aligns haplotype feature matrix with a phenotype data frame; computes and returns a bended GRM ready for rrBLUP, sommer, ASReml-R, or BGLR.</li>
+<li>
+<code><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code>: end-to-end Tong et al. (2024/2025) pipeline from pre-adjusted phenotype values (BLUEs/BLUPs) to block importance. Accepts <code>blues</code> as a named numeric vector or a data frame with <code>id_col</code> and <code>blue_col</code> arguments. Uses <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> for REML-based GBLUP. Returns all standard pipeline outputs plus GEBV, per-SNP effects, local haplotype GEBV matrix, and block importance table.</li>
+<li>
+<code><a href="../reference/integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code>: combines GWAS evidence (<code>has_gwas_hit</code>), variance evidence (<code>is_important</code>, scaled Var(local GEBV) ≥ 0.9), and diversity evidence (<code>is_diverse</code>, He ≥ threshold) into a <code>priority_score</code> (0–3) with plain-language <code>recommendation</code> per block.</li>
+<li>
+<code><a href="../reference/rank_haplotype_blocks.html">rank_haplotype_blocks()</a></code>: unified block ranking across three use cases:
+<ol style="list-style-type: decimal"><li>diversity-only — rank by He; (2) GWAS-only — binary GWAS-hit flag then He as tiebreaker, p-value not used for ranking; (3) phenotype — rank by scaled Var(local GEBV). Returns all standard pipeline outputs plus <code>ranked_blocks</code> data frame.</li>
+</ol></li>
+</ul></li>
+<li>
+<strong>End-to-end pipeline</strong> (<code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>):
+<ul><li>
+<code>hap_format = "hapmap"</code> renamed to <code>hap_format = "character"</code>.</li>
+<li>All Big_LD arguments now exposed: <code>clstgap</code>, <code>split</code>, <code>appendrare</code>, <code>singleton_as_block</code>, <code>checkLargest</code>, <code>digits</code>, <code>kin_method</code>, <code>CLQmode</code>. Previously 8 of these were silently using Big_LD defaults.</li>
+<li>
+<code>min_freq</code> parameter exposed (was previously hardcoded inside <code>build_haplotype_feature_matrix</code>).</li>
+<li>Return list now includes <code>geno_matrix</code> (individuals × SNPs, MAF-filtered), enabling direct use with <code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code> and <code><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> without reloading the genotype file.</li>
+<li>
+<code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code> default grid now jointly optimises <code>CLQcut</code> (4 values) and <code>min_freq</code> (2 values), giving 8 combinations. Weber et al. (2023) show both are hyperparameters requiring dataset-specific tuning.</li>
+</ul></li>
 </ul></div>
 <div class="section level3">
 <h3 id="new-features--io-and-backend-0-3-0">New features – I/O and backend<a class="anchor" aria-label="anchor" href="#new-features--io-and-backend-0-3-0"></a></h3>
@@ -162,13 +241,11 @@
 <div class="section level3">
 <h3 id="tests-0-3-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-3-0"></a></h3>
 <ul><li>
-<code>test-basic.R</code>: smoke tests via example data (230 SNPs, 3 chromosomes).</li>
+<code>test-basic.R</code>: smoke tests covering all major functions via the 230-SNP example dataset (3 chromosomes, 9 LD blocks).</li>
 <li>
-<code>test-cpp.R</code>: property-based C++ kernel tests.</li>
+<code>test-algorithm.R</code>: property-based tests for the Big-LD segmentation algorithm: <code>CLQD</code>, <code>Big_LD</code>, <code>run_Big_LD_all_chr</code>, <code>summarise_blocks</code>, <code>plot_ld_blocks</code>.</li>
 <li>
-<code>test-io.R</code>: all I/O format round-trip tests via tempfiles.</li>
-<li>
-<code>test-haplotypes.R</code>: haplotype extraction, diversity, QTL, feature matrix, and output writers (<code>write_haplotype_numeric</code>, <code>write_haplotype_character</code>, <code>write_haplotype_diversity</code>).</li>
+<code>test-haplotypes.R</code>: comprehensive tests for haplotype extraction (phased and unphased), diversity metrics (<code>n_eff_alleles</code>, <code>sweep_flag</code>), QTL region definition (<code>lead_beta</code>, <code>sig_snps</code>, <code>sig_betas</code>), feature matrix encoding (<code>additive_012</code> / <code>presence_01</code>), output writers, <code>rank_haplotype_blocks</code>, and <code>integrate_gwas_haplotypes</code>.</li>
 </ul><hr></div>
 </div>
     <div class="section level2">

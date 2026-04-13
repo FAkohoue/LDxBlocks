@@ -29,11 +29,13 @@ Simulated with \code{data-raw/generate_example_data.R}.
 ldx_gwas
 }
 \description{
-Twenty toy GWAS-significant markers drawn from the simulated LD blocks,
-used to demonstrate \code{\link{tune_LD_params}} parameter auto-tuning.
-All 20 markers fall within one of the nine simulated blocks in
-\code{\link{ldx_blocks}}, so a correctly parameterised run of
-\code{tune_LD_params} should return zero unassigned markers.
+Twenty toy GWAS markers drawn from simulated LD blocks for use with
+\code{\link{tune_LD_params}} and \code{\link{define_qtl_regions}}.
+All 20 markers fall within LD blocks, but not all nine blocks are
+represented: chromosome 3 contributes markers only from its first block;
+blocks 2 and 3 of chromosome 3 have no GWAS markers.
+A correctly parameterised run of \code{tune_LD_params} should return
+zero unassigned markers.
 }
 \examples{
 data(ldx_gwas)

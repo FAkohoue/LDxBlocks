@@ -53,7 +53,7 @@ build_haplotype_feature_matrix(
     from unphased dosage strings. Compatible with rrBLUP, BGLR, sommer,
     ASReml-R.
 
-  - `"presence_01"`: values are 0 or 1 — clean presence/absence
+  - `"presence_01"`: values are 0 or 1 – clean presence/absence
     encoding. For phased data: 1 if either gamete carries the allele.
     For unphased data: 1 if the individual's allele string matches.
     Loses copy-number information compared to `"additive_012"` but may

@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">LDxBlocks</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,6 +53,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -280,7 +281,7 @@ original Big-LD output</li>
 <td>Block table</td>
 <td>Block table + gene regions</td>
 <td>Block table</td>
-<td>Block table + 18 downstream functions</td>
+<td>Block table + 19 downstream functions</td>
 </tr>
 </tbody>
 </table>
@@ -399,12 +400,102 @@ formats are supported:</p>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="step-2-ld-block-detection">Step 2 — LD block detection<a class="anchor" aria-label="anchor" href="#step-2-ld-block-detection"></a>
+<h2 id="step-2-phenotype-input-format">Step 2 — Phenotype input format<a class="anchor" aria-label="anchor" href="#step-2-phenotype-input-format"></a>
+</h2>
+<p>The <code>blues</code> argument accepts pre-adjusted phenotype means
+from a mixed model. The format is flexible — any of four structures are
+accepted:</p>
+<p><strong>Format 1: Named numeric vector</strong> (single trait,
+simplest)</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ind001 <span class="op">=</span> <span class="fl">4.21</span>, ind002 <span class="op">=</span> <span class="fl">3.87</span>, ind003 <span class="op">=</span> <span class="fl">5.14</span><span class="op">)</span></span>
+<span><span class="co"># names = individual IDs matching rownames(geno_matrix)</span></span></code></pre></div>
+<p><strong>Format 2: Data frame, single trait</strong></p>
+<p>This is the most common format when reading output from ASReml-R,
+lme4, or SpATS. Any column names are accepted — just tell the function
+which columns to use:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues.csv"</span><span class="op">)</span>  <span class="co"># e.g. columns: "Genotype", "YLD_BLUE"</span></span>
+<span><span class="va">res</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                   blues    <span class="op">=</span> <span class="va">blues</span>,</span>
+<span>                                   id_col   <span class="op">=</span> <span class="st">"Genotype"</span>,   <span class="co"># ID column name</span></span>
+<span>                                   blue_col <span class="op">=</span> <span class="st">"YLD_BLUE"</span><span class="op">)</span>   <span class="co"># BLUE column name</span></span></code></pre></div>
+<p><strong>Format 3: Data frame, multiple traits</strong></p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues_mt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues_mt.csv"</span><span class="op">)</span>  <span class="co"># columns: id, YLD, DIS, PHT</span></span>
+<span><span class="va">res_mt</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                      blues           <span class="op">=</span> <span class="va">blues_mt</span>,</span>
+<span>                                      id_col          <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>                                      blue_cols       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"YLD"</span>, <span class="st">"DIS"</span>, <span class="st">"PHT"</span><span class="op">)</span>,</span>
+<span>                                      importance_rule <span class="op">=</span> <span class="st">"any"</span><span class="op">)</span></span></code></pre></div>
+<p>When <code>blue_cols = NULL</code> (default), all numeric non-ID
+columns are used automatically.</p>
+<p><strong>Format 4: Named list</strong> (different individuals per
+trait)</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  YLD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ind001 <span class="op">=</span> <span class="fl">4.21</span>, ind002 <span class="op">=</span> <span class="fl">3.87</span><span class="op">)</span>,</span>
+<span>  DIS <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ind001 <span class="op">=</span> <span class="fl">0.32</span>, ind003 <span class="op">=</span> <span class="fl">0.28</span><span class="op">)</span>  <span class="co"># ind002 missing, ind003 added</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><strong>Column requirements and ID matching</strong></p>
+<table class="table">
+<colgroup>
+<col width="40%">
+<col width="59%">
+</colgroup>
+<thead><tr class="header">
+<th>Element</th>
+<th>Requirement</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>ID column</td>
+<td>Any name — set via <code>id_col</code>. Must match
+<code>rownames(geno_matrix)</code> exactly (case-sensitive).</td>
+</tr>
+<tr class="even">
+<td>BLUE column(s)</td>
+<td>Any name — set via <code>blue_col</code> (single) or
+<code>blue_cols</code> (multi). Must be numeric.</td>
+</tr>
+<tr class="odd">
+<td>Missing values</td>
+<td>
+<code>NA</code> BLUEs are silently dropped from GEBV
+estimation.</td>
+</tr>
+<tr class="even">
+<td>ID mismatch</td>
+<td>Intersection of phenotyped and genotyped individuals is used;
+unmatched individuals trigger an informative message.</td>
+</tr>
+</tbody>
+</table>
+<p>The package ships with <code>ldx_blues</code> and
+<code>inst/extdata/example_blues.csv</code> showing the expected format
+(columns: <code>id</code>, <code>YLD</code>, <code>RES</code>):</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"example_blues.csv"</span>, package <span class="op">=</span> <span class="st">"LDxBlocks"</span><span class="op">)</span></span>
+<span><span class="va">blues</span>      <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">blues_file</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">blues</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;       id     YLD     RES</span></span>
+<span><span class="co">#&gt; 1 ind001  0.8909 -0.8208</span></span>
+<span><span class="co">#&gt; 2 ind002 -0.8711  0.9927</span></span>
+<span><span class="co">#&gt; 3 ind003 -0.9154 -0.9956</span></span></code></pre></div>
+<p>The most common source of errors is an ID mismatch between the
+phenotype file and the genotype matrix. Verify with:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">blues</span><span class="op">$</span><span class="va">id</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">)</span><span class="op">)</span>  <span class="co"># should be TRUE</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="step-3-ld-block-detection">Step 3 — LD block detection<a class="anchor" aria-label="anchor" href="#step-3-ld-block-detection"></a>
 </h2>
 <div class="section level3">
 <h3 id="genome-wide-recommended">Genome-wide (recommended)<a class="anchor" aria-label="anchor" href="#genome-wide-recommended"></a>
 </h3>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="va">ldx_geno</span>,</span>
 <span>  snp_info    <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span>
@@ -433,7 +524,7 @@ formats are supported:</p>
 <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> to restrict detection to one or more
 specific chromosomes. This uses the same streaming memory model and
 produces the same output columns as a genome-wide run.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blocks_chr1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="va">ldx_geno</span>,</span>
 <span>  snp_info    <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span>
@@ -449,20 +540,41 @@ produces the same output columns as a genome-wide run.</p>
 <span><span class="co">#&gt; [1] 3</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">blocks_chr1</span><span class="op">$</span><span class="va">CHR</span><span class="op">)</span>      <span class="co"># confirms only chr 1 processed</span></span>
 <span><span class="co">#&gt; [1] "1"</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="wgs-panels-use-clqmode-louvain-and-max_bp_distance">WGS panels: use <code>CLQmode = "Louvain"</code> and
+<code>max_bp_distance</code><a class="anchor" aria-label="anchor" href="#wgs-panels-use-clqmode-louvain-and-max_bp_distance"></a>
+</h3>
+<p>For WGS-density panels (&gt; 500k SNPs), the default
+<code>CLQmode = "Density"</code> (Bron-Kerbosch clique enumeration) can
+suffer exponential blowup — a single 1500-SNP window with dense LD can
+stall for hours. Two parameters fix this:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Recommended for WGS panels (&gt; 500 k SNPs)</span></span>
+<span><span class="va">blocks_wgs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
+<span>  <span class="va">be</span>,</span>
+<span>  CLQmode         <span class="op">=</span> <span class="st">"Louvain"</span>,   <span class="co"># polynomial O(n log n) — no clique blowup</span></span>
+<span>  max_bp_distance <span class="op">=</span> <span class="fl">500000L</span>,     <span class="co"># skip r² for pairs &gt; 500 kb (near-O(p))</span></span>
+<span>  CLQcut          <span class="op">=</span> <span class="fl">0.70</span>,        <span class="co"># sparser LD graph</span></span>
+<span>  subSegmSize     <span class="op">=</span> <span class="fl">500L</span>,        <span class="co"># smaller windows</span></span>
+<span>  leng            <span class="op">=</span> <span class="fl">50L</span>,         <span class="co"># narrower boundary scan at WGS density</span></span>
+<span>  checkLargest    <span class="op">=</span> <span class="cn">TRUE</span>,        <span class="co"># belt-and-suspenders guard</span></span>
+<span>  n_threads       <span class="op">=</span> <span class="va">n_threads</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 </div>
 <div class="section level2">
-<h2 id="step-3-summarising-and-visualising-blocks">Step 3 — Summarising and visualising blocks<a class="anchor" aria-label="anchor" href="#step-3-summarising-and-visualising-blocks"></a>
+<h2 id="step-4-summarising-and-visualising-blocks">Step 4 — Summarising and visualising blocks<a class="anchor" aria-label="anchor" href="#step-4-summarising-and-visualising-blocks"></a>
 </h2>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summarise_blocks.html">summarise_blocks</a></span><span class="op">(</span><span class="va">blocks</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      CHR n_blocks min_bp median_bp  mean_bp max_bp total_bp_covered</span></span>
 <span><span class="co">#&gt; 1      1        3  18893     24339 22589.33  24536            67768</span></span>
 <span><span class="co">#&gt; 2      2        3  18760     19070 22092.00  28446            66276</span></span>
 <span><span class="co">#&gt; 3      3        3  18995     19653 19481.33  19796            58444</span></span>
 <span><span class="co">#&gt; 4 GENOME        9  18760     19653 21387.56  28446           192488</span></span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"ggplot2"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/plot_ld_blocks.html">plot_ld_blocks</a></span><span class="op">(</span><span class="va">blocks</span>, colour_by <span class="op">=</span> <span class="st">"length_bp"</span>, mb_scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -474,7 +586,7 @@ LD block structure coloured by block size
 <hr>
 </div>
 <div class="section level2">
-<h2 id="step-4-haplotype-extraction">Step 4 — Haplotype extraction<a class="anchor" aria-label="anchor" href="#step-4-haplotype-extraction"></a>
+<h2 id="step-5-haplotype-extraction">Step 5 — Haplotype extraction<a class="anchor" aria-label="anchor" href="#step-5-haplotype-extraction"></a>
 </h2>
 <div class="section level3">
 <h3 id="unphased-mode-default">Unphased mode (default)<a class="anchor" aria-label="anchor" href="#unphased-mode-default"></a>
@@ -483,7 +595,7 @@ LD block structure coloured by block size
 matrix (0/1/2/NA) or a phased list from <code><a href="../reference/read_phased_vcf.html">read_phased_vcf()</a></code> /
 <code><a href="../reference/phase_with_pedigree.html">phase_with_pedigree()</a></code>. In unphased mode each individual
 receives one diploid allele string per block:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># For large real datasets, pass the backend object directly:</span></span>
 <span><span class="co">#   haps &lt;- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5L)</span></span>
 <span><span class="co"># This streams one chromosome at a time — the full genome is never in RAM.</span></span>
@@ -524,7 +636,7 @@ receives one diploid allele string per block:</p>
 pedigree), load the phased VCF first and pass the resulting list to
 <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>. Phased mode is detected automatically
 from the <code>hap1</code>/<code>hap2</code> structure:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Statistical phasing via Beagle 5.x</span></span>
 <span><span class="fu"><a href="../reference/phase_with_beagle.html">phase_with_beagle</a></span><span class="op">(</span>input_vcf <span class="op">=</span> <span class="st">"raw.vcf.gz"</span>, out_prefix <span class="op">=</span> <span class="st">"phased"</span>,</span>
 <span>                  nthreads <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span>
@@ -543,13 +655,13 @@ from the <code>hap1</code>/<code>hap2</code> structure:</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="step-5-haplotype-diversity">Step 5 — Haplotype diversity<a class="anchor" aria-label="anchor" href="#step-5-haplotype-diversity"></a>
+<h2 id="step-6-haplotype-diversity">Step 6 — Haplotype diversity<a class="anchor" aria-label="anchor" href="#step-6-haplotype-diversity"></a>
 </h2>
 <p><code><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code> works with both phased and
 unphased strings. For phased data each individual contributes two gamete
 observations, doubling the effective sample size for frequency
 estimates:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">div</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity</a></span><span class="op">(</span><span class="va">haps</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">div</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                block_id CHR start_bp end_bp n_snps n_ind n_haplotypes        He</span></span>
@@ -607,7 +719,7 @@ estimates:</p>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"ggplot2"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">div</span>, <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">block_id</span>, y <span class="op">=</span> <span class="va">He</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_bar.html" class="external-link">geom_col</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"#1D9E75"</span><span class="op">)</span> <span class="op">+</span></span>
@@ -621,16 +733,16 @@ Expected heterozygosity per LD block
 </p>
 </div>
 <p>Write diversity results to disk:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/write_haplotype_diversity.html">write_haplotype_diversity</a></span><span class="op">(</span><span class="va">div</span>, <span class="st">"haplotype_diversity.csv"</span>, append_summary <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="step-6-post-gwas-qtl-region-definition">Step 6 — Post-GWAS QTL region definition<a class="anchor" aria-label="anchor" href="#step-6-post-gwas-qtl-region-definition"></a>
+<h2 id="step-7-post-gwas-qtl-region-definition">Step 7 — Post-GWAS QTL region definition<a class="anchor" aria-label="anchor" href="#step-7-post-gwas-qtl-region-definition"></a>
 </h2>
 <p>When GWAS results are available, map significant markers onto LD
 blocks to define QTL regions and flag pleiotropic blocks:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ldx_gwas has a `trait` column (TraitA / TraitB) enabling pleiotropic detection.</span></span>
 <span><span class="co"># For single-trait GWAS simply omit trait_col — the function still works,</span></span>
 <span><span class="co"># setting n_traits = 1 and pleiotropic = FALSE for all blocks.</span></span>
@@ -655,11 +767,11 @@ blocks to define QTL regions and flag pleiotropic blocks:</p>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="step-7-feature-matrix-for-genomic-prediction">Step 7 — Feature matrix for genomic prediction<a class="anchor" aria-label="anchor" href="#step-7-feature-matrix-for-genomic-prediction"></a>
+<h2 id="step-8-feature-matrix-for-genomic-prediction">Step 8 — Feature matrix for genomic prediction<a class="anchor" aria-label="anchor" href="#step-8-feature-matrix-for-genomic-prediction"></a>
 </h2>
 <p><code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> supports two encoding
 schemes and both phased and unphased input:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Additive 0/1/2 (phased) or 0/2 (unphased) — recommended for GBLUP/rrBLUP</span></span>
 <span><span class="va">feat_add</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span></span>
 <span>  haplotypes <span class="op">=</span> <span class="va">haps</span>,</span>
@@ -679,7 +791,7 @@ schemes and both phased and unphased input:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat_pa</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120  45</span></span></code></pre></div>
 <p>Write the feature matrix:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Numeric: rows=haplotypes, cols=individuals, values=0/1/2/NA dosage</span></span>
 <span><span class="fu"><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric</a></span><span class="op">(</span><span class="va">feat_add</span>, <span class="st">"hap_matrix_numeric.csv"</span>,</span>
 <span>                         haplotypes <span class="op">=</span> <span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">ldx_snp_info</span><span class="op">)</span></span>
@@ -692,10 +804,11 @@ schemes and both phased and unphased input:</p>
 </h3>
 <p>When pre-adjusted phenotype values (BLUEs or adjusted entry means)
 are available, the full Tong et al. (2025) haplotype stacking pipeline
-runs in a single call. <code>blues</code> accepts a named numeric vector
-or a data frame with <code>id_col</code> and <code>blue_col</code>
-arguments:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+runs in a single call. <code>blues</code> accepts any of the four
+formats described in Step 2 (named numeric vector, single-trait data
+frame, multi-trait data frame, or named list). See Step 2 for column
+name requirements:</p>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues.csv"</span><span class="op">)</span>  <span class="co"># columns: id, YLD</span></span>
 <span><span class="va">pred</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span></span>
 <span>  geno_matrix <span class="op">=</span> <span class="va">ldx_geno</span>,</span>
@@ -714,12 +827,40 @@ arguments:</p>
 <span>  qtl_regions <span class="op">=</span> <span class="va">qtl</span>,          <span class="co"># from define_qtl_regions()</span></span>
 <span>  pred_result <span class="op">=</span> <span class="va">pred</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">priority</span><span class="op">$</span><span class="va">ranked_blocks</span><span class="op">[</span><span class="va">priority</span><span class="op">$</span><span class="va">ranked_blocks</span><span class="op">$</span><span class="va">priority_score</span> <span class="op">==</span> <span class="fl">3</span>, <span class="op">]</span></span></code></pre></div>
+<span><span class="va">priority</span><span class="op">$</span><span class="va">ranked_blocks</span><span class="op">[</span><span class="va">priority</span><span class="op">$</span><span class="va">ranked_blocks</span><span class="op">$</span><span class="va">rank_score</span> <span class="op">&gt;=</span> <span class="fl">0.9</span>, <span class="op">]</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="multi-trait-prediction">Multi-trait prediction<a class="anchor" aria-label="anchor" href="#multi-trait-prediction"></a>
+</h3>
+<p>Pass a data frame with multiple trait columns — or a named list of
+named numeric vectors — to <code><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> to
+analyse all traits simultaneously with a single shared GRM. A true
+multi-trait GBLUP is attempted via <code><a href="https://rdrr.io/pkg/sommer/man/mmer.html" class="external-link">sommer::mmer()</a></code> when
+sommer is installed; if not, or if the model fails to converge, the
+function silently falls back to <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> per
+trait. Block importance is then aggregated across traits so rankings are
+not specific to any single trait:</p>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues.csv"</span><span class="op">)</span>  <span class="co"># columns: id, YLD, DIS, PHT</span></span>
+<span><span class="va">res_mt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span></span>
+<span>  geno_matrix     <span class="op">=</span> <span class="va">ldx_geno</span>,</span>
+<span>  snp_info        <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span>
+<span>  blocks          <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  blues           <span class="op">=</span> <span class="va">blues_df</span>,</span>
+<span>  id_col          <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>  blue_cols       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"YLD"</span>, <span class="st">"DIS"</span>, <span class="st">"PHT"</span><span class="op">)</span>,</span>
+<span>  importance_rule <span class="op">=</span> <span class="st">"any"</span>   <span class="co"># flag block if important for &gt;= 1 trait</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">res_mt</span><span class="op">$</span><span class="va">solver_used</span>   <span class="co"># 'rrBLUP' (fallback)</span></span>
+<span><span class="co"># Cross-trait block importance</span></span>
+<span><span class="va">res_mt</span><span class="op">$</span><span class="va">block_importance</span><span class="op">[</span><span class="va">res_mt</span><span class="op">$</span><span class="va">block_importance</span><span class="op">$</span><span class="va">important_any</span>, </span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>, <span class="st">"var_scaled_YLD"</span>, <span class="st">"var_scaled_DIS"</span>,</span>
+<span>    <span class="st">"var_scaled_mean"</span>, <span class="st">"n_traits_important"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="building-a-haplotype-grm-for-gblup">Building a haplotype GRM for GBLUP<a class="anchor" aria-label="anchor" href="#building-a-haplotype-grm-for-gblup"></a>
 </h3>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat_add</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat_add</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">G_hap</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120 120</span></span>
@@ -729,9 +870,9 @@ arguments:</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="step-8-parameter-auto-tuning">Step 8 — Parameter auto-tuning<a class="anchor" aria-label="anchor" href="#step-8-parameter-auto-tuning"></a>
+<h2 id="step-9-parameter-auto-tuning">Step 9 — Parameter auto-tuning<a class="anchor" aria-label="anchor" href="#step-9-parameter-auto-tuning"></a>
 </h2>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html" class="external-link">expand.grid</a></span><span class="op">(</span></span>
 <span>  CLQcut <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.45</span>, <span class="fl">0.55</span>, <span class="fl">0.65</span><span class="op">)</span>, clstgap <span class="op">=</span> <span class="fl">1e5</span>, leng <span class="op">=</span> <span class="fl">15</span>,</span>
 <span>  subSegmSize <span class="op">=</span> <span class="fl">100</span>, split <span class="op">=</span> <span class="cn">FALSE</span>, checkLargest <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -794,14 +935,26 @@ arguments:</p>
 <div class="section level2">
 <h2 id="complete-pipeline-one-block">Complete pipeline (one block)<a class="anchor" aria-label="anchor" href="#complete-pipeline-one-block"></a>
 </h2>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/FAkohoue/LDxBlocks" class="external-link">LDxBlocks</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 1. Open streaming backend (VCF auto-converts to GDS cache on first call)</span></span>
+<span><span class="co"># Step 1. Open streaming backend (VCF auto-converts to GDS cache on first call)</span></span>
 <span><span class="va">be</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">"mydata.vcf.gz"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 2. Block detection — chromosome-by-chromosome, gc() after each</span></span>
-<span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"r2"</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span>, n_threads <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span>
+<span><span class="co"># Step 2. Prepare phenotype data (BLUEs from mixed model — see Step 2 of this vignette)</span></span>
+<span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues.csv"</span><span class="op">)</span>  <span class="co"># columns: id (or any name), trait1, trait2 ...</span></span>
+<span></span>
+<span><span class="co"># Step 3. Block detection — use Louvain for WGS panels to avoid clique blowup</span></span>
+<span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
+<span>  <span class="va">be</span>,</span>
+<span>  method          <span class="op">=</span> <span class="st">"r2"</span>,</span>
+<span>  CLQcut          <span class="op">=</span> <span class="fl">0.70</span>,</span>
+<span>  CLQmode         <span class="op">=</span> <span class="st">"Louvain"</span>,    <span class="co"># polynomial; safe for WGS density</span></span>
+<span>  max_bp_distance <span class="op">=</span> <span class="fl">500000L</span>,      <span class="co"># skip pairs &gt; 500 kb; near-O(p)</span></span>
+<span>  subSegmSize     <span class="op">=</span> <span class="fl">500L</span>,</span>
+<span>  leng            <span class="op">=</span> <span class="fl">50L</span>,</span>
+<span>  n_threads       <span class="op">=</span> <span class="fl">8L</span></span>
+<span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/summarise_blocks.html">summarise_blocks</a></span><span class="op">(</span><span class="va">blocks</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 3. Haplotypes — pass backend directly: streams one chromosome at a time,</span></span>
@@ -874,6 +1027,10 @@ correct the bias due to population structure and relatedness.
 predictions. <em>Journal of Dairy Science</em>
 <strong>91</strong>(11):4414-4423. <a href="https://doi.org/10.3168/jds.2007-0980" class="external-link uri">https://doi.org/10.3168/jds.2007-0980</a>
 </li>
+<li>Covarrubias-Pazaran G (2016). Genome-assisted prediction of
+quantitative traits using the R package sommer. <em>PLOS ONE</em>
+<strong>11</strong>:e0156744. <a href="https://doi.org/10.1371/journal.pone.0156744" class="external-link uri">https://doi.org/10.1371/journal.pone.0156744</a>
+</li>
 <li>Calus MPL, Meuwissen THE, de Roos APW, Veerkamp RF (2008). Accuracy
 of genomic selection using different methods to define haplotypes.
 <em>Genetics</em> <strong>178</strong>(1):553-561. <a href="https://doi.org/10.1534/genetics.107.080838" class="external-link uri">https://doi.org/10.1534/genetics.107.080838</a>
@@ -885,6 +1042,14 @@ predictions across multiple populations. <em>Genetics</em>
 <li>Nei M (1973). Analysis of gene diversity in subdivided populations.
 <em>Proceedings of the National Academy of Sciences</em>
 <strong>70</strong>(12):3321-3323. <a href="https://doi.org/10.1073/pnas.70.12.3321" class="external-link uri">https://doi.org/10.1073/pnas.70.12.3321</a>
+</li>
+<li>Blondel VD, Guillaume J-L, Lambiotte R, Lefebvre E (2008). Fast
+unfolding of communities in large networks. <em>Journal of Statistical
+Mechanics: Theory and Experiment</em> <strong>2008</strong>:P10008. <a href="https://doi.org/10.1088/1742-5468/2008/10/P10008" class="external-link uri">https://doi.org/10.1088/1742-5468/2008/10/P10008</a>
+</li>
+<li>Traag VA, Waltman L, van Eck NJ (2019). From Louvain to Leiden:
+guaranteeing well-connected communities. <em>Scientific Reports</em>
+<strong>9</strong>:5233. <a href="https://doi.org/10.1038/s41598-019-41695-z" class="external-link uri">https://doi.org/10.1038/s41598-019-41695-z</a>
 </li>
 </ul>
 </div>

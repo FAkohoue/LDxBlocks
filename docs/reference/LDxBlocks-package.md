@@ -25,7 +25,11 @@ multi-format genotype I/O.
 
 1.  Read genotype data:
     [`read_geno`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
-    – auto-detects CSV, HapMap, VCF, GDS, BED, or plain matrix.
+    – auto-detects CSV, HapMap, VCF, GDS, BED, or plain matrix. HapMap,
+    VCF, GDS, BED, or plain matrix. For WGS panels where peak RAM is a
+    concern, use
+    [`read_geno_bigmemory`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno_bigmemory.md)
+    to build a memory-mapped store (requires bigmemory).
 
 2.  Detect LD blocks chromosome-wise:
     [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md).
@@ -82,6 +86,13 @@ multi-format genotype I/O.
 
   20 toy GWAS markers for tuning demos.
 
+- [`ldx_blues`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_blues.md):
+
+  Pre-adjusted BLUEs (id, YLD, RES) for
+  [`run_haplotype_prediction`](https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_prediction.md)
+  demos. Available as an .rda dataset and
+  `inst/extdata/example_blues.csv`.
+
 ## References
 
 Kim S-A et al. (2018). A new haplotype block detection method for dense
@@ -120,6 +131,16 @@ Tong J et al. (2025). Haplotype stacking to improve stability of stripe
 rust resistance in wheat. *Theoretical and Applied Genetics*
 **138**:267.
 [doi:10.1007/s00122-025-05045-0](https://doi.org/10.1007/s00122-025-05045-0)
+
+Blondel VD, Guillaume J-L, Lambiotte R, Lefebvre E (2008). Fast
+unfolding of communities in large networks. *Journal of Statistical
+Mechanics: Theory and Experiment* **2008**:P10008.
+[doi:10.1088/1742-5468/2008/10/P10008](https://doi.org/10.1088/1742-5468/2008/10/P10008)
+
+Traag VA, Waltman L, van Eck NJ (2019). From Louvain to Leiden:
+guaranteeing well-connected communities. *Scientific Reports*
+**9**:5233.
+[doi:10.1038/s41598-019-41695-z](https://doi.org/10.1038/s41598-019-41695-z)
 
 ## See also
 

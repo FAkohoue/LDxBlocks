@@ -9,6 +9,7 @@
 //   build_adj_matrix_cpp  -- threshold adjacency from LD matrix
 //   col_r2_cpp            -- r² of one column against all others (for boundary scan)
 //   compute_r2_sparse_cpp -- sparse r² (only pairs within bp window)
+//   boundary_scan_cpp     -- weak-LD cut position scan (subsegmentation)
 
 // [[Rcpp::depends(RcppArmadillo)]]
 // [[Rcpp::plugins(openmp)]]

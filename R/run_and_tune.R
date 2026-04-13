@@ -34,6 +34,15 @@
 #'   filtering but are not assigned to any clique are returned as single-SNP
 #'   blocks (\code{start == end}, \code{length_bp == 1}). Default \code{FALSE}.
 #'   See \code{\link{Big_LD}} for details.
+#' @param max_bp_distance Integer. Maximum base-pair distance between a SNP
+#'   pair for its r\eqn{^2} to be computed. Pairs beyond this distance are set
+#'   to zero in the adjacency matrix (assumed to be in negligible LD).
+#'   \code{0L} (default) disables this and computes all pairs (original
+#'   behaviour). Recommended value for WGS panels: \code{500000L} (500 kb).
+#'   Has no effect when \code{CLQmode} is \code{"Louvain"} or
+#'   \code{"Leiden"} and the window spans less than
+#'   \code{max_bp_distance}. Requires sorted SNP positions within each
+#'   sub-segment (guaranteed by \code{run_Big_LD_all_chr}).
 #' @param CLQcut,clstgap,leng,subSegmSize,MAFcut,appendrare,checkLargest,CLQmode,kin_method,split,digits,seed,verbose
 #'   Forwarded to \code{\link{Big_LD}}. See that function's documentation for
 #'   details.
@@ -48,7 +57,7 @@
 #'
 #' @examples
 #' \donttest{
-#' # Use the package example data — 120 individuals, 230 SNPs, 3 chromosomes,
+#' # Use the package example data -- 120 individuals, 230 SNPs, 3 chromosomes,
 #' # 9 simulated LD blocks (3 per chromosome).
 #' data(ldx_geno,     package = "LDxBlocks")
 #' data(ldx_snp_info, package = "LDxBlocks")
@@ -83,6 +92,7 @@ run_Big_LD_all_chr <- function(
     min_snps_chr    = 10L,
     chr             = NULL,
     clean_malformed = FALSE,
+    max_bp_distance = 0L,
     verbose         = FALSE
 ) {
   # -- Accept either a plain matrix+snp_info OR an LDxBlocks_backend ----------
@@ -117,15 +127,15 @@ run_Big_LD_all_chr <- function(
   ld_blocks_all <- vector("list", length(chromosomes))
   names(ld_blocks_all) <- chromosomes
 
-  for (chr in chromosomes) {
-    if (isTRUE(verbose)) cat("\n[run_Big_LD_all_chr] Processing", chr, "...\n")
-    idx      <- which(snp_info$CHR == chr)
+  for (chr_i in chromosomes) {
+    if (isTRUE(verbose)) cat("\n[run_Big_LD_all_chr] Processing", chr_i, "...\n")
+    idx      <- which(snp_info$CHR == chr_i)
     geno_chr <- read_chunk(backend, idx)           # works for ALL backend types
     info_chr <- as.data.frame(snp_info[idx, c("SNP", "POS")])
     if (!is.numeric(info_chr$POS)) info_chr$POS <- as.numeric(info_chr$POS)
 
     if (ncol(geno_chr) < as.integer(min_snps_chr)) {
-      if (isTRUE(verbose)) cat("  Skipping", chr, "- fewer than", min_snps_chr, "SNPs.\n")
+      if (isTRUE(verbose)) cat("  Skipping", chr_i, "- fewer than", min_snps_chr, "SNPs.\n")
       next
     }
 
@@ -137,14 +147,15 @@ run_Big_LD_all_chr <- function(
              checkLargest = checkLargest,
              CLQmode = CLQmode, kin_method = kin_method,
              split = split, method = method[1], n_threads = n_threads,
-             digits = digits, seed = seed, verbose = verbose),
+             digits = digits, seed = seed,
+             max_bp_distance = max_bp_distance, verbose = verbose),
       error = function(e) {
         if (isTRUE(verbose))
-          cat("  Error in Big_LD for", chr, ":", conditionMessage(e), "\n")
+          cat("  Error in Big_LD for", chr_i, ":", conditionMessage(e), "\n")
         NULL
       }
     )
-    if (!is.null(blk) && nrow(blk) > 0L) { blk$CHR <- chr; ld_blocks_all[[chr]] <- blk }
+    if (!is.null(blk) && nrow(blk) > 0L) { blk$CHR <- chr_i; ld_blocks_all[[chr_i]] <- blk }
 
     # Free chromosome genotype matrix immediately after use.
     # gc(FALSE) is called to release allocator pressure without a full GC cycle.

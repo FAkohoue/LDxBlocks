@@ -35,7 +35,7 @@ highly diverse haplotypes (many rare alleles above \code{min_freq}).}
     because we cannot confirm both chromosomes carry the same
     allele from unphased dosage strings. Compatible with
     rrBLUP, BGLR, sommer, ASReml-R.
-  \item \code{"presence_01"}: values are 0 or 1 — clean presence/absence
+  \item \code{"presence_01"}: values are 0 or 1 -- clean presence/absence
     encoding. For phased data: 1 if either gamete carries the allele.
     For unphased data: 1 if the individual's allele string matches.
     Loses copy-number information compared to \code{"additive_012"}

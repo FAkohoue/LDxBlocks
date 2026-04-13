@@ -14,7 +14,7 @@ run_ldx_pipeline(
   CLQcut = 0.5,
   method = c("r2", "rV2"),
   kin_method = "chol",
-  CLQmode = "Density",
+  CLQmode = c("Density", "Maximal", "Louvain", "Leiden"),
   leng = 200L,
   subSegmSize = 1500L,
   clstgap = 40000L,
@@ -31,6 +31,7 @@ run_ldx_pipeline(
   scale_hap_matrix = FALSE,
   chr = NULL,
   verbose = TRUE,
+  max_bp_distance = 0L,
   clean_malformed = FALSE
 )
 }
@@ -147,6 +148,11 @@ GBLUP-style models. Default `FALSE`.}
 
 \item{verbose}{Logical. Print timestamped progress. Default `TRUE`.}
 
+\item{max_bp_distance}{Integer. Maximum bp distance between a SNP pair
+for its r\eqn{^2} to be computed in the LD graph. \code{0L} (default)
+computes all pairs. Recommended for WGS panels: \code{500000L} (500 kb).
+Reduces O(p\eqn{^2}) LD computation to near-O(p) when set.}
+
 \item{clean_malformed}{Logical. Stream-clean the input file before reading
 by removing any lines whose column count does not match the header. Needed
 for files from NGSEP and some variant callers. Default \code{FALSE}.}
@@ -162,7 +168,7 @@ A named list (invisibly) with elements:
     \code{Shannon}, \code{n_eff_alleles}, \code{freq_dominant},
     \code{sweep_flag}, \code{phased}.}
   \item{\code{hap_matrix}}{Numeric matrix (individuals x haplotype
-    allele columns) — the dimensionality-reduced genotype matrix for
+    allele columns) -- the dimensionality-reduced genotype matrix for
     genomic prediction. Always returned as a numeric R matrix
     regardless of \code{hap_format} (which only controls the
     \emph{file} written to \code{out_hap_matrix}). Dosage values:
@@ -178,11 +184,11 @@ A named list (invisibly) with elements:
   \item{\code{geno_matrix}}{Numeric matrix (individuals x SNPs) of
     MAF-filtered genotypes (0/1/2/NA). Needed directly by
     \code{\link{tune_LD_params}} and
-    \code{\link{run_haplotype_prediction}} — avoids reloading
+    \code{\link{run_haplotype_prediction}} -- avoids reloading
     the genotype file after the pipeline completes.}
   \item{\code{n_blocks}}{Integer. Total LD blocks detected genome-wide.}
   \item{\code{n_hap_columns}}{Integer. Total haplotype allele columns
-    after \code{min_freq} filtering — the effective number of predictors
+    after \code{min_freq} filtering -- the effective number of predictors
     for genomic prediction.}
 }
 }
@@ -214,13 +220,13 @@ columns, preceded by metadata columns: \code{hap_id}, \code{CHR},
 \itemize{
   \item \code{"numeric"}: individual cells are haplotype dosage values:
     \itemize{
-      \item \strong{Phased data}: 0/1/2/NA — 0 = neither gamete carries
+      \item \strong{Phased data}: 0/1/2/NA -- 0 = neither gamete carries
         this allele, 1 = one gamete carries it (heterozygous),
         2 = both gametes carry it (homozygous).
-      \item \strong{Unphased data}: 0/1/NA — 0 = absent, 1 = present
+      \item \strong{Unphased data}: 0/1/NA -- 0 = absent, 1 = present
         (individual's block-level string matches this allele exactly).
         The value 2 is not used for unphased data because the two
-        chromosomes cannot be distinguished — an individual homozygous
+        chromosomes cannot be distinguished -- an individual homozygous
         for this allele and one heterozygous for it produce different
         observable strings and are treated as different alleles.
     }

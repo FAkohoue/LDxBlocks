@@ -1,6 +1,10 @@
 ## src/Makevars.win
-
 # Note: ARMA_DONT_USE_WRAPPER is already defined by RcppArmadillo on Windows.
 # Repeating it here causes a -Wmacro-redefined warning; omit it.
-PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+#
+# ARMA_NO_DEBUG: disable Armadillo's tinyformat-based exception formatting.
+#   Also applied here (consistent with Makevars) because the UCRT toolchain
+#   on Windows can exhibit the same tinyformat PE-relocation stubs when
+#   binutils >= 2.40 is used (e.g. via Rtools43+).
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -DARMA_NO_DEBUG
 PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)

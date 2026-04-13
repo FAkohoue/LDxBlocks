@@ -16,8 +16,10 @@ ldx_geno
 ## Format
 
 A numeric matrix with 120 rows (individuals, named `ind001` to `ind120`)
-and 230 columns (SNPs, named `rs1001` to `rs3070`). Values are additive
-dosages in {0, 1, 2} with no missing data.
+and 230 columns (SNPs). SNP identifiers follow the pattern
+`rs{CHR}{count}`: chromosome 1 uses `rs1001`–`rs1080`, chromosome 2 uses
+`rs2001`–`rs2080`, chromosome 3 uses `rs3001`–`rs3070`. Values are
+additive dosages in {0, 1, 2} with no missing data.
 
 ## Source
 

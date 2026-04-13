@@ -62,7 +62,8 @@ jobs:
             "data.table", "igraph", "dplyr", "testthat",
             "Rcpp", "RcppArmadillo",
             "AGHmatrix", "ASRgenomics", "BEDMatrix",
-            "ggplot2", "future.apply", "rrBLUP"
+            "ggplot2", "future.apply", "rrBLUP",
+            "bigmemory"
           )
           to_install <- pkgs[!vapply(pkgs, requireNamespace,
                                      logical(1L), quietly = TRUE)]

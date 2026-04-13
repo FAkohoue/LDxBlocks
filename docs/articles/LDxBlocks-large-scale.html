@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">LDxBlocks</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,6 +53,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -186,6 +187,14 @@ format.</strong></p>
 requested bytes</td>
 <td>~60 MB per window</td>
 </tr>
+<tr class="odd">
+<td>bigmemory</td>
+<td>
+<code>filebacked.big.matrix</code>; OS pages on demand via
+<code><a href="../reference/read_geno_bigmemory.html">read_geno_bigmemory()</a></code>
+</td>
+<td>~0.8 MB per window (204 × 500 × 8)</td>
+</tr>
 </tbody>
 </table>
 <p>The peak RAM formula for file-backed backends is:</p>
@@ -315,12 +324,100 @@ GDS reads total.</p>
 </div>
 </div>
 <div class="section level2">
+<h2 id="wgs-scale-acceleration-v0-3-1">WGS-scale acceleration (v0.3.1)<a class="anchor" aria-label="anchor" href="#wgs-scale-acceleration-v0-3-1"></a>
+</h2>
+<p>Three features address the exponential-blowup and I/O bottlenecks
+observed when running the default parameters on 3M+ SNP panels.</p>
+<div class="section level3">
+<h3 id="louvainleiden-community-detection-clqmode">Louvain/Leiden community detection (<code>CLQmode</code>)<a class="anchor" aria-label="anchor" href="#louvainleiden-community-detection-clqmode"></a>
+</h3>
+<p>The default <code>CLQmode = "Density"</code> uses Bron-Kerbosch
+clique enumeration, which has exponential worst-case complexity. On a
+3M-SNP WGS panel with <code>CLQcut = 0.5</code> and
+<code>subSegmSize = 1500</code>, a single window can find 4+ million
+maximal cliques and run for hours. <code>CLQmode = "Louvain"</code> and
+<code>CLQmode = "Leiden"</code> replace this with O(n log n) community
+detection:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Recommended for any WGS panel &gt; 500 k SNPs per chromosome</span></span>
+<span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
+<span>  <span class="va">be_gds</span>,</span>
+<span>  CLQmode         <span class="op">=</span> <span class="st">"Louvain"</span>,   <span class="co"># polynomial — never exponential</span></span>
+<span>  CLQcut          <span class="op">=</span> <span class="fl">0.70</span>,        <span class="co"># sparser graph reduces community count</span></span>
+<span>  max_bp_distance <span class="op">=</span> <span class="fl">500000L</span>,     <span class="co"># sparse LD: skip pairs &gt; 500 kb</span></span>
+<span>  subSegmSize     <span class="op">=</span> <span class="fl">500L</span>,        <span class="co"># smaller windows for safety</span></span>
+<span>  leng            <span class="op">=</span> <span class="fl">50L</span>,         <span class="co"># narrower boundary scan at WGS density</span></span>
+<span>  checkLargest    <span class="op">=</span> <span class="cn">TRUE</span>,        <span class="co"># extra guard if Density mode is used</span></span>
+<span>  n_threads       <span class="op">=</span> <span class="fl">16L</span>,</span>
+<span>  min_snps_chr    <span class="op">=</span> <span class="fl">100L</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Edge weights in the community graph are inversely proportional to
+base-pair distance, so local LD structure is respected. Communities with
+a single member become singletons (NA), exactly matching the Density
+path output format.</p>
+</div>
+<div class="section level3">
+<h3 id="sparse-ld-computation-max_bp_distance">Sparse LD computation (<code>max_bp_distance</code>)<a class="anchor" aria-label="anchor" href="#sparse-ld-computation-max_bp_distance"></a>
+</h3>
+<p>When <code>max_bp_distance &gt; 0</code>, only SNP pairs within that
+physical distance have their r² computed via
+<code>compute_r2_sparse_cpp()</code>. Pairs beyond the threshold are set
+to 0 in the adjacency matrix — a valid assumption because long-range r²
+decays to near-zero at WGS density. At 500 kb, 70–90% of pairs are
+skipped, reducing O(p²) LD computation to near-O(p):</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 500 kb cutoff: appropriate for most plant and animal WGS panels</span></span>
+<span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
+<span>  <span class="va">be_gds</span>,</span>
+<span>  CLQmode         <span class="op">=</span> <span class="st">"Louvain"</span>,</span>
+<span>  max_bp_distance <span class="op">=</span> <span class="fl">500000L</span>,</span>
+<span>  CLQcut          <span class="op">=</span> <span class="fl">0.70</span>,</span>
+<span>  n_threads       <span class="op">=</span> <span class="fl">16L</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="bigmemory-backend-read_geno_bigmemory">bigmemory backend (<code>read_geno_bigmemory()</code>)<a class="anchor" aria-label="anchor" href="#bigmemory-backend-read_geno_bigmemory"></a>
+</h3>
+<p>For cases where even the filtered matrix exceeds available RAM,
+<code><a href="../reference/read_geno_bigmemory.html">read_geno_bigmemory()</a></code> writes the genotype matrix to a
+binary file (<code>filebacked.big.matrix</code>) and wraps it in the
+standard backend interface. <code><a href="../reference/read_chunk.html">read_chunk()</a></code> retrieves columns
+via OS page faults — only the requested bytes are loaded. Storage type
+<code>"char"</code> (1 byte per cell) saves 8× over double for 0/1/2
+dosage data. Backing files persist across sessions:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Requires: install.packages('bigmemory')</span></span>
+<span><span class="va">be_gds</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">'mydata.gds'</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># First run: convert to memory-mapped store (~5 min for 3M SNPs)</span></span>
+<span><span class="va">be_bm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_geno_bigmemory.html">read_geno_bigmemory</a></span><span class="op">(</span></span>
+<span>  <span class="va">be_gds</span>,</span>
+<span>  backingfile <span class="op">=</span> <span class="st">'mydata_bm'</span>,       <span class="co"># .bin + .desc created here</span></span>
+<span>  backingpath <span class="op">=</span> <span class="st">'/data/ldxblocks'</span>, <span class="co"># persistent directory</span></span>
+<span>  type        <span class="op">=</span> <span class="st">'char'</span>,            <span class="co"># 1 byte/cell; 8x smaller than double</span></span>
+<span>  verbose     <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be_gds</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Subsequent runs: reattach without reloading</span></span>
+<span><span class="va">be_bm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_geno_bigmemory.html">read_geno_bigmemory</a></span><span class="op">(</span></span>
+<span>  <span class="st">'/data/ldxblocks/mydata_bm.desc'</span>,</span>
+<span>  snp_info <span class="op">=</span> <span class="va">be_bm</span><span class="op">$</span><span class="va">snp_info</span>  <span class="co"># supply separately on reattach</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># All standard functions work identically</span></span>
+<span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be_bm</span>, CLQmode <span class="op">=</span> <span class="st">'Louvain'</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be_bm</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+</div>
+<div class="section level2">
 <h2 id="plink-bed-backend-bedmatrix">PLINK BED backend (BEDMatrix)<a class="anchor" aria-label="anchor" href="#plink-bed-backend-bedmatrix"></a>
 </h2>
 <div class="section level3">
 <h3 id="installation-1">Installation<a class="anchor" aria-label="anchor" href="#installation-1"></a>
 </h3>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BEDMatrix"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -328,7 +425,7 @@ GDS reads total.</p>
 </h3>
 <p>The <code>.bim</code> and <code>.fam</code> files must exist at the
 same path stem:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">be_bed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">"mydata.bed"</span><span class="op">)</span>   <span class="co"># reads .bim and .fam automatically</span></span>
 <span><span class="va">be_bed</span></span>
 <span><span class="co"># LDxBlocks backend</span></span>
@@ -416,7 +513,7 @@ candidate cut position, with cost scaling as
 per chromosome. For a 500 k-SNP chromosome with <code>leng = 200</code>
 this is ~20 billion element comparisons. Reduce <code>leng</code> to
 50–100 for very dense panels:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Dense WGS panel: reduce leng, increase subSegmSize</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="va">be_gds</span>,</span>
@@ -433,7 +530,7 @@ this is ~20 billion element comparisons. Reduce <code>leng</code> to
 </h3>
 <p>OpenMP thread scaling is efficient up to approximately 8–16 threads
 for typical window sizes. Benchmark on your hardware:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span>, <span class="fl">4L</span>, <span class="fl">8L</span>, <span class="fl">16L</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">nt</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
 <span>    <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be_gds</span>, method <span class="op">=</span> <span class="st">"r2"</span>, CLQcut <span class="op">=</span> <span class="fl">0.7</span>,</span>
@@ -450,7 +547,7 @@ for typical window sizes. Benchmark on your hardware:</p>
 </h2>
 <p>For large panels, extract haplotypes one chromosome at a time to
 avoid loading the full genome matrix:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">be</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">"wgs_panel.gds"</span><span class="op">)</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"r2"</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span>,</span>
 <span>                              n_threads <span class="op">=</span> <span class="fl">16L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -472,9 +569,22 @@ avoid loading the full genome matrix:</p>
 <span>                           out_file <span class="op">=</span> <span class="st">"haplotype_matrix_nucleotide.txt"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/write_haplotype_diversity.html">write_haplotype_diversity</a></span><span class="op">(</span><span class="va">div</span>, <span class="st">"haplotype_diversity.csv"</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># Genomic prediction — supply BLUEs in any of the four supported formats.</span></span>
+<span><span class="co"># For format details and ID matching rules, see the Introduction vignette</span></span>
+<span><span class="co"># (Step 2: Phenotype input format) or ?run_haplotype_prediction.</span></span>
+<span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues.csv"</span><span class="op">)</span>  <span class="co"># columns: id, YLD (any column names)</span></span>
+<span><span class="va">pred</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span></span>
+<span>  geno_matrix <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu"><a href="../reference/read_chunk.html">read_chunk</a></span><span class="op">(</span><span class="va">be</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">be</span><span class="op">$</span><span class="va">n_snps</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  snp_info    <span class="op">=</span> <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span>,</span>
+<span>  blocks      <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  blues       <span class="op">=</span> <span class="va">blues</span>,</span>
+<span>  id_col      <span class="op">=</span> <span class="st">"id"</span>,      <span class="co"># name of the ID column in blues</span></span>
+<span>  blue_col    <span class="op">=</span> <span class="st">"YLD"</span>      <span class="co"># name of the BLUE column (single trait)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu"><a href="../reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span></span></code></pre></div>
 <p>For chromosome-specific analyses (e.g. a single chromosome only):</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Filter blocks and extract by chromosome — backend still streams</span></span>
 <span><span class="va">haps_chr1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">be</span>, <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
 <span>                                 chr <span class="op">=</span> <span class="st">"1"</span>, min_snps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
@@ -504,6 +614,15 @@ narrow scan window.</p>
 with &gt; 2 M SNPs per chromosome, set <code>subSegmSize = 500</code>
 and <code>leng = 30</code>. The algorithm will make more GDS reads but
 use far less RAM per step.</p>
+<p><strong>CLQD hangs or takes hours on a single chromosome.</strong>
+This is Bron-Kerbosch clique enumeration blowup. The
+<code>[CLQD] Found N maximal cliques</code> message will show N in the
+millions. Switch to <code>CLQmode = "Louvain"</code> — it runs in
+polynomial time and finishes the same window in seconds. Also set
+<code>CLQcut = 0.70</code> and <code>max_bp_distance = 500000L</code> to
+further reduce graph density. <code>checkLargest = TRUE</code> adds a
+safety guard for the Density/Maximal modes if you need exact clique
+enumeration.</p>
 <hr>
 </div>
 <div class="section level2">

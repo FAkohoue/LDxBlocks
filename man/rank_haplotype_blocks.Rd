@@ -48,7 +48,7 @@ Provides a unified block ranking that works across three use cases,
 depending on what data the user has available. In all cases,
 \code{min_freq} filtering inside
 \code{\link{build_haplotype_feature_matrix}} is applied first as a hard
-population-level filter — equivalent to MAF filtering for single SNPs.
+population-level filter -- equivalent to MAF filtering for single SNPs.
 Blocks are ranked only among those that survive this filter.
 }
 \section{The three use cases}{
@@ -60,9 +60,9 @@ Blocks are ranked only among those that survive this filter.
   \item \strong{Genotype + GWAS} (no phenotype): blocks are binary-flagged
     by whether they contain a GWAS-significant marker. Within the
     GWAS-hit group and within the non-hit group, blocks are further
-    ordered by He. The p-value is not used for ranking — a marker either
+    ordered by He. The p-value is not used for ranking -- a marker either
     crosses the significance threshold or it does not.
-  \item \strong{Genotype + phenotype} (± GWAS): blocks ranked by scaled
+  \item \strong{Genotype + phenotype} (? GWAS): blocks ranked by scaled
     \code{Var(local GEBV)} from \code{\link{run_haplotype_prediction}}.
     When GWAS results are also available, the binary GWAS flag is added
     as a secondary layer via \code{\link{integrate_gwas_haplotypes}}.
@@ -76,7 +76,7 @@ purpose to MAF filtering for single SNPs: haplotype alleles observed
 at frequency below this threshold cannot have their effects reliably
 estimated regardless of trait association, and are dropped before the
 dosage matrix is built. \code{rank_haplotype_blocks} operates entirely
-downstream of this filter — it ranks blocks that have already passed
+downstream of this filter -- it ranks blocks that have already passed
 \code{min_freq}, not individual alleles. A block survives as long as
 at least one of its alleles passes \code{min_freq}.
 }
@@ -86,14 +86,14 @@ at least one of its alleles passes \code{min_freq}.
 haps <- extract_haplotypes(geno, snp_info, blocks)
 div  <- compute_haplotype_diversity(haps)
 
-# Use case 1: genotype only — rank by diversity
+# Use case 1: genotype only -- rank by diversity
 ranked <- rank_haplotype_blocks(div)
 
-# Use case 2: genotype + GWAS — binary flag, then diversity within groups
+# Use case 2: genotype + GWAS -- binary flag, then diversity within groups
 qtl    <- define_qtl_regions(gwas_df, blocks, snp_info)
 ranked <- rank_haplotype_blocks(div, qtl_regions = qtl)
 
-# Use case 3: genotype + phenotype — rank by Var(local GEBV)
+# Use case 3: genotype + phenotype -- rank by Var(local GEBV)
 pred   <- run_haplotype_prediction(geno, snp_info, blocks, blues = blues)
 ranked <- rank_haplotype_blocks(div, qtl_regions = qtl, pred_result = pred)
 

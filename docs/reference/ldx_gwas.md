@@ -1,13 +1,14 @@
 # Example GWAS Marker Table
 
-Twenty toy GWAS-significant markers drawn from the simulated LD blocks,
-used to demonstrate
+Twenty toy GWAS markers drawn from simulated LD blocks for use with
 [`tune_LD_params`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md)
-parameter auto-tuning. All 20 markers fall within one of the nine
-simulated blocks in
-[`ldx_blocks`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_blocks.md),
-so a correctly parameterised run of `tune_LD_params` should return zero
-unassigned markers.
+and
+[`define_qtl_regions`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md).
+All 20 markers fall within LD blocks, but not all nine blocks are
+represented: chromosome 3 contributes markers only from its first block;
+blocks 2 and 3 of chromosome 3 have no GWAS markers. A correctly
+parameterised run of `tune_LD_params` should return zero unassigned
+markers.
 
 ## Usage
 

@@ -270,3 +270,177 @@ test_that("plot_ld_blocks: missing CHR column throws error", {
   blks_no_chr <- ldx_blocks[, c("start.bp","end.bp","length_bp")]
   expect_error(plot_ld_blocks(blks_no_chr), "CHR")
 })
+
+# ── v0.3.1: CLQmode = "Louvain" ───────────────────────────────────────────────
+
+test_that("CLQD: Louvain mode returns integer vector of correct length", {
+  g    <- ldx_geno[, 1:25]
+  info <- ldx_snp_info[1:25, c("SNP", "POS")]
+  Gc   <- scale(g, center = TRUE, scale = FALSE)
+  bv   <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4,
+                           CLQmode = "Louvain", verbose = FALSE)
+  expect_equal(length(bv), 25L)
+  expect_type(bv, "integer")
+})
+
+test_that("CLQD: Louvain mode values are positive integers or NA", {
+  g    <- ldx_geno[, 1:25]
+  info <- ldx_snp_info[1:25, c("SNP", "POS")]
+  Gc   <- scale(g, center = TRUE, scale = FALSE)
+  bv   <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4,
+                           CLQmode = "Louvain", verbose = FALSE)
+  expect_true(all(is.na(bv) | (bv > 0L)))
+})
+
+test_that("CLQD: Louvain detects known block structure (chr1 block 1)", {
+  # First 25 SNPs of ldx_geno are one LD block — Louvain should assign
+  # the majority to a single community rather than all singletons.
+  g    <- ldx_geno[, 1:25]
+  info <- ldx_snp_info[1:25, c("SNP", "POS")]
+  Gc   <- scale(g, center = TRUE, scale = FALSE)
+  bv   <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.35,
+                           CLQmode = "Louvain", verbose = FALSE)
+  n_assigned <- sum(!is.na(bv))
+  expect_gt(n_assigned, 10L)  # at least 10 SNPs grouped
+})
+
+test_that("CLQD: Leiden mode returns integer vector of correct length", {
+  skip_if_not(
+    packageVersion("igraph") >= "1.3.0",
+    "cluster_leiden requires igraph >= 1.3.0"
+  )
+  g    <- ldx_geno[, 1:25]
+  info <- ldx_snp_info[1:25, c("SNP", "POS")]
+  Gc   <- scale(g, center = TRUE, scale = FALSE)
+  bv   <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4,
+                           CLQmode = "Leiden", verbose = FALSE)
+  expect_equal(length(bv), 25L)
+  expect_type(bv, "integer")
+})
+
+test_that("run_Big_LD_all_chr: CLQmode Louvain produces valid block table", {
+  blocks <- run_Big_LD_all_chr(
+    ldx_geno,
+    snp_info    = ldx_snp_info,
+    method      = "r2",
+    CLQmode     = "Louvain",
+    CLQcut      = 0.35,
+    leng        = 15L,
+    subSegmSize = 100L,
+    n_threads   = 1L,
+    verbose     = FALSE
+  )
+  expect_s3_class(blocks, "data.frame")
+  expect_true(nrow(blocks) >= 1L)
+  expect_true(all(c("start", "end", "start.bp", "end.bp", "CHR") %in% names(blocks)))
+  expect_true(all(blocks$start.bp <= blocks$end.bp))
+})
+
+# ── v0.3.1: max_bp_distance (sparse LD) ──────────────────────────────────────
+
+test_that("CLQD: max_bp_distance produces same-length output as default", {
+  g    <- ldx_geno[, 1:30]
+  info <- ldx_snp_info[1:30, c("SNP", "POS")]
+  Gc   <- scale(g, center = TRUE, scale = FALSE)
+  bv_full   <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4,
+                                max_bp_distance = 0L, verbose = FALSE)
+  bv_sparse <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4,
+                                max_bp_distance = 50000L, verbose = FALSE)
+  expect_equal(length(bv_full),   30L)
+  expect_equal(length(bv_sparse), 30L)
+})
+
+test_that("CLQD: max_bp_distance=500 skips distant pairs (very tight window)", {
+  g    <- ldx_geno[, 1:20]
+  info <- ldx_snp_info[1:20, c("SNP", "POS")]
+  Gc   <- scale(g, center = TRUE, scale = FALSE)
+  # SNPs in ldx_snp_info are spaced ~1000 bp apart.
+  # max_bp_distance = 500 means NO pairs qualify -> adjacency all zeros
+  # -> graph has no edges -> CLQD produces only singletons (all NA)
+  bv <- LDxBlocks:::CLQD(g, info, Gc, CLQcut = 0.4,
+                         max_bp_distance = 500L, verbose = FALSE)
+  expect_equal(length(bv), 20L)       # correct output length
+  expect_true(all(is.na(bv)),          # no cliques formed (empty graph)
+              info = paste("Non-NA bins:", sum(!is.na(bv))))
+})
+
+test_that("run_Big_LD_all_chr: max_bp_distance=500000 produces valid blocks", {
+  blocks <- run_Big_LD_all_chr(
+    ldx_geno,
+    snp_info        = ldx_snp_info,
+    method          = "r2",
+    CLQmode         = "Louvain",
+    CLQcut          = 0.35,
+    max_bp_distance = 500000L,
+    leng            = 15L,
+    subSegmSize     = 100L,
+    n_threads       = 1L,
+    verbose         = FALSE
+  )
+  expect_s3_class(blocks, "data.frame")
+  expect_true(nrow(blocks) >= 1L)
+  expect_true(all(blocks$start.bp <= blocks$end.bp))
+})
+
+# ── v0.3.1: bigmemory backend ─────────────────────────────────────────────────
+
+test_that("read_geno_bigmemory: converts matrix to bigmemory backend", {
+  skip_if_not_installed("bigmemory")
+  be_mat <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
+  be_bm  <- read_geno_bigmemory(
+    be_mat,
+    backingfile = tempfile("ldxbm_test_"),
+    backingpath = tempdir(),
+    type        = "char",
+    verbose     = FALSE
+  )
+  on.exit({ close_backend(be_bm); close_backend(be_mat) })
+
+  expect_s3_class(be_bm, "LDxBlocks_backend")
+  expect_equal(be_bm$type, "bigmemory")
+  expect_equal(be_bm$n_samples, nrow(ldx_geno))
+  expect_equal(be_bm$n_snps,    ncol(ldx_geno))
+})
+
+test_that("read_geno_bigmemory: read_chunk returns correct dimensions", {
+  skip_if_not_installed("bigmemory")
+  be_mat <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
+  be_bm  <- read_geno_bigmemory(
+    be_mat,
+    backingfile = tempfile("ldxbm_chunk_"),
+    backingpath = tempdir(),
+    type        = "char",
+    verbose     = FALSE
+  )
+  on.exit({ close_backend(be_bm); close_backend(be_mat) })
+
+  chunk <- read_chunk(be_bm, 1:20)
+  expect_equal(nrow(chunk), nrow(ldx_geno))
+  expect_equal(ncol(chunk), 20L)
+  expect_true(all(chunk %in% c(0, 1, 2, NA)))
+})
+
+test_that("read_geno_bigmemory: run_Big_LD_all_chr works through bigmemory backend", {
+  skip_if_not_installed("bigmemory")
+  be_mat <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
+  be_bm  <- read_geno_bigmemory(
+    be_mat,
+    backingfile = tempfile("ldxbm_ld_"),
+    backingpath = tempdir(),
+    type        = "char",
+    verbose     = FALSE
+  )
+  on.exit({ close_backend(be_bm); close_backend(be_mat) })
+
+  blocks <- run_Big_LD_all_chr(
+    be_bm,
+    method      = "r2",
+    CLQcut      = 0.35,
+    leng        = 15L,
+    subSegmSize = 100L,
+    n_threads   = 1L,
+    verbose     = FALSE
+  )
+  expect_s3_class(blocks, "data.frame")
+  expect_true(nrow(blocks) >= 1L)
+})

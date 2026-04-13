@@ -27,8 +27,25 @@ prepare_gblup_inputs(
 
 - pheno_df:
 
-  Data frame of phenotypes. Must contain an ID column matching
-  `rownames(hap_matrix)` and at least one numeric trait column.
+  Data frame of phenotypes. Must contain:
+
+  - An ID column (set via `id_col`, default `"id"`). Values must match
+    `rownames(hap_matrix)` exactly (case-sensitive, no leading/trailing
+    spaces).
+
+  - One or more numeric trait columns (referenced via `trait_col`).
+    Column names are arbitrary.
+
+  - `NA` values in trait columns are allowed.
+
+  Minimal single-trait format:
+
+  |      |      |
+  |------|------|
+  | id   | YLD  |
+  | G001 | 4.21 |
+  | G002 | 3.87 |
+  | G003 | NA   |
 
 - id_col:
 
@@ -37,7 +54,7 @@ prepare_gblup_inputs(
 - trait_col:
 
   Name of the trait column to extract as a numeric vector. Default
-  `NULL` — no `y_vec` is returned, only the aligned data frame.
+  `NULL` – no `y_vec` is returned, only the aligned data frame.
 
 - bend:
 
@@ -102,7 +119,7 @@ that is dataset-specific. The handoff is:
 
     # sommer
     library(sommer)
-    fit  <- mmer(trait ~ 1, random = ~vsr(id, Gu = inp$G),
+    fit  <- sommer::mmes(trait ~ 1, random = ~vsm(ism(id), Gu = inp$G),
                  data = inp$pheno_df)
     gebv <- fit$U$`u:id`$trait
 

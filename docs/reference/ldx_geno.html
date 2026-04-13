@@ -13,7 +13,7 @@ and extract_haplotypes."><meta property="og:image" content="https://FAkohoue.git
 
     <a class="navbar-brand me-2" href="../index.html">LDxBlocks</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,7 @@ and extract_haplotypes."><meta property="og:image" content="https://FAkohoue.git
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -69,9 +70,11 @@ and <code><a href="extract_haplotypes.html">extract_haplotypes</a></code>.</p>
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
     <p>A numeric matrix with 120 rows (individuals, named <code>ind001</code>
-  to <code>ind120</code>) and 230 columns (SNPs, named <code>rs1001</code> to
-  <code>rs3070</code>). Values are additive dosages in {0, 1, 2} with no
-  missing data.</p>
+  to <code>ind120</code>) and 230 columns (SNPs). SNP identifiers follow the
+  pattern <code>rs{CHR}{count}</code>: chromosome 1 uses <code>rs1001</code>–<code>rs1080</code>,
+  chromosome 2 uses <code>rs2001</code>–<code>rs2080</code>, chromosome 3 uses
+  <code>rs3001</code>–<code>rs3070</code>. Values are additive dosages in
+  {0, 1, 2} with no missing data.</p>
     </div>
     <div class="section level2">
     <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>

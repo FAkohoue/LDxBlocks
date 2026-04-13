@@ -28,6 +28,9 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.
 \enumerate{
   \item Read genotype data: \code{\link{read_geno}} -- auto-detects CSV,
     HapMap, VCF, GDS, BED, or plain matrix.
+    HapMap, VCF, GDS, BED, or plain matrix. For WGS panels where peak RAM
+    is a concern, use \code{\link{read_geno_bigmemory}} to build a
+    memory-mapped store (requires \pkg{bigmemory}).
   \item Detect LD blocks chromosome-wise: \code{\link{run_Big_LD_all_chr}}.
   \item Optionally auto-tune parameters: \code{\link{tune_LD_params}}.
   \item Reconstruct haplotypes: \code{\link{extract_haplotypes}}.
@@ -59,6 +62,9 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.
   \item{\code{\link{ldx_snp_info}}}{SNP metadata (SNP, CHR, POS, REF, ALT).}
   \item{\code{\link{ldx_blocks}}}{Reference block table for \code{ldx_geno}.}
   \item{\code{\link{ldx_gwas}}}{20 toy GWAS markers for tuning demos.}
+  \item{\code{\link{ldx_blues}}}{Pre-adjusted BLUEs (id, YLD, RES) for
+    \code{\link{run_haplotype_prediction}} demos. Available as an .rda
+    dataset and \code{inst/extdata/example_blues.csv}.}
 }
 }
 
@@ -97,6 +103,16 @@ wheat collection to accelerate breeding for multiple disease resistance.
 Tong J et al. (2025). Haplotype stacking to improve stability of stripe
 rust resistance in wheat. \emph{Theoretical and Applied Genetics}
 \strong{138}:267. \doi{10.1007/s00122-025-05045-0}
+
+
+Blondel VD, Guillaume J-L, Lambiotte R, Lefebvre E (2008). Fast unfolding
+of communities in large networks. \emph{Journal of Statistical Mechanics:
+Theory and Experiment} \strong{2008}:P10008.
+\doi{10.1088/1742-5468/2008/10/P10008}
+
+Traag VA, Waltman L, van Eck NJ (2019). From Louvain to Leiden: guaranteeing
+well-connected communities. \emph{Scientific Reports} \strong{9}:5233.
+\doi{10.1038/s41598-019-41695-z}
 }
 \seealso{
 Useful links:

@@ -1,7 +1,7 @@
 Package: LDxBlocks
 Type: Package
-Title: Genome-Wide LD Block Detection and Haplotype Analysis (r^2 and rV^2, C++ Accelerated)
-Version: 0.3.0
+Title: Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic Prediction (r^2 and rV^2, C++ Accelerated)
+Version: 0.3.1
 Date: 2025-04-07
 Authors@R:
     person(
@@ -12,35 +12,48 @@ Authors@R:
       comment = c(ORCID = "0000-0002-2160-0182")
     )
 Description: Fast, scalable linkage disequilibrium (LD) block detection for
-    genome-wide SNP data. Supports two LD metrics: standard r^2 (fast, suitable
-    for 10M+ markers) and the kinship-adjusted rV^2 (Mangin et al. 2012,
-    Heredity 108(3):285-291) for structured or related populations.
-    The clique-based segmentation algorithm is from Kim et al. (2018,
-    Bioinformatics 34(4):588-596).
-    The clique-based Big-LD segmentation algorithm is accelerated throughout
-    by Rcpp/RcppArmadillo and OpenMP. A unified multi-format I/O layer reads
-    numeric dosage CSV, HapMap, VCF, SNPRelate GDS, and PLINK BED files.
-    Downstream modules cover: haplotype phasing (statistical via Beagle,
-    pedigree-based transmission, or pre-phased VCF); haplotype extraction
-    for phased and unphased data; diversity metrics (richness, expected
-    heterozygosity, Shannon entropy); post-GWAS QTL region definition with
-    pleiotropic block detection; haplotype feature matrices for genomic
-    prediction (additive 0/1/2 (phased) / 0/1 (unphased) or binary presence/absence 0/1 encoding); and
-    output writers for numeric dosage matrices, nucleotide character
-    matrices, and diversity CSV formats compatible with rrBLUP, BGLR,
-    and ASReml-R; and biological decoding of haplotype strings
-    to nucleotide sequences via decode_haplotype_strings().
-    Automatic parameter tuning against GWAS marker coverage is provided.
+    genome-wide SNP data. Supports two LD metrics: standard r^2 (fast,
+    suitable for 10M+ markers) and the kinship-adjusted rV^2 (Mangin et al.
+    2012, Heredity 108(3):285-291) for structured or related populations.
+    The clique-based Big-LD segmentation algorithm (Kim et al. 2018,
+    Bioinformatics 34(4):588-596) is accelerated by Rcpp/RcppArmadillo and
+    OpenMP. A unified multi-format I/O layer reads numeric dosage CSV,
+    HapMap, VCF, SNPRelate GDS, and PLINK BED files through a streaming
+    never-full-genome memory model. Downstream modules cover: haplotype
+    phasing (statistical via Beagle, pedigree-based transmission, or
+    pre-phased VCF); haplotype extraction for phased and unphased data;
+    diversity metrics (richness, Nei's expected heterozygosity corrected for
+    sample size, Shannon entropy, effective number of alleles, sweep flag);
+    post-GWAS QTL region definition with pleiotropic block detection;
+    haplotype feature matrices for genomic prediction (additive 0/1/2/NA
+    for phased or 0/1/NA for unphased data, or binary presence/absence 0/1
+    encoding); and output writers for numeric dosage matrices, nucleotide
+    character matrices with IUPAC ambiguity codes, and diversity CSV formats
+    compatible with rrBLUP, BGLR, and ASReml-R.
     A complete haplotype-based genomic prediction pipeline implements the
     Tong et al. (2025, Theor Appl Genet 138:267) haplotype stacking
-    methodology: VanRaden GRM from haplotype features
-    (compute_haplotype_grm), GBLUP via rrBLUP with pre-adjusted
-    phenotypes (BLUEs/BLUPs) as input (run_haplotype_prediction),
-    backsolved per-SNP effects (backsolve_snp_effects), local haplotype
-    GEBV per block (compute_local_gebv), and unified block ranking
-    across three evidence layers: GWAS hits, trait variance, and
-    haplotype diversity (rank_haplotype_blocks,
-    integrate_gwas_haplotypes).
+    methodology via run_haplotype_prediction(), which accepts a single trait
+    or multiple traits simultaneously. All traits are fitted using
+    rrBLUP::kin.blup() in a per-trait loop sharing a single trait-agnostic
+    GRM, making cross-trait block importance values directly comparable.
+    Block importance is aggregated across traits (mean scaled variance,
+    n_traits_important, important_any, important_all) for robust haplotype
+    stacking candidate identification.
+    The pipeline also includes: VanRaden GRM from haplotype features
+    (compute_haplotype_grm); backsolved per-SNP effects
+    (backsolve_snp_effects, Tong et al. 2025); local haplotype GEBV per
+    block (compute_local_gebv, Tong et al. 2024, Theor Appl Genet 137:274);
+    and unified block ranking across three evidence layers — GWAS hits,
+    trait variance, and haplotype diversity — via rank_haplotype_blocks and
+    integrate_gwas_haplotypes. Automatic parameter tuning against GWAS
+    marker coverage is provided via tune_LD_params. Three acceleration
+    features target WGS-scale panels: Louvain/Leiden community detection
+    (polynomial-time alternative to Bron-Kerbosch clique enumeration via
+    CLQmode = 'Louvain' or 'Leiden'); sparse LD restricted to SNP pairs
+    within a physical distance window (max_bp_distance, implemented in
+    compute_r2_sparse_cpp); and a file-backed memory-mapped genotype store
+    via bigmemory (read_geno_bigmemory) that keeps peak RAM proportional
+    to accessed columns rather than the full matrix.
 License: MIT + file LICENSE
 Depends:
     R (>= 4.2.0)
@@ -49,6 +62,7 @@ Imports:
     igraph (>= 1.3.0),
     data.table (>= 1.14.0),
     dplyr (>= 1.0.0),
+    rrBLUP,
     stats,
     utils
 Suggests:
@@ -57,8 +71,8 @@ Suggests:
     SNPRelate,
     gdsfmt,
     BEDMatrix,
+    bigmemory,
     future.apply,
-    rrBLUP,
     ggplot2,
     parallel,
     usethis,

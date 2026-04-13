@@ -24,7 +24,10 @@ runs the complete end-to-end workflow from a single file path.
 ## Genotype I/O
 
 Read genotype data from six formats (numeric dosage CSV, HapMap, VCF,
-GDS, PLINK BED, R matrix) through a unified backend interface.
+GDS, PLINK BED, R matrix) through a unified backend interface. For
+WGS-scale panels where peak RAM is a constraint, read_geno_bigmemory()
+creates a file-backed memory-mapped store (requires bigmemory) with
+OS-page-fault column access.
 
 - [`read_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
   : Read Genotype Data into an LDxBlocks Backend
@@ -36,6 +39,8 @@ GDS, PLINK BED, R matrix) through a unified backend interface.
   : Print Method for LDxBlocks Backend
 - [`summary(`*`<LDxBlocks_backend>`*`)`](https://FAkohoue.github.io/LDxBlocks/reference/summary.LDxBlocks_backend.md)
   : Summary Method for LDxBlocks Backend
+- [`read_geno_bigmemory()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno_bigmemory.md)
+  : Open a bigmemory-backed Genotype Store
 
 ## LD computation
 
@@ -100,11 +105,12 @@ cols=individuals.
 
 ## Genomic prediction pipeline (Tong et al. 2024/2025)
 
-Functions for haplotype-based genomic prediction following Tong et
-al. (2024, Theor Appl Genet 137:274) and Tong et al. (2025, Theor Appl
-Genet 138:267). Accepts pre-adjusted phenotype values (BLUEs/BLUPs) and
-produces GEBV, per-SNP effects, local haplotype GEBV per block, and
-evidence-based block rankings.
+Haplotype-based genomic prediction following Tong et al. (2024/2025).
+run_haplotype_prediction() accepts a single trait (named vector or
+one-column data frame) or multiple traits (wide data frame or named
+list). All traits are fitted via rrBLUP::kin.blup() per trait using a
+shared GRM. Block importance is aggregated across traits for robust
+haplotype stacking candidate identification.
 
 - [`prepare_gblup_inputs()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_gblup_inputs.md)
   : Prepare Genomic Prediction Inputs for External GBLUP Software
@@ -142,3 +148,5 @@ blocks) for examples and tests.
   : Example LD Block Table
 - [`ldx_gwas`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_gwas.md)
   : Example GWAS Marker Table
+- [`ldx_blues`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_blues.md)
+  : Pre-Adjusted Phenotype Means (BLUEs) for Genomic Prediction Examples

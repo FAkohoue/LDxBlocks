@@ -10,6 +10,7 @@
 ##   ldx_snp_info  data.frame SNP / CHR / POS / REF / ALT
 ##   ldx_blocks    data.frame  — pre-computed block table for examples/tests
 ##   ldx_gwas      data.frame  — 20 toy GWAS markers for tune_LD_params demos
+##   ldx_blues     data.frame  — 120 ind x 3 col BLUEs (id, YLD, RES) for run_haplotype_prediction demos
 ##
 ## Flat-file copies
 ## ────────────────
@@ -18,6 +19,7 @@
 ##   inst/extdata/example_genotypes.vcf           (VCF)
 ##   inst/extdata/example_gwas.csv                (GWAS marker table)
 ##   inst/extdata/example_phenotype.csv           (simulated phenotypes)
+##   inst/extdata/example_blues.csv               (pre-adjusted BLUEs, id/YLD/RES)
 ## ─────────────────────────────────────────────────────────────────────────────
 
 set.seed(20250407)
@@ -190,13 +192,7 @@ ldx_gwas <- data.frame(
 
 message("GWAS marker table: ", nrow(ldx_gwas), " markers")
 
-# ── Save .rda to data/ ────────────────────────────────────────────────────────
-usethis::use_data(ldx_geno,     overwrite = TRUE, compress = "xz")
-usethis::use_data(ldx_snp_info, overwrite = TRUE, compress = "xz")
-usethis::use_data(ldx_blocks,   overwrite = TRUE, compress = "xz")
-usethis::use_data(ldx_gwas,     overwrite = TRUE, compress = "xz")
 
-message("Saved all .rda files to data/")
 
 # ── Write flat-file copies to inst/extdata/ ──────────────────────────────────
 
@@ -290,10 +286,13 @@ write.csv(ldx_gwas,
           row.names = FALSE, quote = FALSE
 )
 
-## 5. Simulated phenotype file
+## 5. Simulated phenotype file (raw, unadjusted)
 ## Two quantitative traits (polygenic architecture from the LD blocks)
 ## plus two principal components (population structure surrogates).
 ## Trait1 / Trait2 are linear combinations of 10 random SNP effects plus noise.
+## This file shows the raw phenotype format a user would start with before
+## running a mixed model to obtain pre-adjusted means (BLUEs). The BLUEs
+## for direct use with run_haplotype_prediction() are in example_blues.csv.
 set.seed(20250408)
 n_qtl <- 10L
 
@@ -307,6 +306,25 @@ qtl_idx2  <- sample(ncol(ldx_geno), n_qtl)
 qtl_eff2  <- rnorm(n_qtl, 0, 0.3)
 trait2_val <- as.numeric(ldx_geno[, qtl_idx2] %*% qtl_eff2) + rnorm(N_IND, 0, 0.5)
 trait2_val <- round((trait2_val - mean(trait2_val)) / sd(trait2_val), 4)
+
+## ── Build ldx_blues: must come after trait1_val and trait2_val are defined ──
+## This data.frame is saved as .rda (usethis::use_data above) and as
+## inst/extdata/example_blues.csv (section 5b below).
+ldx_blues <- data.frame(
+  id   = rownames(ldx_geno),
+  YLD  = trait1_val,   # standardised yield-like BLUE
+  RES  = trait2_val,   # standardised resistance-like BLUE
+  stringsAsFactors = FALSE
+)
+
+# ── Save .rda to data/ ────────────────────────────────────────────────────────
+usethis::use_data(ldx_geno,     overwrite = TRUE, compress = "xz")
+usethis::use_data(ldx_snp_info, overwrite = TRUE, compress = "xz")
+usethis::use_data(ldx_blocks,   overwrite = TRUE, compress = "xz")
+usethis::use_data(ldx_gwas,     overwrite = TRUE, compress = "xz")
+usethis::use_data(ldx_blues,    overwrite = TRUE, compress = "xz")
+
+message("Saved all .rda files to data/")  # 5 datasets: geno, snp_info, blocks, gwas, blues
 
 # PCA on genotype matrix for population structure covariates
 Gc_pca  <- scale(ldx_geno, center = TRUE, scale = FALSE)
@@ -328,16 +346,8 @@ write.csv(ldx_pheno,
 )
 
 ## 5b. Pre-adjusted phenotype means (BLUEs) for run_haplotype_prediction demos
-## These are the same trait values as example_phenotype.csv Trait1/Trait2 but
-## presented in the named-vector / id+value format that run_haplotype_prediction
-## expects. In a real analysis these would come from a mixed model (ASReml-R,
-## lme4, SpATS) fitting the field trial design.
-ldx_blues <- data.frame(
-  id   = rownames(ldx_geno),
-  YLD  = trait1_val,   # Trait1 as a yield-like BLUE
-  RES  = trait2_val,   # Trait2 as a resistance-like BLUE
-  stringsAsFactors = FALSE
-)
+## ldx_blues was defined and saved as .rda before this section.
+## Here we write the flat-file copy.
 write.csv(ldx_blues,
           file = "inst/extdata/example_blues.csv",
           row.names = FALSE, quote = FALSE

@@ -3,12 +3,12 @@
 depending on what data the user has available. In all cases,
 min_freq filtering inside
 build_haplotype_feature_matrix is applied first as a hard
-population-level filter — equivalent to MAF filtering for single SNPs.
+population-level filter – equivalent to MAF filtering for single SNPs.
 Blocks are ranked only among those that survive this filter."><meta property="og:description" content="Provides a unified block ranking that works across three use cases,
 depending on what data the user has available. In all cases,
 min_freq filtering inside
 build_haplotype_feature_matrix is applied first as a hard
-population-level filter — equivalent to MAF filtering for single SNPs.
+population-level filter – equivalent to MAF filtering for single SNPs.
 Blocks are ranked only among those that survive this filter."><meta property="og:image" content="https://FAkohoue.github.io/LDxBlocks/logo.svg"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&amp;display=swap" rel="stylesheet"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -17,7 +17,7 @@ Blocks are ranked only among those that survive this filter."><meta property="og
 
     <a class="navbar-brand me-2" href="../index.html">LDxBlocks</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,7 @@ Blocks are ranked only among those that survive this filter."><meta property="og
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -63,7 +64,7 @@ Blocks are ranked only among those that survive this filter."><meta property="og
 depending on what data the user has available. In all cases,
 <code>min_freq</code> filtering inside
 <code><a href="build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></code> is applied first as a hard
-population-level filter — equivalent to MAF filtering for single SNPs.
+population-level filter – equivalent to MAF filtering for single SNPs.
 Blocks are ranked only among those that survive this filter.</p>
     </div>
 
@@ -133,9 +134,9 @@ haplotype stacking. Default <code>0.3</code>.</p></dd>
 <li><p><strong>Genotype + GWAS</strong> (no phenotype): blocks are binary-flagged
     by whether they contain a GWAS-significant marker. Within the
     GWAS-hit group and within the non-hit group, blocks are further
-    ordered by He. The p-value is not used for ranking — a marker either
+    ordered by He. The p-value is not used for ranking – a marker either
     crosses the significance threshold or it does not.</p></li>
-<li><p><strong>Genotype + phenotype</strong> (± GWAS): blocks ranked by scaled
+<li><p><strong>Genotype + phenotype</strong> (? GWAS): blocks ranked by scaled
     <code>Var(local GEBV)</code> from <code><a href="run_haplotype_prediction.html">run_haplotype_prediction</a></code>.
     When GWAS results are also available, the binary GWAS flag is added
     as a secondary layer via <code><a href="integrate_gwas_haplotypes.html">integrate_gwas_haplotypes</a></code>.</p></li>
@@ -149,7 +150,7 @@ purpose to MAF filtering for single SNPs: haplotype alleles observed
 at frequency below this threshold cannot have their effects reliably
 estimated regardless of trait association, and are dropped before the
 dosage matrix is built. <code>rank_haplotype_blocks</code> operates entirely
-downstream of this filter — it ranks blocks that have already passed
+downstream of this filter – it ranks blocks that have already passed
 <code>min_freq</code>, not individual alleles. A block survives as long as
 at least one of its alleles passes <code>min_freq</code>.</p>
     </div>
@@ -176,14 +177,14 @@ Genetics</em> <strong>138</strong>:267. <a href="https://doi.org/10.1007/s00122-
 <span class="r-in"><span><span class="va">haps</span> <span class="op">&lt;-</span> <span class="fu"><a href="extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">div</span>  <span class="op">&lt;-</span> <span class="fu"><a href="compute_haplotype_diversity.html">compute_haplotype_diversity</a></span><span class="op">(</span><span class="va">haps</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Use case 1: genotype only — rank by diversity</span></span></span>
+<span class="r-in"><span><span class="co"># Use case 1: genotype only -- rank by diversity</span></span></span>
 <span class="r-in"><span><span class="va">ranked</span> <span class="op">&lt;-</span> <span class="fu">rank_haplotype_blocks</span><span class="op">(</span><span class="va">div</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Use case 2: genotype + GWAS — binary flag, then diversity within groups</span></span></span>
+<span class="r-in"><span><span class="co"># Use case 2: genotype + GWAS -- binary flag, then diversity within groups</span></span></span>
 <span class="r-in"><span><span class="va">qtl</span>    <span class="op">&lt;-</span> <span class="fu"><a href="define_qtl_regions.html">define_qtl_regions</a></span><span class="op">(</span><span class="va">gwas_df</span>, <span class="va">blocks</span>, <span class="va">snp_info</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">ranked</span> <span class="op">&lt;-</span> <span class="fu">rank_haplotype_blocks</span><span class="op">(</span><span class="va">div</span>, qtl_regions <span class="op">=</span> <span class="va">qtl</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Use case 3: genotype + phenotype — rank by Var(local GEBV)</span></span></span>
+<span class="r-in"><span><span class="co"># Use case 3: genotype + phenotype -- rank by Var(local GEBV)</span></span></span>
 <span class="r-in"><span><span class="va">pred</span>   <span class="op">&lt;-</span> <span class="fu"><a href="run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>, blues <span class="op">=</span> <span class="va">blues</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">ranked</span> <span class="op">&lt;-</span> <span class="fu">rank_haplotype_blocks</span><span class="op">(</span><span class="va">div</span>, qtl_regions <span class="op">=</span> <span class="va">qtl</span>, pred_result <span class="op">=</span> <span class="va">pred</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>

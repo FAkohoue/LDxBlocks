@@ -314,3 +314,32 @@ test_that("tune_LD_params returns correct result structure", {
                     "gwas_assigned") %in% names(res)))
   expect_true("LD_block" %in% names(res$gwas_assigned))
 })
+
+# ── ldx_blues dataset ─────────────────────────────────────────────────────────
+
+test_that("ldx_blues loads and has correct structure", {
+  data(ldx_blues, package = "LDxBlocks")
+  expect_s3_class(ldx_blues, "data.frame")
+  expect_equal(nrow(ldx_blues), 120L)
+  expect_true(all(c("id", "YLD", "RES") %in% names(ldx_blues)))
+  expect_type(ldx_blues$YLD, "double")
+  expect_type(ldx_blues$RES, "double")
+  expect_false(any(is.na(ldx_blues$YLD)))
+  expect_false(any(is.na(ldx_blues$RES)))
+})
+
+test_that("ldx_blues IDs match rownames of ldx_geno", {
+  data(ldx_blues, package = "LDxBlocks")
+  data(ldx_geno,  package = "LDxBlocks")
+  expect_true(all(ldx_blues$id %in% rownames(ldx_geno)))
+  expect_equal(length(unique(ldx_blues$id)), 120L)
+})
+
+test_that("example_blues.csv extdata file exists and is readable", {
+  f <- system.file("extdata", "example_blues.csv", package = "LDxBlocks")
+  skip_if(!file.exists(f), "example_blues.csv not found in extdata")
+  blues <- read.csv(f, stringsAsFactors = FALSE)
+  expect_true(all(c("id", "YLD", "RES") %in% names(blues)))
+  expect_equal(nrow(blues), 120L)
+  expect_type(blues$YLD, "double")
+})

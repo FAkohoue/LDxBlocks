@@ -2,7 +2,7 @@
 
 Converts the dosage-encoded haplotype strings produced by
 [`extract_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
-(e.g. `"02110"`) into nucleotide sequences (e.g. `"AGTTА"`) using the
+(e.g. `"02110"`) into nucleotide sequences (e.g. `"AGTT?"`) using the
 REF and ALT alleles of each SNP in the block.
 
 ## Usage
@@ -72,7 +72,7 @@ A data frame with columns:
 
 - nucleotide_sequence:
 
-  Decoded nucleotide string e.g. `"AGTTА"`.
+  Decoded nucleotide string e.g. `"AGTT?"`.
 
 - frequency:
 

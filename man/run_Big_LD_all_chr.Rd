@@ -25,6 +25,7 @@ run_Big_LD_all_chr(
   min_snps_chr = 10L,
   chr = NULL,
   clean_malformed = FALSE,
+  max_bp_distance = 0L,
   verbose = FALSE
 )
 }
@@ -64,6 +65,16 @@ processes all chromosomes.}
 before reading by removing lines whose column count does not match the
 header. Only relevant when \code{geno_matrix} is a file path wrapped into
 a backend. Default \code{FALSE}.}
+
+\item{max_bp_distance}{Integer. Maximum base-pair distance between a SNP
+pair for its r\eqn{^2} to be computed. Pairs beyond this distance are set
+to zero in the adjacency matrix (assumed to be in negligible LD).
+\code{0L} (default) disables this and computes all pairs (original
+behaviour). Recommended value for WGS panels: \code{500000L} (500 kb).
+Has no effect when \code{CLQmode} is \code{"Louvain"} or
+\code{"Leiden"} and the window spans less than
+\code{max_bp_distance}. Requires sorted SNP positions within each
+sub-segment (guaranteed by \code{run_Big_LD_all_chr}).}
 }
 \value{
 A \code{data.frame} with columns:
@@ -78,7 +89,7 @@ This is the recommended entry point for genome-wide analyses.
 }
 \examples{
 \donttest{
-# Use the package example data — 120 individuals, 230 SNPs, 3 chromosomes,
+# Use the package example data -- 120 individuals, 230 SNPs, 3 chromosomes,
 # 9 simulated LD blocks (3 per chromosome).
 data(ldx_geno,     package = "LDxBlocks")
 data(ldx_snp_info, package = "LDxBlocks")

@@ -206,7 +206,7 @@ read_geno <- function(
         TRUE
       }, error = function(e) FALSE)
       if (!ok) {
-        message("[read_geno] Stale or incompatible GDS cache detected - removing and re-converting.")
+        message("[read_geno] Stale or incompatible GDS cache detected -- removing and re-converting.")
         unlink(cache_path)
       }
     }
@@ -763,6 +763,16 @@ read_chunk <- function(backend, col_idx) {
            m
          },
 
+         bigmemory = {
+           # bigmemory file-backed matrix -- OS pages on demand.
+           # as.matrix() triggers page faults for requested columns only.
+           m <- bigmemory::as.matrix(backend$.bm[, col_idx, drop = FALSE])
+           storage.mode(m) <- "numeric"
+           rownames(m) <- backend$sample_ids
+           colnames(m) <- backend$snp_info$SNP[col_idx]
+           m
+         },
+
          stop("Unknown backend type: ", backend$type)
   )
 }
@@ -786,6 +796,11 @@ close_backend <- function(backend) {
   if (!inherits(backend, "LDxBlocks_backend")) return(invisible(NULL))
   if (backend$type == "gds" && !is.null(backend$.gds)) {
     try(SNPRelate::snpgdsClose(backend$.gds), silent = TRUE)
+  }
+  if (backend$type == "bigmemory" && !is.null(backend$.bm)) {
+    # bigmemory: flush and release the memory-mapped file handle.
+    # bigmemory::flush() writes any modified pages back to disk.
+    try(bigmemory::flush(backend$.bm), silent = TRUE)
   }
   invisible(NULL)
 }
@@ -918,4 +933,189 @@ summary.LDxBlocks_backend <- function(object, ...) {
   )
   if (isTRUE(verbose)) message("[.hapmap_to_gds] Done.")
   invisible(gds_path)
+}
+
+
+# ==============================================================================
+# bigmemory backend -- memory-mapped genotype matrix
+# ==============================================================================
+
+#' Open a bigmemory-backed Genotype Store
+#'
+#' @description
+#' Creates a \code{big.matrix} on disk from any supported genotype source and
+#' wraps it in the standard \code{LDxBlocks_backend} interface.  Subsequent
+#' calls to \code{read_chunk()} retrieve columns via memory-mapped I/O --
+#' the OS pages in only the requested bytes on demand, so peak RAM is
+#' proportional to the columns accessed, not the full matrix.
+#'
+#' This is useful when:
+#' \itemize{
+#'   \item The filtered genotype matrix (individuals x SNPs) is too large to
+#'     hold in RAM (> 4-8 GB for typical server configurations).
+#'   \item The pipeline needs to be restarted after a previous run -- the
+#'     \code{.bin} and \code{.desc} files persist on disk and can be reused
+#'     without re-loading the source VCF/GDS.
+#'   \item Multiple R sessions or future workers need simultaneous read access
+#'     to the same matrix (bigmemory's file-backed store is safe for concurrent
+#'     reads).
+#' }
+#'
+#' @section Memory model:
+#' \code{big.matrix} stores the matrix as a raw binary file (\code{.bin}) with
+#' a companion descriptor (\code{.desc}).  The OS memory-maps the file:
+#' \code{read_chunk(be, col_idx)} calls \code{bigmemory::as.matrix(bm[, col_idx])}
+#' which triggers page faults that load only the requested column pages.
+#' This is equivalent to the GDS streaming model but works for any input format
+#' and avoids repeated \code{snpgdsGetGeno()} calls.
+#'
+#' @param source Either an \code{LDxBlocks_backend} object (any format), a
+#'   plain R matrix, or a path to a previously saved \code{.desc} file
+#'   (reattach without reloading).
+#' @param snp_info Data frame with \code{SNP}, \code{CHR}, \code{POS}.
+#'   Required when \code{source} is a plain matrix.
+#' @param backingfile Character. Stem for the \code{.bin} and \code{.desc}
+#'   files. Default: a tempfile. Supply a persistent path to reuse across
+#'   sessions.
+#' @param backingpath Character. Directory for backing files. Default: tempdir().
+#' @param type Storage type: \code{"char"} (1 byte per cell, values 0-2 fit,
+#'   saves 8x vs double), \code{"short"} (2 bytes), or \code{"double"}.
+#'   Default \code{"char"}.
+#' @param verbose Logical. Default \code{TRUE}.
+#'
+#' @return An \code{LDxBlocks_backend} object with \code{type = "bigmemory"}.
+#'   Use \code{read_chunk(be, col_idx)} and \code{close_backend(be)} as normal.
+#'
+#' @examples
+#' \dontrun{
+#' # Convert a GDS backend to a persistent bigmemory store
+#' be_gds <- read_geno("mydata.gds")
+#' be_bm  <- read_geno_bigmemory(be_gds,
+#'                               backingfile = "mydata_bm",
+#'                               backingpath = "/data/ldxblocks")
+#' close_backend(be_gds)
+#'
+#' # All subsequent runs reattach without reloading
+#' be_bm2 <- read_geno_bigmemory("/data/ldxblocks/mydata_bm.desc")
+#' blocks  <- run_Big_LD_all_chr(be_bm2, CLQcut = 0.70)
+#' close_backend(be_bm2)
+#'
+#' # From a plain matrix
+#' be_bm <- read_geno_bigmemory(ldx_geno, snp_info = ldx_snp_info)
+#' }
+#' @export
+read_geno_bigmemory <- function(source,
+                                snp_info    = NULL,
+                                backingfile = tempfile("ldxbm_"),
+                                backingpath = tempdir(),
+                                type        = "char",
+                                verbose     = TRUE) {
+
+  if (!requireNamespace("bigmemory", quietly = TRUE))
+    stop("Package 'bigmemory' is required. Install with: install.packages('bigmemory')",
+         call. = FALSE)
+
+  # -- Reattach from descriptor ----------------------------------------------
+  if (is.character(source) && length(source) == 1L && grepl("\\.desc$", source)) {
+    if (!file.exists(source))
+      stop("Descriptor file not found: ", source, call. = FALSE)
+    bm       <- bigmemory::attach.big.matrix(source)
+    si       <- snp_info  # must be supplied externally when reattaching
+    if (is.null(si))
+      stop("snp_info must be supplied when reattaching from a .desc file.",
+           call. = FALSE)
+    if (verbose) message("[bigmemory] Reattached: ",
+                         nrow(bm), " x ", ncol(bm), " matrix")
+    return(.make_bigmemory_backend(bm, si, backingfile, backingpath))
+  }
+
+  # -- Build from backend ----------------------------------------------------
+  if (inherits(source, "LDxBlocks_backend")) {
+    be      <- source
+    si      <- be$snp_info
+    n_ind   <- be$n_samples
+    n_snps  <- be$n_snps
+
+    if (verbose)
+      message("[bigmemory] Allocating ", n_ind, " x ", n_snps,
+              " big.matrix (type = '", type, "') ...")
+
+    # Pre-allocate file-backed matrix
+    bm <- bigmemory::filebacked.big.matrix(
+      nrow         = n_ind,
+      ncol         = n_snps,
+      type         = type,
+      backingfile  = basename(backingfile),
+      backingpath  = backingpath,
+      descriptorfile = paste0(basename(backingfile), ".desc")
+    )
+
+    # Suppress bigmemory typecast warning (integer->char is intentional)
+    options(bigmemory.typecast.warning = FALSE)
+    # Fill chromosome by chromosome to stay within RAM budget
+    chrs     <- unique(si$CHR)
+    col_done <- 0L
+    for (chr_i in chrs) {
+      idx      <- which(si$CHR == chr_i)
+      geno_chr <- read_chunk(be, idx)           # individuals x chr_SNPs
+      bm[, idx] <- geno_chr
+      rm(geno_chr); gc(FALSE)
+      col_done <- col_done + length(idx)
+      if (verbose)
+        message("[bigmemory]   chr ", chr_i, " loaded (", col_done, "/", n_snps, " SNPs)")
+    }
+
+    op <- options(bigmemory.allow.dimnames = TRUE)
+    on.exit(options(op), add = TRUE)
+    rownames(bm) <- be$sample_ids
+
+  } else if (is.matrix(source) || is.data.frame(source)) {
+    # -- Build from plain matrix ---------------------------------------------
+    if (is.null(snp_info))
+      stop("snp_info must be supplied when source is a matrix.", call. = FALSE)
+    m  <- as.matrix(source)
+    si <- snp_info
+    n_ind  <- nrow(m)
+    n_snps <- ncol(m)
+
+    bm <- bigmemory::filebacked.big.matrix(
+      nrow         = n_ind,
+      ncol         = n_snps,
+      type         = type,
+      backingfile  = basename(backingfile),
+      backingpath  = backingpath,
+      descriptorfile = paste0(basename(backingfile), ".desc")
+    )
+    op_tc <- options(bigmemory.typecast.warning = FALSE)
+    on.exit(options(op_tc), add = TRUE)
+    bm[,] <- m
+    op2 <- options(bigmemory.allow.dimnames = TRUE)
+    on.exit(options(op2), add = TRUE)
+    rownames(bm) <- rownames(m)
+
+  } else {
+    stop("source must be an LDxBlocks_backend, a matrix, or a path to a .desc file.",
+         call. = FALSE)
+  }
+
+  if (verbose)
+    message("[bigmemory] Done. Backing file: ",
+            file.path(backingpath, paste0(basename(backingfile), ".bin")))
+
+  .make_bigmemory_backend(bm, si, backingfile, backingpath)
+}
+
+.make_bigmemory_backend <- function(bm, snp_info, backingfile, backingpath) {
+  be <- list(
+    type        = "bigmemory",
+    n_samples   = nrow(bm),
+    n_snps      = ncol(bm),
+    sample_ids  = rownames(bm) %||% paste0("ind", seq_len(nrow(bm))),
+    snp_info    = snp_info,
+    .bm         = bm,          # bigmemory big.matrix object
+    .backingfile = backingfile,
+    .backingpath = backingpath
+  )
+  class(be) <- "LDxBlocks_backend"
+  be
 }

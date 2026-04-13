@@ -6,9 +6,11 @@
 \title{Example Genotype Matrix}
 \format{
 A numeric matrix with 120 rows (individuals, named \code{ind001}
-  to \code{ind120}) and 230 columns (SNPs, named \code{rs1001} to
-  \code{rs3070}). Values are additive dosages in \{0, 1, 2\} with no
-  missing data.
+  to \code{ind120}) and 230 columns (SNPs). SNP identifiers follow the
+  pattern \code{rs{CHR}{count}}: chromosome 1 uses \code{rs1001}--\code{rs1080},
+  chromosome 2 uses \code{rs2001}--\code{rs2080}, chromosome 3 uses
+  \code{rs3001}--\code{rs3070}. Values are additive dosages in
+  \{0, 1, 2\} with no missing data.
 }
 \source{
 Simulated with \code{data-raw/generate_example_data.R}.

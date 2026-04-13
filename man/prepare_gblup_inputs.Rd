@@ -16,14 +16,28 @@ prepare_gblup_inputs(
 \item{hap_matrix}{Numeric matrix (individuals x haplotype alleles) from
 \code{\link{build_haplotype_feature_matrix}}.}
 
-\item{pheno_df}{Data frame of phenotypes. Must contain an ID column matching
-\code{rownames(hap_matrix)} and at least one numeric trait column.}
+\item{pheno_df}{Data frame of phenotypes. Must contain:
+\itemize{
+  \item An ID column (set via \code{id_col}, default \code{"id"}).
+    Values must match \code{rownames(hap_matrix)} exactly
+    (case-sensitive, no leading/trailing spaces).
+  \item One or more numeric trait columns (referenced via
+    \code{trait_col}). Column names are arbitrary.
+  \item \code{NA} values in trait columns are allowed.
+}
+Minimal single-trait format:
+\tabular{rr}{
+  id \tab YLD \cr
+  G001 \tab 4.21 \cr
+  G002 \tab 3.87 \cr
+  G003 \tab NA \cr
+}}
 
 \item{id_col}{Name of the individual ID column in \code{pheno_df}.
 Default \code{"id"}.}
 
 \item{trait_col}{Name of the trait column to extract as a numeric vector.
-Default \code{NULL} — no \code{y_vec} is returned, only the aligned data
+Default \code{NULL} -- no \code{y_vec} is returned, only the aligned data
 frame.}
 
 \item{bend}{Logical. Add 0.001 to diagonal of G for positive-definiteness.
@@ -82,7 +96,7 @@ gebv <- fit$g
 
 # sommer
 library(sommer)
-fit  <- mmer(trait ~ 1, random = ~vsr(id, Gu = inp$G),
+fit  <- sommer::mmes(trait ~ 1, random = ~vsm(ism(id), Gu = inp$G),
              data = inp$pheno_df)
 gebv <- fit$U$`u:id`$trait
 
