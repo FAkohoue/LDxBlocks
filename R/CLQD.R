@@ -242,7 +242,41 @@ CLQD <- function(
     message(sprintf("[CLQD] %s found %d communities from %d SNPs.",
                     CLQmode, max(mem), p))
 
-  # Communities with only 1 member ? NA (singleton, same as Density path)
+  # -- Louvain connectivity fix -------------------------------------------
+  # Traag et al. (2019) showed that Louvain can produce internally
+  # disconnected communities: two subgraphs grouped together despite having
+  # no path between them within the community. For LD block detection this
+  # is a correctness problem -- a block must be a contiguous genomic interval.
+  # Leiden guarantees connected communities by design; Louvain does not.
+  # Post-processing: for each Louvain community, extract the subgraph and
+  # check connectivity. If disconnected, split into connected components and
+  # assign each component a new unique community ID.
+  if (CLQmode == "Louvain") {
+    next_id <- max(mem) + 1L
+    for (cid in unique(mem)) {
+      nodes_c <- which(mem == cid)
+      if (length(nodes_c) < 2L) next
+      sg <- igraph::induced_subgraph(g, nodes_c)
+      if (!igraph::is_connected(sg)) {
+        comps <- igraph::components(sg)$membership
+        # First component keeps the original community ID
+        for (comp_id in unique(comps)) {
+          comp_nodes <- nodes_c[comps == comp_id]
+          if (comp_id == 1L) next  # keep original ID
+          mem[comp_nodes] <- next_id
+          next_id <- next_id + 1L
+        }
+      }
+    }
+    if (isTRUE(verbose)) {
+      n_split <- max(mem) - length(unique(igraph::membership(clust)))
+      if (n_split > 0L)
+        message(sprintf("[CLQD] Louvain connectivity fix: split %d disconnected community/ies.",
+                        n_split))
+    }
+  }
+
+  # Communities with only 1 member -> NA (singleton, same as Density path)
   comm_sizes <- tabulate(mem)
   binvector  <- ifelse(comm_sizes[mem] > 1L, as.integer(mem), NA_integer_)
 

@@ -74,7 +74,7 @@ intermediate steps run transparently.</p>
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">run_ldx_pipeline</span><span class="op">(</span></span>
-<span>  <span class="va">geno_file</span>,</span>
+<span>  <span class="va">geno_source</span>,</span>
 <span>  <span class="va">out_blocks</span>,</span>
 <span>  <span class="va">out_diversity</span>,</span>
 <span>  <span class="va">out_hap_matrix</span>,</span>
@@ -101,7 +101,10 @@ intermediate steps run transparently.</p>
 <span>  chr <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  max_bp_distance <span class="op">=</span> <span class="fl">0L</span>,</span>
-<span>  clean_malformed <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  clean_malformed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  use_bigmemory <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  bigmemory_path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  bigmemory_type <span class="op">=</span> <span class="st">"char"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -109,8 +112,14 @@ intermediate steps run transparently.</p>
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-geno-file">geno_file<a class="anchor" aria-label="anchor" href="#arg-geno-file"></a></dt>
-<dd><p>Path to genotype file. Supported formats: numeric
+<dl><dt id="arg-geno-source">geno_source<a class="anchor" aria-label="anchor" href="#arg-geno-source"></a></dt>
+<dd><p>Path to a genotype file, OR an
+<code>LDxBlocks_backend</code> object already created by <code><a href="read_geno.html">read_geno</a></code>
+or <code><a href="read_geno_bigmemory.html">read_geno_bigmemory</a></code>. Passing a backend skips the
+internal <code><a href="read_geno.html">read_geno()</a></code> call, allowing you to use any pre-built
+backend including file-backed <code>bigmemory</code> stores.
+Supported file formats when a path is supplied: numeric dosage CSV,
+HapMap, VCF/VCF.gz, SNPRelate GDS, PLINK BED.
 dosage CSV (`.csv`), HapMap (`.hmp.txt`), VCF (`.vcf`, `.vcf.gz`),
 SNPRelate GDS (`.gds`), PLINK BED (`.bed`). Format is detected
 automatically from the file extension.</p></dd>
@@ -283,6 +292,33 @@ Reduces O(p\(^2\)) LD computation to near-O(p) when set.</p></dd>
 by removing any lines whose column count does not match the header. Needed
 for files from NGSEP and some variant callers. Default <code>FALSE</code>.</p></dd>
 
+
+<dt id="arg-use-bigmemory">use_bigmemory<a class="anchor" aria-label="anchor" href="#arg-use-bigmemory"></a></dt>
+<dd><p>Logical. If <code>TRUE</code> and <code>geno_source</code> is a
+file path, the source file is first loaded into a file-backed
+<code><a href="https://rdrr.io/pkg/bigmemory/man/big.matrix.html" class="external-link">bigmemory::big.matrix</a></code> before block detection. Only the OS pages
+needed for each sub-segment window are loaded into RAM, keeping peak memory
+proportional to <code>n_samples x subSegmSize</code> rather than the full genome.
+Requires the <span class="pkg">bigmemory</span> package. Default <code>FALSE</code>.
+Ignored when <code>geno_source</code> is already an
+<code>LDxBlocks_backend</code> (the supplied backend is used as-is).</p></dd>
+
+
+<dt id="arg-bigmemory-path">bigmemory_path<a class="anchor" aria-label="anchor" href="#arg-bigmemory-path"></a></dt>
+<dd><p>Directory where the bigmemory backing files
+(<code>.bin</code> and <code>.desc</code>) and SNP info cache
+(<code>_snpinfo.rds</code>) are written or read from. Defaults to
+<code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code> so files are cleaned up at the end of the R session.
+Supply a persistent directory (e.g. next to the output CSVs) when you
+want to reattach the backing file on a restart without re-reading the VCF.</p></dd>
+
+
+<dt id="arg-bigmemory-type">bigmemory_type<a class="anchor" aria-label="anchor" href="#arg-bigmemory-type"></a></dt>
+<dd><p>Storage type for the <code>big.matrix</code>: <code>"char"</code>
+(1 byte per cell, 8x smaller than double, sufficient for 0/1/2 dosage),
+<code>"short"</code> (2 bytes), or <code>"double"</code> (8 bytes). Default
+<code>"char"</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -335,6 +371,58 @@ for files from NGSEP and some variant callers. Default <code>FALSE</code>.</p></
 
 </dl></div>
     <div class="section level2">
+    <h2 id="file-backed-memory-mapped-genotype-store-use-bigmemory-">File-backed memory-mapped genotype store (<code>use_bigmemory</code>)<a class="anchor" aria-label="anchor" href="#file-backed-memory-mapped-genotype-store-use-bigmemory-"></a></h2>
+
+
+<p>When <code>use_bigmemory = TRUE</code> the pipeline converts the source file into
+a <code><a href="https://rdrr.io/pkg/bigmemory/man/big.matrix.html" class="external-link">bigmemory::big.matrix</a></code> backed by two binary files on disk before
+running any analysis. Only the OS pages needed for each sub-segment window
+are loaded into RAM; the rest of the genome stays on disk. Peak RAM is
+proportional to <code>n_samples x subSegmSize x bytes_per_cell</code> rather than
+the full genome matrix.</p>
+<p><strong>Backing files created in <code>bigmemory_path</code>:</strong></p><dl><dt><code>ldxblocks_bm.bin</code></dt>
+<dd><p>Raw binary genotype data.
+    Size = n_samples x n_snps x bytes_per_cell.
+    With <code>type = "char"</code> and 204 samples x 3M SNPs: ~0.6 GB.</p></dd>
+
+  <dt><code>ldxblocks_bm.desc</code></dt>
+<dd><p>Tiny text descriptor that bigmemory
+    uses to memory-map the <code>.bin</code> file. Never edit this manually.</p></dd>
+
+  <dt><code>ldxblocks_bm_snpinfo.rds</code></dt>
+<dd><p>Cached SNP metadata (SNP, CHR,
+    POS, REF, ALT). bigmemory does not store metadata, so this file is
+    saved separately to enable restart without re-reading the source file.</p></dd>
+
+
+</dl><p><strong>Restart behaviour:</strong> if all three files already exist in
+<code>bigmemory_path</code> when the pipeline is called, the <code>.bin</code> is
+reattached instantly via <code><a href="https://rdrr.io/pkg/bigmemory/man/attach.big.matrix.html" class="external-link">bigmemory::attach.big.matrix()</a></code> – the
+source VCF is not touched. To force a rebuild, delete the <code>.bin</code>
+and <code>.desc</code> files.</p>
+<p><strong>Choosing <code>bigmemory_type</code>:</strong></p><dl><dt><code>"char"</code> (default, recommended)</dt>
+<dd><p>1 signed byte per cell
+    (range –128..127). Genotype dosage values 0, 1, 2 fit without loss.
+    8x smaller than <code>"double"</code>.</p></dd>
+
+  <dt><code>"short"</code></dt>
+<dd><p>2 bytes per cell. Not needed for 0/1/2 dosage;
+    use only if your pipeline stores values outside –128..127 in the
+    same matrix.</p></dd>
+
+  <dt><code>"double"</code></dt>
+<dd><p>8 bytes per cell. Same as a standard R
+    <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>. Use only if downstream code requires <code>double</code>
+    precision and the RAM saving is not needed.</p></dd>
+
+
+</dl><p><strong>When to use <code>use_bigmemory = TRUE</code>:</strong></p><ul><li><p>Peak RAM from GDS streaming exceeds available node memory.</p></li>
+<li><p>You need fast restart: the <code>.bin</code> persists across R sessions
+    (supply a persistent <code>bigmemory_path</code>, not <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>).</p></li>
+<li><p>Multiple pipeline runs share the same panel (one <code>.bin</code>,
+    many readers – bigmemory memory-maps are safe for concurrent access).</p></li>
+</ul></div>
+    <div class="section level2">
     <h2 id="scale-behaviour">Scale behaviour<a class="anchor" aria-label="anchor" href="#scale-behaviour"></a></h2>
 
 
@@ -381,11 +469,12 @@ columns, preceded by metadata columns: <code>hap_id</code>, <code>CHR</code>,
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="co"># Path A: supply a file path (original interface, unchanged)</span></span></span>
 <span class="r-in"><span><span class="va">geno_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"example_genotypes_numeric.csv"</span>,</span></span>
 <span class="r-in"><span>                         package <span class="op">=</span> <span class="st">"LDxBlocks"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">run_ldx_pipeline</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  geno_file      <span class="op">=</span> <span class="va">geno_file</span>,</span></span>
+<span class="r-in"><span>  geno_source    <span class="op">=</span> <span class="va">geno_file</span>,</span></span>
 <span class="r-in"><span>  out_blocks     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  out_diversity  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  out_hap_matrix <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span>,</span></span>
@@ -425,6 +514,105 @@ columns, preceded by metadata columns: <code>hap_id</code>, <code>CHR</code>,
 <span class="r-out co"><span class="r-pr">#&gt;</span> 6 2.604423         6.305     0.3083333      FALSE  FALSE</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">hap_matrix</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 120  85</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Path B: supply a pre-built bigmemory backend</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"bigmemory"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="co"># read_geno_bigmemory() accepts a file path directly:</span></span></span>
+<span class="r-in"><span>  <span class="co"># it calls read_geno() internally and wraps the result.</span></span></span>
+<span class="r-in"><span>  <span class="va">be_bm</span> <span class="op">&lt;-</span> <span class="fu"><a href="read_geno_bigmemory.html">read_geno_bigmemory</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    source      <span class="op">=</span> <span class="va">geno_file</span>,</span></span>
+<span class="r-in"><span>    backingfile <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="st">"ldxbm"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    type        <span class="op">=</span> <span class="st">"char"</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">res2</span> <span class="op">&lt;-</span> <span class="fu">run_ldx_pipeline</span><span class="op">(</span></span></span>
+<span class="r-in"><span>    geno_source    <span class="op">=</span> <span class="va">be_bm</span>,</span></span>
+<span class="r-in"><span>    out_blocks     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    out_diversity  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    out_hap_matrix <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".csv"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    CLQcut         <span class="op">=</span> <span class="fl">0.5</span>, leng <span class="op">=</span> <span class="fl">10L</span>, subSegmSize <span class="op">=</span> <span class="fl">70L</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be_bm</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory] Opening 'example_genotypes_numeric.csv' via read_geno() ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [read_geno] Reading numeric dosage (chunked): C:/Users/fakohoue/AppData/Local/R/win-library/4.5/LDxBlocks/extdata/example_genotypes_numeric.csv </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [read_geno]   230 SNPs x 120 samples</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory] Allocating 120 x 230 big.matrix (type = 'char') ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory]   chr 1 loaded (80/230 SNPs)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory]   chr 2 loaded (160/230 SNPs)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory]   chr 3 loaded (230/230 SNPs)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN/ldxbm8e5c39e57e6.bin</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:22] Using pre-built backend: bigmemory | 120 ind | 230 SNPs</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:22] MAF filtering (&gt;= 0.05) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [MAF filter] Computing MAF for 230 SNPs ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [MAF filter] 230 / 230 SNPs pass MAF &gt;= 0.05</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Loading filtered genotype matrix ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Genotype matrix: 120 x 230</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Running genome-wide LD block detection ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [run_Big_LD_all_chr] Processing 1 ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Subsegmenting via C++ boundary scan...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 25</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 30</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 50</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 55</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 25 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 1/5 done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 5 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 0 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 2/5 done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 20 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 3/5 done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 5 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 0 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 4/5 done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 25 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 5/5 done.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [run_Big_LD_all_chr] Processing 2 ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Subsegmenting via C++ boundary scan...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 30</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 35</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 55</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 60</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 30 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 1/5 done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 5 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 0 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 2/5 done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 20 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 3/5 done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 5 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 0 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 4/5 done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 20 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 5/5 done.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [run_Big_LD_all_chr] Processing 3 ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 70 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 3 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 1/1 done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Detected 9 LD blocks</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c50196aca.csv</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Extracting haplotypes (min_snps = 3) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Haplotypes extracted for 9 blocks</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Computing haplotype diversity ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c46de729e.csv</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Haplotype matrix: 120 individuals x 85 haplotype allele columns</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:23] Writing haplotype matrix (format = numeric) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c22166373.csv (85 haplotypes x 120 individuals)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:24] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c22166373.csv</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:24] Pipeline complete.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:24]   Blocks:              9</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:24]   Haplotype blocks:    9</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:24]   Haplotype columns:   85</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [13:22:24]   Individuals:         120</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

@@ -119,7 +119,10 @@ plain R matrix, or a path to a previously saved <code>.desc</code> file
 
 <dt id="arg-snp-info">snp_info<a class="anchor" aria-label="anchor" href="#arg-snp-info"></a></dt>
 <dd><p>Data frame with <code>SNP</code>, <code>CHR</code>, <code>POS</code>.
-Required when <code>source</code> is a plain matrix.</p></dd>
+Required when <code>source</code> is a plain matrix or a <code>.desc</code> file
+(bigmemory does not store metadata). Optional and ignored when
+<code>source</code> is a file path or an <code>LDxBlocks_backend</code> – SNP
+info is obtained automatically from those sources.</p></dd>
 
 
 <dt id="arg-backingfile">backingfile<a class="anchor" aria-label="anchor" href="#arg-backingfile"></a></dt>

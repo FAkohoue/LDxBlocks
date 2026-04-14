@@ -67,6 +67,54 @@
 #' The user provides only the input file path and desired output paths. All
 #' intermediate steps run transparently.
 #'
+#' @section File-backed memory-mapped genotype store (\code{use_bigmemory}):
+#' When \code{use_bigmemory = TRUE} the pipeline converts the source file into
+#' a \code{bigmemory::big.matrix} backed by two binary files on disk before
+#' running any analysis. Only the OS pages needed for each sub-segment window
+#' are loaded into RAM; the rest of the genome stays on disk. Peak RAM is
+#' proportional to \code{n_samples x subSegmSize x bytes_per_cell} rather than
+#' the full genome matrix.
+#'
+#' \strong{Backing files created in \code{bigmemory_path}:}
+#' \describe{
+#'   \item{\code{ldxblocks_bm.bin}}{Raw binary genotype data.
+#'     Size = n_samples x n_snps x bytes_per_cell.
+#'     With \code{type = "char"} and 204 samples x 3M SNPs: ~0.6 GB.}
+#'   \item{\code{ldxblocks_bm.desc}}{Tiny text descriptor that bigmemory
+#'     uses to memory-map the \code{.bin} file. Never edit this manually.}
+#'   \item{\code{ldxblocks_bm_snpinfo.rds}}{Cached SNP metadata (SNP, CHR,
+#'     POS, REF, ALT). bigmemory does not store metadata, so this file is
+#'     saved separately to enable restart without re-reading the source file.}
+#' }
+#'
+#' \strong{Restart behaviour:} if all three files already exist in
+#' \code{bigmemory_path} when the pipeline is called, the \code{.bin} is
+#' reattached instantly via \code{bigmemory::attach.big.matrix()} -- the
+#' source VCF is not touched. To force a rebuild, delete the \code{.bin}
+#' and \code{.desc} files.
+#'
+#' \strong{Choosing \code{bigmemory_type}:}
+#' \describe{
+#'   \item{\code{"char"} (default, recommended)}{1 signed byte per cell
+#'     (range --128..127). Genotype dosage values 0, 1, 2 fit without loss.
+#'     8x smaller than \code{"double"}.}
+#'   \item{\code{"short"}}{2 bytes per cell. Not needed for 0/1/2 dosage;
+#'     use only if your pipeline stores values outside --128..127 in the
+#'     same matrix.}
+#'   \item{\code{"double"}}{8 bytes per cell. Same as a standard R
+#'     \code{matrix()}. Use only if downstream code requires \code{double}
+#'     precision and the RAM saving is not needed.}
+#' }
+#'
+#' \strong{When to use \code{use_bigmemory = TRUE}:}
+#' \itemize{
+#'   \item Peak RAM from GDS streaming exceeds available node memory.
+#'   \item You need fast restart: the \code{.bin} persists across R sessions
+#'     (supply a persistent \code{bigmemory_path}, not \code{tempdir()}).
+#'   \item Multiple pipeline runs share the same panel (one \code{.bin},
+#'     many readers -- bigmemory memory-maps are safe for concurrent access).
+#' }
+#'
 #' @section Scale behaviour:
 #' Files are processed via the `LDxBlocks_backend` streaming interface.
 #' For VCF, HapMap, and numeric CSV files the backend reads one chromosome
@@ -103,7 +151,31 @@
 #' @param clean_malformed   Logical. Stream-clean the input file before reading
 #'   by removing any lines whose column count does not match the header. Needed
 #'   for files from NGSEP and some variant callers. Default \code{FALSE}.
-#' @param geno_file         Path to genotype file. Supported formats: numeric
+#' @param use_bigmemory     Logical. If \code{TRUE} and \code{geno_source} is a
+#'   file path, the source file is first loaded into a file-backed
+#'   \code{bigmemory::big.matrix} before block detection. Only the OS pages
+#'   needed for each sub-segment window are loaded into RAM, keeping peak memory
+#'   proportional to \code{n_samples x subSegmSize} rather than the full genome.
+#'   Requires the \pkg{bigmemory} package. Default \code{FALSE}.
+#'   Ignored when \code{geno_source} is already an
+#'   \code{LDxBlocks_backend} (the supplied backend is used as-is).
+#' @param bigmemory_path    Directory where the bigmemory backing files
+#'   (\code{.bin} and \code{.desc}) and SNP info cache
+#'   (\code{_snpinfo.rds}) are written or read from. Defaults to
+#'   \code{tempdir()} so files are cleaned up at the end of the R session.
+#'   Supply a persistent directory (e.g. next to the output CSVs) when you
+#'   want to reattach the backing file on a restart without re-reading the VCF.
+#' @param bigmemory_type    Storage type for the \code{big.matrix}: \code{"char"}
+#'   (1 byte per cell, 8x smaller than double, sufficient for 0/1/2 dosage),
+#'   \code{"short"} (2 bytes), or \code{"double"} (8 bytes). Default
+#'   \code{"char"}.
+#' @param geno_source  Path to a genotype file, OR an
+#'   \code{LDxBlocks_backend} object already created by \code{\link{read_geno}}
+#'   or \code{\link{read_geno_bigmemory}}. Passing a backend skips the
+#'   internal \code{read_geno()} call, allowing you to use any pre-built
+#'   backend including file-backed \code{bigmemory} stores.
+#'   Supported file formats when a path is supplied: numeric dosage CSV,
+#'   HapMap, VCF/VCF.gz, SNPRelate GDS, PLINK BED.
 #'   dosage CSV (`.csv`), HapMap (`.hmp.txt`), VCF (`.vcf`, `.vcf.gz`),
 #'   SNPRelate GDS (`.gds`), PLINK BED (`.bed`). Format is detected
 #'   automatically from the file extension.
@@ -230,11 +302,12 @@
 #'
 #' @examples
 #' \donttest{
+#' # Path A: supply a file path (original interface, unchanged)
 #' geno_file <- system.file("extdata", "example_genotypes_numeric.csv",
 #'                          package = "LDxBlocks")
 #'
 #' res <- run_ldx_pipeline(
-#'   geno_file      = geno_file,
+#'   geno_source    = geno_file,
 #'   out_blocks     = tempfile(fileext = ".csv"),
 #'   out_diversity  = tempfile(fileext = ".csv"),
 #'   out_hap_matrix = tempfile(fileext = ".csv"),
@@ -252,6 +325,25 @@
 #' head(res$blocks)
 #' head(res$diversity)
 #' dim(res$hap_matrix)
+#'
+#' # Path B: supply a pre-built bigmemory backend
+#' if (requireNamespace("bigmemory", quietly = TRUE)) {
+#'   # read_geno_bigmemory() accepts a file path directly:
+#'   # it calls read_geno() internally and wraps the result.
+#'   be_bm <- read_geno_bigmemory(
+#'     source      = geno_file,
+#'     backingfile = tempfile("ldxbm"),
+#'     type        = "char"
+#'   )
+#'   res2 <- run_ldx_pipeline(
+#'     geno_source    = be_bm,
+#'     out_blocks     = tempfile(fileext = ".csv"),
+#'     out_diversity  = tempfile(fileext = ".csv"),
+#'     out_hap_matrix = tempfile(fileext = ".csv"),
+#'     CLQcut         = 0.5, leng = 10L, subSegmSize = 70L
+#'   )
+#'   close_backend(be_bm)
+#' }
 #' }
 #'
 #' @seealso \code{\link{run_Big_LD_all_chr}},
@@ -264,7 +356,7 @@
 #'
 #' @export
 run_ldx_pipeline <- function(
-    geno_file,
+    geno_source,
     out_blocks,
     out_diversity,
     out_hap_matrix,
@@ -291,10 +383,15 @@ run_ldx_pipeline <- function(
     chr              = NULL,
     verbose          = TRUE,
     max_bp_distance  = 0L,
-    clean_malformed  = FALSE
+    clean_malformed  = FALSE,
+    use_bigmemory    = FALSE,
+    bigmemory_path   = tempdir(),
+    bigmemory_type   = "char"
 ) {
-  hap_format <- match.arg(hap_format)
-  method     <- match.arg(method)
+  hap_format    <- match.arg(hap_format)
+  method        <- match.arg(method)
+  bigmemory_type <- match.arg(bigmemory_type,
+                              choices = c("char", "short", "double"))
 
   .ldx_log <- function(...) {
     if (verbose) message(sprintf("[%s] %s",
@@ -302,12 +399,81 @@ run_ldx_pipeline <- function(
                                  paste0(...)))
   }
 
-  # -- Step 1: Open backend (auto-detect format) ------------------------------
-  .ldx_log("Opening genotype file: ", basename(geno_file))
-  be <- read_geno(geno_file, clean_malformed = clean_malformed, verbose = verbose)
-  on.exit(close_backend(be), add = TRUE)   # always release GDS / BED handle
-  .ldx_log("Backend: ", be$type, " | ",
-           be$n_samples, " individuals | ", be$n_snps, " SNPs")
+  # -- Step 1: Open backend ------------------------------------------------
+  # Three input paths, in priority order:
+  #   (a) geno_source is already an LDxBlocks_backend -> use as-is
+  #   (b) use_bigmemory = TRUE -> open file, convert to bigmemory backend
+  #   (c) default -> open file via read_geno() (GDS streaming)
+  if (inherits(geno_source, "LDxBlocks_backend")) {
+    # Path (a): pre-built backend supplied by caller
+    be <- geno_source
+    .ldx_log("Using pre-built backend: ", be$type, " | ",
+             be$n_samples, " ind | ", be$n_snps, " SNPs")
+    # Caller owns this backend -- do NOT register on.exit(close_backend)
+
+  } else {
+    if (!is.character(geno_source) || length(geno_source) != 1L)
+      stop("geno_source must be a file path (character) or an ",
+           "LDxBlocks_backend object.", call. = FALSE)
+
+    if (isTRUE(use_bigmemory)) {
+      # Path (b): file-backed bigmemory backend
+      if (!requireNamespace("bigmemory", quietly = TRUE))
+        stop("use_bigmemory = TRUE requires the 'bigmemory' package. ",
+             "Install with: install.packages('bigmemory')", call. = FALSE)
+
+      bm_stem     <- file.path(bigmemory_path, "ldxblocks_bm")
+      bm_bin_file <- paste0(bm_stem, ".bin")
+      bm_desc_file <- paste0(bm_stem, ".desc")
+      bm_si_file  <- paste0(bm_stem, "_snpinfo.rds")
+
+      if (file.exists(bm_bin_file) && file.exists(bm_desc_file) &&
+          file.exists(bm_si_file)) {
+        # Reattach existing backing file -- no VCF re-read needed
+        .ldx_log("[bigmemory] Reattaching existing backing file: ",
+                 basename(bm_bin_file))
+        si_bm <- readRDS(bm_si_file)
+        be <- read_geno_bigmemory(
+          source      = bm_desc_file,
+          snp_info    = si_bm,
+          backingfile = basename(bm_stem),
+          backingpath = bigmemory_path
+        )
+      } else {
+        # Build fresh: open GDS first, wrap in bigmemory, close GDS
+        .ldx_log("[bigmemory] Building file-backed matrix (type = '",
+                 bigmemory_type, "') ...")
+        .ldx_log("[bigmemory]   ", bm_bin_file)
+        be_tmp <- read_geno(geno_source,
+                            clean_malformed = clean_malformed,
+                            verbose = verbose)
+        be <- read_geno_bigmemory(
+          source      = be_tmp,
+          snp_info    = be_tmp$snp_info,
+          backingfile = basename(bm_stem),
+          backingpath = bigmemory_path,
+          type        = bigmemory_type,
+          verbose     = verbose
+        )
+        close_backend(be_tmp)  # release temporary GDS/BED handle
+        saveRDS(be$snp_info, bm_si_file)
+        .ldx_log("[bigmemory] SNP info cached: ", basename(bm_si_file))
+        .ldx_log("[bigmemory] Rerun with same bigmemory_path to reattach ",
+                 "without re-reading the source file.")
+      }
+      on.exit(close_backend(be), add = TRUE)
+
+    } else {
+      # Path (c): default GDS streaming backend
+      .ldx_log("Opening genotype file: ", basename(geno_source))
+      be <- read_geno(geno_source, clean_malformed = clean_malformed,
+                      verbose = verbose)
+      on.exit(close_backend(be), add = TRUE)
+    }
+
+    .ldx_log("Backend: ", be$type, " | ",
+             be$n_samples, " ind | ", be$n_snps, " SNPs")
+  }
 
   # -- Step 2: MAF filtering --------------------------------------------------
   # Store the original full SNP info before filtering -- needed in Step 4

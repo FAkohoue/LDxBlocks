@@ -53,7 +53,7 @@
 ``` r
 blocks <- run_Big_LD_all_chr(
   be,
-  CLQmode         = "Louvain",   # polynomial — no clique blowup
+  CLQmode         = "Leiden",    # polynomial — guaranteed connected communities
   CLQcut          = 0.70,        # sparser LD graph
   max_bp_distance = 500000L,     # skip pairs > 500 kb
   subSegmSize     = 500L,        # smaller windows for safety

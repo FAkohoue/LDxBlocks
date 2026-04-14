@@ -87,7 +87,7 @@
     
     
 <div class="section level2">
-<h2 id="the-kinship-problem-in-ld-estimation">The kinship problem in LD estimation<a class="anchor" aria-label="anchor" href="#the-kinship-problem-in-ld-estimation"></a>
+<h2 id="the-kinship-problem-in-ld-estimation">1. The kinship problem in LD estimation<a class="anchor" aria-label="anchor" href="#the-kinship-problem-in-ld-estimation"></a>
 </h2>
 <p>The standard squared Pearson correlation between two SNP dosage
 vectors
@@ -113,7 +113,7 @@ sample, the clique graph has more edges than it should, and singletons
 are absorbed into large blocks.</p>
 </div>
 <div class="section level2">
-<h2 id="the-kinship-correction-rv²">The kinship correction: rV²<a class="anchor" aria-label="anchor" href="#the-kinship-correction-rv%C2%B2"></a>
+<h2 id="the-kinship-correction-rv²">2. The kinship correction: rV²<a class="anchor" aria-label="anchor" href="#the-kinship-correction-rv%C2%B2"></a>
 </h2>
 <p>Mangin et al. (2012) proposed replacing
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math>
@@ -123,18 +123,34 @@ specifically to correct LD estimates in structured or related
 populations:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msubsup><mi>V</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>g</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.278em"></mspace><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2_{jk} = \left[\mathrm{Cor}(V^{-1/2} g_j,\; V^{-1/2} g_k)\right]^2</annotation></semantics></math></p>
 <p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mi>Z</mi><msup><mi>Z</mi><mi>⊤</mi></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">V = ZZ^\top / (2\sum_j p_j q_j)</annotation></semantics></math>
+is the VanRaden (2008) GRM
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">Z_{ij} = G_{ij} - 2p_j</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>
+= raw dosage matrix,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mi>j</mi></msub><annotation encoding="application/x-tex">p_j</annotation></semantics></math>
+= allele frequency at SNP
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>),
+called
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math>
+by Mangin et al. (2012) and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>
+by VanRaden (2008) himself. In LDxBlocks the symbol
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math>
-is the
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">n \times n</annotation></semantics></math>
-genomic relationship matrix (GRM) and
+is used to avoid collision with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>
+the raw genotype matrix.
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math>
-is its whitening factor. Left-multiplying each genotype vector by
+is its inverse square root. Left-multiplying the mean-centred genotype
+matrix
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>G</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{G}</annotation></semantics></math>
+by
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math>
 removes the kinship-induced correlation between individuals, so the
 resulting correlation measures only recombination-based LD.</p>
 </div>
 <div class="section level2">
-<h2 id="decision-table">Decision table<a class="anchor" aria-label="anchor" href="#decision-table"></a>
+<h2 id="decision-table-r²-versus-rv²">3. Decision table: r² versus rV²<a class="anchor" aria-label="anchor" href="#decision-table-r%C2%B2-versus-rv%C2%B2"></a>
 </h2>
 <table class="table">
 <caption>r² versus rV²: decision table</caption>
@@ -183,7 +199,7 @@ resulting correlation measures only recombination-based LD.</p>
 </table>
 </div>
 <div class="section level2">
-<h2 id="computing-rv²-in-ldxblocks">Computing rV² in LDxBlocks<a class="anchor" aria-label="anchor" href="#computing-rv%C2%B2-in-ldxblocks"></a>
+<h2 id="computing-rv²-in-ldxblocks">4. Computing rV² in LDxBlocks<a class="anchor" aria-label="anchor" href="#computing-rv%C2%B2-in-ldxblocks"></a>
 </h2>
 <p>The whitening is handled by <code><a href="../reference/prepare_geno.html">prepare_geno()</a></code>. The
 subsequent correlation computation uses the same C++ kernel as the
@@ -205,7 +221,47 @@ standard r² path.</p>
 <span><span class="co"># prep_rv2 &lt;- prepare_geno(ldx_geno[, 1:30], method = "rV2")</span></span>
 <span><span class="co"># str(prep_rv2)  # adj_geno = whitened matrix; V_inv_sqrt = n x n matrix</span></span></code></pre></div>
 <div class="section level3">
-<h3 id="the-whitening-factor">The whitening factor<a class="anchor" aria-label="anchor" href="#the-whitening-factor"></a>
+<h3 id="the-vanraden-grm">4.1 The VanRaden GRM<a class="anchor" aria-label="anchor" href="#the-vanraden-grm"></a>
+</h3>
+<p>The kinship matrix
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math>
+is the additive genomic relationship matrix of VanRaden (2008), computed
+by <code><a href="https://rdrr.io/pkg/AGHmatrix/man/Gmatrix.html" class="external-link">AGHmatrix::Gmatrix()</a></code> inside
+<code><a href="../reference/prepare_geno.html">prepare_geno()</a></code>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mfrac><mrow><mi>Z</mi><msup><mi>Z</mi><mi>⊤</mi></msup></mrow><mrow><mn>2</mn><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">V = \frac{ZZ^\top}{2\sum_j p_j q_j}</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math>
+is the
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>m</mi></mrow><annotation encoding="application/x-tex">n \times m</annotation></semantics></math>
+frequency-centred genotype matrix with elements
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">z_{ij} = g_{ij} - 2p_j</annotation></semantics></math>
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mi>j</mi></msub><annotation encoding="application/x-tex">p_j</annotation></semantics></math>
+= frequency of allele
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>A</mi><mn>2</mn></msub><annotation encoding="application/x-tex">A_2</annotation></semantics></math>
+at SNP
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">q_j = 1 - p_j</annotation></semantics></math>).
+The coefficients at SNP
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+are:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">0 - 2p_j</annotation></semantics></math>
+(homozygous
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mn>1</mn></msub><msub><mi>A</mi><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">A_1A_1</annotation></semantics></math>),
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">1 - 2p_j</annotation></semantics></math>
+(heterozygous
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mn>1</mn></msub><msub><mi>A</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">A_1A_2</annotation></semantics></math>),
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">2 - 2p_j</annotation></semantics></math>
+(homozygous
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mn>2</mn></msub><msub><mi>A</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">A_2A_2</annotation></semantics></math>).
+The scalar denominator
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">2\sum_j p_j q_j</annotation></semantics></math>
+scales
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math>
+so that the diagonal elements average to approximately 1 (resembles the
+numerator relationship matrix for an outbred population).</p>
+</div>
+<div class="section level3">
+<h3 id="the-whitening-factor">4.2 The whitening factor<a class="anchor" aria-label="anchor" href="#the-whitening-factor"></a>
 </h3>
 <p><code><a href="../reference/get_V_inv_sqrt.html">get_V_inv_sqrt()</a></code> computes
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup></mrow><annotation encoding="application/x-tex">A = V^{-1/2}</annotation></semantics></math>
@@ -242,7 +298,7 @@ is near-singular.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="comparing-r²-and-rv²-on-example-data">Comparing r² and rV² on example data<a class="anchor" aria-label="anchor" href="#comparing-r%C2%B2-and-rv%C2%B2-on-example-data"></a>
+<h2 id="comparing-r²-and-rv²-on-example-data">5. Comparing r² and rV² on example data<a class="anchor" aria-label="anchor" href="#comparing-r%C2%B2-and-rv%C2%B2-on-example-data"></a>
 </h2>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">idx_25</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">25</span></span>
@@ -276,7 +332,7 @@ r² (left) vs rV² (right) for the first 25 SNPs on chr1
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="when-r²-gives-wrong-blocks">When r² gives wrong blocks<a class="anchor" aria-label="anchor" href="#when-r%C2%B2-gives-wrong-blocks"></a>
+<h2 id="when-r²-gives-wrong-blocks">6. When r² gives wrong blocks<a class="anchor" aria-label="anchor" href="#when-r%C2%B2-gives-wrong-blocks"></a>
 </h2>
 <p>In a livestock panel where sires appear repeatedly through progeny,
 the kinship-induced correlation between half-sibs inflates
@@ -299,7 +355,7 @@ delimited in related populations. The effect is greatest in:</p>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="when-r²-is-preferable">When r² is preferable<a class="anchor" aria-label="anchor" href="#when-r%C2%B2-is-preferable"></a>
+<h2 id="when-r²-is-preferable">7. When r² is preferable<a class="anchor" aria-label="anchor" href="#when-r%C2%B2-is-preferable"></a>
 </h2>
 <p>For large human biobank panels (n &gt; 10,000, p &gt; 1,000,000),
 computing and inverting the n × n GRM is computationally infeasible. The
@@ -308,7 +364,7 @@ small in approximately random-mating populations, and the 50× speed
 advantage of the pure C++ path dominates.</p>
 </div>
 <div class="section level2">
-<h2 id="the-c-ld-kernel">The C++ LD kernel<a class="anchor" aria-label="anchor" href="#the-c-ld-kernel"></a>
+<h2 id="the-c-ld-kernel">8. The C++ LD kernel<a class="anchor" aria-label="anchor" href="#the-c-ld-kernel"></a>
 </h2>
 <p>Both <code><a href="../reference/compute_r2.html">compute_r2()</a></code> and <code><a href="../reference/compute_rV2.html">compute_rV2()</a></code> call
 <code>compute_r2_cpp()</code>. The implementation in
@@ -355,14 +411,14 @@ clamped to
 <span><span class="va">t_rv2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span> <span class="fu"><a href="../reference/compute_rV2.html">compute_rV2</a></span><span class="op">(</span><span class="va">Gc_bench</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"compute_r2  (50 SNPs, 20 reps):"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">t_r2</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span>,  <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; compute_r2  (50 SNPs, 20 reps): 0.02 s</span></span>
+<span><span class="co">#&gt; compute_r2  (50 SNPs, 20 reps): 0.13 s</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"compute_rV2 (50 SNPs, 20 reps):"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">t_rv2</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; compute_rV2 (50 SNPs, 20 reps): 0.02 s</span></span>
+<span><span class="co">#&gt; compute_rV2 (50 SNPs, 20 reps): 0.09 s</span></span>
 <span><span class="co"># Both use the same C++ kernel — times should be identical</span></span>
 <span><span class="co"># The cost of rV² is entirely in prepare_geno() (GRM + Cholesky)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="switching-between-metrics">Switching between metrics<a class="anchor" aria-label="anchor" href="#switching-between-metrics"></a>
+<h2 id="switching-between-metrics">9. Switching between metrics<a class="anchor" aria-label="anchor" href="#switching-between-metrics"></a>
 </h2>
 <p>Switching is a single argument change. No other code needs to
 change:</p>
@@ -372,7 +428,7 @@ change:</p>
 <span>                                  kin_method <span class="op">=</span> <span class="st">"chol"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+<h2 id="references">10. References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
 <li>Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype

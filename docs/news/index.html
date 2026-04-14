@@ -61,7 +61,7 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="va">be</span>,</span>
-<span>  CLQmode         <span class="op">=</span> <span class="st">"Louvain"</span>,   <span class="co"># polynomial — no clique blowup</span></span>
+<span>  CLQmode         <span class="op">=</span> <span class="st">"Leiden"</span>,    <span class="co"># polynomial — guaranteed connected communities</span></span>
 <span>  CLQcut          <span class="op">=</span> <span class="fl">0.70</span>,        <span class="co"># sparser LD graph</span></span>
 <span>  max_bp_distance <span class="op">=</span> <span class="fl">500000L</span>,     <span class="co"># skip pairs &gt; 500 kb</span></span>
 <span>  subSegmSize     <span class="op">=</span> <span class="fl">500L</span>,        <span class="co"># smaller windows for safety</span></span>

@@ -1,6 +1,6 @@
 # LD Metrics: Standard r² and Kinship-Adjusted rV²
 
-## The kinship problem in LD estimation
+## 1. The kinship problem in LD estimation
 
 The standard squared Pearson correlation between two SNP dosage vectors
 $`g_j`$ and $`g_k`$ is:
@@ -23,7 +23,7 @@ broadly: regions that are genuinely independent appear correlated in the
 sample, the clique graph has more edges than it should, and singletons
 are absorbed into large blocks.
 
-## The kinship correction: rV²
+## 2. The kinship correction: rV²
 
 Mangin et al. (2012) proposed replacing $`r^2`$ with the
 **kinship-adjusted squared correlation** $`rV^2`$ specifically to
@@ -33,13 +33,17 @@ correct LD estimates in structured or related populations:
 rV^2_{jk} = \left[\mathrm{Cor}(V^{-1/2} g_j,\; V^{-1/2} g_k)\right]^2
 ```
 
-where $`V`$ is the $`n \times n`$ genomic relationship matrix (GRM) and
-$`V^{-1/2}`$ is its whitening factor. Left-multiplying each genotype
-vector by $`V^{-1/2}`$ removes the kinship-induced correlation between
-individuals, so the resulting correlation measures only
+where $`V = ZZ^\top / (2\sum_j p_j q_j)`$ is the VanRaden (2008) GRM
+($`Z_{ij} = G_{ij} - 2p_j`$, $`G`$ = raw dosage matrix, $`p_j`$ = allele
+frequency at SNP $`j`$), called $`K`$ by Mangin et al. (2012) and $`G`$
+by VanRaden (2008) himself. In LDxBlocks the symbol $`V`$ is used to
+avoid collision with $`G`$ the raw genotype matrix. $`V^{-1/2}`$ is its
+inverse square root. Left-multiplying the mean-centred genotype matrix
+$`\tilde{G}`$ by $`V^{-1/2}`$ removes the kinship-induced correlation
+between individuals, so the resulting correlation measures only
 recombination-based LD.
 
-## Decision table
+## 3. Decision table: r² versus rV²
 
 | Criterion | r² (method = ‘r2’) | rV² (method = ‘rV2’) |
 |:---|:---|:---|
@@ -52,7 +56,7 @@ recombination-based LD.
 
 r² versus rV²: decision table
 
-## Computing rV² in LDxBlocks
+## 4. Computing rV² in LDxBlocks
 
 The whitening is handled by
 [`prepare_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md).
@@ -77,7 +81,28 @@ str(prep_r2)   # adj_geno = centred matrix; V_inv_sqrt = NULL
 # str(prep_rv2)  # adj_geno = whitened matrix; V_inv_sqrt = n x n matrix
 ```
 
-### The whitening factor
+### 4.1 The VanRaden GRM
+
+The kinship matrix $`V`$ is the additive genomic relationship matrix of
+VanRaden (2008), computed by
+[`AGHmatrix::Gmatrix()`](https://rdrr.io/pkg/AGHmatrix/man/Gmatrix.html)
+inside
+[`prepare_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md):
+
+``` math
+V = \frac{ZZ^\top}{2\sum_j p_j q_j}
+```
+
+where $`Z`$ is the $`n \times m`$ frequency-centred genotype matrix with
+elements $`z_{ij} = g_{ij} - 2p_j`$ ($`p_j`$ = frequency of allele
+$`A_2`$ at SNP $`j`$, $`q_j = 1 - p_j`$). The coefficients at SNP $`j`$
+are: $`0 - 2p_j`$ (homozygous $`A_1A_1`$), $`1 - 2p_j`$ (heterozygous
+$`A_1A_2`$), $`2 - 2p_j`$ (homozygous $`A_2A_2`$). The scalar
+denominator $`2\sum_j p_j q_j`$ scales $`V`$ so that the diagonal
+elements average to approximately 1 (resembles the numerator
+relationship matrix for an outbred population).
+
+### 4.2 The whitening factor
 
 [`get_V_inv_sqrt()`](https://FAkohoue.github.io/LDxBlocks/reference/get_V_inv_sqrt.md)
 computes $`A = V^{-1/2}`$ such that $`A V A^\top = I`$.
@@ -105,7 +130,7 @@ max(abs(A_eig  %*% V_demo %*% t(A_eig)  - diag(120)))
 #> [1] 1.064704e-13
 ```
 
-## Comparing r² and rV² on example data
+## 5. Comparing r² and rV² on example data
 
 ``` r
 idx_25 <- 1:25
@@ -143,7 +168,7 @@ r² (left) vs rV² (right) for the first 25 SNPs on chr1
 par(mfrow = c(1, 1))
 ```
 
-## When r² gives wrong blocks
+## 6. When r² gives wrong blocks
 
 In a livestock panel where sires appear repeatedly through progeny, the
 kinship-induced correlation between half-sibs inflates $`r^2`$ for all
@@ -161,7 +186,7 @@ in related populations. The effect is greatest in:
 - Inbred plant populations (F2, RILs, near-isogenic lines)
 - Multi-family human cohorts from isolated populations
 
-## When r² is preferable
+## 7. When r² is preferable
 
 For large human biobank panels (n \> 10,000, p \> 1,000,000), computing
 and inverting the n × n GRM is computationally infeasible. The standard
@@ -169,7 +194,7 @@ r² inflates LD modestly but the effect on block boundaries is small in
 approximately random-mating populations, and the 50× speed advantage of
 the pure C++ path dominates.
 
-## The C++ LD kernel
+## 8. The C++ LD kernel
 
 Both
 [`compute_r2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.md)
@@ -206,14 +231,14 @@ t_r2  <- system.time(for(i in 1:20) compute_r2(G_bench))
 t_rv2 <- system.time(for(i in 1:20) compute_rV2(Gc_bench))
 
 cat("compute_r2  (50 SNPs, 20 reps):", round(t_r2["elapsed"],  3), "s\n")
-#> compute_r2  (50 SNPs, 20 reps): 0.02 s
+#> compute_r2  (50 SNPs, 20 reps): 0.13 s
 cat("compute_rV2 (50 SNPs, 20 reps):", round(t_rv2["elapsed"], 3), "s\n")
-#> compute_rV2 (50 SNPs, 20 reps): 0.02 s
+#> compute_rV2 (50 SNPs, 20 reps): 0.09 s
 # Both use the same C++ kernel — times should be identical
 # The cost of rV² is entirely in prepare_geno() (GRM + Cholesky)
 ```
 
-## Switching between metrics
+## 9. Switching between metrics
 
 Switching is a single argument change. No other code needs to change:
 
@@ -223,7 +248,7 @@ blocks_rv2 <- run_Big_LD_all_chr(be, method = "rV2", CLQcut = 0.70,
                                   kin_method = "chol")
 ```
 
-## References
+## 10. References
 
 - Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype
   block detection method for dense genome sequencing data based on

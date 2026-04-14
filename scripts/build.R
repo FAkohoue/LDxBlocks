@@ -128,6 +128,7 @@ devtools::check()
 # 9. Build vignettes
 #options(pkgdown.internet = FALSE)
 library(LDxBlocks)
+
 # Build everything except home, then build home separately
 #pkgdown::build_favicons(overwrite = TRUE)
 

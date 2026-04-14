@@ -13,7 +13,7 @@ intermediate steps run transparently.
 
 ``` r
 run_ldx_pipeline(
-  geno_file,
+  geno_source,
   out_blocks,
   out_diversity,
   out_hap_matrix,
@@ -40,18 +40,30 @@ run_ldx_pipeline(
   chr = NULL,
   verbose = TRUE,
   max_bp_distance = 0L,
-  clean_malformed = FALSE
+  clean_malformed = FALSE,
+  use_bigmemory = FALSE,
+  bigmemory_path = tempdir(),
+  bigmemory_type = "char"
 )
 ```
 
 ## Arguments
 
-- geno_file:
+- geno_source:
 
-  Path to genotype file. Supported formats: numeric dosage CSV
-  (\`.csv\`), HapMap (\`.hmp.txt\`), VCF (\`.vcf\`, \`.vcf.gz\`),
-  SNPRelate GDS (\`.gds\`), PLINK BED (\`.bed\`). Format is detected
-  automatically from the file extension.
+  Path to a genotype file, OR an `LDxBlocks_backend` object already
+  created by
+  [`read_geno`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
+  or
+  [`read_geno_bigmemory`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno_bigmemory.md).
+  Passing a backend skips the internal
+  [`read_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
+  call, allowing you to use any pre-built backend including file-backed
+  `bigmemory` stores. Supported file formats when a path is supplied:
+  numeric dosage CSV, HapMap, VCF/VCF.gz, SNPRelate GDS, PLINK BED.
+  dosage CSV (\`.csv\`), HapMap (\`.hmp.txt\`), VCF (\`.vcf\`,
+  \`.vcf.gz\`), SNPRelate GDS (\`.gds\`), PLINK BED (\`.bed\`). Format
+  is detected automatically from the file extension.
 
 - out_blocks:
 
@@ -217,6 +229,32 @@ run_ldx_pipeline(
   lines whose column count does not match the header. Needed for files
   from NGSEP and some variant callers. Default `FALSE`.
 
+- use_bigmemory:
+
+  Logical. If `TRUE` and `geno_source` is a file path, the source file
+  is first loaded into a file-backed
+  [`bigmemory::big.matrix`](https://rdrr.io/pkg/bigmemory/man/big.matrix.html)
+  before block detection. Only the OS pages needed for each sub-segment
+  window are loaded into RAM, keeping peak memory proportional to
+  `n_samples x subSegmSize` rather than the full genome. Requires the
+  bigmemory package. Default `FALSE`. Ignored when `geno_source` is
+  already an `LDxBlocks_backend` (the supplied backend is used as-is).
+
+- bigmemory_path:
+
+  Directory where the bigmemory backing files (`.bin` and `.desc`) and
+  SNP info cache (`_snpinfo.rds`) are written or read from. Defaults to
+  [`tempdir()`](https://rdrr.io/r/base/tempfile.html) so files are
+  cleaned up at the end of the R session. Supply a persistent directory
+  (e.g. next to the output CSVs) when you want to reattach the backing
+  file on a restart without re-reading the VCF.
+
+- bigmemory_type:
+
+  Storage type for the `big.matrix`: `"char"` (1 byte per cell, 8x
+  smaller than double, sufficient for 0/1/2 dosage), `"short"` (2
+  bytes), or `"double"` (8 bytes). Default `"char"`.
+
 ## Value
 
 A named list (invisibly) with elements:
@@ -274,6 +312,71 @@ A named list (invisibly) with elements:
   Integer. Total haplotype allele columns after `min_freq` filtering –
   the effective number of predictors for genomic prediction.
 
+## File-backed memory-mapped genotype store (`use_bigmemory`)
+
+When `use_bigmemory = TRUE` the pipeline converts the source file into a
+[`bigmemory::big.matrix`](https://rdrr.io/pkg/bigmemory/man/big.matrix.html)
+backed by two binary files on disk before running any analysis. Only the
+OS pages needed for each sub-segment window are loaded into RAM; the
+rest of the genome stays on disk. Peak RAM is proportional to
+`n_samples x subSegmSize x bytes_per_cell` rather than the full genome
+matrix.
+
+**Backing files created in `bigmemory_path`:**
+
+- `ldxblocks_bm.bin`:
+
+  Raw binary genotype data. Size = n_samples x n_snps x bytes_per_cell.
+  With `type = "char"` and 204 samples x 3M SNPs: ~0.6 GB.
+
+- `ldxblocks_bm.desc`:
+
+  Tiny text descriptor that bigmemory uses to memory-map the `.bin`
+  file. Never edit this manually.
+
+- `ldxblocks_bm_snpinfo.rds`:
+
+  Cached SNP metadata (SNP, CHR, POS, REF, ALT). bigmemory does not
+  store metadata, so this file is saved separately to enable restart
+  without re-reading the source file.
+
+**Restart behaviour:** if all three files already exist in
+`bigmemory_path` when the pipeline is called, the `.bin` is reattached
+instantly via
+[`bigmemory::attach.big.matrix()`](https://rdrr.io/pkg/bigmemory/man/attach.big.matrix.html)
+– the source VCF is not touched. To force a rebuild, delete the `.bin`
+and `.desc` files.
+
+**Choosing `bigmemory_type`:**
+
+- `"char"` (default, recommended):
+
+  1 signed byte per cell (range –128..127). Genotype dosage values 0, 1,
+  2 fit without loss. 8x smaller than `"double"`.
+
+- `"short"`:
+
+  2 bytes per cell. Not needed for 0/1/2 dosage; use only if your
+  pipeline stores values outside –128..127 in the same matrix.
+
+- `"double"`:
+
+  8 bytes per cell. Same as a standard R
+  [`matrix()`](https://rdrr.io/r/base/matrix.html). Use only if
+  downstream code requires `double` precision and the RAM saving is not
+  needed.
+
+**When to use `use_bigmemory = TRUE`:**
+
+- Peak RAM from GDS streaming exceeds available node memory.
+
+- You need fast restart: the `.bin` persists across R sessions (supply a
+  persistent `bigmemory_path`, not
+  [`tempdir()`](https://rdrr.io/r/base/tempfile.html)).
+
+- Multiple pipeline runs share the same panel (one `.bin`, many readers
+  – bigmemory memory-maps are safe for concurrent access).
+
 ## Scale behaviour
 
 Files are processed via the \`LDxBlocks_backend\` streaming interface.
@@ -324,11 +427,12 @@ columns, preceded by metadata columns: `hap_id`, `CHR`, `start_bp`,
 
 ``` r
 # \donttest{
+# Path A: supply a file path (original interface, unchanged)
 geno_file <- system.file("extdata", "example_genotypes_numeric.csv",
                          package = "LDxBlocks")
 
 res <- run_ldx_pipeline(
-  geno_file      = geno_file,
+  geno_source    = geno_file,
   out_blocks     = tempfile(fileext = ".csv"),
   out_diversity  = tempfile(fileext = ".csv"),
   out_hap_matrix = tempfile(fileext = ".csv"),
@@ -368,5 +472,104 @@ head(res$diversity)
 #> 6 2.604423         6.305     0.3083333      FALSE  FALSE
 dim(res$hap_matrix)
 #> [1] 120  85
+
+# Path B: supply a pre-built bigmemory backend
+if (requireNamespace("bigmemory", quietly = TRUE)) {
+  # read_geno_bigmemory() accepts a file path directly:
+  # it calls read_geno() internally and wraps the result.
+  be_bm <- read_geno_bigmemory(
+    source      = geno_file,
+    backingfile = tempfile("ldxbm"),
+    type        = "char"
+  )
+  res2 <- run_ldx_pipeline(
+    geno_source    = be_bm,
+    out_blocks     = tempfile(fileext = ".csv"),
+    out_diversity  = tempfile(fileext = ".csv"),
+    out_hap_matrix = tempfile(fileext = ".csv"),
+    CLQcut         = 0.5, leng = 10L, subSegmSize = 70L
+  )
+  close_backend(be_bm)
+}
+#> [bigmemory] Opening 'example_genotypes_numeric.csv' via read_geno() ...
+#> [read_geno] Reading numeric dosage (chunked): C:/Users/fakohoue/AppData/Local/R/win-library/4.5/LDxBlocks/extdata/example_genotypes_numeric.csv 
+#> [read_geno]   230 SNPs x 120 samples
+#> [bigmemory] Allocating 120 x 230 big.matrix (type = 'char') ...
+#> [bigmemory]   chr 1 loaded (80/230 SNPs)
+#> [bigmemory]   chr 2 loaded (160/230 SNPs)
+#> [bigmemory]   chr 3 loaded (230/230 SNPs)
+#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN/ldxbm8e5c39e57e6.bin
+#> [13:22:22] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
+#> [13:22:22] MAF filtering (>= 0.05) ...
+#> [MAF filter] Computing MAF for 230 SNPs ...
+#> [MAF filter] 230 / 230 SNPs pass MAF >= 0.05
+#> [13:22:23] Loading filtered genotype matrix ...
+#> [13:22:23] Genotype matrix: 120 x 230
+#> [13:22:23] Running genome-wide LD block detection ...
+#> 
+#> [run_Big_LD_all_chr] Processing 1 ...
+#> [Big_LD] Subsegmenting via C++ boundary scan...
+#> [Big_LD]   Cut at SNP 25
+#> [Big_LD]   Cut at SNP 30
+#> [Big_LD]   Cut at SNP 50
+#> [Big_LD]   Cut at SNP 55
+#> [CLQD] Building graph on 25 SNPs...
+#> [CLQD] Found 1 maximal cliques.
+#> [Big_LD] Segment 1/5 done.
+#> [CLQD] Building graph on 5 SNPs...
+#> [CLQD] Found 0 maximal cliques.
+#> [Big_LD] Segment 2/5 done.
+#> [CLQD] Building graph on 20 SNPs...
+#> [CLQD] Found 1 maximal cliques.
+#> [Big_LD] Segment 3/5 done.
+#> [CLQD] Building graph on 5 SNPs...
+#> [CLQD] Found 0 maximal cliques.
+#> [Big_LD] Segment 4/5 done.
+#> [CLQD] Building graph on 25 SNPs...
+#> [CLQD] Found 1 maximal cliques.
+#> [Big_LD] Segment 5/5 done.
+#> 
+#> [run_Big_LD_all_chr] Processing 2 ...
+#> [Big_LD] Subsegmenting via C++ boundary scan...
+#> [Big_LD]   Cut at SNP 30
+#> [Big_LD]   Cut at SNP 35
+#> [Big_LD]   Cut at SNP 55
+#> [Big_LD]   Cut at SNP 60
+#> [CLQD] Building graph on 30 SNPs...
+#> [CLQD] Found 1 maximal cliques.
+#> [Big_LD] Segment 1/5 done.
+#> [CLQD] Building graph on 5 SNPs...
+#> [CLQD] Found 0 maximal cliques.
+#> [Big_LD] Segment 2/5 done.
+#> [CLQD] Building graph on 20 SNPs...
+#> [CLQD] Found 1 maximal cliques.
+#> [Big_LD] Segment 3/5 done.
+#> [CLQD] Building graph on 5 SNPs...
+#> [CLQD] Found 0 maximal cliques.
+#> [Big_LD] Segment 4/5 done.
+#> [CLQD] Building graph on 20 SNPs...
+#> [CLQD] Found 1 maximal cliques.
+#> [Big_LD] Segment 5/5 done.
+#> 
+#> [run_Big_LD_all_chr] Processing 3 ...
+#> [CLQD] Building graph on 70 SNPs...
+#> [CLQD] Found 3 maximal cliques.
+#> [Big_LD] Segment 1/1 done.
+#> [13:22:23] Detected 9 LD blocks
+#> [13:22:23] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c50196aca.csv
+#> [13:22:23] Extracting haplotypes (min_snps = 3) ...
+#> [13:22:23] Haplotypes extracted for 9 blocks
+#> [13:22:23] Computing haplotype diversity ...
+#> [13:22:23] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c46de729e.csv
+#> [13:22:23] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
+#> [13:22:23] Haplotype matrix: 120 individuals x 85 haplotype allele columns
+#> [13:22:23] Writing haplotype matrix (format = numeric) ...
+#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c22166373.csv (85 haplotypes x 120 individuals)
+#> [13:22:24] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c22166373.csv
+#> [13:22:24] Pipeline complete.
+#> [13:22:24]   Blocks:              9
+#> [13:22:24]   Haplotype blocks:    9
+#> [13:22:24]   Haplotype columns:   85
+#> [13:22:24]   Individuals:         120
 # }
 ```

@@ -88,12 +88,15 @@
 
 <hr>
 <div class="section level2">
-<h2 id="motivation">Motivation<a class="anchor" aria-label="anchor" href="#motivation"></a>
+<h2 id="id_1-motivation">1. Motivation<a class="anchor" aria-label="anchor" href="#id_1-motivation"></a>
 </h2>
 <p>Linkage disequilibrium (LD) block detection is a foundational step in modern genomic analyses. Knowing which SNPs co-segregate as a unit determines how GWAS results are interpreted, how haplotypes are defined for population genetics, and how genomic prediction models should be structured. Despite its importance, most implementations of LD block detection suffer from three problems that limit their usefulness in practice.</p>
 <p><strong>The kinship problem.</strong> Classical LD estimators (r²) assume independence between individuals. In livestock, crop, or family-based human cohorts this assumption is systematically violated. Cryptic relatedness inflates pairwise correlations, causing LD to appear stronger than it is and blocks to be drawn too broadly or in the wrong places. The kinship-adjusted squared correlation rV² (Mangin et al. 2012, <em>Heredity</em> 108:285-291) corrects for this by whitening the genotype matrix with the inverse square root of the genomic relationship matrix (GRM):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msubsup><mi>V</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>G</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.278em"></mspace><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>G</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2_{jk} = \left[\mathrm{Cor}(V^{-1/2} G_j,\; V^{-1/2} G_k)\right]^2</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> is the VanRaden (2008) GRM and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math> is its Cholesky whitening factor. Every pairwise correlation in the Big-LD algorithm is replaced with rV², giving block boundaries that reflect true recombination structure rather than population-structure artefacts.</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msubsup><mi>V</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mfrac><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo>,</mo><mspace width="0.167em"></mspace><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">rV^2_{ij} = \frac{\mathrm{Cov}(X^v_i,\, X^v_j)^2}{\mathrm{Var}(X^v_i)\,\mathrm{Var}(X^v_j)}</annotation></semantics></math></p>
+<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>v</mi></msup><mo>=</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mover><mi>G</mi><mo accent="true">̃</mo></mover></mrow><annotation encoding="application/x-tex">X^v = V^{-1/2}\tilde{G}</annotation></semantics></math> is the kinship-whitened, mean-centred genotype matrix; <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mi>Z</mi><msup><mi>Z</mi><mi>⊤</mi></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">V = ZZ^\top / (2\sum_j p_j q_j)</annotation></semantics></math> is the VanRaden (2008) GRM (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">Z_{ij} = G_{ij} - 2p_j</annotation></semantics></math> = frequency-centred raw dosage, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">q_j = 1-p_j</annotation></semantics></math>); and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math> is its inverse square root (Mangin et al. 2012, eq. 1–2). Subscripts <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> index SNPs. This is equivalent to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mrow><mo stretchy="true" form="prefix">[</mo><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo>,</mo><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup><annotation encoding="application/x-tex">[\mathrm{Cor}(X^v_i, X^v_j)]^2</annotation></semantics></math>.</p>
+<blockquote>
+<p><strong>Notation.</strong> <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math> denotes the raw <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>m</mi></mrow><annotation encoding="application/x-tex">n\times m</annotation></semantics></math> dosage matrix (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">G_{ij} \in \{0,1,2\}</annotation></semantics></math>); <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>G</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{G}</annotation></semantics></math> its mean-centred form (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>G</mi><mo accent="true">̃</mo></mover><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><msub><mover><mi>G</mi><mo accent="true">‾</mo></mover><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">\tilde{G}_{ij} = G_{ij}-\bar{G}_j</annotation></semantics></math>, used for LD computation); <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math> its frequency-centred form (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">Z_{ij} = G_{ij}-2p_j</annotation></semantics></math>, used for the GRM). <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> denotes the GRM to avoid collision with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math> the dosage matrix. In the Mangin (2012) paper the GRM is called <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math> and is equivalent to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> here; VanRaden (2008) calls it <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>. Every pairwise correlation in the Big-LD algorithm is replaced with rV², giving block boundaries that reflect true recombination structure rather than population-structure artefacts.</p>
+</blockquote>
 <p><strong>The scale problem.</strong> The original Big-LD implementation (Kim et al. 2018) contains no compiled code – every matrix operation runs through the R interpreter. For modern whole-genome sequencing panels with 2-10 million markers the inner loops are prohibitively slow, and loading the full genotype matrix before detection is impossible on most workstations. LDxBlocks addresses this with a C++/Armadillo computational core compiled via Rcpp, OpenMP-parallelised LD computation, a unified multi-format I/O layer, and a strict never-full-genome memory model: the full genotype matrix is never loaded into RAM simultaneously regardless of dataset size or format.</p>
 <p><strong>The pipeline gap.</strong> The original Big-LD stops at block boundaries. In breeding programmes and GWAS follow-up studies the immediate next questions are: What haplotypes exist within each block? How diverse are they? Which blocks harbour QTLs? How do I build a genomic prediction model that captures multi-locus block effects? These questions require a coherent downstream pipeline that the original implementation does not provide.</p>
 <p><strong>Why LDxBlocks and not other tools?</strong></p>
@@ -106,7 +109,7 @@
 <hr>
 </div>
 <div class="section level2">
-<h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
+<h2 id="id_2-summary">2. Summary<a class="anchor" aria-label="anchor" href="#id_2-summary"></a>
 </h2>
 <p><code>LDxBlocks</code> is a complete pipeline for genome-wide LD block detection in related or structured populations, with downstream haplotype analysis and genomic prediction utilities. It extends the Big-LD clique-based segmentation algorithm of Kim et al. (2018) with 15 concrete improvements:</p>
 <ol style="list-style-type: decimal">
@@ -135,7 +138,7 @@
 <li>
 <strong>Prediction feature matrix</strong> — <code><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> converts haplotype strings to numeric dosage columns for GBLUP, BayesB, or machine learning models, capturing multi-locus epistatic effects implicitly.</li>
 <li>
-<strong>Polynomial community detection</strong> — <code>CLQmode = "Louvain"</code> and <code>CLQmode = "Leiden"</code> replace Bron-Kerbosch clique enumeration with O(n log n) community detection, eliminating exponential blowup on dense WGS panels (Blondel et al. 2008; Traag et al. 2019).</li>
+<strong>Polynomial community detection</strong> — <code>CLQmode = "Louvain"</code> and <code>CLQmode = "Leiden"</code> replace Bron-Kerbosch clique enumeration with O(n log n) community detection, eliminating exponential blowup on dense WGS panels. These network community detection algorithms are applied here to the SNP LD graph in place of exact clique enumeration; citations follow their original algorithm publications (Blondel et al. 2008; Traag et al. 2019).</li>
 <li>
 <strong>Sparse LD computation</strong> — the <code>max_bp_distance</code> parameter restricts r² to SNP pairs within a physical distance window via <code>compute_r2_sparse_cpp()</code>, reducing O(p²) to near-O(p) for WGS panels (70–90% of pairs skipped at 500 kb).</li>
 <li>
@@ -144,11 +147,11 @@
 <hr>
 </div>
 <div class="section level2">
-<h2 id="relationship-to-the-original-big-ld-algorithm">Relationship to the original Big-LD algorithm<a class="anchor" aria-label="anchor" href="#relationship-to-the-original-big-ld-algorithm"></a>
+<h2 id="id_3-relationship-to-the-original-big-ld-algorithm">3. Relationship to the original Big-LD algorithm<a class="anchor" aria-label="anchor" href="#id_3-relationship-to-the-original-big-ld-algorithm"></a>
 </h2>
 <p>LDxBlocks is built on the clique-based segmentation algorithm of Kim et al. (2018), published as the <code>BigLD</code> R package and later updated as the <code>gpart</code> Bioconductor package. The mathematical core — interval graph modelling of LD bins, maximum-weight independent set block construction, and Bron-Kerbosch clique enumeration via igraph — is preserved exactly. LDxBlocks extends that foundation in the following concrete ways.</p>
 <div class="section level3">
-<h3 id="computational-core-r-loops-replaced-by-c">Computational core: R loops replaced by C++<a class="anchor" aria-label="anchor" href="#computational-core-r-loops-replaced-by-c"></a>
+<h3 id="id_31-computational-core-r-loops-replaced-by-c">3.1 Computational core: R loops replaced by C++<a class="anchor" aria-label="anchor" href="#id_31-computational-core-r-loops-replaced-by-c"></a>
 </h3>
 <p>The original <code><a href="reference/Big_LD.html">Big_LD()</a></code> calls <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> inside the boundary-scan loop — up to three separate R-level matrix operations per candidate cut position. For a 50,000-SNP chromosome with <code>leng = 200</code> this is approximately 150,000 small matrix multiplications running through the R interpreter. LDxBlocks replaces these with seven compiled functions:</p>
 <table class="table">
@@ -204,7 +207,7 @@
 <p>The outer loop of <code>compute_r2_cpp()</code> is parallelised with OpenMP, controlled by <code>n_threads =</code>. Thread scaling is efficient up to 8-16 threads for typical <code>subSegmSize = 1500</code> windows.</p>
 </div>
 <div class="section level3">
-<h3 id="memory-model-never-full-genome">Memory model: never-full-genome<a class="anchor" aria-label="anchor" href="#memory-model-never-full-genome"></a>
+<h3 id="id_32-memory-model-never-full-genome">3.2 Memory model: never-full-genome<a class="anchor" aria-label="anchor" href="#id_32-memory-model-never-full-genome"></a>
 </h3>
 <p>The original <code><a href="reference/Big_LD.html">Big_LD()</a></code> accepts a plain R matrix — the entire genotype dataset must fit in RAM simultaneously. For a 10M-marker, 5,000-individual WGS panel this requires approximately 400 GB as an R <code>double</code> matrix. LDxBlocks enforces a strict memory contract regardless of format:</p>
 <ul>
@@ -219,19 +222,19 @@
 </ul>
 </div>
 <div class="section level3">
-<h3 id="kinship-correction-rv²">Kinship correction: rV²<a class="anchor" aria-label="anchor" href="#kinship-correction-rv%C2%B2"></a>
+<h3 id="id_33-kinship-correction-rv²">3.3 Kinship correction: rV²<a class="anchor" aria-label="anchor" href="#id_33-kinship-correction-rv%C2%B2"></a>
 </h3>
 <p>The original implementation uses Pearson r as the LD metric. For related populations (livestock half-sib families, inbred plant lines, family-based human cohorts) kinship-induced allele sharing inflates r between all SNP pairs, producing blocks that are too broad and incorrectly delimited.</p>
 <p>LDxBlocks adds <code>method = "rV2"</code> which replaces every pairwise correlation with the kinship-whitened equivalent. The whitening factor A is computed once per chromosome from the VanRaden (2008) GRM via <code><a href="reference/get_V_inv_sqrt.html">get_V_inv_sqrt()</a></code> (Cholesky or eigendecomposition), then applied to the centred genotype matrix before passing to the same <code>compute_r2_cpp()</code> kernel. In related populations, rV² blocks are typically 10-30% smaller and more precisely delimited than r² blocks.</p>
 </div>
 <div class="section level3">
-<h3 id="singleton-snp-handling">Singleton SNP handling<a class="anchor" aria-label="anchor" href="#singleton-snp-handling"></a>
+<h3 id="id_34-singleton-snp-handling">3.4 Singleton SNP handling<a class="anchor" aria-label="anchor" href="#id_34-singleton-snp-handling"></a>
 </h3>
 <p>The original <code><a href="reference/Big_LD.html">Big_LD()</a></code> silently discards SNPs that pass MAF filtering but receive <code>NA</code> from <code><a href="reference/CLQD.html">CLQD()</a></code> (no clique partner above <code>CLQcut</code>). These singletons — which mark recombination hotspots and rapidly-evolving loci — are never returned to the user and are invisible in the block table.</p>
 <p>LDxBlocks adds <code>singleton_as_block = TRUE</code> which collects singleton indices during the sub-segment loop and appends them to the final block table as single-SNP entries (<code>start == end</code>, <code>length_bp == 1</code>). With the default <code>singleton_as_block = FALSE</code> the original behaviour is preserved for backward compatibility.</p>
 </div>
 <div class="section level3">
-<h3 id="bug-fix-zero-row-assignment">Bug fix: zero-row assignment<a class="anchor" aria-label="anchor" href="#bug-fix-zero-row-assignment"></a>
+<h3 id="id_35-bug-fix-zero-row-assignment">3.5 Bug fix: zero-row assignment<a class="anchor" aria-label="anchor" href="#id_35-bug-fix-zero-row-assignment"></a>
 </h3>
 <p>The original main loop body contains:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -239,7 +242,7 @@
 <p>When a sub-segment contains no valid cliques (all singletons above the MAF threshold) <code>nowLDblocks</code> has zero rows and R evaluates <code>(preleng1+1):preleng1</code> as a backwards sequence, causing <code>replacement has length zero</code>. LDxBlocks wraps this with <code>if (nrow(nowLD) &gt; 0L)</code>, making the function robust to sparse chromosomal regions and small input datasets.</p>
 </div>
 <div class="section level3">
-<h3 id="downstream-pipeline">Downstream pipeline<a class="anchor" aria-label="anchor" href="#downstream-pipeline"></a>
+<h3 id="id_36-downstream-pipeline">3.6 Downstream pipeline<a class="anchor" aria-label="anchor" href="#id_36-downstream-pipeline"></a>
 </h3>
 <p>The original Big-LD stops at the block table. LDxBlocks adds a complete downstream module:</p>
 <table class="table">
@@ -315,7 +318,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="what-is-kept-exactly">What is kept exactly<a class="anchor" aria-label="anchor" href="#what-is-kept-exactly"></a>
+<h3 id="id_37-what-is-kept-exactly">3.7 What is kept exactly<a class="anchor" aria-label="anchor" href="#id_37-what-is-kept-exactly"></a>
 </h3>
 <ul>
 <li>The interval graph modelling of LD bins (cliques of strong pairwise LD SNPs)</li>
@@ -335,41 +338,42 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="table-of-contents">Table of contents<a class="anchor" aria-label="anchor" href="#table-of-contents"></a>
+<h2 id="id_4-table-of-contents">4. Table of contents<a class="anchor" aria-label="anchor" href="#id_4-table-of-contents"></a>
 </h2>
 <ol style="list-style-type: decimal">
-<li><a href="#installation">Installation</a></li>
-<li><a href="#quick-start">Quick start</a></li>
-<li><a href="#input-formats">Input formats</a></li>
-<li><a href="#phenotype-input-format">Phenotype input format</a></li>
+<li><a href="#id_5-installation">5. Installation</a></li>
+<li><a href="#id_6-quick-start">6. Quick start</a></li>
+<li><a href="#id_7-input-formats">7. Input formats</a></li>
+<li><a href="#id_8-phenotype-input-format">8. Phenotype input format</a></li>
 <li>
-<a href="#statistical-background">Statistical background</a>
+<a href="#id_9-statistical-background">9. Statistical background</a>
 <ul>
-<li><a href="#id_1-maf-filtering">MAF filtering</a></li>
-<li><a href="#id_2-genotype-preparation">Genotype preparation</a></li>
-<li><a href="#id_3-subsegmentation">Subsegmentation</a></li>
-<li><a href="#id_4-clique-detection-clqd">Clique detection</a></li>
-<li><a href="#id_5-block-construction">Block construction</a></li>
+<li><a href="#id_91-maf-filtering">9.1 MAF filtering</a></li>
+<li><a href="#id_92-genotype-preparation">9.2 Genotype preparation</a></li>
+<li><a href="#id_93-subsegmentation">9.3 Subsegmentation</a></li>
+<li><a href="#id_94-clique-detection-clqd">9.4 Clique detection (CLQD)</a></li>
+<li><a href="#id_95-block-construction">9.5 Block construction</a></li>
 </ul>
 </li>
-<li><a href="#ld-metrics-r-versus-rv">LD metrics: r² versus rV²</a></li>
-<li><a href="#haplotype-analysis">Haplotype analysis</a></li>
-<li><a href="#parameter-auto-tuning">Parameter auto-tuning</a></li>
-<li><a href="#scale-strategies-and-backends">Scale strategies and backends</a></li>
-<li><a href="#full-pipeline-walkthrough">Full pipeline walkthrough</a></li>
-<li><a href="#function-reference">Function reference</a></li>
-<li><a href="#output-objects">Output objects</a></li>
-<li><a href="#memory-and-performance-notes">Memory and performance notes</a></li>
-<li><a href="#documentation">Documentation</a></li>
-<li><a href="#citation">Citation</a></li>
-<li><a href="#contributing">Contributing</a></li>
-<li><a href="#license">License</a></li>
-<li><a href="#references">References</a></li>
+<li><a href="#id_10-ld-metrics-r-versus-rv">10. LD metrics: r² versus rV²</a></li>
+<li><a href="#id_11-clique-detection-mode-clqmode">11. Clique detection mode (CLQmode)</a></li>
+<li><a href="#id_12-haplotype-analysis">12. Haplotype analysis</a></li>
+<li><a href="#id_13-parameter-auto-tuning">13. Parameter auto-tuning</a></li>
+<li><a href="#id_14-scale-strategies-and-backends">14. Scale strategies and backends</a></li>
+<li><a href="#id_15-full-pipeline-walkthrough">15. Full pipeline walkthrough</a></li>
+<li><a href="#id_16-function-reference">16. Function reference</a></li>
+<li><a href="#id_17-output-objects">17. Output objects</a></li>
+<li><a href="#id_18-memory-and-performance-notes">18. Memory and performance notes</a></li>
+<li><a href="#id_19-documentation">19. Documentation</a></li>
+<li><a href="#id_20-citation">20. Citation</a></li>
+<li><a href="#id_21-contributing">21. Contributing</a></li>
+<li><a href="#id_22-license">22. License</a></li>
+<li><a href="#id_23-references">23. References</a></li>
 </ol>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+<h2 id="id_5-installation">5. Installation<a class="anchor" aria-label="anchor" href="#id_5-installation"></a>
 </h2>
 <p>Install from GitHub with vignettes (recommended):</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
@@ -417,7 +421,7 @@
 <hr>
 </div>
 <div class="section level2">
-<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
+<h2 id="id_6-quick-start">6. Quick start<a class="anchor" aria-label="anchor" href="#id_6-quick-start"></a>
 </h2>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/FAkohoue/LDxBlocks" class="external-link">LDxBlocks</a></span><span class="op">)</span></span>
@@ -486,12 +490,12 @@
 <hr>
 </div>
 <div class="section level2">
-<h2 id="input-formats">Input formats<a class="anchor" aria-label="anchor" href="#input-formats"></a>
+<h2 id="id_7-input-formats">7. Input formats<a class="anchor" aria-label="anchor" href="#id_7-input-formats"></a>
 </h2>
 <p><code><a href="reference/read_geno.html">read_geno()</a></code> accepts a path to a genotype file (or an in-memory R matrix) and an optional <code>format =</code> override. The format is auto-detected from the file extension when <code>format</code> is not supplied.</p>
 <p>Phenotype data is not an input to block detection. If you need to align sample IDs between a genotype file and a phenotype table — for example, to subset to phenotyped individuals before running the pipeline — see the <code>read_pheno()</code> and <code>align_geno_pheno()</code> utilities documented under <a href="#utilities">Utility functions</a>.</p>
 <div class="section level3">
-<h3 id="genotype-file">Genotype file<a class="anchor" aria-label="anchor" href="#genotype-file"></a>
+<h3 id="id_71-genotype-file">7.1 Genotype file<a class="anchor" aria-label="anchor" href="#id_71-genotype-file"></a>
 </h3>
 <table class="table">
 <thead><tr>
@@ -714,16 +718,55 @@
 </table>
 <p><strong>GDS</strong> — SNPRelate GDS file. Requires <code>BiocManager::install("SNPRelate")</code>. Chunk access is via <code><a href="https://rdrr.io/pkg/SNPRelate/man/snpgdsGetGeno.html" class="external-link">SNPRelate::snpgdsGetGeno()</a></code> with explicit <code>snp.id</code> and <code>sample.id</code> vectors — the full genome matrix is never held in RAM simultaneously.</p>
 <p><strong>PLINK BED</strong> — binary PLINK format. The companion <code>.bim</code> and <code>.fam</code> files must exist at the same path stem. Requires <code>install.packages("BEDMatrix")</code>. Row and column indexing are memory-mapped via <code>BEDMatrix</code>.</p>
-<p><strong>Chromosome normalisation.</strong> At read time, all chromosome labels are stripped of leading <code>chr</code>, <code>Chr</code>, or <code>CHR</code> so that <code>chr1</code>, <code>Chr01</code>, and <code>1</code> are all stored as <code>"1"</code> in <code>snp_info$CHR</code>. This applies to all six formats and ensures correct cross-format matching.</p>
+<p><strong>Chromosome normalisation.</strong> At read time, the leading prefix <code>chr</code>, <code>Chr</code>, or <code>CHR</code> is stripped from chromosome labels. Only the prefix is removed — the remainder is kept verbatim so that polyploid and sub-genome identifiers are preserved. Examples:</p>
+<table class="table">
+<thead><tr>
+<th>Input label</th>
+<th>Stored as</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code>chr1</code>, <code>Chr1</code>, <code>CHR1</code>
+</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td>
+<code>Chr1A</code>, <code>chr1A</code>
+</td>
+<td><code>1A</code></td>
+</tr>
+<tr>
+<td>
+<code>Chr2D</code>, <code>chr2D</code>
+</td>
+<td><code>2D</code></td>
+</tr>
+<tr>
+<td>
+<code>Chr01</code>, <code>chr01</code>
+</td>
+<td><code>01</code></td>
+</tr>
+<tr>
+<td>
+<code>1A</code>, <code>2D</code>, <code>1</code>
+</td>
+<td>unchanged</td>
+</tr>
+</tbody>
+</table>
+<p>This applies to all six formats. Note that <code>Chr01</code> and <code>1</code> are stored differently (<code>"01"</code> vs <code>"1"</code>); ensure your genotype and SNP info files use consistent chromosome naming to avoid split-chromosome errors. For polyploid species such as bread wheat, labels like <code>1A</code>, <code>1B</code>, <code>1D</code> are stored and matched correctly.</p>
 <hr>
 </div>
 </div>
 <div class="section level2">
-<h2 id="phenotype-input-format">Phenotype input format<a class="anchor" aria-label="anchor" href="#phenotype-input-format"></a>
+<h2 id="id_8-phenotype-input-format">8. Phenotype input format<a class="anchor" aria-label="anchor" href="#id_8-phenotype-input-format"></a>
 </h2>
 <p>The <code>blues</code> argument of <code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> and <code><a href="reference/prepare_gblup_inputs.html">prepare_gblup_inputs()</a></code> accepts pre-adjusted phenotype means (BLUEs, BLUPs, or adjusted entry means from a mixed model). Four input formats are accepted interchangeably through a single argument:</p>
 <div class="section level3">
-<h3 id="format-1--named-numeric-vector-single-trait-simplest">Format 1 — Named numeric vector (single trait, simplest)<a class="anchor" aria-label="anchor" href="#format-1--named-numeric-vector-single-trait-simplest"></a>
+<h3 id="id_81-format-1--named-numeric-vector-single-trait-simplest">8.1 Format 1 — Named numeric vector (single trait, simplest)<a class="anchor" aria-label="anchor" href="#id_81-format-1--named-numeric-vector-single-trait-simplest"></a>
 </h3>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">4.21</span>, G002 <span class="op">=</span> <span class="fl">3.87</span>, G003 <span class="op">=</span> <span class="fl">5.14</span><span class="op">)</span></span>
@@ -732,7 +775,7 @@
 <p>No <code>id_col</code> or <code>blue_col</code> arguments needed.</p>
 </div>
 <div class="section level3">
-<h3 id="format-2--data-frame-single-trait">Format 2 — Data frame, single trait<a class="anchor" aria-label="anchor" href="#format-2--data-frame-single-trait"></a>
+<h3 id="id_82-format-2--data-frame-single-trait">8.2 Format 2 — Data frame, single trait<a class="anchor" aria-label="anchor" href="#id_82-format-2--data-frame-single-trait"></a>
 </h3>
 <p>The most common format when reading a results file from a mixed model (ASReml-R, lme4, SpATS):</p>
 <table class="table">
@@ -770,7 +813,7 @@
 </ul>
 </div>
 <div class="section level3">
-<h3 id="format-3--data-frame-multiple-traits">Format 3 — Data frame, multiple traits<a class="anchor" aria-label="anchor" href="#format-3--data-frame-multiple-traits"></a>
+<h3 id="id_83-format-3--data-frame-multiple-traits">8.3 Format 3 — Data frame, multiple traits<a class="anchor" aria-label="anchor" href="#id_83-format-3--data-frame-multiple-traits"></a>
 </h3>
 <table class="table">
 <thead><tr>
@@ -807,22 +850,25 @@
 <span>                                 id_col          <span class="op">=</span> <span class="st">"id"</span>,</span>
 <span>                                 blue_cols       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"YLD"</span>, <span class="st">"DIS"</span>, <span class="st">"PHT"</span><span class="op">)</span>,</span>
 <span>                                 importance_rule <span class="op">=</span> <span class="st">"any"</span><span class="op">)</span></span></code></pre></div>
-<p>When <code>blue_cols = NULL</code> (default), all numeric non-ID columns are treated as trait columns automatically. The function then attempts multi-trait GBLUP via <code><a href="https://rdrr.io/pkg/sommer/man/mmer.html" class="external-link">sommer::mmer()</a></code> and falls back to <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> per trait if sommer is unavailable or fails to converge.</p>
+<p>When <code>blue_cols = NULL</code> (default), all numeric non-ID columns are treated as trait columns automatically. If a genotype in the <code>id</code> column has a missing value (<code>NA</code>) for one trait but not others, that individual is used as a training observation for the traits where data are present and as a prediction target for the traits where data are absent. This is handled per-trait automatically — no need to split the data into separate data frames. <code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> fits <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> per trait with a shared GRM, so cross-trait block importance values are directly comparable.</p>
 </div>
 <div class="section level3">
-<h3 id="format-4--named-list-different-individuals-per-trait">Format 4 — Named list (different individuals per trait)<a class="anchor" aria-label="anchor" href="#format-4--named-list-different-individuals-per-trait"></a>
+<h3 id="id_84-format-4--named-list-different-individuals-per-trait">8.4 Format 4 — Named list (different individuals per trait)<a class="anchor" aria-label="anchor" href="#id_84-format-4--named-list-different-individuals-per-trait"></a>
 </h3>
-<p>When traits were measured on different sets of individuals (unbalanced data):</p>
+<p>Use a named list when each trait’s BLUEs come from a separate model run, or when individual sets differ substantially between traits. Each list element is a named numeric vector (names = genotype IDs, values = BLUEs):</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  YLD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">4.21</span>, G002 <span class="op">=</span> <span class="fl">3.87</span>, G003 <span class="op">=</span> <span class="fl">5.14</span><span class="op">)</span>,</span>
-<span>  DIS <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">0.32</span>, G003 <span class="op">=</span> <span class="fl">0.28</span>, G004 <span class="op">=</span> <span class="fl">0.67</span><span class="op">)</span>  <span class="co"># G002 missing, G004 added</span></span>
+<span>  DIS <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">0.32</span>, G003 <span class="op">=</span> <span class="fl">0.28</span>, G004 <span class="op">=</span> <span class="fl">0.67</span><span class="op">)</span>  <span class="co"># G002 absent, G004 extra</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>, blues <span class="op">=</span> <span class="va">blues</span><span class="op">)</span></span></code></pre></div>
-<p>Each element is a named numeric vector for one trait. The GRM is built from all individuals genotyped, then GEBV are estimated only for individuals present in each trait’s vector.</p>
+<p>The GRM is built from all genotyped individuals. For each trait, GBLUP training uses only individuals in that trait’s vector; all other genotyped individuals receive a GEBV prediction. This is the explicit alternative to Format 3 with <code>NA</code> entries: rather than a wide data frame where missing trait observations are coded <code>NA</code>, each trait has its own complete named vector with only the individuals that were actually measured.</p>
+<blockquote>
+<p><strong>Format 3 vs Format 4.</strong> Both handle unbalanced multi-trait data. Format 3 (wide data frame with <code>NA</code> for missing observations) is more convenient when all traits share the same data source and ID column. Format 4 (named list) is more convenient when traits come from separate model outputs or when the individual sets differ substantially.</p>
+</blockquote>
 </div>
 <div class="section level3">
-<h3 id="id-matching-rules">ID matching rules<a class="anchor" aria-label="anchor" href="#id-matching-rules"></a>
+<h3 id="id_85-id-matching-rules">8.5 ID matching rules<a class="anchor" aria-label="anchor" href="#id_85-id-matching-rules"></a>
 </h3>
 <p>In all four formats, genotype IDs in the phenotype data must match <code>rownames(geno_matrix)</code> exactly. The function:</p>
 <ol style="list-style-type: decimal">
@@ -833,7 +879,7 @@
 <p>Mismatches are the most common source of errors. Common causes: leading/trailing spaces, <code>"G001"</code> vs <code>"g001"</code> (case), <code>"001"</code> vs <code>"G001"</code> (prefix), Excel auto-converting <code>"001"</code> to <code>1</code>.</p>
 </div>
 <div class="section level3">
-<h3 id="preparing-blues-from-raw-phenotype-data">Preparing BLUEs from raw phenotype data<a class="anchor" aria-label="anchor" href="#preparing-blues-from-raw-phenotype-data"></a>
+<h3 id="id_86-preparing-blues-from-raw-phenotype-data">8.6 Preparing BLUEs from raw phenotype data<a class="anchor" aria-label="anchor" href="#id_86-preparing-blues-from-raw-phenotype-data"></a>
 </h3>
 <p><code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> does <strong>not</strong> fit the field trial model — it takes BLUEs as input. BLUEs must be produced externally:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -856,29 +902,37 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="statistical-background">Statistical background<a class="anchor" aria-label="anchor" href="#statistical-background"></a>
+<h2 id="id_9-statistical-background">9. Statistical background<a class="anchor" aria-label="anchor" href="#id_9-statistical-background"></a>
 </h2>
 <div class="section level3">
-<h3 id="id_1-maf-filtering">1. MAF filtering<a class="anchor" aria-label="anchor" href="#id_1-maf-filtering"></a>
+<h3 id="id_91-maf-filtering">9.1 MAF filtering<a class="anchor" aria-label="anchor" href="#id_91-maf-filtering"></a>
 </h3>
 <p>The ALT allele frequency is estimated from the dosage matrix as:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><mrow><mn>2</mn><mspace width="0.167em"></mspace><msub><mi>n</mi><mi>j</mi></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">\mathrm{AF}_i = \frac{\sum_j g_{ij}}{2\, n_j}</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">g_{ij} \in \{0, 1, 2, \mathrm{NA}\}</annotation></semantics></math> is the dosage for SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> in sample <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>n</mi><mi>j</mi></msub><annotation encoding="application/x-tex">n_j</annotation></semantics></math> is the number of non-missing observations. The minor allele frequency is:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><mrow><mn>2</mn><mspace width="0.167em"></mspace><msub><mi>n</mi><mi>i</mi></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">\mathrm{AF}_i = \frac{\sum_j g_{ij}}{2\, n_i}</annotation></semantics></math></p>
+<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">g_{ij} \in \{0, 1, 2, \mathrm{NA}\}</annotation></semantics></math> is the dosage for SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> in sample <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>n</mi><mi>i</mi></msub><annotation encoding="application/x-tex">n_i</annotation></semantics></math> is the number of non-missing observations for SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>. The minor allele frequency is:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo>=</mo><mo>min</mo><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mrow><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo>,</mo><mspace width="0.278em"></mspace><mn>1</mn><mo>−</mo><msub><mrow><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathrm{MAF}_i = \min\!\left(\mathrm{AF}_i,\; 1 - \mathrm{AF}_i\right)</annotation></semantics></math></p>
 <p>SNPs with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo>&lt;</mo><msub><mi>τ</mi><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">f</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\mathrm{MAF}_i &lt; \tau_{\mathrm{maf}}</annotation></semantics></math> (default 0.05) are removed before any LD computation. Monomorphic SNPs (all observations identical) are removed unconditionally regardless of the MAF threshold. Both operations run in a single O(np) C++ pass by <code>maf_filter_cpp()</code>, handling NA imputation in the same loop.</p>
 </div>
 <div class="section level3">
-<h3 id="id_2-genotype-preparation">2. Genotype preparation<a class="anchor" aria-label="anchor" href="#id_2-genotype-preparation"></a>
+<h3 id="id_92-genotype-preparation">9.2 Genotype preparation<a class="anchor" aria-label="anchor" href="#id_92-genotype-preparation"></a>
 </h3>
 <p>Before computing LD, the genotype matrix <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math> (individuals × SNPs) is centred and optionally whitened depending on the chosen LD metric. This step is performed by <code><a href="reference/prepare_geno.html">prepare_geno()</a></code>.</p>
 <p><strong>Standard r² path (<code>method = "r2"</code>):</strong></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>G</mi><mo accent="true">̃</mo></mover><mi>j</mi></msub><mo>=</mo><msub><mi>G</mi><mi>j</mi></msub><mo>−</mo><msub><mover><mi>G</mi><mo accent="true">‾</mo></mover><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">\tilde{G}_j = G_j - \bar{G}_j</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>G</mi><mo accent="true">‾</mo></mover><mi>j</mi></msub><annotation encoding="application/x-tex">\bar{G}_j</annotation></semantics></math> is the column mean for SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>. No kinship matrix is required. Runs in O(np) inside the same C++ kernel as <code>compute_r2_cpp()</code>.</p>
+<p>For two SNPs <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>, where individual <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> has dosage values <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>,</mo><msub><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">g_{ij}, g_{ik} \in \{0, 1, 2, \mathrm{NA}\}</annotation></semantics></math>, the squared Pearson correlation is:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mfrac><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.167em"></mspace><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">r^2_{jk} = \frac{\mathrm{Cov}(g_j,\, g_k)^2}{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}</annotation></semantics></math></p>
+<p>Estimated from <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>n</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">n_{jk}</annotation></semantics></math> non-missing individuals as:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mfrac><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>n</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><msub><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>−</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>n</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub><munder><mo>∑</mo><mi>i</mi></munder><msubsup><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>n</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub><munder><mo>∑</mo><mi>i</mi></munder><msubsup><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">r^2_{jk} = \frac{\left(n_{jk}\sum_i g_{ij}g_{ik} - \sum_i g_{ij}\sum_i g_{ik}\right)^2}{\left(n_{jk}\sum_i g_{ij}^2 - \left(\sum_i g_{ij}\right)^2\right)\left(n_{jk}\sum_i g_{ik}^2 - \left(\sum_i g_{ik}\right)^2\right)}</annotation></semantics></math></p>
+<p>In <code>compute_r2_cpp()</code> this is computed equivalently via column standardisation (mean-impute NA, subtract column mean, divide by standard deviation) followed by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><msubsup><mover><mi>𝐠</mi><mo accent="true">̃</mo></mover><mi>j</mi><mi>⊤</mi></msubsup><msub><mover><mi>𝐠</mi><mo accent="true">̃</mo></mover><mi>k</mi></msub><mspace width="0.167em"></mspace><mi>/</mi><mspace width="0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">r^2_{jk} = [\tilde{\mathbf{g}}_j^\top\tilde{\mathbf{g}}_k\,/\,(n-1)]^2</annotation></semantics></math>, which is numerically identical and benefits from BLAS-level matrix multiplication with OpenMP parallelism. No kinship matrix is required.</p>
 <p><strong>Kinship-adjusted rV² path (<code>method = "rV2"</code>):</strong></p>
 <ol style="list-style-type: decimal">
-<li>Compute the VanRaden (2008) GRM: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mfrac><mrow><mover><mi>G</mi><mo accent="true">̃</mo></mover><msup><mover><mi>G</mi><mo accent="true">̃</mo></mover><mi>⊤</mi></msup></mrow><mrow><mn>2</mn><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>p</mi><mi>j</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">V = \frac{\tilde{G}\tilde{G}^\top}{2 \sum_j p_j(1-p_j)}</annotation></semantics></math> via <code><a href="https://rdrr.io/pkg/AGHmatrix/man/Gmatrix.html" class="external-link">AGHmatrix::Gmatrix()</a></code>.</li>
-<li>Bend and condition-number tune <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> via <code>ASRgenomics::G.tuneup(bend = TRUE, rcn = TRUE)</code> to ensure positive-definiteness.</li>
-<li>Compute the whitening factor:
+<li>
+<p>Compute the VanRaden (2008) GRM via <code><a href="https://rdrr.io/pkg/AGHmatrix/man/Gmatrix.html" class="external-link">AGHmatrix::Gmatrix()</a></code>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mfrac><mrow><mi>Z</mi><msup><mi>Z</mi><mi>⊤</mi></msup></mrow><mrow><mn>2</mn><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">V = \frac{ZZ^\top}{2\sum_j p_j q_j}</annotation></semantics></math></p>
+<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math> is the <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>m</mi></mrow><annotation encoding="application/x-tex">n \times m</annotation></semantics></math> frequency-centred genotype matrix with elements <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">z_{ij} = g_{ij} - 2p_j</annotation></semantics></math> (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mi>j</mi></msub><annotation encoding="application/x-tex">p_j</annotation></semantics></math> = frequency of allele <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>A</mi><mn>2</mn></msub><annotation encoding="application/x-tex">A_2</annotation></semantics></math> at SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">q_j = 1 - p_j</annotation></semantics></math>), and the denominator <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">2\sum_j p_j q_j</annotation></semantics></math> scales <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> to resemble the numerator relationship matrix. Note that <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math> is frequency-centred (by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">2p_j</annotation></semantics></math>) and distinct from the mean-centred <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>G</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{G}</annotation></semantics></math> used in LD computation above.</p>
+</li>
+<li><p>Bend and condition-number tune <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> via <code>ASRgenomics::G.tuneup(bend = TRUE, rcn = TRUE)</code> to ensure positive-definiteness.</p></li>
+<li>
+<p>Compute the whitening factor:</p>
 <ul>
 <li>
 <code>kin_method = "chol"</code> (default): <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><msup><mi>R</mi><mrow><mi>−</mi><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">A = R^{-1}</annotation></semantics></math> where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><msup><mi>R</mi><mi>⊤</mi></msup><mi>R</mi></mrow><annotation encoding="application/x-tex">V = R^\top R</annotation></semantics></math> via Cholesky. Fast and numerically stable.</li>
@@ -886,12 +940,14 @@
 <code>kin_method = "eigen"</code>: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><mi>Q</mi><msup><mi>Λ</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msup><mi>Q</mi><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">A = Q\Lambda^{-1/2}Q^\top</annotation></semantics></math>. Symmetric; eigenvalues floored at <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>6</mn></mrow></msup><annotation encoding="application/x-tex">10^{-6}</annotation></semantics></math> for stability. Preferred for near-singular matrices.</li>
 </ul>
 </li>
-<li>Apply whitening: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>X</mi><mo>=</mo><mi>A</mi><mover><mi>G</mi><mo accent="true">̃</mo></mover></mrow><annotation encoding="application/x-tex">X = A\tilde{G}</annotation></semantics></math> — used in all downstream LD computations.</li>
+<li><p>Apply whitening to the <strong>mean-centred</strong> genotype matrix: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>v</mi></msup><mo>=</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mover><mi>G</mi><mo accent="true">̃</mo></mover></mrow><annotation encoding="application/x-tex">X^v = V^{-1/2}\tilde{G}</annotation></semantics></math> (code: <code>V_inv_sqrt %*% geno_centered</code>). Note: Mangin et al. (2012) write <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>v</mi></msup><mo>=</mo><msup><mi>K</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mi>G</mi></mrow><annotation encoding="application/x-tex">X^v = K^{-1/2}G</annotation></semantics></math> using the raw matrix; in LDxBlocks the mean-centering is applied first, which is equivalent because centering commutes with the whitening transform (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mover><mi>G</mi><mo accent="true">‾</mo></mover><mi>j</mi></msub><msup><mn>𝟏</mn><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">V^{-1/2}\bar{G}_j\mathbf{1}^\top</annotation></semantics></math> is a constant column shift, removed by the subsequent correlation computation).</p></li>
 </ol>
-<p>Both paths expose the same <code>compute_r2_cpp()</code> C++ kernel; the distinction is only in the preparation step.</p>
+<p>The rV² between SNPs <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> is then (Mangin et al. 2012, eq. 1):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msubsup><mi>V</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mfrac><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo>,</mo><mspace width="0.167em"></mspace><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">rV^2_{ij} = \frac{\mathrm{Cov}(X^v_i,\, X^v_j)^2}{\mathrm{Var}(X^v_i)\,\mathrm{Var}(X^v_j)}</annotation></semantics></math></p>
+<p>which is computed by passing <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>X</mi><mi>v</mi></msup><annotation encoding="application/x-tex">X^v</annotation></semantics></math> to the same <code>compute_r2_cpp()</code> kernel as the standard r² path. Both paths expose the same <code>compute_r2_cpp()</code> C++ kernel; the distinction is only in the preparation step.</p>
 </div>
 <div class="section level3">
-<h3 id="id_3-subsegmentation">3. Subsegmentation<a class="anchor" aria-label="anchor" href="#id_3-subsegmentation"></a>
+<h3 id="id_93-subsegmentation">9.3 Subsegmentation<a class="anchor" aria-label="anchor" href="#id_93-subsegmentation"></a>
 </h3>
 <p>For chromosomes with more SNPs than <code>subSegmSize</code> (default 1,500), the algorithm first identifies weak-LD boundary positions to divide the chromosome into manageable sub-segments, avoiding the O(p²) cost of computing the full chromosome LD matrix.</p>
 <p>For each candidate cut position <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>, the maximum cross-boundary squared correlation between a left window <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math> and right window <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math> of half-width <code>leng</code> (default 200 SNPs) is evaluated:</p>
@@ -901,19 +957,19 @@
 <p>If no weak-LD boundaries are found within <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mo>×</mo></mrow><annotation encoding="application/x-tex">5 \times</annotation></semantics></math><code>subSegmSize</code> SNPs, the algorithm switches to forced equal-size splits placed at the minimum-LD positions within each oversized segment, identified by a secondary scan with a narrow tick window of <code>leng / 5</code> SNPs each side.</p>
 </div>
 <div class="section level3">
-<h3 id="id_4-clique-detection-clqd">4. Clique detection (CLQD)<a class="anchor" aria-label="anchor" href="#id_4-clique-detection-clqd"></a>
+<h3 id="id_94-clique-detection-clqd">9.4 Clique detection (CLQD)<a class="anchor" aria-label="anchor" href="#id_94-clique-detection-clqd"></a>
 </h3>
 <p>Within each sub-segment, an undirected graph is constructed where SNPs are nodes and edges connect pairs with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mn>2</mn></msup><mo>≥</mo><msub><mi>τ</mi><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">L</mi><mi mathvariant="normal">Q</mi></mrow></msub></mrow><annotation encoding="application/x-tex">r^2 \geq \tau_{\mathrm{CLQ}}</annotation></semantics></math> (<code>CLQcut</code>, default 0.5). The adjacency matrix is built by <code>build_adj_matrix_cpp()</code> in a single O(p²) compiled pass.</p>
 <p>Maximal cliques in this graph are enumerated by <code><a href="https://r.igraph.org/reference/cliques.html" class="external-link">igraph::max_cliques()</a></code>, which wraps the Bron-Kerbosch algorithm. Each maximal clique represents a set of SNPs in mutual high LD. The cliques are prioritised by a score:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">score</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left" style="text-align: left"><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">a</mi><msub><mi mathvariant="normal">n</mi><mrow><mi mathvariant="normal">k</mi><mi mathvariant="normal">b</mi></mrow></msub></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mtext mathvariant="normal">Density mode (default)</mtext></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mtext mathvariant="normal">Maximal mode</mtext></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">\text{score}(\mathcal{K}) = \begin{cases} |\mathcal{K}| / (\mathrm{span_{kb}}(\mathcal{K}) + 1) &amp; \text{Density mode (default)} \\ |\mathcal{K}| &amp; \text{Maximal mode} \end{cases}</annotation></semantics></math></p>
 <p><strong>Density mode</strong> (<code>CLQmode = "Density"</code>) prefers compact, high-density cliques that correspond to biologically meaningful LD blocks. <strong>Maximal mode</strong> (<code>CLQmode = "Maximal"</code>) prefers the largest cliques regardless of span — useful when the goal is to retain as many co-inherited SNPs as possible.</p>
 <p>A greedy assignment iteratively selects the highest-scoring clique and removes its SNPs from subsequent rounds until all SNPs are assigned or no cliques remain. The result is an integer bin vector assigning each SNP to a clique-bin or <code>NA</code> (singleton).</p>
-<p><strong>Polynomial community detection.</strong> When <code>CLQmode = "Louvain"</code> or <code>CLQmode = "Leiden"</code>, the igraph community detection algorithms replace Bron-Kerbosch entirely. Both run in polynomial time O(n log n) — they never exhibit exponential blowup regardless of window density. On a 3M-SNP WGS panel where Bron-Kerbosch found 4.26 million maximal cliques in a single 1500-SNP window (&gt; 1 hour), Louvain completes the same window in &lt; 1 second. Block boundaries are equivalent to or better than Density mode for WGS panels. Recommended setting for WGS: <code>CLQmode = "Louvain"</code>.</p>
+<p><strong>Polynomial community detection.</strong> When <code>CLQmode = "Louvain"</code> or <code>CLQmode = "Leiden"</code>, the igraph community detection algorithms replace Bron-Kerbosch entirely. Both run in polynomial time O(n log n) — they never exhibit exponential blowup regardless of window density. These are general graph community detection methods, originally developed for social and biological network analysis, that are highly effective for LD graph partitioning: the SNP LD graph has the same mathematical structure as any weighted undirected graph, and community detection naturally groups SNPs in mutual high LD into the same community. The Louvain algorithm (Blondel et al. 2008) and its refinement Leiden (Traag et al. 2019, which guarantees well-connected communities unlike Louvain) are accessed via <code><a href="https://r.igraph.org/reference/cluster_louvain.html" class="external-link">igraph::cluster_louvain()</a></code> and <code><a href="https://r.igraph.org/reference/cluster_leiden.html" class="external-link">igraph::cluster_leiden()</a></code> respectively. On a 3M-SNP WGS panel where Bron-Kerbosch found 4.26 million maximal cliques in a single 1500-SNP window (&gt; 1 hour), Louvain completes the same window in &lt; 1 second. Block boundaries are equivalent to or better than Density mode for WGS panels. Recommended setting for WGS: <code>CLQmode = "Leiden"</code> (guaranteed connected communities). <code>CLQmode = "Louvain"</code> is faster but can produce internally disconnected communities (Traag et al. 2019); LDxBlocks applies a connectivity post-processing fix, but Leiden is preferred.</p>
 <p><strong>Large window optimisation.</strong> When <code>checkLargest = TRUE</code> and a sub-segment has ≥ 500 SNPs, a dense-core decomposition pre-pass runs before <code>max_cliques()</code>. The graph coreness is computed; if the largest connected component has median coreness &gt; 80 and maximum coreness &gt; 100 (indicative of a near-complete subgraph that would cause exponential blowup in clique enumeration), the hub SNP and its immediate neighbourhood are extracted as a bin and removed from the graph before clique detection proceeds.</p>
 <p><strong>Clique splitting.</strong> When <code>split = TRUE</code>, cliques whose SNP positions span more than <code>clstgap</code> base pairs (default 40,000) are split at the largest internal gap. This prevents a single bin from containing biologically unrelated SNPs that happen to share high r² due to long-range LD.</p>
 </div>
 <div class="section level3">
-<h3 id="id_5-block-construction">5. Block construction<a class="anchor" aria-label="anchor" href="#id_5-block-construction"></a>
+<h3 id="id_95-block-construction">9.5 Block construction<a class="anchor" aria-label="anchor" href="#id_95-block-construction"></a>
 </h3>
 <p>Bin assignments from CLQD are converted to genomic intervals by a maximum-weight independent set (MWIS) procedure operating on the <strong>interval graph</strong> of overlapping clique ranges:</p>
 <ol style="list-style-type: decimal">
@@ -927,7 +983,7 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="ld-metrics-r²-versus-rv²">LD metrics: r² versus rV²<a class="anchor" aria-label="anchor" href="#ld-metrics-r%C2%B2-versus-rv%C2%B2"></a>
+<h2 id="id_10-ld-metrics-r²-versus-rv²">10. LD metrics: r² versus rV²<a class="anchor" aria-label="anchor" href="#id_10-ld-metrics-r%C2%B2-versus-rv%C2%B2"></a>
 </h2>
 <p>The choice between <code>method = "r2"</code> and <code>method = "rV2"</code> is the most important modelling decision in LDxBlocks. The table below summarises when each is appropriate.</p>
 <table class="table">
@@ -974,8 +1030,73 @@
 </tr>
 </tbody>
 </table>
-<p><strong>When r² produces wrong blocks.</strong> In a livestock panel where sires appear many times through progeny, r² between two SNPs in the same family cluster can reach 0.9 even when they are in different LD blocks. The whitened matrix removes this familial signal. In practice, rV² blocks are typically 10–30% smaller and more precisely delimited in related populations.</p>
-<p><strong>When r² is preferable.</strong> For large human biobank panels (n &gt; 10,000, p &gt; 1,000,000) computing and inverting the GRM is computationally infeasible. The standard r² inflates LD modestly but the effect on block boundaries is small in approximately random-mating populations, and the 50× speed advantage of the pure C++ path dominates.</p>
+<p><strong>When r² produces wrong blocks: the kinship inflation problem.</strong></p>
+<p>Consider any individual <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> in a structured population. Their dosage <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">g_{ij}</annotation></semantics></math> at SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> can be decomposed as:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>μ</mi><mi>j</mi></msub><mo>+</mo><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>j</mi></mrow></msub><mo>+</mo><msub><mi>e</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><annotation encoding="application/x-tex">g_{ij} = \mu_j + a_{f(i),j} + e_{ij}</annotation></semantics></math></p>
+<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>j</mi></msub><annotation encoding="application/x-tex">\mu_j</annotation></semantics></math> is the population mean, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">a_{f(i),j}</annotation></semantics></math> is a family-specific allele contribution (the allele inherited from the shared ancestor, e.g. a common sire in livestock or a common founder in an inbred line), and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>e</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">e_{ij}</annotation></semantics></math> is the individual-specific Mendelian sampling deviation. The key point is that <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">a_{f(i),j}</annotation></semantics></math> is <strong>correlated across all SNPs</strong> for individuals in the same family, regardless of whether those SNPs are in LD.</p>
+<p>The sample covariance between SNPs <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math> is therefore:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo>,</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><munder><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mrow><mi>f</mi><mo>,</mo><mi>j</mi></mrow></msub><mo>,</mo><mspace width="0.167em"></mspace><msub><mi>a</mi><mrow><mi>f</mi><mo>,</mo><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mo accent="true">⏟</mo></munder><mtext mathvariant="normal">kinship term</mtext></munder><mo>+</mo><munder><munder><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>e</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.167em"></mspace><msub><mi>e</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mo accent="true">⏟</mo></munder><mtext mathvariant="normal">true LD term</mtext></munder></mrow><annotation encoding="application/x-tex">\mathrm{Cov}(g_j, g_k) = \underbrace{\mathrm{Cov}(a_{f,j},\, a_{f,k})}_{\text{kinship term}} + \underbrace{\mathrm{Cov}(e_j,\, e_k)}_{\text{true LD term}}</annotation></semantics></math></p>
+<p>The <strong>kinship term</strong> <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mrow><mi>f</mi><mo>,</mo><mi>j</mi></mrow></msub><mo>,</mo><msub><mi>a</mi><mrow><mi>f</mi><mo>,</mo><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathrm{Cov}(a_{f,j}, a_{f,k})</annotation></semantics></math> is non-zero whenever individuals from the same family tend to carry similar alleles at both SNPs simultaneously — which happens for <strong>any</strong> two SNPs in the genome, not just those in the same LD block. Inserting into the <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math> formula:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mtext mathvariant="normal">measured</mtext><mn>2</mn></msubsup><mo>=</mo><mfrac><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mtext mathvariant="normal">LD</mtext></msub><mo>+</mo><msub><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mtext mathvariant="normal">kinship</mtext></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mspace width="1.0em"></mspace><mo>≥</mo><mspace width="1.0em"></mspace><msubsup><mi>r</mi><mtext mathvariant="normal">true</mtext><mn>2</mn></msubsup><mo>=</mo><mfrac><msubsup><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mtext mathvariant="normal">LD</mtext><mn>2</mn></msubsup><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">r^2_{\text{measured}} = \frac{(\mathrm{Cov}_{\text{LD}} + \mathrm{Cov}_{\text{kinship}})^2}{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}
+\quad \geq \quad
+r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}</annotation></semantics></math></p>
+<p><strong>Numerical worked example.</strong> Consider a livestock panel with two half-sib families, each with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math> offspring from a common sire:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th></th>
+<th>SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> (chr 1)</th>
+<th>SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math> (chr 3, unlinked)</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Sire 1 allele contribution</td>
+<td>0 (homozygous major)</td>
+<td>0 (homozygous major)</td>
+</tr>
+<tr>
+<td>Sire 2 allele contribution</td>
+<td>1 (heterozygous minor)</td>
+<td>1 (heterozygous minor)</td>
+</tr>
+<tr>
+<td>Dam allele (both families)</td>
+<td>Bernoulli(0.5), independent</td>
+<td>Bernoulli(0.5), independent</td>
+</tr>
+</tbody>
+</table>
+<p>Because dams contribute randomly and independently, there is <strong>zero gametic LD</strong> between SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> and SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math> — they are on different chromosomes. Yet the family-level means are:</p>
+<table class="table">
+<thead><tr>
+<th>Family</th>
+<th><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>g</mi><mo accent="true">‾</mo></mover><mi>j</mi></msub><annotation encoding="application/x-tex">\bar{g}_j</annotation></semantics></math></th>
+<th><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>g</mi><mo accent="true">‾</mo></mover><mi>k</mi></msub><annotation encoding="application/x-tex">\bar{g}_k</annotation></semantics></math></th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Family 1 (sire allele = 0)</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>+</mo><mn>0.5</mn><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">0 + 0.5 = 0.5</annotation></semantics></math></td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>+</mo><mn>0.5</mn><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">0 + 0.5 = 0.5</annotation></semantics></math></td>
+</tr>
+<tr>
+<td>Family 2 (sire allele = 1)</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>+</mo><mn>0.5</mn><mo>=</mo><mn>1.5</mn></mrow><annotation encoding="application/x-tex">1 + 0.5 = 1.5</annotation></semantics></math></td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>+</mo><mn>0.5</mn><mo>=</mo><mn>1.5</mn></mrow><annotation encoding="application/x-tex">1 + 0.5 = 1.5</annotation></semantics></math></td>
+</tr>
+</tbody>
+</table>
+<p>Computing analytically (equal family sizes, large <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo>,</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac displaystyle="false"><mn>1</mn><mn>2</mn></mfrac><mo>⋅</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.5</mn><mo>×</mo><mn>0.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mfrac displaystyle="false"><mn>1</mn><mn>2</mn></mfrac><mo>⋅</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1.5</mn><mo>×</mo><mn>1.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mn>1.0</mn><mo>×</mo><mn>1.0</mn><mo>=</mo><mn>1.25</mn><mo>−</mo><mn>1.00</mn><mo>=</mo><mn>0.25</mn></mrow><annotation encoding="application/x-tex">\mathrm{Cov}(g_j, g_k) = \tfrac{1}{2}\cdot(0.5\times 0.5) + \tfrac{1}{2}\cdot(1.5\times 1.5) - 1.0\times 1.0 = 1.25 - 1.00 = 0.25</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.50</mn></mrow><annotation encoding="application/x-tex">\mathrm{Var}(g_j) = \mathrm{Var}(g_k) = 0.50</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mtext mathvariant="normal">measured</mtext><mn>2</mn></msubsup><mo>=</mo><mfrac><msup><mn>0.25</mn><mn>2</mn></msup><mrow><mn>0.50</mn><mo>×</mo><mn>0.50</mn></mrow></mfrac><mo>=</mo><mn mathvariant="bold">0.25</mn></mrow><annotation encoding="application/x-tex">r^2_{\text{measured}} = \frac{0.25^2}{0.50 \times 0.50} = \mathbf{0.25}</annotation></semantics></math></p>
+<p>A measured <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mn>2</mn></msup><mo>=</mo><mn>0.25</mn></mrow><annotation encoding="application/x-tex">r^2 = 0.25</annotation></semantics></math> for two SNPs on <strong>different chromosomes</strong> with <strong>zero true LD</strong> — purely an artefact of the half-sib family structure. In a panel where sires appear through hundreds of progeny, this inflation scales with the proportion of variance explained by family membership. Blocks drawn using <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math> in such a panel will be too broad and will merge SNPs from different recombination intervals that happen to co-segregate with the same sire.</p>
+<p><strong>How rV² corrects this.</strong> Pre-multiplying by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math> (the inverse square root of the GRM) decorrelates the individuals: after whitening, the effective covariance between individuals is identity, so <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>j</mi></mrow></msub><mo>,</mo><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathrm{Cov}(a_{f(i),j}, a_{f(i),k}) = 0</annotation></semantics></math> in the transformed space and only the true Mendelian-sampling LD term survives. The block boundaries then reflect actual recombination structure rather than co-ancestry artefacts. In practice, rV² blocks are typically 10–30% smaller and more precisely delimited in related populations.</p>
+<p><strong>When r² is preferable.</strong> For large human biobank panels (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>&gt;</mo><mn>10</mn><mo>,</mo><mn>000</mn></mrow><annotation encoding="application/x-tex">n &gt; 10{,}000</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><mn>1</mn><mo>,</mo><mn>000</mn><mo>,</mo><mn>000</mn></mrow><annotation encoding="application/x-tex">p &gt; 1{,}000{,}000</annotation></semantics></math>) computing and inverting the <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">n \times n</annotation></semantics></math> GRM is computationally infeasible. In approximately random-mating populations the kinship term is small, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math> inflates LD modestly, and the 50× speed advantage of the pure C++ path dominates.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Switching LD metric requires only a single argument change</span></span>
 <span><span class="va">blocks_r2</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"r2"</span>,  CLQcut <span class="op">=</span> <span class="fl">0.70</span><span class="op">)</span></span>
@@ -984,11 +1105,152 @@
 <hr>
 </div>
 <div class="section level2">
-<h2 id="haplotype-analysis">Haplotype analysis<a class="anchor" aria-label="anchor" href="#haplotype-analysis"></a>
+<h2 id="id_11-clique-detection-mode-clqmode">11. Clique detection mode (CLQmode)<a class="anchor" aria-label="anchor" href="#id_11-clique-detection-mode-clqmode"></a>
+</h2>
+<p>The <code>CLQmode</code> parameter controls how SNPs within each sub-segment are grouped into candidate LD bins before block construction. It is the single most important parameter to set correctly for WGS-scale datasets. Four modes are available, each with different computational complexity, statistical guarantees, and biological interpretation.</p>
+<div class="section level3">
+<h3 id="id_111-mode-1--density-clqmode--density-default">11.1 Mode 1 — Density (<code>CLQmode = "Density"</code>, default)<a class="anchor" aria-label="anchor" href="#id_111-mode-1--density-clqmode--density-default"></a>
+</h3>
+<p><strong>Algorithm.</strong> Enumerates all maximal cliques in the LD graph via the Bron-Kerbosch algorithm (<code><a href="https://r.igraph.org/reference/cliques.html" class="external-link">igraph::max_cliques()</a></code>). Each clique is scored as:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">score</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow><mrow><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">a</mi><msub><mi mathvariant="normal">n</mi><mrow><mi mathvariant="normal">k</mi><mi mathvariant="normal">b</mi></mrow></msub></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>1</mn></mrow></mfrac></mrow><annotation encoding="application/x-tex">\text{score}(\mathcal{K}) = \frac{|\mathcal{K}|}{\mathrm{span_{kb}}(\mathcal{K}) + 1}</annotation></semantics></math></p>
+<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow><annotation encoding="application/x-tex">|\mathcal{K}|</annotation></semantics></math> is the number of SNPs and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">a</mi><msub><mi mathvariant="normal">n</mi><mrow><mi mathvariant="normal">k</mi><mi mathvariant="normal">b</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\mathrm{span_{kb}}</annotation></semantics></math> is the physical span in kilobases. A greedy assignment iteratively selects the highest-scoring clique, removes its SNPs, and repeats until all SNPs are assigned or no cliques remain.</p>
+<p><strong>Biological interpretation.</strong> Divides by physical span, so a compact 10-SNP block spanning 5 kb scores higher than a diffuse 10-SNP block spanning 50 kb. This favours tight, physically co-located LD blocks that correspond to genuine recombination-suppressed intervals. This is the original scoring used by Kim et al. (2018) and is appropriate whenever clique enumeration is computationally feasible.</p>
+<p><strong>Pros.</strong> - Biologically motivated: rewards compact, high-density LD structure. - Exact — every maximal clique is found and scored. - Well-studied and validated in the original Big-LD benchmark. - Blocks reflect true recombination structure rather than graph topology.</p>
+<p><strong>Cons.</strong> - Bron-Kerbosch has exponential worst-case complexity. On dense WGS LD graphs a single 1,500-SNP window can enumerate millions of cliques and run for hours or fail to complete. - Completely impractical for WGS panels without <code>max_bp_distance</code> pruning.</p>
+<p><strong>When to use.</strong> Array-chip panels (&lt; 100k SNPs per chromosome), any panel where <code>subSegmSize</code> windows have fewer than ~200 SNPs on average, or when biological interpretability of the scoring function matters and compute time is not a constraint.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_112-mode-2--maximal-clqmode--maximal">11.2 Mode 2 — Maximal (<code>CLQmode = "Maximal"</code>)<a class="anchor" aria-label="anchor" href="#id_112-mode-2--maximal-clqmode--maximal"></a>
+</h3>
+<p><strong>Algorithm.</strong> Same Bron-Kerbosch enumeration as Density, but the scoring function is simply:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">score</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex">\text{score}(\mathcal{K}) = |\mathcal{K}|</annotation></semantics></math></p>
+<p>The greedy assignment prefers the largest cliques regardless of their physical span.</p>
+<p><strong>Biological interpretation.</strong> Maximises the number of co-inherited SNPs per block, without penalising physically dispersed cliques. A 20-SNP block spanning 200 kb scores higher than a 15-SNP block spanning 5 kb. This is appropriate when the goal is to capture as many co-inherited markers as possible per block, for example in sparse chip panels where blocks are few and large.</p>
+<p><strong>Pros.</strong> - Maximises haplotype block membership — each block captures the most SNPs. - Useful for sparse panels where compact-density scoring would fragment blocks.</p>
+<p><strong>Cons.</strong> - Same exponential worst-case complexity as Density — equally impractical for WGS panels. - Can produce physically large, diffuse blocks that span multiple genuine recombination intervals, reducing biological resolution.</p>
+<p><strong>When to use.</strong> Sparse marker panels (&lt; 50k SNPs genome-wide) where blocks should be as inclusive as possible, or when maximising haplotype block size for genomic prediction regardless of physical compactness.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_113-mode-3--louvain-clqmode--louvain">11.3 Mode 3 — Louvain (<code>CLQmode = "Louvain"</code>)<a class="anchor" aria-label="anchor" href="#id_113-mode-3--louvain-clqmode--louvain"></a>
+</h3>
+<p><strong>Algorithm.</strong> Replaces Bron-Kerbosch with modularity-maximising community detection (<code><a href="https://r.igraph.org/reference/cluster_louvain.html" class="external-link">igraph::cluster_louvain()</a></code>; Blondel et al. 2008). Edges are weighted by physical proximity (weight = 1 / (bp_distance_kb + 1)) so nearby SNPs are preferentially grouped. Runs in O(n log n).</p>
+<p><strong>Known weakness.</strong> Traag et al. (2019) proved that Louvain can produce internally disconnected communities: two subsets of SNPs can be assigned to the same community despite having no LD path connecting them within that community. For LD block detection this is a correctness problem — a block must be a contiguous genomic interval. LDxBlocks applies a mandatory connectivity post-processing step after Louvain: each community is tested for internal connectivity via <code><a href="https://r.igraph.org/reference/components.html" class="external-link">igraph::is_connected()</a></code>; disconnected communities are split into their connected components and each receives a new community ID. This fix prevents malformed blocks but adds an O(communities) overhead and means LDxBlocks Louvain output is not pure Louvain — it is Louvain with a connectivity repair step.</p>
+<p><strong>Pros.</strong> - Substantially faster than Bron-Kerbosch for dense WGS windows. - Practical for WGS panels when used with <code>max_bp_distance</code>.</p>
+<p><strong>Cons.</strong> - Cannot guarantee connected communities without the post-processing fix. - The connectivity repair adds overhead and means output may differ from a reference Louvain implementation. - Leiden achieves the same polynomial speed with a formal guarantee, making Louvain strictly dominated by Leiden for this application.</p>
+<p><strong>When to use.</strong> When speed is the absolute priority, Leiden is unavailable (older igraph versions), or for benchmarking against the connectivity-fixed Louvain output. In all other cases, <strong>prefer Leiden</strong>.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_114-mode-4--leiden-clqmode--leiden-recommended-for-wgs">11.4 Mode 4 — Leiden (<code>CLQmode = "Leiden"</code>) <strong>[Recommended for WGS]</strong>
+<a class="anchor" aria-label="anchor" href="#id_114-mode-4--leiden-clqmode--leiden-recommended-for-wgs"></a>
+</h3>
+<p><strong>Algorithm.</strong> Replaces Bron-Kerbosch with the Leiden algorithm (<code><a href="https://r.igraph.org/reference/cluster_leiden.html" class="external-link">igraph::cluster_leiden()</a></code>; Traag et al. 2019). Leiden improves on Louvain by adding a refinement phase that guarantees every detected community is internally well-connected. The same physical-proximity edge weighting is applied as in Louvain. Runs in O(n log n).</p>
+<p><strong>Key guarantee.</strong> Every community produced by Leiden is a connected subgraph of the LD graph. For LD block detection this means every block is guaranteed to correspond to a contiguous, connected set of SNPs with LD paths between all members. No post-processing connectivity fix is needed.</p>
+<p><strong>Pros.</strong> - Polynomial O(n log n) — never exhibits exponential blowup on dense graphs. - Formally guaranteed connected communities (Traag et al. 2019). - No post-processing required — output is correct by construction. - Same igraph interface and comparable speed to Louvain. - Strictly superior to Louvain for LD block detection: same complexity, stronger guarantees.</p>
+<p><strong>Cons.</strong> - Requires igraph &gt;= 1.3.0 (available since 2021; standard on all platforms). - Community boundaries are determined by modularity optimisation, not by the original Big-LD density scoring function — blocks may occasionally differ from Density/Maximal output on chip-density panels. - Does not enumerate cliques explicitly, so <code>clstgap</code>-based gap splitting is applied as a post-step (<code>split = TRUE</code>) rather than being integral to scoring.</p>
+<p><strong>When to use.</strong> All WGS panels (2M+ SNPs), any panel where Bron-Kerbosch takes &gt; 1 minute, and as the default whenever you are unsure. The combination <code>CLQmode = "Leiden"</code> + <code>max_bp_distance = 500000L</code> is the recommended configuration for 3M-SNP WGS panels.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_115-summary-comparison">11.5 Summary comparison<a class="anchor" aria-label="anchor" href="#id_115-summary-comparison"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="20%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
+</colgroup>
+<thead><tr>
+<th></th>
+<th>Density</th>
+<th>Maximal</th>
+<th>Louvain</th>
+<th>Leiden</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Algorithm</strong></td>
+<td>Bron-Kerbosch + density score</td>
+<td>Bron-Kerbosch + size score</td>
+<td>Community detection</td>
+<td>Community detection</td>
+</tr>
+<tr>
+<td><strong>Complexity</strong></td>
+<td>Exponential (worst case)</td>
+<td>Exponential (worst case)</td>
+<td>O(n log n)</td>
+<td>O(n log n)</td>
+</tr>
+<tr>
+<td><strong>Connected communities?</strong></td>
+<td>Yes (cliques are connected by definition)</td>
+<td>Yes</td>
+<td>Not guaranteed (post-processed in LDxBlocks)</td>
+<td><strong>Yes (formal guarantee)</strong></td>
+</tr>
+<tr>
+<td><strong>Scoring criterion</strong></td>
+<td>Compact high-density cliques</td>
+<td>Largest cliques</td>
+<td>Modularity + bp proximity</td>
+<td>Modularity + bp proximity</td>
+</tr>
+<tr>
+<td><strong>WGS feasible?</strong></td>
+<td>Only with <code>max_bp_distance</code> + small <code>subSegmSize</code>
+</td>
+<td>Only with <code>max_bp_distance</code> + small <code>subSegmSize</code>
+</td>
+<td>Yes</td>
+<td><strong>Yes</strong></td>
+</tr>
+<tr>
+<td><strong>Biologically motivated scoring?</strong></td>
+<td><strong>Yes</strong></td>
+<td>Partially</td>
+<td>Via edge weights</td>
+<td>Via edge weights</td>
+</tr>
+<tr>
+<td><strong>Recommended for</strong></td>
+<td>Chip panels (&lt; 100k SNPs/chr)</td>
+<td>Sparse chip panels</td>
+<td>Not recommended (use Leiden)</td>
+<td><strong>WGS panels (2M+ SNPs)</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="id_116-recommended-configurations">11.6 Recommended configurations<a class="anchor" aria-label="anchor" href="#id_116-recommended-configurations"></a>
+</h3>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Chip or low-density panel (&lt; 100k SNPs per chromosome)</span></span>
+<span><span class="co"># -- Density scoring is exact and biologically interpretable</span></span>
+<span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, CLQmode <span class="op">=</span> <span class="st">"Density"</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span>,</span>
+<span>                              subSegmSize <span class="op">=</span> <span class="fl">1500L</span>, leng <span class="op">=</span> <span class="fl">200L</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># WGS panel (2M -- 10M+ SNPs)</span></span>
+<span><span class="co"># -- Leiden: polynomial speed + guaranteed connected communities</span></span>
+<span><span class="co"># -- max_bp_distance prunes long-range pairs before community detection</span></span>
+<span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, CLQmode <span class="op">=</span> <span class="st">"Leiden"</span>, CLQcut <span class="op">=</span> <span class="fl">0.80</span>,</span>
+<span>                              max_bp_distance <span class="op">=</span> <span class="fl">500000L</span>,</span>
+<span>                              subSegmSize <span class="op">=</span> <span class="fl">500L</span>, leng <span class="op">=</span> <span class="fl">50L</span>,</span>
+<span>                              checkLargest <span class="op">=</span> <span class="cn">TRUE</span>, n_threads <span class="op">=</span> <span class="va">n_threads</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="id_12-haplotype-analysis">12. Haplotype analysis<a class="anchor" aria-label="anchor" href="#id_12-haplotype-analysis"></a>
 </h2>
 <p>Within each LD block, the SNPs co-segregate as a unit. The multiallelic haplotype defined by the joint allele configuration at those SNPs is more informative than any single SNP in the block. LDxBlocks provides three functions for haplotype-level analyses downstream of block detection.</p>
 <div class="section level3">
-<h3 id="phase-free-haplotype-extraction">Phase-free haplotype extraction<a class="anchor" aria-label="anchor" href="#phase-free-haplotype-extraction"></a>
+<h3 id="id_121-phase-free-haplotype-extraction">12.1 Phase-free haplotype extraction<a class="anchor" aria-label="anchor" href="#id_121-phase-free-haplotype-extraction"></a>
 </h3>
 <p><code><a href="reference/extract_haplotypes.html">extract_haplotypes()</a></code> concatenates each individual’s allele codes (0, 1, or 2) for all SNPs within a block into a single character string:</p>
 <pre><code>Individual i, block b covering SNPs j1, j2, j3, j4:
@@ -999,7 +1261,7 @@
 </blockquote>
 </div>
 <div class="section level3">
-<h3 id="haplotype-diversity-metrics">Haplotype diversity metrics<a class="anchor" aria-label="anchor" href="#haplotype-diversity-metrics"></a>
+<h3 id="id_122-haplotype-diversity-metrics">12.2 Haplotype diversity metrics<a class="anchor" aria-label="anchor" href="#id_122-haplotype-diversity-metrics"></a>
 </h3>
 <p><code><a href="reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code> returns four metrics per block from the haplotype string frequency distribution:</p>
 <p><strong>Richness (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>):</strong> number of unique haplotype strings. A highly recombined region will show many distinct haplotypes; a selective sweep will have one dominant haplotype with very high frequency.</p>
@@ -1012,12 +1274,12 @@
 <p><strong>Dominant haplotype frequency (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mo>max</mo></msub><annotation encoding="application/x-tex">f_{\max}</annotation></semantics></math>):</strong> frequency of the most common haplotype string. Values near 1.0 indicate a selective sweep or a strong founder effect in the region.</p>
 </div>
 <div class="section level3">
-<h3 id="haplotype-feature-matrix-for-genomic-prediction">Haplotype feature matrix for genomic prediction<a class="anchor" aria-label="anchor" href="#haplotype-feature-matrix-for-genomic-prediction"></a>
+<h3 id="id_123-haplotype-feature-matrix-for-genomic-prediction">12.3 Haplotype feature matrix for genomic prediction<a class="anchor" aria-label="anchor" href="#id_123-haplotype-feature-matrix-for-genomic-prediction"></a>
 </h3>
 <p><code><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> converts haplotype strings to a numeric dosage matrix suitable for GBLUP, BayesB, random forests, or any other genomic prediction framework. For each block, the <code>top_n</code> most frequent haplotypes are selected as reference haplotypes and each individual receives a dosage of: - <strong>Phased data</strong>: 0 (absent), 1 (one gamete), or 2 (both gametes) - <strong>Unphased data</strong>: 0 (absent) or 1 (present)</p>
 <p>The value 2 is not used for unphased data — the two chromosomes cannot be distinguished from unphased dosage strings.</p>
 <p>The resulting matrix has dimension n_individuals × (n_blocks × top_n):</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Build a haplotype-GRM for use in GBLUP</span></span>
 <span><span class="va">feat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># haplotype GRM</span></span>
@@ -1025,7 +1287,7 @@
 <p><strong>Why haplotype features outperform single-SNP models.</strong> Single-SNP additive models miss multi-locus epistatic effects and are sensitive to the choice of which tag SNP represents a block. Haplotype dosages implicitly encode the joint configuration of all SNPs in the block, capturing dominance and inter-SNP interactions without explicit interaction terms. Calus et al. (2008) and de Roos et al. (2009) demonstrated consistent accuracy improvements of 2–8% over SNP-based models in livestock panels; the advantage is greatest for traits with strong dominance or in populations where blocks are well-defined by long-range LD.</p>
 </div>
 <div class="section level3">
-<h3 id="haplotype-based-genomic-prediction-pipeline">Haplotype-based genomic prediction pipeline<a class="anchor" aria-label="anchor" href="#haplotype-based-genomic-prediction-pipeline"></a>
+<h3 id="id_124-haplotype-based-genomic-prediction-pipeline">12.4 Haplotype-based genomic prediction pipeline<a class="anchor" aria-label="anchor" href="#id_124-haplotype-based-genomic-prediction-pipeline"></a>
 </h3>
 <p>Beyond diversity analysis, LDxBlocks implements the complete haplotype stacking pipeline of Tong et al. (2024, 2025) for translating LD block structure into actionable breeding decisions. Given pre-adjusted phenotype values (BLUEs or BLUPs from a field trial), <code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> produces:</p>
 <ol style="list-style-type: decimal">
@@ -1039,7 +1301,7 @@
 <li>
 <strong>Block importance table</strong> ranked by scaled Var(local GEBV), flagging blocks where scaled variance ≥ 0.90 as candidates for haplotype stacking.</li>
 </ol>
-<p>For <strong>multiple traits</strong>, the same function fits all traits against the shared GRM simultaneously (<code><a href="https://rdrr.io/pkg/sommer/man/mmer.html" class="external-link">sommer::mmer()</a></code> when available, <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> per trait as fallback). Block importance is aggregated across traits into <code>var_scaled_mean</code>, <code>n_traits_important</code>, <code>important_any</code>, and <code>important_all</code> columns — blocks consistently important across all traits are the most robust stacking candidates.</p>
+<p>For <strong>multiple traits</strong>, the same function fits all traits against the shared GRM via <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> in a per-trait loop. Block importance is aggregated across traits into <code>var_scaled_mean</code>, <code>n_traits_important</code>, <code>important_any</code>, and <code>important_all</code> columns — blocks consistently important across all traits are the most robust stacking candidates.</p>
 <p>The <code><a href="reference/integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code> function then combines three independent evidence layers per block into a <code>priority_score</code> (0–3):</p>
 <table class="table">
 <colgroup>
@@ -1071,7 +1333,7 @@
 </tbody>
 </table>
 <p>Blocks scoring 3 — supported by all three evidence layers — are the top priority for haplotype stacking in a breeding programme.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Single trait</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
 <span>                                 blues    <span class="op">=</span> <span class="va">my_blues</span>,   <span class="co"># named vector</span></span>
@@ -1079,7 +1341,7 @@
 <span>                                 blue_col <span class="op">=</span> <span class="st">"YLD"</span><span class="op">)</span></span>
 <span><span class="va">res</span><span class="op">$</span><span class="va">block_importance</span><span class="op">[</span><span class="va">res</span><span class="op">$</span><span class="va">block_importance</span><span class="op">$</span><span class="va">important</span>, <span class="op">]</span></span>
 <span></span>
-<span><span class="co"># Multiple traits (sommer MT-GBLUP with rrBLUP fallback)</span></span>
+<span><span class="co"># Multiple traits (rrBLUP per-trait loop, shared GRM)</span></span>
 <span><span class="va">res_mt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
 <span>                                    blues           <span class="op">=</span> <span class="va">my_blues_df</span>,  <span class="co"># wide df</span></span>
 <span>                                    id_col          <span class="op">=</span> <span class="st">"id"</span>,</span>
@@ -1097,7 +1359,7 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="parameter-auto-tuning">Parameter auto-tuning<a class="anchor" aria-label="anchor" href="#parameter-auto-tuning"></a>
+<h2 id="id_13-parameter-auto-tuning">13. Parameter auto-tuning<a class="anchor" aria-label="anchor" href="#id_13-parameter-auto-tuning"></a>
 </h2>
 <p>When GWAS-significant markers are available, <code><a href="reference/tune_LD_params.html">tune_LD_params()</a></code> automatically selects the <code>CLQcut</code> (and optionally other parameters) that best captures those markers within LD blocks, minimising in priority order:</p>
 <ol style="list-style-type: decimal">
@@ -1111,7 +1373,7 @@
 <strong>Deviation from target median block size</strong> — biological plausibility via <code>target_bp_band</code> (default 50 kb – 500 kb).</li>
 </ol>
 <p>When <code>prefer_perfect = TRUE</code> (default), combinations achieving zero unassigned and zero forced assignments are isolated first and the winner is selected from that subset by criteria 3 and 4.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span></span>
 <span>  geno_matrix    <span class="op">=</span> <span class="va">my_geno</span>,</span>
 <span>  snp_info       <span class="op">=</span> <span class="va">my_snp_info</span>,</span>
@@ -1130,20 +1392,20 @@
 <span><span class="va">result</span><span class="op">$</span><span class="va">gwas_assigned</span>     <span class="co"># gwas_df with LD_block column added</span></span></code></pre></div>
 <p>The default grid searches <code>CLQcut</code> ∈ {0.65, 0.70, 0.75, 0.80} with all other parameters held at their defaults. A custom grid can be supplied as a <code>data.frame</code> where each row is one parameter combination.</p>
 <p>For parallel execution across grid combinations:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">4L</span><span class="op">)</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span><span class="va">my_geno</span>, <span class="va">my_snp_info</span>, <span class="va">my_gwas</span>, parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="scale-strategies-and-backends">Scale strategies and backends<a class="anchor" aria-label="anchor" href="#scale-strategies-and-backends"></a>
+<h2 id="id_14-scale-strategies-and-backends">14. Scale strategies and backends<a class="anchor" aria-label="anchor" href="#id_14-scale-strategies-and-backends"></a>
 </h2>
 <div class="section level3">
-<h3 id="the-ldxblocks_backend-interface">The LDxBlocks_backend interface<a class="anchor" aria-label="anchor" href="#the-ldxblocks_backend-interface"></a>
+<h3 id="id_141-the-ldxblocks_backend-interface">14.1 The LDxBlocks_backend interface<a class="anchor" aria-label="anchor" href="#id_141-the-ldxblocks_backend-interface"></a>
 </h3>
 <p>All functions that require genotype data operate through the <code>LDxBlocks_backend</code> S3 object rather than directly on a matrix. This single abstraction makes all six input formats interchangeable with zero code change in the algorithm:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">be</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">"mydata.bed"</span><span class="op">)</span>      <span class="co"># opens PLINK BED, reads .bim/.fam</span></span>
 <span><span class="va">chunk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_chunk.html">read_chunk</a></span><span class="op">(</span><span class="va">be</span>, <span class="va">col_idx</span><span class="op">)</span>      <span class="co"># returns n_samples x length(col_idx) matrix</span></span>
 <span><span class="fu"><a href="reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span>                     <span class="co"># releases memory-mapped file handle</span></span></code></pre></div>
@@ -1185,7 +1447,7 @@
 <p>For GDS and BED backends, only the requested column slice is loaded per call. The genome-wide matrix never exists in RAM simultaneously.</p>
 </div>
 <div class="section level3">
-<h3 id="memory-requirements-by-configuration">Memory requirements by configuration<a class="anchor" aria-label="anchor" href="#memory-requirements-by-configuration"></a>
+<h3 id="id_142-memory-requirements-by-configuration">14.2 Memory requirements by configuration<a class="anchor" aria-label="anchor" href="#id_142-memory-requirements-by-configuration"></a>
 </h3>
 <p>The table below gives approximate peak RAM for a 500-individual, 10 M-SNP whole-genome dataset under different backends and methods.</p>
 <table class="table">
@@ -1233,7 +1495,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="recommended-configurations-by-dataset-size">Recommended configurations by dataset size<a class="anchor" aria-label="anchor" href="#recommended-configurations-by-dataset-size"></a>
+<h3 id="id_143-recommended-configurations-by-dataset-size">14.3 Recommended configurations by dataset size<a class="anchor" aria-label="anchor" href="#id_143-recommended-configurations-by-dataset-size"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1271,14 +1533,14 @@
 <td>2 M – 10 M</td>
 <td>any</td>
 <td>
-<code>CLQmode = "Louvain"</code>, <code>max_bp_distance = 500000L</code>, <code>subSegmSize = 500L</code>, <code>format = "gds"</code>
+<code>CLQmode = "Leiden"</code>, <code>max_bp_distance = 500000L</code>, <code>subSegmSize = 500L</code>, <code>format = "gds"</code>
 </td>
 </tr>
 <tr>
 <td>&gt; 10 M</td>
 <td>any</td>
 <td>
-<code>CLQmode = "Louvain"</code>, <code>max_bp_distance = 500000L</code>, <code>subSegmSize = 500L</code>, <code><a href="reference/read_geno_bigmemory.html">read_geno_bigmemory()</a></code>
+<code>CLQmode = "Leiden"</code>, <code>max_bp_distance = 500000L</code>, <code>subSegmSize = 500L</code>, <code><a href="reference/read_geno_bigmemory.html">read_geno_bigmemory()</a></code>
 </td>
 </tr>
 </tbody>
@@ -1287,7 +1549,7 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="full-pipeline-walkthrough">Full pipeline walkthrough<a class="anchor" aria-label="anchor" href="#full-pipeline-walkthrough"></a>
+<h2 id="id_15-full-pipeline-walkthrough">15. Full pipeline walkthrough<a class="anchor" aria-label="anchor" href="#id_15-full-pipeline-walkthrough"></a>
 </h2>
 <p>The numbered steps below describe what <code><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> executes for each chromosome in order.</p>
 <table class="table">
@@ -1315,71 +1577,71 @@
 <td><code>read_chunk(backend, chr_idx)</code></td>
 </tr>
 <tr>
-<td>4</td>
+<td>3</td>
 <td>MAF filter + monomorphic removal in C++</td>
 <td>
 <code>MAFcut</code>, <code>maf_filter_cpp()</code>
 </td>
 </tr>
 <tr>
-<td>5</td>
+<td>4</td>
 <td>Centre (r²) or centre + whiten (rV²)</td>
 <td>
 <code>method</code>, <code>kin_method</code>, <code><a href="reference/prepare_geno.html">prepare_geno()</a></code>
 </td>
 </tr>
 <tr>
-<td>6</td>
+<td>5</td>
 <td>C++ boundary scan — find weak-LD cut points</td>
 <td>
 <code>leng</code>, <code>subSegmSize</code>, <code>boundary_scan_cpp()</code>
 </td>
 </tr>
 <tr>
-<td>7</td>
+<td>6</td>
 <td>Divide chromosome into sub-segments</td>
 <td><code>subSegmSize</code></td>
 </tr>
 <tr>
-<td>8</td>
+<td>7</td>
 <td>Per sub-segment: compute r² or rV² matrix in C++</td>
 <td>
 <code>CLQcut</code>, <code>compute_r2_cpp()</code>
 </td>
 </tr>
 <tr>
-<td>9</td>
+<td>8</td>
 <td>Build binary adjacency matrix in C++</td>
 <td>
 <code>CLQcut</code>, <code>build_adj_matrix_cpp()</code>
 </td>
 </tr>
 <tr>
-<td>10</td>
-<td>Find communities/cliques: Louvain or Leiden (polynomial) or Bron-Kerbosch (exact)</td>
+<td>9</td>
+<td>Find communities/cliques: Leiden (recommended, guaranteed connected) or Louvain (faster but post-processed) or Bron-Kerbosch (exact)</td>
 <td>
 <code>CLQmode</code>, <code>checkLargest</code>, <code>max_bp_distance</code>
 </td>
 </tr>
 <tr>
-<td>11</td>
+<td>10</td>
 <td>Greedy clique assignment → bin vector</td>
 <td>
 <code>split</code>, <code>clstgap</code>, <code><a href="reference/CLQD.html">CLQD()</a></code>
 </td>
 </tr>
 <tr>
-<td>12</td>
+<td>11</td>
 <td>MWIS block construction</td>
 <td>internal</td>
 </tr>
 <tr>
-<td>13</td>
+<td>12</td>
 <td>Re-merge across forced cut-points</td>
 <td>automatic</td>
 </tr>
 <tr>
-<td>14</td>
+<td>13</td>
 <td>Merge overlapping blocks</td>
 <td>automatic</td>
 </tr>
@@ -1401,7 +1663,7 @@
 </tbody>
 </table>
 <p><strong>Detailed example with all parameters:</strong></p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="co"># ── Genotype input ──────────────────────────────────────────────────────────</span></span>
 <span>  geno_matrix  <span class="op">=</span> <span class="va">be</span>,                  <span class="co"># LDxBlocks_backend or plain matrix</span></span>
@@ -1442,10 +1704,10 @@
 <hr>
 </div>
 <div class="section level2">
-<h2 id="function-reference">Function reference<a class="anchor" aria-label="anchor" href="#function-reference"></a>
+<h2 id="id_16-function-reference">16. Function reference<a class="anchor" aria-label="anchor" href="#id_16-function-reference"></a>
 </h2>
 <div class="section level3">
-<h3 id="main-pipeline">Main pipeline<a class="anchor" aria-label="anchor" href="#main-pipeline"></a>
+<h3 id="id_161-main-pipeline">16.1 Main pipeline<a class="anchor" aria-label="anchor" href="#id_161-main-pipeline"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1478,7 +1740,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="io">I/O<a class="anchor" aria-label="anchor" href="#io"></a>
+<h3 id="id_162-io">16.2 I/O<a class="anchor" aria-label="anchor" href="#id_162-io"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1514,7 +1776,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="ld-computation">LD computation<a class="anchor" aria-label="anchor" href="#ld-computation"></a>
+<h3 id="id_163-ld-computation">16.3 LD computation<a class="anchor" aria-label="anchor" href="#id_163-ld-computation"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1550,7 +1812,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="c-kernels-direct-access">C++ kernels (direct access)<a class="anchor" aria-label="anchor" href="#c-kernels-direct-access"></a>
+<h3 id="id_164-c-kernels-direct-access">16.4 C++ kernels (direct access)<a class="anchor" aria-label="anchor" href="#id_164-c-kernels-direct-access"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1594,7 +1856,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="haplotype-analysis-1">Haplotype analysis<a class="anchor" aria-label="anchor" href="#haplotype-analysis-1"></a>
+<h3 id="id_165-haplotype-analysis">16.5 Haplotype analysis<a class="anchor" aria-label="anchor" href="#id_165-haplotype-analysis"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1652,7 +1914,7 @@
 </tr>
 <tr>
 <td><code><a href="reference/prepare_gblup_inputs.html">prepare_gblup_inputs()</a></code></td>
-<td>Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, sommer, ASReml-R, BGLR). See <a href="#phenotype-input-format">Phenotype input format</a> for accepted column layouts.</td>
+<td>Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, BGLR, ASReml-R). See <a href="#id_8-phenotype-input-format">8. Phenotype input format</a> for accepted column layouts.</td>
 </tr>
 <tr>
 <td><code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code></td>
@@ -1660,13 +1922,13 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb24"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="st">`</span><span class="at">blues</span><span class="st">`</span> accepts any of four <span class="fu">formats</span> (named vector, single<span class="sc">-</span>trait or multi<span class="sc">-</span>trait data frame, named list).</span>
-<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a>See [Phenotype input format](<span class="co">#phenotype-input-format). Uses rrBLUP::kin.blup() per trait with a shared GRM. |</span></span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="st">`</span><span class="at">blues</span><span class="st">`</span> accepts any of four <span class="fu">formats</span> (named vector, single<span class="sc">-</span>trait or multi<span class="sc">-</span>trait data frame, named list).</span>
+<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a>See [<span class="fl">8.</span> Phenotype input format](<span class="co">#8-phenotype-input-format). Uses rrBLUP::kin.blup() per trait with a shared GRM. |</span></span></code></pre></div>
 <div class="line-block">
 <code><a href="reference/integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code> | Combine GWAS, variance, and diversity evidence per block. |<br><code><a href="reference/rank_haplotype_blocks.html">rank_haplotype_blocks()</a></code> | Unified block ranking across 3 use cases (diversity/GWAS/phenotype). |</div>
 </div>
 <div class="section level3">
-<h3 id="utilities">Utilities<a class="anchor" aria-label="anchor" href="#utilities"></a>
+<h3 id="id_166-utilities">16.6 Utilities<a class="anchor" aria-label="anchor" href="#id_166-utilities"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1713,11 +1975,10 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="output-objects">Output objects<a class="anchor" aria-label="anchor" href="#output-objects"></a>
+<h2 id="id_17-output-objects">17. Output objects<a class="anchor" aria-label="anchor" href="#id_17-output-objects"></a>
 </h2>
 <div class="section level3">
-<h3 id="run_big_ld_all_chr--block-table">
-<code>run_Big_LD_all_chr()</code> — block table<a class="anchor" aria-label="anchor" href="#run_big_ld_all_chr--block-table"></a>
+<h3 id="id_171-run_big_ld_all_chr--block-table">17.1 <code>run_Big_LD_all_chr()</code> — block table<a class="anchor" aria-label="anchor" href="#id_171-run_big_ld_all_chr--block-table"></a>
 </h3>
 <p>A <code>data.frame</code> with one row per detected LD block:</p>
 <table class="table">
@@ -1777,8 +2038,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="tune_ld_params--named-list">
-<code>tune_LD_params()</code> — named list<a class="anchor" aria-label="anchor" href="#tune_ld_params--named-list"></a>
+<h3 id="id_172-tune_ld_params--named-list">17.2 <code>tune_LD_params()</code> — named list<a class="anchor" aria-label="anchor" href="#id_172-tune_ld_params--named-list"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1821,8 +2081,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="extract_haplotypes--named-list">
-<code>extract_haplotypes()</code> — named list<a class="anchor" aria-label="anchor" href="#extract_haplotypes--named-list"></a>
+<h3 id="id_173-extract_haplotypes--named-list">17.3 <code>extract_haplotypes()</code> — named list<a class="anchor" aria-label="anchor" href="#id_173-extract_haplotypes--named-list"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1850,8 +2109,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="compute_haplotype_diversity--dataframe">
-<code>compute_haplotype_diversity()</code> — data.frame<a class="anchor" aria-label="anchor" href="#compute_haplotype_diversity--dataframe"></a>
+<h3 id="id_174-compute_haplotype_diversity--dataframe">17.4 <code>compute_haplotype_diversity()</code> — data.frame<a class="anchor" aria-label="anchor" href="#id_174-compute_haplotype_diversity--dataframe"></a>
 </h3>
 <table class="table">
 <thead><tr>
@@ -1915,8 +2173,7 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="read_geno--ldxblocks_backend">
-<code>read_geno()</code> — LDxBlocks_backend<a class="anchor" aria-label="anchor" href="#read_geno--ldxblocks_backend"></a>
+<h3 id="id_175-read_geno--ldxblocks_backend">17.5 <code>read_geno()</code> — LDxBlocks_backend<a class="anchor" aria-label="anchor" href="#id_175-read_geno--ldxblocks_backend"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -1961,10 +2218,10 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="memory-and-performance-notes">Memory and performance notes<a class="anchor" aria-label="anchor" href="#memory-and-performance-notes"></a>
+<h2 id="id_18-memory-and-performance-notes">18. Memory and performance notes<a class="anchor" aria-label="anchor" href="#id_18-memory-and-performance-notes"></a>
 </h2>
 <div class="section level3">
-<h3 id="c-core">C++ core<a class="anchor" aria-label="anchor" href="#c-core"></a>
+<h3 id="id_181-c-core">18.1 C++ core<a class="anchor" aria-label="anchor" href="#id_181-c-core"></a>
 </h3>
 <p>The seven compiled functions in <code>src/ld_core.cpp</code> (428 lines, RcppArmadillo + OpenMP) replace the most expensive R operations:</p>
 <p><strong><code>compute_r2_cpp()</code></strong> replaces <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">stats::cov()</a></code> + R arithmetic for the full r² matrix. Speedup over pure R is approximately 40× for a 1,500 × 1,500 window with 500 individuals. The outer loop is OpenMP-parallelised; all threads share the pre-standardised matrix Z (zero-mean, unit-variance columns) and write to disjoint (j, k) element pairs.</p>
@@ -1973,7 +2230,7 @@
 <p><strong><code>build_adj_matrix_cpp()</code></strong> replaces <code>ifelse(LD &gt;= cut, 1L, 0L)</code> with a C++ write in place, avoiding the allocation of the intermediate logical matrix.</p>
 </div>
 <div class="section level3">
-<h3 id="never-full-genome-memory-model">Never-full-genome memory model<a class="anchor" aria-label="anchor" href="#never-full-genome-memory-model"></a>
+<h3 id="id_182-never-full-genome-memory-model">18.2 Never-full-genome memory model<a class="anchor" aria-label="anchor" href="#id_182-never-full-genome-memory-model"></a>
 </h3>
 <p>LDxBlocks enforces a strict memory contract: <strong>the full genotype matrix is never held in RAM at once for any dataset size or format.</strong></p>
 <p><strong>Numeric dosage CSV</strong> — Two-pass chunked reading following the OptSLDP pattern (Akohoue et al. 2026): Pass 1 scans the header and counts rows with zero data loading. A single pre-allocated matrix is then filled in 50,000-row chunks via successive <code><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">data.table::fread()</a></code> calls. Peak RAM = one chunk (not 2× the file). <code>gc(FALSE)</code> is called after each chunk.</p>
@@ -1982,10 +2239,10 @@
 <p><strong>Chromosome loop</strong> — In <code><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code> and <code><a href="reference/extract_haplotypes.html">extract_haplotypes()</a></code>, each chromosome is extracted, processed, freed with <code><a href="https://rdrr.io/r/base/rm.html" class="external-link">rm()</a></code>, and <code>gc(FALSE)</code> is called before the next chromosome is touched, preventing heap fragmentation from accumulating across 20–30 chromosome passes.</p>
 </div>
 <div class="section level3">
-<h3 id="openmp-thread-count">OpenMP thread count<a class="anchor" aria-label="anchor" href="#openmp-thread-count"></a>
+<h3 id="id_183-openmp-thread-count">18.3 OpenMP thread count<a class="anchor" aria-label="anchor" href="#id_183-openmp-thread-count"></a>
 </h3>
 <p>The <code>n_threads</code> parameter controls the number of OpenMP threads in <code>compute_r2_cpp()</code>. Thread scaling is efficient up to approximately 8–16 threads for typical window sizes (1,500 SNPs). For very large windows (<code>subSegmSize = 5000+</code>), higher thread counts remain beneficial:</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Auto-detect physical cores</span></span>
 <span><span class="va">n_thr</span>  <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span>logical <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, n_threads <span class="op">=</span> <span class="va">n_thr</span><span class="op">)</span></span></code></pre></div>
@@ -1993,17 +2250,17 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
+<h2 id="id_19-documentation">19. Documentation<a class="anchor" aria-label="anchor" href="#id_19-documentation"></a>
 </h2>
 <p>Full documentation, function reference, and tutorials are available at:</p>
 <p><a href="https://FAkohoue.github.io/LDxBlocks/" class="uri">https://FAkohoue.github.io/LDxBlocks/</a></p>
 <p>To read the vignette after installation:</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"LDxBlocks-workflow"</span>, package <span class="op">=</span> <span class="st">"LDxBlocks"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
+<h2 id="id_20-citation">20. Citation<a class="anchor" aria-label="anchor" href="#id_20-citation"></a>
 </h2>
 <p>If you use <code>LDxBlocks</code> in published research, please cite:</p>
 <pre><code>LDxBlocks Development Team (2025).
@@ -2040,7 +2297,7 @@ https://doi.org/10.1073/pnas.70.12.3321</code></pre>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="contributing">Contributing<a class="anchor" aria-label="anchor" href="#contributing"></a>
+<h2 id="id_21-contributing">21. Contributing<a class="anchor" aria-label="anchor" href="#id_21-contributing"></a>
 </h2>
 <p>Bug reports, feature requests, and pull requests are welcome:</p>
 <p><a href="https://github.com/FAkohoue/LDxBlocks/issues" class="external-link uri">https://github.com/FAkohoue/LDxBlocks/issues</a></p>
@@ -2053,14 +2310,17 @@ https://doi.org/10.1073/pnas.70.12.3321</code></pre>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
+<h2 id="id_22-license">22. License<a class="anchor" aria-label="anchor" href="#id_22-license"></a>
 </h2>
 <p>MIT + file LICENSE © Félicien Akohoue</p>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+<h2 id="id_23-references">23. References<a class="anchor" aria-label="anchor" href="#id_23-references"></a>
 </h2>
+<div class="section level3">
+<h3 id="id_231-foundational-algorithms">23.1 Foundational algorithms<a class="anchor" aria-label="anchor" href="#id_231-foundational-algorithms"></a>
+</h3>
 <p>Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block detection method for dense genome sequencing data based on interval graph modeling and dynamic programming. <em>Bioinformatics</em> <strong>34</strong>(4):588-596. <a href="https://doi.org/10.1093/bioinformatics/btx609" class="external-link uri">https://doi.org/10.1093/bioinformatics/btx609</a></p>
 <p>Difabachew YF, Frisch M, Langstroff AL, Stahl A, Wittkop B, Snowdon RJ, Koch M, Kirchhoff M, Csélényi L, Wolf M, Förster J, Weber S, Okoye UJ, Zenke-Philippi C (2023). Genomic prediction with haplotype blocks in wheat. <em>Frontiers in Plant Science</em> <strong>14</strong>:1168547. <a href="https://doi.org/10.3389/fpls.2023.1168547" class="external-link uri">https://doi.org/10.3389/fpls.2023.1168547</a></p>
 <p>Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype blocks for genomic prediction: a comparative evaluation in multiple crop datasets. <em>Frontiers in Plant Science</em> <strong>14</strong>:1217589. <a href="https://doi.org/10.3389/fpls.2023.1217589" class="external-link uri">https://doi.org/10.3389/fpls.2023.1217589</a></p>
@@ -2074,8 +2334,13 @@ https://doi.org/10.1073/pnas.70.12.3321</code></pre>
 <p>Calus MPL, Meuwissen THE, de Roos APW, Veerkamp RF (2008). Accuracy of genomic selection using different methods to define haplotypes. <em>Genetics</em> <strong>178</strong>(1):553–561. <a href="https://doi.org/10.1534/genetics.107.080838" class="external-link uri">https://doi.org/10.1534/genetics.107.080838</a></p>
 <p>de Roos APW, Hayes BJ, Goddard ME (2009). Reliability of genomic predictions across multiple populations. <em>Genetics</em> <strong>183</strong>(4):1545–1553. <a href="https://doi.org/10.1534/genetics.109.104935" class="external-link uri">https://doi.org/10.1534/genetics.109.104935</a></p>
 <p>Nei M (1973). Analysis of gene diversity in subdivided populations. <em>Proceedings of the National Academy of Sciences</em> <strong>70</strong>(12):3321–3323. <a href="https://doi.org/10.1073/pnas.70.12.3321" class="external-link uri">https://doi.org/10.1073/pnas.70.12.3321</a></p>
+</div>
+<div class="section level3">
+<h3 id="id_232-community-detection-algorithms-used-for-ld-graph-partitioning">23.2 Community detection algorithms used for LD graph partitioning<a class="anchor" aria-label="anchor" href="#id_232-community-detection-algorithms-used-for-ld-graph-partitioning"></a>
+</h3>
 <p>Blondel VD, Guillaume J-L, Lambiotte R, Lefebvre E (2008). Fast unfolding of communities in large networks. <em>Journal of Statistical Mechanics: Theory and Experiment</em> <strong>2008</strong>:P10008. <a href="https://doi.org/10.1088/1742-5468/2008/10/P10008" class="external-link uri">https://doi.org/10.1088/1742-5468/2008/10/P10008</a></p>
 <p>Traag VA, Waltman L, van Eck NJ (2019). From Louvain to Leiden: guaranteeing well-connected communities. <em>Scientific Reports</em> <strong>9</strong>:5233. <a href="https://doi.org/10.1038/s41598-019-41695-z" class="external-link uri">https://doi.org/10.1038/s41598-019-41695-z</a></p>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

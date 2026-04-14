@@ -973,7 +973,10 @@ summary.LDxBlocks_backend <- function(object, ...) {
 #'   plain R matrix, or a path to a previously saved \code{.desc} file
 #'   (reattach without reloading).
 #' @param snp_info Data frame with \code{SNP}, \code{CHR}, \code{POS}.
-#'   Required when \code{source} is a plain matrix.
+#'   Required when \code{source} is a plain matrix or a \code{.desc} file
+#'   (bigmemory does not store metadata). Optional and ignored when
+#'   \code{source} is a file path or an \code{LDxBlocks_backend} -- SNP
+#'   info is obtained automatically from those sources.
 #' @param backingfile Character. Stem for the \code{.bin} and \code{.desc}
 #'   files. Default: a tempfile. Supply a persistent path to reuse across
 #'   sessions.
@@ -1093,9 +1096,25 @@ read_geno_bigmemory <- function(source,
     on.exit(options(op2), add = TRUE)
     rownames(bm) <- rownames(m)
 
+  } else if (is.character(source) && length(source) == 1L) {
+    # -- Build from genotype file path ------------------------------------
+    # Open via read_geno(), then recurse with the resulting backend.
+    if (verbose)
+      message("[bigmemory] Opening '", basename(source), "' via read_geno() ...")
+    be_tmp <- read_geno(source, verbose = verbose)
+    on.exit(close_backend(be_tmp), add = TRUE)
+    return(read_geno_bigmemory(
+      source      = be_tmp,
+      snp_info    = be_tmp$snp_info,
+      backingfile = backingfile,
+      backingpath = backingpath,
+      type        = type,
+      verbose     = verbose
+    ))
+
   } else {
-    stop("source must be an LDxBlocks_backend, a matrix, or a path to a .desc file.",
-         call. = FALSE)
+    stop("source must be an LDxBlocks_backend, a matrix, a genotype file path, ",
+         "or a path to a .desc file.", call. = FALSE)
   }
 
   if (verbose)

@@ -45,7 +45,9 @@ read_geno_bigmemory(
 - snp_info:
 
   Data frame with `SNP`, `CHR`, `POS`. Required when `source` is a plain
-  matrix.
+  matrix or a `.desc` file (bigmemory does not store metadata). Optional
+  and ignored when `source` is a file path or an `LDxBlocks_backend` –
+  SNP info is obtained automatically from those sources.
 
 - backingfile:
 

@@ -19,7 +19,10 @@ plain R matrix, or a path to a previously saved \code{.desc} file
 (reattach without reloading).}
 
 \item{snp_info}{Data frame with \code{SNP}, \code{CHR}, \code{POS}.
-Required when \code{source} is a plain matrix.}
+Required when \code{source} is a plain matrix or a \code{.desc} file
+(bigmemory does not store metadata). Optional and ignored when
+\code{source} is a file path or an \code{LDxBlocks_backend} -- SNP
+info is obtained automatically from those sources.}
 
 \item{backingfile}{Character. Stem for the \code{.bin} and \code{.desc}
 files. Default: a tempfile. Supply a persistent path to reuse across

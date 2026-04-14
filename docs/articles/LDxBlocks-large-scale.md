@@ -7,7 +7,7 @@ own data.
 
 ------------------------------------------------------------------------
 
-## Why scale matters: the original Big-LD limitation
+## 1. Why scale matters: the original Big-LD limitation
 
 The original
 [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
@@ -30,7 +30,7 @@ The 120 GB rice example is from the motivating use case for LDxBlocks:
 204-sample WGS panel where the original Big-LD would require loading the
 entire genotype matrix before a single block boundary is computed.
 
-## How LDxBlocks solves it: never-full-genome memory model
+## 2. How LDxBlocks solves it: never-full-genome memory model
 
 LDxBlocks enforces a strict memory contract: **the full genotype matrix
 is never held in RAM at once, for any dataset size or format.**
@@ -71,7 +71,7 @@ requested by the current
 [`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md)
 call are in RAM.
 
-## Memory model
+## 3. Memory model
 
 Peak RAM with a file-backed backend:
 
@@ -92,9 +92,9 @@ $`5{,}000 \times 10{,}000{,}000 \times 8
 
 ------------------------------------------------------------------------
 
-## GDS backend (SNPRelate)
+## 4. GDS backend (SNPRelate)
 
-### Installation
+### 4.1 Installation
 
 ``` r
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -102,7 +102,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install("SNPRelate")
 ```
 
-### Converting VCF to GDS
+### 4.2 Converting VCF to GDS
 
 Convert once; use for all subsequent analyses. The GDS format supports
 random-access compressed storage, making repeated window reads fast:
@@ -118,7 +118,7 @@ SNPRelate::snpgdsVCF2GDS(
 )
 ```
 
-### Block detection from GDS
+### 4.3 Block detection from GDS
 
 ``` r
 be_gds <- read_geno("mydata.gds")
@@ -143,7 +143,7 @@ blocks <- run_Big_LD_all_chr(
 close_backend(be_gds)
 ```
 
-### What happens inside `read_chunk()` for GDS
+### 4.4 What happens inside read_chunk() for GDS
 
 Each call executes:
 
@@ -165,12 +165,12 @@ total.
 
 ------------------------------------------------------------------------
 
-## WGS-scale acceleration (v0.3.1)
+## 5. WGS-scale acceleration (v0.3.1)
 
 Three features address the exponential-blowup and I/O bottlenecks
 observed when running the default parameters on 3M+ SNP panels.
 
-### Louvain/Leiden community detection (`CLQmode`)
+### 5.1 Louvain/Leiden community detection (CLQmode) – Leiden recommended
 
 The default `CLQmode = "Density"` uses Bron-Kerbosch clique enumeration,
 which has exponential worst-case complexity. On a 3M-SNP WGS panel with
@@ -182,7 +182,7 @@ million maximal cliques and run for hours. `CLQmode = "Louvain"` and
 # Recommended for any WGS panel > 500 k SNPs per chromosome
 blocks <- run_Big_LD_all_chr(
   be_gds,
-  CLQmode         = "Louvain",   # polynomial — never exponential
+  CLQmode         = "Leiden",    # polynomial — guaranteed connected communities
   CLQcut          = 0.70,        # sparser graph reduces community count
   max_bp_distance = 500000L,     # sparse LD: skip pairs > 500 kb
   subSegmSize     = 500L,        # smaller windows for safety
@@ -198,7 +198,7 @@ base-pair distance, so local LD structure is respected. Communities with
 a single member become singletons (NA), exactly matching the Density
 path output format.
 
-### Sparse LD computation (`max_bp_distance`)
+### 5.2 Sparse LD computation (max_bp_distance)
 
 When `max_bp_distance > 0`, only SNP pairs within that physical distance
 have their r² computed via `compute_r2_sparse_cpp()`. Pairs beyond the
@@ -210,14 +210,14 @@ because long-range r² decays to near-zero at WGS density. At 500 kb,
 # 500 kb cutoff: appropriate for most plant and animal WGS panels
 blocks <- run_Big_LD_all_chr(
   be_gds,
-  CLQmode         = "Louvain",
+  CLQmode         = "Leiden",    # Leiden preferred: guaranteed connected communities
   max_bp_distance = 500000L,
   CLQcut          = 0.70,
   n_threads       = 16L
 )
 ```
 
-### bigmemory backend (`read_geno_bigmemory()`)
+### 5.3 bigmemory backend (read_geno_bigmemory())
 
 For cases where even the filtered matrix exceeds available RAM,
 [`read_geno_bigmemory()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno_bigmemory.md)
@@ -249,21 +249,21 @@ be_bm <- read_geno_bigmemory(
 )
 
 # All standard functions work identically
-blocks <- run_Big_LD_all_chr(be_bm, CLQmode = 'Louvain', CLQcut = 0.70)
+blocks <- run_Big_LD_all_chr(be_bm, CLQmode = 'Leiden', CLQcut = 0.70)
 close_backend(be_bm)
 ```
 
 ------------------------------------------------------------------------
 
-## PLINK BED backend (BEDMatrix)
+## 6. PLINK BED backend (BEDMatrix)
 
-### Installation
+### 4.1 Installation
 
 ``` r
 install.packages("BEDMatrix")
 ```
 
-### Block detection from BED
+### 6.2 Block detection from BED
 
 The `.bim` and `.fam` files must exist at the same path stem:
 
@@ -293,9 +293,9 @@ disk.
 
 ------------------------------------------------------------------------
 
-## Parameter selection for large panels
+## 7. Parameter selection for large panels
 
-### `subSegmSize`
+### 7.1 subSegmSize
 
 The single most important memory parameter. The C++ r² kernel allocates
 an $`n \times w`$ genotype window and a $`w \times w`$ LD matrix:
@@ -311,7 +311,7 @@ For very large $`n`$, keep `subSegmSize` at 1,500 or reduce it. For
 moderate $`n`$, increasing to 3,000–5,000 reduces GDS reads at the cost
 of more RAM.
 
-### `leng`
+### 7.2 leng
 
 The boundary-scan half-window in SNPs. `boundary_scan_cpp()` scans
 `2 * leng` columns per candidate cut position, with cost scaling as
@@ -331,7 +331,7 @@ blocks <- run_Big_LD_all_chr(
 )
 ```
 
-### `n_threads`
+### 7.3 n_threads
 
 OpenMP thread scaling is efficient up to approximately 8–16 threads for
 typical window sizes. Benchmark on your hardware:
@@ -349,7 +349,7 @@ round(times, 1)
 
 ------------------------------------------------------------------------
 
-## Haplotype analysis on large datasets
+## 8. Haplotype analysis on large datasets
 
 For large panels, extract haplotypes one chromosome at a time to avoid
 loading the full genome matrix:
@@ -402,7 +402,7 @@ haps_chr1 <- extract_haplotypes(be, be$snp_info, blocks,
 
 ------------------------------------------------------------------------
 
-## Troubleshooting
+## 9. Troubleshooting
 
 **GDS handle errors on Windows.** SNPRelate GDS file handles are not
 fork-safe. Avoid FORK-based parallelism
@@ -429,15 +429,15 @@ make more GDS reads but use far less RAM per step.
 **CLQD hangs or takes hours on a single chromosome.** This is
 Bron-Kerbosch clique enumeration blowup. The
 `[CLQD] Found N maximal cliques` message will show N in the millions.
-Switch to `CLQmode = "Louvain"` — it runs in polynomial time and
-finishes the same window in seconds. Also set `CLQcut = 0.70` and
+Switch to `CLQmode = "Leiden"` — it runs in polynomial time and finishes
+the same window in seconds. Also set `CLQcut = 0.70` and
 `max_bp_distance = 500000L` to further reduce graph density.
 `checkLargest = TRUE` adds a safety guard for the Density/Maximal modes
 if you need exact clique enumeration.
 
 ------------------------------------------------------------------------
 
-## References
+## 10. References
 
 - Lawrence M, Huber W, Pages H, et al. (2013). Software for computing
   and annotating genomic ranges. *PLOS Computational Biology*
