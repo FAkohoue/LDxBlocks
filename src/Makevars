@@ -1,17 +1,46 @@
 ## src/Makevars
 #
-# OpenMP parallelism (optional; silently disabled when the compiler lacks
-# support, e.g. Apple Clang without libomp installed).
+# OpenMP support — platform-aware.
 #
-# On macOS the GitHub Actions workflow installs libomp via Homebrew and
-# writes the corresponding -Xpreprocessor/-fopenmp/-lomp flags into
-# ~/.R/Makevars before the build runs, so $(SHLIB_OPENMP_CXXFLAGS) resolves
-# correctly on that runner too.
+# Linux / Windows (GCC):
+#   $(SHLIB_OPENMP_CXXFLAGS) = -fopenmp, which both compiles and links
+#   against libgomp. No further flags needed.
 #
-# ARMA_NO_DEBUG: disables Armadillo's tinyformat-based exception formatting.
-#   Prevents R_AMD64_IMAGEBASE linker warnings from binutils >= 2.40 when
-#   tinyformat PE-format relocation stubs appear in an ELF build.
-#   Note: ARMA_DONT_USE_WRAPPER is already set by RcppArmadillo internally
-#   so we do not repeat it here to avoid -Wmacro-redefined warnings.
-PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -DARMA_NO_DEBUG
-PKG_LIBS     = $(SHLIB_OPENMP_CFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+# macOS (Apple Clang):
+#   $(SHLIB_OPENMP_CXXFLAGS) = -Xpreprocessor -fopenmp (compile only).
+#   These flags do NOT link the runtime — PKG_LIBS must add -lomp explicitly.
+#   libomp is installed from Homebrew by the CI workflow (or by the user
+#   locally: `brew install libomp`). Its location is probed below.
+#   If libomp is not found the build silently falls back to single-threaded
+#   (the C++ source is fully guarded with #ifdef _OPENMP).
+#
+# ARMA_NO_DEBUG: disables Armadillo's tinyformat exception messages.
+#   Prevents R_AMD64_IMAGEBASE linker warnings from binutils >= 2.40.
+
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S), Darwin)
+  # Probe Homebrew libomp: Apple Silicon (/opt/homebrew) then Intel (/usr/local)
+  LIBOMP_ARM := /opt/homebrew/opt/libomp
+  LIBOMP_X86 := /usr/local/opt/libomp
+  ifneq ($(wildcard $(LIBOMP_ARM)/lib/libomp.dylib),)
+    LIBOMP := $(LIBOMP_ARM)
+  else ifneq ($(wildcard $(LIBOMP_X86)/lib/libomp.dylib),)
+    LIBOMP := $(LIBOMP_X86)
+  endif
+
+  ifdef LIBOMP
+    PKG_CXXFLAGS = -Xpreprocessor -fopenmp -I$(LIBOMP)/include -DARMA_NO_DEBUG
+    PKG_LIBS     = -L$(LIBOMP)/lib -lomp -Wl,-rpath,$(LIBOMP)/lib \
+                   $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+  else
+    # libomp absent — single-threaded fallback
+    PKG_CXXFLAGS = -DARMA_NO_DEBUG
+    PKG_LIBS     = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+  endif
+else
+  # Linux / other Unix — GCC -fopenmp links libgomp automatically
+  PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -DARMA_NO_DEBUG
+  PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+endif
+
