@@ -44,13 +44,17 @@ jobs:
           use-public-rspm: true
 
       # ── OpenMP on macOS ──────────────────────────────────────────────────────
-      # Apple Clang does not bundle OpenMP. Install libomp from Homebrew so
-      # src/Makevars can probe /opt/homebrew/opt/libomp (Apple Silicon) or
-      # /usr/local/opt/libomp (Intel) and link -lomp explicitly.
-      # No ~/.R/Makevars manipulation needed — Makevars handles the detection.
-      - name: Install libomp (macOS)
+      - name: Install libomp and configure R Makevars (macOS)
         if: runner.os == 'macOS'
-        run: brew install libomp
+        run: |
+          brew install libomp
+          mkdir -p ~/.R
+          LIBOMP=$(brew --prefix libomp)
+          cat > ~/.R/Makevars << EOF
+          SHLIB_OPENMP_CFLAGS   = -Xpreprocessor -fopenmp -I${LIBOMP}/include
+          SHLIB_OPENMP_CXXFLAGS = -Xpreprocessor -fopenmp -I${LIBOMP}/include -L${LIBOMP}/lib -lomp -Wl,-rpath,${LIBOMP}/lib
+          EOF
+          echo "LIBOMP=${LIBOMP}" >> $GITHUB_ENV
 
       # ── System libraries (Linux) ─────────────────────────────────────────────
       - name: Install system dependencies (Linux)
@@ -106,9 +110,18 @@ jobs:
             any::covr
           needs: check
 
+      # ── Diagnostics (macOS) ──────────────────────────────────────────────────
+      - name: Show macOS OpenMP config
+        if: runner.os == 'macOS'
+        run: |
+          cat ~/.R/Makevars
+          ls -l "${LIBOMP}/lib"
+
       # ── R CMD check ──────────────────────────────────────────────────────────
       - name: Check package
         uses: r-lib/actions/check-r-package@v2
+        env:
+          DYLD_FALLBACK_LIBRARY_PATH: ${{ runner.os == 'macOS' && format('{0}/lib', env.LIBOMP) || '' }}
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual")'

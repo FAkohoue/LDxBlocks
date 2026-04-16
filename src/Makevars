@@ -1,46 +1,16 @@
 ## src/Makevars
-#
-# OpenMP support — platform-aware.
-#
-# Linux / Windows (GCC):
-#   $(SHLIB_OPENMP_CXXFLAGS) = -fopenmp, which both compiles and links
-#   against libgomp. No further flags needed.
-#
-# macOS (Apple Clang):
-#   $(SHLIB_OPENMP_CXXFLAGS) = -Xpreprocessor -fopenmp (compile only).
-#   These flags do NOT link the runtime — PKG_LIBS must add -lomp explicitly.
-#   libomp is installed from Homebrew by the CI workflow (or by the user
-#   locally: `brew install libomp`). Its location is probed below.
-#   If libomp is not found the build silently falls back to single-threaded
-#   (the C++ source is fully guarded with #ifdef _OPENMP).
-#
-# ARMA_NO_DEBUG: disables Armadillo's tinyformat exception messages.
-#   Prevents R_AMD64_IMAGEBASE linker warnings from binutils >= 2.40.
+##
+## OpenMP support — platform-aware.
+##
+## Linux / Windows:
+##   $(SHLIB_OPENMP_CXXFLAGS) typically expands to -fopenmp and is sufficient
+##   for both compilation and linking.
+##
+## macOS:
+##   Apple clang needs libomp from Homebrew. The CI workflow writes the
+##   required SHLIB_OPENMP_* flags and search paths into ~/.R/Makevars.
+##   Here we simply consume them.
 
-UNAME_S := $(shell uname -s)
-
-ifeq ($(UNAME_S), Darwin)
-  # Probe Homebrew libomp: Apple Silicon (/opt/homebrew) then Intel (/usr/local)
-  LIBOMP_ARM := /opt/homebrew/opt/libomp
-  LIBOMP_X86 := /usr/local/opt/libomp
-  ifneq ($(wildcard $(LIBOMP_ARM)/lib/libomp.dylib),)
-    LIBOMP := $(LIBOMP_ARM)
-  else ifneq ($(wildcard $(LIBOMP_X86)/lib/libomp.dylib),)
-    LIBOMP := $(LIBOMP_X86)
-  endif
-
-  ifdef LIBOMP
-    PKG_CXXFLAGS = -Xpreprocessor -fopenmp -I$(LIBOMP)/include -DARMA_NO_DEBUG
-    PKG_LIBS     = -L$(LIBOMP)/lib -lomp -Wl,-rpath,$(LIBOMP)/lib \
-                   $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
-  else
-    # libomp absent — single-threaded fallback
-    PKG_CXXFLAGS = -DARMA_NO_DEBUG
-    PKG_LIBS     = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
-  endif
-else
-  # Linux / other Unix — GCC -fopenmp links libgomp automatically
-  PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -DARMA_NO_DEBUG
-  PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
-endif
-
+PKG_CPPFLAGS = -DARMA_NO_DEBUG
+PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
+PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
