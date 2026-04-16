@@ -14,7 +14,7 @@
       C++](#id_31-computational-core-r-loops-replaced-by-c)
     - 3.2. [Memory model:
       never-full-genome](#id_32-memory-model-never-full-genome)
-    - 3.3. [Kinship correction: rV²](#id_33-kinship-correction-rv2)
+    - 3.3. [Kinship correction: rV²](#id_33-kinship-correction-rv)
     - 3.4. [Singleton SNP handling](#id_34-singleton-snp-handling)
     - 3.5. [Bug fix: zero-row
       assignment](#id_35-bug-fix-zero-row-assignment)
@@ -42,7 +42,7 @@
     - 7.3. [Subsegmentation](#id_73-subsegmentation)
     - 7.4. [Clique detection (CLQD)](#id_74-clique-detection-clqd)
     - 7.5. [Block construction](#id_75-block-construction)
-8.  [LD metrics: r² versus rV²](#id_8-ld-metrics-r2-versus-rv2)
+8.  [LD metrics: r² versus rV²](#id_8-ld-metrics-r-versus-rv)
 9.  [Clique detection mode
     (CLQmode)](#id_9-clique-detection-mode-clqmode)
     - 9.1. [Mode 1 —

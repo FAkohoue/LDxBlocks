@@ -1,7 +1,14 @@
 ## src/Makevars
-
-# OpenMP parallelism (optional; silently absent if compiler lacks support).
-# ARMA_NO_DEBUG: disable Armadillo's tinyformat-based exception formatting.
+#
+# OpenMP parallelism (optional; silently disabled when the compiler lacks
+# support, e.g. Apple Clang without libomp installed).
+#
+# On macOS the GitHub Actions workflow installs libomp via Homebrew and
+# writes the corresponding -Xpreprocessor/-fopenmp/-lomp flags into
+# ~/.R/Makevars before the build runs, so $(SHLIB_OPENMP_CXXFLAGS) resolves
+# correctly on that runner too.
+#
+# ARMA_NO_DEBUG: disables Armadillo's tinyformat-based exception formatting.
 #   Prevents R_AMD64_IMAGEBASE linker warnings from binutils >= 2.40 when
 #   tinyformat PE-format relocation stubs appear in an ELF build.
 #   Note: ARMA_DONT_USE_WRAPPER is already set by RcppArmadillo internally
