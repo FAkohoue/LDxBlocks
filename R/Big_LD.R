@@ -85,6 +85,113 @@
 #' head(blocks)
 #' }
 #' @keywords internal
+# ─────────────────────────────────────────────────────────────────────────────
+# LD-informed overlap resolution (package-scope so tests can access via :::)
+# ─────────────────────────────────────────────────────────────────────────────
+#' @noRd
+.resolve_overlap <- function(blocks, adj_mat, k_rep = 10L) {
+  i <- 1L
+  while (i < nrow(blocks)) {
+    sA <- blocks[i,   1L]; eA <- blocks[i,   2L]
+    sB <- blocks[i+1L,1L]; eB <- blocks[i+1L,2L]
+
+    if (eA < sB) { i <- i + 1L; next }  # no overlap, advance
+
+    # Three zones (use seq.int with explicit length to avoid R's
+    # descending-sequence behaviour when start > end).
+    left_core  <- if (sB > sA) seq.int(sA,   sB - 1L) else integer(0L)
+    overlap    <- if (eA >= sB) seq.int(sB,  eA)       else integer(0L)
+    right_core <- if (eB > eA) seq.int(eA + 1L, eB)   else integer(0L)
+
+    # Fallback: right core empty means block B is fully inside block A
+    # (eB <= eA), OR left core empty means blocks start at same position.
+    # Either case: no valid LD anchor on one side -> union merge.
+    has_left  <- length(left_core)  > 0L
+    has_right <- length(right_core) > 0L
+    if (!has_left || !has_right) {
+      blocks[i,] <- c(min(sA, sB), max(eA, eB))
+      blocks     <- blocks[-(i + 1L), , drop = FALSE]
+      next  # recheck position i after merge (may now overlap i+1)
+    }
+
+    # Representatives: boundary-adjacent SNPs from each core.
+    # Left:  last  k_rep of left_core  (closest to the overlap zone)
+    # Right: first k_rep of right_core (closest to the overlap zone)
+    k_L       <- min(k_rep, length(left_core))
+    k_R       <- min(k_rep, length(right_core))
+    left_reps  <- tail(left_core,  k_L)   # last  k_L indices of left_core
+    right_reps <- head(right_core, k_R)   # first k_R indices of right_core
+
+    # Compute signed LD score for each disputed SNP:
+    #   score[k] = r2_left[k] - r2_right[k]
+    # Positive = SNP prefers block A; negative = SNP prefers block B.
+    # NA: scored as 0 (neutral -- constant/monomorphic column).
+    # Ties are handled by the >= 0 boundary test below: a zero
+    # contribution keeps cum_score non-negative if preceding SNPs
+    # were positive, giving block A the benefit on a tie. A pure
+    # all-zero sequence (no LD signal at all) gives cum_score = 0
+    # everywhere, last_left = length(overlap), and the overlap goes
+    # entirely to block A -- consistent with block A being detected
+    # first in the sub-segment processing order.
+    scores <- vapply(overlap, function(s) {
+      r2v  <- as.numeric(col_r2_cpp(adj_mat, s))  # r2 of s with all cols
+      r2_L <- mean(r2v[left_reps],  na.rm = TRUE)
+      r2_R <- mean(r2v[right_reps], na.rm = TRUE)
+      if (is.na(r2_L) || is.na(r2_R)) 0 else r2_L - r2_R
+    }, numeric(1L))
+
+    # Cumulative-score boundary rule (superior to last-left):
+    #   cum_score[k] = sum(scores[1..k])
+    #   Split at the LAST position where cum_score > 0.
+    #   This is the point after which the remaining overlap SNPs are
+    #   collectively in stronger LD with block B than with block A.
+    #
+    # Example: scores = [+0.3, -0.1, +0.5, -0.3, -0.5, -0.7]
+    #   cum_score      = [+0.3, +0.2, +0.7, +0.4, -0.1, -0.8]
+    #   last non-negative (>= 0) = position 4
+    # All-negative: scores=[-0.3,-0.5,-0.2], cumsum=[-0.3,-0.8,-1.0]
+    #   which(cumsum >= 0) = empty -> last_left=0 -> all-right path
+    #   Block A ends at sB-1, block B keeps full overlap [sB..eB]
+    # All-zero (ties): scores=[0,0,0], cumsum=[0,0,0]
+    #   which(cumsum >= 0) = [1,2,3] -> last_left=3=length(overlap)
+    #   -> all-left path: block A keeps full overlap, block B starts eA+1
+    #   -> Block A gets overlap SNPs 1-4, block B gets 5-6.
+    #
+    # Compare last-left rule on same data:
+    #   assignments    = [L, R, L, R, R, R]  (based on individual scores)
+    #   last_left      = 3  (SNP 3 is last L)
+    #   -> Block A gets 1-3, block B gets 4-6.
+    #   SNP 4 (cum_score still +0.4, collectively A leads) is misassigned.
+    #
+    # The cumulative rule correctly uses all preceding evidence rather
+    # than reacting to each SNP individually.
+    cum_score <- cumsum(scores)
+    last_left <- max(c(0L, which(cum_score >= 0)))
+
+    if (last_left == 0L) {
+      # Every disputed SNP belongs to block B.
+      # Block A shrinks to [sA .. sB-1], block B stays [sB .. eB].
+      blocks[i,   ] <- c(sA, sB - 1L)
+      blocks[i+1L, ] <- c(sB, eB)
+    } else if (last_left == length(overlap)) {
+      # Every disputed SNP belongs to block A.
+      # Block A stays [sA .. eA], block B shrinks to [eA+1 .. eB].
+      # Both blocks survive -- this is NOT a union merge.
+      blocks[i,   ] <- c(sA, eA)
+      blocks[i+1L, ] <- c(eA + 1L, eB)
+    } else {
+      # Mixed assignment: split at last-left boundary.
+      split_snp      <- overlap[last_left]
+      blocks[i,   ]  <- c(sA, split_snp)
+      blocks[i+1L, ] <- c(split_snp + 1L, eB)
+    }
+
+    i <- i + 1L  # both blocks are now non-overlapping; advance
+  }
+  blocks
+}
+
+
 Big_LD <- function(
     geno,
     SNPinfo,
@@ -554,15 +661,44 @@ Big_LD <- function(
   LDblocks <- LDblocks[!is.na(LDblocks[,1L]),,drop=FALSE]
   LDblocks <- LDblocks[order(LDblocks[,1L]),,drop=FALSE]
 
-  # -- Merge overlapping blocks ----------------------------------------------
-  i <- 1L
-  while (i < nrow(LDblocks)) {
-    if (LDblocks[i,2L] < LDblocks[i+1L,1L]) { i <- i+1L; next }
-    LDblocks[i,] <- c(min(LDblocks[i,], LDblocks[i+1L,]),
-                      max(LDblocks[i,], LDblocks[i+1L,]))
-    LDblocks[i+1L,] <- c(NA_integer_, NA_integer_)
-    LDblocks <- LDblocks[!is.na(LDblocks[,1L]),,drop=FALSE]
-  }
+  # -- Resolve overlapping blocks (LD-informed split) ------------------------
+  # Overlaps arise at sub-segment seams: a boundary SNP can be assigned to
+  # a block in segment A and also to a block in segment B, producing two
+  # blocks whose SNP index ranges overlap.
+  #
+  # OLD behaviour: blind union merge -- take [min(all), max(all)].
+  #   Problem: merges blocks with low inter-block LD, creating an
+  #   artificially large block with a deflated He and a high count of
+  #   low-frequency haplotype alleles.
+  #
+  # NEW behaviour: LD-informed split --
+  #   For each disputed SNP in the overlap zone, compute its mean r2
+  #   with a sample of SNPs from the LEFT core (A-exclusive region) and
+  #   from the RIGHT core (B-exclusive region). Assign it to whichever
+  #   core it is in stronger LD with. The block boundary is set at the
+  #   last left-assigned SNP, preserving contiguity of both blocks.
+  #
+  #   Fallback to union merge when either core is empty (one block fully
+  #   contained in the other), where there is no LD anchor to compare.
+  #
+  # Parameters:
+  #   k_rep = max representatives sampled from each core (bounds cost)
+  #   Uses col_r2_cpp() -- O(n_ind) per call, negligible overhead.
+
+  # -- LD-informed overlap resolution ----------------------------------------
+  # Replaces the blind union merge [min(starts), max(ends)] with a per-SNP
+  # LD-based assignment of disputed SNPs to one of the two overlapping blocks.
+  #
+  # GEOMETRY (after sorting LDblocks by start index):
+  #   Block A: [sA ......... sB-1 | sB ......... eA]
+  #   Block B:              [sB ......... eA | eA+1 ......... eB]
+  #                          ^--- overlap zone ---^
+  #   left_core:  [sA .. sB-1]   A-exclusive (always non-empty after sort)
+  #   overlap:    [sB .. eA]     disputed SNPs
+
+  LDblocks <- .resolve_overlap(LDblocks, adjN, k_rep = 10L)
+
+  LDblocks <- .resolve_overlap(LDblocks, adjN, k_rep = 10L)
 
   # -- Build output data.frame -----------------------------------------------
   out <- data.frame(

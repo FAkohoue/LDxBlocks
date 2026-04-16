@@ -18,6 +18,7 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_grm.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_local_gebv.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_rV2.html</loc></url>
@@ -36,6 +37,7 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/phase_with_beagle.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/phase_with_pedigree.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/plot_ld_blocks.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/plot_ld_decay.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/prepare_gblup_inputs.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/print.LDxBlocks_backend.html</loc></url>

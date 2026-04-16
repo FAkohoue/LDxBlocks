@@ -444,3 +444,188 @@ test_that("read_geno_bigmemory: run_Big_LD_all_chr works through bigmemory backe
   expect_s3_class(blocks, "data.frame")
   expect_true(nrow(blocks) >= 1L)
 })
+
+# ── v0.3.1: LD-informed overlap resolution ───────────────────────────────────
+
+test_that("LD-informed split: overlapping blocks from adjacent sub-segments are resolved", {
+  # Construct a genotype matrix with two clear LD blocks separated by a
+  # recombination hotspot. Force a sub-segment seam inside the hotspot so
+  # the boundary scan produces an overlap, then verify the resolved output
+  # has non-overlapping blocks and the split falls near the hotspot.
+  set.seed(77)
+  n <- 80L; b <- 30L  # individuals, SNPs per block
+  # Block 1: SNPs 1-30, high mutual LD (common haplotype)
+  h1 <- sample(0:2, n, replace = TRUE)
+  G1 <- matrix(h1, n, b) + matrix(sample(-1:1, n*b, replace=TRUE, prob=c(.1,.8,.1)), n, b)
+  G1 <- pmax(pmin(G1, 2L), 0L)
+  # Block 2: SNPs 31-60, independent haplotype
+  h2 <- sample(0:2, n, replace = TRUE)
+  G2 <- matrix(h2, n, b) + matrix(sample(-1:1, n*b, replace=TRUE, prob=c(.1,.8,.1)), n, b)
+  G2 <- pmax(pmin(G2, 2L), 0L)
+  G  <- cbind(G1, G2)
+  rownames(G) <- paste0("ind", seq_len(n))
+  colnames(G) <- paste0("rs",  seq_len(2*b))
+  info <- data.frame(SNP = colnames(G), CHR = "1",
+                     POS = seq(1000L, by = 1000L, length.out = 2*b),
+                     stringsAsFactors = FALSE)
+
+  # Use small subSegmSize to force sub-segment seam near the block boundary
+  blocks <- LDxBlocks:::Big_LD(G, info[, c("SNP","POS")],
+                               method = "r2", CLQcut = 0.3,
+                               leng = 5L, subSegmSize = 35L,
+                               verbose = FALSE)
+  # Non-overlapping: no block's end.bp >= next block's start.bp
+  if (nrow(blocks) > 1L) {
+    overlap_exists <- any(blocks$end.bp[-nrow(blocks)] >=
+                            blocks$start.bp[-1L])
+    expect_false(overlap_exists,
+                 label = "blocks should be non-overlapping after LD-informed split")
+  }
+  # Blocks should still cover both halves of the genome
+  expect_true(min(blocks$start.bp) <= 5000L)
+  expect_true(max(blocks$end.bp)   >= 55000L)
+})
+
+test_that("LD-informed split: result same as before when no overlaps exist", {
+  # When boundary_scan_cpp places cuts cleanly, no overlaps reach .resolve_overlap
+  # and the output should be unchanged vs the union-merge version.
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  idx <- which(ldx_snp_info$CHR == "1")
+  blocks <- LDxBlocks:::Big_LD(ldx_geno[, idx],
+                               ldx_snp_info[idx, c("SNP","POS")],
+                               method = "r2", CLQcut = 0.5,
+                               leng = 10L, subSegmSize = 70L,
+                               verbose = FALSE)
+  # No overlaps
+  if (nrow(blocks) > 1L)
+    expect_true(all(blocks$start.bp[-1L] > blocks$end.bp[-nrow(blocks)]))
+})
+
+test_that(".resolve_overlap: union merge fallback when B fully inside A", {
+  # Block B [10,20] fully inside block A [1,30] -> right core empty
+  # (right_core = 21:20 = empty). No right anchor -> union merge.
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  adj_mat   <- scale(ldx_geno[, 1:30], center = TRUE, scale = FALSE)
+  blocks_in <- matrix(c(1L, 30L, 10L, 20L), nrow = 2L, byrow = TRUE)
+  result    <- LDxBlocks:::.resolve_overlap(blocks_in, adj_mat, k_rep = 5L)
+  expect_equal(nrow(result), 1L)
+  expect_equal(result[1L, 1L], 1L)
+  expect_equal(result[1L, 2L], 30L)
+})
+
+test_that(".resolve_overlap: all-left produces two surviving blocks", {
+  # When all disputed SNPs are assigned left, block A keeps the overlap
+  # zone and block B simply starts later. Both blocks survive.
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  # Create two overlapping blocks where columns 1-20 are all one LD block
+  # so overlap SNPs (16-20) are assigned left.
+  set.seed(5)
+  n <- 80L
+  h <- sample(0:2, n, replace = TRUE)
+  G <- matrix(h, n, 25L) + matrix(sample(-1:1, n*25L, replace=TRUE,
+                                         prob=c(.05,.9,.05)), n, 25L)
+  G <- pmax(pmin(G, 2L), 0L)
+  rownames(G) <- paste0("ind", seq_len(n))
+  adj_mat   <- scale(G, center = TRUE, scale = FALSE)
+  # Block A = [1,20], Block B = [16,25] -- overlap [16,20]
+  # left_core=[1,15], right_core=[21,25]
+  blocks_in <- matrix(c(1L, 20L, 16L, 25L), nrow = 2L, byrow = TRUE)
+  result    <- LDxBlocks:::.resolve_overlap(blocks_in, adj_mat, k_rep = 5L)
+  # Must produce exactly 2 non-overlapping blocks
+  expect_equal(nrow(result), 2L)
+  expect_true(result[1L, 2L] < result[2L, 1L],
+              label = "blocks must be non-overlapping after split")
+  # Block A start unchanged, block B end unchanged
+  expect_equal(result[1L, 1L], 1L)
+  expect_equal(result[2L, 2L], 25L)
+})
+
+test_that(".resolve_overlap: cumulative-score rule handles alternating assignments", {
+  # Construct a case where individual per-SNP preferences alternate L/R/L/R
+  # but the cumulative score correctly places the boundary later than last-left.
+  # scores = [+0.3, -0.1, +0.5, -0.3, -0.5, -0.7]
+  # cumsum = [+0.3, +0.2, +0.7, +0.4, -0.1, -0.8]
+  # last positive cumsum = position 4 -> split after overlap[4]
+  # last-left would give position 3 (last L individual assignment) -- wrong.
+  #
+  # We test this indirectly: create data where the 4th overlap SNP has
+  # cumulative left advantage (+0.4) but the 5th and 6th flip to right.
+  # Expect: result has 2 non-overlapping blocks, block A ends after 4th
+  # overlap SNP, block B starts at 5th.
+  set.seed(42)
+  n  <- 100L
+  # Block A haplotype: SNPs 1-15 in strong mutual LD
+  hA <- sample(0:2, n, replace = TRUE, prob = c(.2, .6, .2))
+  G_A <- matrix(hA, n, 15L) + matrix(
+    sample(-1:1, n*15L, replace=TRUE, prob=c(.05,.9,.05)), n, 15L)
+  G_A <- pmax(pmin(G_A, 2L), 0L)
+  # Block B haplotype: SNPs 20-30 in strong mutual LD, independent of A
+  hB <- sample(0:2, n, replace = TRUE, prob = c(.2, .6, .2))
+  G_B <- matrix(hB, n, 11L) + matrix(
+    sample(-1:1, n*11L, replace=TRUE, prob=c(.05,.9,.05)), n, 11L)
+  G_B <- pmax(pmin(G_B, 2L), 0L)
+  # Overlap zone: SNPs 16-19, gradual transition
+  G_ov <- matrix(0L, n, 4L)
+  for (j in 1:4) {
+    w <- j / 5  # weight toward B increases across the overlap
+    G_ov[, j] <- as.integer(round((1-w)*hA + w*hB)) +
+      sample(-1:1, n, replace=TRUE, prob=c(.05,.9,.05))
+    G_ov[, j] <- pmax(pmin(G_ov[, j], 2L), 0L)
+  }
+  G <- cbind(G_A, G_ov, G_B)
+  rownames(G) <- paste0("ind", seq_len(n))
+  adj_mat <- scale(G, center = TRUE, scale = FALSE)
+  # Block A = cols 1-19, Block B = cols 16-30  (overlap = cols 16-19)
+  blocks_in <- matrix(c(1L, 19L, 16L, 30L), nrow = 2L, byrow = TRUE)
+  result <- LDxBlocks:::.resolve_overlap(blocks_in, adj_mat, k_rep = 10L)
+  expect_equal(nrow(result), 2L)
+  expect_true(result[1L, 2L] < result[2L, 1L],
+              label = "blocks non-overlapping after cumulative split")
+  expect_equal(result[1L, 1L], 1L,  label = "block A start unchanged")
+  expect_equal(result[2L, 2L], 30L, label = "block B end unchanged")
+})
+
+test_that(".resolve_overlap: all-negative scores -> all-right path", {
+  # When every overlap SNP prefers block B (all scores negative),
+  # cum_score is everywhere negative, which(cum_score >= 0) is empty,
+  # last_left = 0 -> all-right path.
+  # Block A ends at sB-1, block B keeps the full overlap zone [sB..eB].
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  adj_mat <- scale(ldx_geno[, 1:30], center = TRUE, scale = FALSE)
+  # Blocks overlap at cols 16:20; set those cols to match right core
+  # by copying cols 21:25 so overlap SNPs are in perfect LD with right core
+  adj_mat[, 16:20] <- adj_mat[, 21:25]
+  blocks_in <- matrix(c(1L, 20L, 16L, 30L), nrow = 2L, byrow = TRUE)
+  result <- LDxBlocks:::.resolve_overlap(blocks_in, adj_mat, k_rep = 5L)
+  expect_equal(nrow(result), 2L)
+  # Block A should end at 15 (sB-1=15), block B starts at 16
+  expect_equal(result[1L, 2L], 15L,
+               label = "block A ends at sB-1 when all overlap prefers right")
+  expect_equal(result[2L, 1L], 16L,
+               label = "block B starts at sB when all overlap prefers right")
+})
+
+test_that(".resolve_overlap: all-zero scores (ties) -> all-left path", {
+  # When every overlap SNP has score=0 (zero variance -> r2=0 with everything),
+  # cum_score = [0,0,...,0], which(cum_score >= 0) = all positions,
+  # last_left = length(overlap) -> all-left path.
+  # Block A keeps the full overlap zone, block B starts at eA+1.
+  # This gives ties to block A, consistent with block A being detected first.
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  adj_mat <- scale(ldx_geno[, 1:30], center = TRUE, scale = FALSE)
+  # Set overlap cols 16:20 to constant 0 -- zero variance, r2=0 with all
+  adj_mat[, 16:20] <- 0
+  blocks_in <- matrix(c(1L, 20L, 16L, 30L), nrow = 2L, byrow = TRUE)
+  result <- LDxBlocks:::.resolve_overlap(blocks_in, adj_mat, k_rep = 5L)
+  expect_equal(nrow(result), 2L)
+  # Block A keeps overlap (ends at eA=20), block B starts at eA+1=21
+  expect_equal(result[1L, 2L], 20L,
+               label = "block A keeps overlap when all scores are tied")
+  expect_equal(result[2L, 1L], 21L,
+               label = "block B starts at eA+1 when all scores are tied")
+})

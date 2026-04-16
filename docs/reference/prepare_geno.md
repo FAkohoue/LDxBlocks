@@ -1,7 +1,6 @@
 # Prepare Genotype Matrix for LD Computation
 
-Central preparation function called inside
-[`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md) and
+Central preparation function called inside `Big_LD()` and
 [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md).
 Depending on `method`:
 

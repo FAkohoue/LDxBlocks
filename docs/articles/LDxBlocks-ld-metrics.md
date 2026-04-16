@@ -231,9 +231,9 @@ t_r2  <- system.time(for(i in 1:20) compute_r2(G_bench))
 t_rv2 <- system.time(for(i in 1:20) compute_rV2(Gc_bench))
 
 cat("compute_r2  (50 SNPs, 20 reps):", round(t_r2["elapsed"],  3), "s\n")
-#> compute_r2  (50 SNPs, 20 reps): 0.13 s
+#> compute_r2  (50 SNPs, 20 reps): 0.02 s
 cat("compute_rV2 (50 SNPs, 20 reps):", round(t_rv2["elapsed"], 3), "s\n")
-#> compute_rV2 (50 SNPs, 20 reps): 0.09 s
+#> compute_rV2 (50 SNPs, 20 reps): 0 s
 # Both use the same C++ kernel — times should be identical
 # The cost of rV² is entirely in prepare_geno() (GRM + Cholesky)
 ```
@@ -248,7 +248,35 @@ blocks_rv2 <- run_Big_LD_all_chr(be, method = "rV2", CLQcut = 0.70,
                                   kin_method = "chol")
 ```
 
-## 10. References
+## 10. LD decay and the parametric threshold
+
+The parametric threshold in
+`compute_ld_decay(r2_threshold = "parametric")` estimates the 95th
+percentile of r² between markers on different chromosomes (unlinked
+markers). This is conceptually identical to the kinship inflation
+demonstrated in Sections 5 and 6 above: unlinked markers should have r²
+= 0 in an ideal population; any inflation above zero is caused by
+kinship/structure.
+
+``` r
+decay <- compute_ld_decay(
+  ldx_geno, ldx_snp_info,
+  r2_threshold = "both",    # parametric + fixed 0.1
+  n_pairs = 2000L, verbose = FALSE
+)
+# High critical_r2_param -> structured population -> use method = "rV2"
+cat("Parametric threshold:", round(decay$critical_r2_param, 4), "\n")
+cat("Standard 0.1 threshold: fixed\n")
+cat("Decay distances (kb):\n")
+print(decay$decay_dist[, c("CHR", "decay_dist_kb", "censored")])
+```
+
+A high parametric threshold (e.g. \> 0.05) is direct evidence that
+`method = "rV2"` should be used for block detection – the same kinship
+inflation that this vignette demonstrates algebraically is visible in
+the distribution of unlinked-marker r² values.
+
+## 11. References
 
 - Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype
   block detection method for dense genome sequencing data based on

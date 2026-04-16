@@ -30,7 +30,7 @@
 #' @return Symmetric p x p numeric matrix, diagonal 0, values in [0, 1].
 #'
 #' @seealso \code{\link{compute_r2}}, \code{\link{compute_rV2}},
-#'   \code{\link{prepare_geno}}, \code{\link{Big_LD}}
+#'   \code{\link{prepare_geno}}, \code{Big_LD()}
 #'
 #' @examples
 #' \dontrun{
@@ -153,7 +153,7 @@ get_V_inv_sqrt <- function(V, method = c("chol", "eigen")) {
 #' Prepare Genotype Matrix for LD Computation
 #'
 #' @description
-#' Central preparation function called inside \code{\link{Big_LD}} and
+#' Central preparation function called inside \code{Big_LD()} and
 #' \code{\link{run_Big_LD_all_chr}}. Depending on \code{method}:
 #'
 #' \describe{

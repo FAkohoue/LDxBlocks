@@ -21,11 +21,15 @@ col_r2_cpp <- function(X, query_col) {
     .Call(`_LDxBlocks_col_r2_cpp`, X, query_col)
 }
 
-compute_r2_sparse_cpp <- function(X, bp, max_bp_dist, threshold = 0.0) {
-    .Call(`_LDxBlocks_compute_r2_sparse_cpp`, X, bp, max_bp_dist, threshold)
+compute_r2_sparse_cpp <- function(X, bp, max_bp_dist, threshold = 0.0, n_threads = 1L) {
+    .Call(`_LDxBlocks_compute_r2_sparse_cpp`, X, bp, max_bp_dist, threshold, n_threads)
 }
 
 boundary_scan_cpp <- function(X, start, end, half_w, threshold) {
     .Call(`_LDxBlocks_boundary_scan_cpp`, X, start, end, half_w, threshold)
+}
+
+build_hap_strings_cpp <- function(geno_block, na_char = ".") {
+    .Call(`_LDxBlocks_build_hap_strings_cpp`, geno_block, na_char)
 }
 

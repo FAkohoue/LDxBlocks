@@ -27,7 +27,7 @@ Named list:
   \item{V_inv_sqrt}{n x n whitening matrix, or \code{NULL} for r^2.}
 }
 \description{
-Central preparation function called inside \code{\link{Big_LD}} and
+Central preparation function called inside \code{Big_LD()} and
 \code{\link{run_Big_LD_all_chr}}. Depending on \code{method}:
 
 \describe{

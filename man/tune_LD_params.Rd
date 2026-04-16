@@ -66,7 +66,7 @@ A named list:
   }
 }
 \description{
-Performs a grid search over \code{\link{Big_LD}} parameters and selects the
+Performs a grid search over \code{Big_LD()} parameters and selects the
 combination that minimises, in order of priority:
 \enumerate{
   \item Unassigned GWAS markers (markers not falling in any block).
@@ -92,5 +92,5 @@ blocks in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
 \doi{10.3389/fpls.2023.1168547}
 }
 \seealso{
-\code{\link{run_Big_LD_all_chr}}, \code{\link{Big_LD}}
+\code{\link{run_Big_LD_all_chr}}, \code{Big_LD()}
 }

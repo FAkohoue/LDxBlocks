@@ -67,7 +67,8 @@
 <span>  <span class="va">snp_info</span>,</span>
 <span>  p_threshold <span class="op">=</span> <span class="fl">5e-08</span>,</span>
 <span>  trait_col <span class="op">=</span> <span class="st">"trait"</span>,</span>
-<span>  min_snps <span class="op">=</span> <span class="fl">3L</span></span>
+<span>  min_snps <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>  ld_decay <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -101,6 +102,16 @@
 
 <dt id="arg-min-snps">min_snps<a class="anchor" aria-label="anchor" href="#arg-min-snps"></a></dt>
 <dd><p>Minimum SNPs per block. Default <code>3L</code>.</p></dd>
+
+
+<dt id="arg-ld-decay">ld_decay<a class="anchor" aria-label="anchor" href="#arg-ld-decay"></a></dt>
+<dd><p>Optional <code>LDxBlocks_decay</code> object from
+<code><a href="compute_ld_decay.html">compute_ld_decay</a></code>, or a data frame with columns
+<code>CHR</code> and <code>decay_dist_bp</code>. When supplied, candidate
+gene windows are extended by the chromosome-specific decay distance
+on both sides of each lead SNP position, adding columns
+<code>candidate_region_start</code>, <code>candidate_region_end</code>, and
+<code>candidate_region_size_kb</code> to the output. Default <code>NULL</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

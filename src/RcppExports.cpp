@@ -74,8 +74,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // compute_r2_sparse_cpp
-List compute_r2_sparse_cpp(const arma::mat& X, const arma::ivec& bp, int max_bp_dist, double threshold);
-RcppExport SEXP _LDxBlocks_compute_r2_sparse_cpp(SEXP XSEXP, SEXP bpSEXP, SEXP max_bp_distSEXP, SEXP thresholdSEXP) {
+List compute_r2_sparse_cpp(const arma::mat& X, const arma::ivec& bp, int max_bp_dist, double threshold, int n_threads);
+RcppExport SEXP _LDxBlocks_compute_r2_sparse_cpp(SEXP XSEXP, SEXP bpSEXP, SEXP max_bp_distSEXP, SEXP thresholdSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -83,7 +83,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::ivec& >::type bp(bpSEXP);
     Rcpp::traits::input_parameter< int >::type max_bp_dist(max_bp_distSEXP);
     Rcpp::traits::input_parameter< double >::type threshold(thresholdSEXP);
-    rcpp_result_gen = Rcpp::wrap(compute_r2_sparse_cpp(X, bp, max_bp_dist, threshold));
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(compute_r2_sparse_cpp(X, bp, max_bp_dist, threshold, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -102,6 +103,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// build_hap_strings_cpp
+Rcpp::CharacterVector build_hap_strings_cpp(Rcpp::IntegerMatrix geno_block, std::string na_char);
+RcppExport SEXP _LDxBlocks_build_hap_strings_cpp(SEXP geno_blockSEXP, SEXP na_charSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerMatrix >::type geno_block(geno_blockSEXP);
+    Rcpp::traits::input_parameter< std::string >::type na_char(na_charSEXP);
+    rcpp_result_gen = Rcpp::wrap(build_hap_strings_cpp(geno_block, na_char));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_LDxBlocks_compute_r2_cpp", (DL_FUNC) &_LDxBlocks_compute_r2_cpp, 3},
@@ -109,8 +122,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_LDxBlocks_maf_filter_cpp", (DL_FUNC) &_LDxBlocks_maf_filter_cpp, 2},
     {"_LDxBlocks_build_adj_matrix_cpp", (DL_FUNC) &_LDxBlocks_build_adj_matrix_cpp, 2},
     {"_LDxBlocks_col_r2_cpp", (DL_FUNC) &_LDxBlocks_col_r2_cpp, 2},
-    {"_LDxBlocks_compute_r2_sparse_cpp", (DL_FUNC) &_LDxBlocks_compute_r2_sparse_cpp, 4},
+    {"_LDxBlocks_compute_r2_sparse_cpp", (DL_FUNC) &_LDxBlocks_compute_r2_sparse_cpp, 5},
     {"_LDxBlocks_boundary_scan_cpp", (DL_FUNC) &_LDxBlocks_boundary_scan_cpp, 5},
+    {"_LDxBlocks_build_hap_strings_cpp", (DL_FUNC) &_LDxBlocks_build_hap_strings_cpp, 2},
     {NULL, NULL, 0}
 };
 

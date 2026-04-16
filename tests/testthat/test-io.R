@@ -396,3 +396,138 @@ test_that("summary.LDxBlocks_backend shows per-chromosome SNP counts", {
   expect_output(summary(be), "Chromosomes")
   close_backend(be)
 })
+
+# ── bigmemory backend ─────────────────────────────────────────────────────────
+
+test_that("read_geno_bigmemory: accepts file path directly (no snp_info needed)", {
+  skip_if_not_installed("bigmemory")
+  G    <- make_tiny()
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000L,by=2000L,length.out=8L),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  tmp_csv <- tempfile(fileext=".csv")
+  write_numeric_csv(G, info, tmp_csv)
+  on.exit(unlink(tmp_csv))
+
+  # File path route: read_geno_bigmemory() opens the CSV internally
+  be_bm <- read_geno_bigmemory(
+    source      = tmp_csv,
+    backingfile = tempfile("ldxbm_io_"),
+    backingpath = tempdir(),
+    type        = "char",
+    verbose     = FALSE
+  )
+  on.exit(close_backend(be_bm), add = TRUE)
+
+  expect_s3_class(be_bm, "LDxBlocks_backend")
+  expect_equal(be_bm$type, "bigmemory")
+  expect_equal(be_bm$n_snps,    8L)
+  expect_equal(be_bm$n_samples, 12L)
+})
+
+test_that("read_geno_bigmemory: read_chunk values match original (type='char')", {
+  skip_if_not_installed("bigmemory")
+  G    <- make_tiny()
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000L,by=2000L,length.out=8L),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  be_mat <- read_geno(G, format="matrix", snp_info=info)
+  be_bm  <- read_geno_bigmemory(
+    source      = be_mat,
+    backingfile = tempfile("ldxbm_vals_"),
+    backingpath = tempdir(),
+    type        = "char",
+    verbose     = FALSE
+  )
+  on.exit({ close_backend(be_bm); close_backend(be_mat) })
+
+  chunk_mat <- read_chunk(be_mat, 1:8)
+  chunk_bm  <- read_chunk(be_bm,  1:8)
+  # Values should match (integer matrix from char big.matrix)
+  expect_equal(chunk_bm[order(rownames(chunk_bm)), ],
+               chunk_mat[order(rownames(chunk_mat)), ],
+               ignore_attr = TRUE)
+})
+
+test_that("read_geno_bigmemory: NA genotypes correctly restored from char -128", {
+  skip_if_not_installed("bigmemory")
+  G       <- make_tiny()
+  G[3, 5] <- NA_integer_   # inject NA at individual 3, SNP 5
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000L,by=2000L,length.out=8L),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  be_mat <- read_geno(G, format="matrix", snp_info=info)
+  be_bm  <- read_geno_bigmemory(
+    source      = be_mat,
+    backingfile = tempfile("ldxbm_na_"),
+    backingpath = tempdir(),
+    type        = "char",
+    verbose     = FALSE
+  )
+  on.exit({ close_backend(be_bm); close_backend(be_mat) })
+
+  chunk <- read_chunk(be_bm, 5L)
+  # Row for individual 3 should be NA
+  ind3_row <- which(rownames(chunk) == "s3")
+  expect_true(is.na(chunk[ind3_row, 1]))
+  # Other individuals at SNP 5 should be non-NA (0, 1, or 2)
+  expect_false(any(is.na(chunk[-ind3_row, ])))
+})
+
+test_that("read_geno_bigmemory: type='double' produces correct numeric values", {
+  skip_if_not_installed("bigmemory")
+  G    <- make_tiny(6L, 4L)
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000L,by=1000L,length.out=4L),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  be_mat <- read_geno(G, format="matrix", snp_info=info)
+  be_bm  <- read_geno_bigmemory(
+    source      = be_mat,
+    backingfile = tempfile("ldxbm_dbl_"),
+    backingpath = tempdir(),
+    type        = "double",
+    verbose     = FALSE
+  )
+  on.exit({ close_backend(be_bm); close_backend(be_mat) })
+
+  chunk <- read_chunk(be_bm, 1:4)
+  expect_equal(dim(chunk), c(6L, 4L))
+  # All values should be 0, 1, or 2 (no spurious -128 or other artefacts)
+  vals <- as.vector(chunk[!is.na(chunk)])
+  expect_true(all(vals %in% c(0, 1, 2)))
+})
+
+test_that("read_geno_bigmemory: reattach from .desc file works", {
+  skip_if_not_installed("bigmemory")
+  G    <- make_tiny(6L, 4L)
+  info <- data.frame(SNP=colnames(G), CHR="1",
+                     POS=seq(1000L,by=1000L,length.out=4L),
+                     REF="A", ALT="T", stringsAsFactors=FALSE)
+  be_mat  <- read_geno(G, format="matrix", snp_info=info)
+  bm_stem <- tempfile("ldxbm_reattach_")
+  be_bm1  <- read_geno_bigmemory(
+    source      = be_mat,
+    backingfile = basename(bm_stem),
+    backingpath = dirname(bm_stem),
+    type        = "char",
+    verbose     = FALSE
+  )
+  close_backend(be_bm1)
+  close_backend(be_mat)
+
+  # Reattach using the .desc file path
+  desc_path <- paste0(bm_stem, ".desc")
+  be_bm2 <- read_geno_bigmemory(
+    source      = desc_path,
+    snp_info    = info,            # required on reattach
+    backingfile = basename(bm_stem),
+    backingpath = dirname(bm_stem),
+    verbose     = FALSE
+  )
+  on.exit(close_backend(be_bm2))
+
+  expect_s3_class(be_bm2, "LDxBlocks_backend")
+  expect_equal(be_bm2$n_snps, 4L)
+  chunk <- read_chunk(be_bm2, 1:4)
+  expect_equal(dim(chunk), c(6L, 4L))
+})

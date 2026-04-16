@@ -25,9 +25,8 @@ multi-format genotype I/O.
 
 1.  Read genotype data:
     [`read_geno`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
-    – auto-detects CSV, HapMap, VCF, GDS, BED, or plain matrix. HapMap,
-    VCF, GDS, BED, or plain matrix. For WGS panels where peak RAM is a
-    concern, use
+    – auto-detects CSV, HapMap, VCF, GDS, BED, or plain matrix. For WGS
+    panels where peak RAM is a concern, use
     [`read_geno_bigmemory`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno_bigmemory.md)
     to build a memory-mapped store (requires bigmemory).
 
@@ -49,10 +48,17 @@ multi-format genotype I/O.
 7.  Build prediction feature matrix:
     [`build_haplotype_feature_matrix`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md).
 
-8.  Map GWAS hits to QTL regions:
+8.  Compute LD decay and chromosome-specific decay distances:
+    [`compute_ld_decay`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md).
+    Provides the critical r\\^2\\ threshold (parametric: 95th percentile
+    of unlinked-marker r\\^2\\) and per-chromosome decay distances for
+    candidate gene windows.
+
+9.  Map GWAS hits to QTL regions (LD-aware windows when `ld_decay` is
+    supplied):
     [`define_qtl_regions`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md).
 
-9.  Genomic prediction (Tong et al. 2024/2025):
+10. Genomic prediction (Tong et al. 2024/2025):
     [`run_haplotype_prediction`](https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_prediction.md)
     – full pipeline from BLUEs to block importance; or step-by-step via
     [`compute_haplotype_grm`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_grm.md),
@@ -60,12 +66,12 @@ multi-format genotype I/O.
     [`compute_local_gebv`](https://FAkohoue.github.io/LDxBlocks/reference/compute_local_gebv.md),
     [`rank_haplotype_blocks`](https://FAkohoue.github.io/LDxBlocks/reference/rank_haplotype_blocks.md).
 
-10. Write outputs:
+11. Write outputs:
     [`write_haplotype_numeric`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.md),
     [`write_haplotype_character`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_character.md),
     [`write_haplotype_diversity`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_diversity.md).
 
-11. Or run everything at once:
+12. Or run everything at once:
     [`run_ldx_pipeline`](https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.md).
 
 ## Example data
@@ -141,6 +147,16 @@ Traag VA, Waltman L, van Eck NJ (2019). From Louvain to Leiden:
 guaranteeing well-connected communities. *Scientific Reports*
 **9**:5233.
 [doi:10.1038/s41598-019-41695-z](https://doi.org/10.1038/s41598-019-41695-z)
+
+Hill WG, Weir BS (1988). Variances and covariances of squared linkage
+disequilibria in finite populations. *Theoretical Population Biology*
+**33**(1):54-78.
+[doi:10.1016/0040-5809(88)90004-4](https://doi.org/10.1016/0040-5809%2888%2990004-4)
+
+Remington DL et al. (2001). Structure of linkage disequilibrium and
+phenotypic associations in the maize genome. *PNAS*
+**98**(20):11479-11484.
+[doi:10.1073/pnas.201394398](https://doi.org/10.1073/pnas.201394398)
 
 ## See also
 

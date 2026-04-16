@@ -205,11 +205,11 @@ extract_haplotypes <- function(geno, snp_info, blocks,
         blk_idx <- which(chr_si$POS >= sb & chr_si$POS <= eb)
         if (length(blk_idx) < min_snps) next
         bid <- paste0("block_",cb,"_",sb,"_",eb)
-        hs <- vapply(seq_len(nrow(chr_geno)), function(i) {
-          v <- as.character(chr_geno[i, blk_idx])
-          v[is.na(chr_geno[i, blk_idx])] <- na_char
-          paste(v, collapse="")
-        }, character(1L))
+        # Build haplotype strings via C++ -- replaces vapply() R loop
+        # (17,078 blocks x 204 ind = 3.5M R calls -> 1 C++ call per block)
+        blk_mat <- chr_geno[, blk_idx, drop = FALSE]
+        blk_int <- matrix(as.integer(blk_mat), nrow = nrow(blk_mat))
+        hs      <- build_hap_strings_cpp(blk_int, na_char)
         names(hs) <- iids
         res[[bid]] <- hs
         bi <- rbind(bi, data.frame(block_id=bid, CHR=cb,
@@ -247,16 +247,15 @@ extract_haplotypes <- function(geno, snp_info, blocks,
     if (length(ci)<min_snps) next
     bid <- paste0("block_",cb,"_",sb,"_",eb)
     if (isp) {
-      hs <- vapply(seq_len(nrow(gm)), function(i) {
-        v1 <- as.character(h1m[i,ci]); v1[is.na(h1m[i,ci])] <- na_char
-        v2 <- as.character(h2m[i,ci]); v2[is.na(h2m[i,ci])] <- na_char
-        paste0(paste(v1,collapse=""),"|",paste(v2,collapse=""))
-      }, character(1L))
+      h1_int <- matrix(as.integer(h1m[, ci, drop = FALSE]), nrow = nrow(h1m))
+      h2_int <- matrix(as.integer(h2m[, ci, drop = FALSE]), nrow = nrow(h2m))
+      s1 <- build_hap_strings_cpp(h1_int, na_char)
+      s2 <- build_hap_strings_cpp(h2_int, na_char)
+      hs <- paste0(s1, "|", s2)
     } else {
-      hs <- vapply(seq_len(nrow(gm)), function(i) {
-        v <- as.character(gm[i,ci]); v[is.na(gm[i,ci])] <- na_char
-        paste(v,collapse="")
-      }, character(1L))
+      blk_int <- matrix(as.integer(gm[, ci, drop = FALSE]),
+                        nrow = nrow(gm))
+      hs <- build_hap_strings_cpp(blk_int, na_char)
     }
     names(hs) <- iids; res[[bid]] <- hs
     bi <- rbind(bi, data.frame(block_id=bid,CHR=cb,start_bp=as.integer(sb),
@@ -359,6 +358,13 @@ compute_haplotype_diversity <- function(haplotypes, missing_string=".") {
 #' @param trait_col Trait column name in \code{gwas_results}. Default
 #'   \code{"trait"}.
 #' @param min_snps Minimum SNPs per block. Default \code{3L}.
+#' @param ld_decay Optional \code{LDxBlocks_decay} object from
+#'   \code{\link{compute_ld_decay}}, or a data frame with columns
+#'   \code{CHR} and \code{decay_dist_bp}. When supplied, candidate
+#'   gene windows are extended by the chromosome-specific decay distance
+#'   on both sides of each lead SNP position, adding columns
+#'   \code{candidate_region_start}, \code{candidate_region_end}, and
+#'   \code{candidate_region_size_kb} to the output. Default \code{NULL}.
 #'
 #' @section Block effect estimation:
 #' When multiple SNPs within a block are GWAS-significant, their marginal
@@ -401,7 +407,8 @@ compute_haplotype_diversity <- function(haplotypes, missing_string=".") {
 #' \emph{Nature Genetics} \strong{44}(4):369-375. \doi{10.1038/ng.2213}
 #' @export
 define_qtl_regions <- function(gwas_results, blocks, snp_info,
-                               p_threshold=5e-8, trait_col="trait", min_snps=3L) {
+                               p_threshold = 5e-8, trait_col = "trait",
+                               min_snps = 3L, ld_decay = NULL) {
   # Accept "Marker" as an alias for "SNP" (OptSLDP / GWAS convention)
   if (!"SNP" %in% names(gwas_results) && "Marker" %in% names(gwas_results))
     gwas_results$SNP <- gwas_results$Marker
@@ -414,13 +421,57 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
   if (!nrow(gwas_results)){message("[define_qtl_regions] No significant markers.");return(data.frame())}
   if (!trait_col%in%names(gwas_results)) gwas_results[[trait_col]] <- "trait"
   rows <- list()
+  # Prepare ld_decay lookup: named vector CHR -> decay_dist_bp
+  # Accepts: LDxBlocks_decay object (from compute_ld_decay()) or
+  #          data.frame with columns CHR and decay_dist_bp (or decay_bp).
+  decay_map <- NULL
+  if (!is.null(ld_decay)) {
+    # Unwrap LDxBlocks_decay object
+    if (inherits(ld_decay, "LDxBlocks_decay")) {
+      if (is.null(ld_decay$decay_dist))
+        stop("ld_decay$decay_dist is NULL -- rerun compute_ld_decay() ",
+             "with a non-NULL r2_threshold.", call. = FALSE)
+      ld_decay <- ld_decay$decay_dist
+    }
+    # Accept decay_dist_bp or legacy decay_bp column name
+    bp_col <- if ("decay_dist_bp" %in% names(ld_decay)) "decay_dist_bp"
+    else if ("decay_bp" %in% names(ld_decay)) "decay_bp"
+    else stop("ld_decay must have a 'decay_dist_bp' column ",
+              "(output of compute_ld_decay()).", call. = FALSE)
+    if (!"CHR" %in% names(ld_decay))
+      stop("ld_decay must have a 'CHR' column.", call. = FALSE)
+    decay_map <- stats::setNames(ld_decay[[bp_col]], ld_decay$CHR)
+    # Add genome-wide median as fallback for chromosomes not in decay_dist
+    if (!"GENOME" %in% names(decay_map))
+      decay_map["GENOME"] <- stats::median(decay_map, na.rm = TRUE)
+  }
+
   for (b in seq_len(nrow(blocks))) {
     blk <- blocks[b,]; ch <- as.character(blk$CHR)
     sb <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
-    hits <- gwas_results[gwas_results$CHR==ch&gwas_results$POS>=sb&gwas_results$POS<=eb,,drop=FALSE]
+
+    # Extend search window by LD decay distance if supplied.
+    # QTL window = block boundaries extended by the chromosome-specific
+    # LD decay distance (or genome-wide if that chromosome is absent).
+    # This captures candidate genes in LD with the GWAS hit that fall
+    # outside the block boundary itself.
+    if (!is.null(decay_map)) {
+      ext <- if (ch %in% names(decay_map)) decay_map[[ch]]
+      else if ("GENOME" %in% names(decay_map)) decay_map[["GENOME"]]
+      else 0L
+      sb_ext <- max(0, sb - ext)
+      eb_ext <- eb + ext
+    } else {
+      sb_ext <- sb; eb_ext <- eb
+    }
+
+    hits <- gwas_results[
+      gwas_results$CHR == ch &
+        gwas_results$POS >= sb_ext &
+        gwas_results$POS <= eb_ext, , drop = FALSE]
     if (!nrow(hits)) next
-    nb <- sum(snp_info$CHR==ch&snp_info$POS>=sb&snp_info$POS<=eb)
-    if (nb<min_snps) next
+    nb <- sum(snp_info$CHR == ch & snp_info$POS >= sb & snp_info$POS <= eb)
+    if (nb < min_snps) next
     traits <- unique(hits[[trait_col]])
     li <- if("P"%in%names(hits)) which.min(hits$P) else 1L
     has_beta <- "BETA" %in% names(hits)
@@ -429,10 +480,25 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
       CHR           = ch,
       start_bp      = as.integer(sb),
       end_bp        = as.integer(eb),
+      search_start  = as.integer(if (!is.null(decay_map)) sb_ext else sb),
+      search_end    = as.integer(if (!is.null(decay_map)) eb_ext else eb),
+      ld_decay_bp   = if (!is.null(decay_map)) as.integer(
+        if (ch %in% names(decay_map)) decay_map[[ch]]
+        else if ("GENOME" %in% names(decay_map)) decay_map[["GENOME"]]
+        else 0L) else NA_integer_,
       n_snps_block  = nb,
       n_sig_markers = nrow(hits),
       lead_snp      = hits$SNP[li],
       lead_p        = if ("P" %in% names(hits)) hits$P[li] else NA_real_,
+      candidate_region_start = if (!is.null(decay_map)) as.integer(max(0, hits$POS[li] - (
+        if (ch %in% names(decay_map)) decay_map[[ch]]
+        else decay_map[["GENOME"]]))) else NA_integer_,
+      candidate_region_end   = if (!is.null(decay_map)) as.integer(hits$POS[li] + (
+        if (ch %in% names(decay_map)) decay_map[[ch]]
+        else decay_map[["GENOME"]])) else NA_integer_,
+      candidate_region_size_kb = if (!is.null(decay_map)) round(2 * (
+        if (ch %in% names(decay_map)) decay_map[[ch]]
+        else decay_map[["GENOME"]]) / 1000, 1) else NA_real_,
       lead_beta     = if (has_beta) hits$BETA[li] else NA_real_,
       sig_snps      = paste(hits$SNP, collapse = ";"),
       sig_betas     = if (has_beta) paste(round(hits$BETA, 6), collapse = ";") else NA_character_,

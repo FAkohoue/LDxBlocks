@@ -76,10 +76,12 @@ reference:
       - read_geno_bigmemory
   - title: "LD computation"
     desc: >
-      LD matrix computation: standard r2 and kinship-adjusted rV2.
+      LD matrix computation, decay analysis, and threshold estimation.
     contents:
       - compute_r2
       - compute_rV2
+      - compute_ld_decay
+      - plot_ld_decay
       - prepare_geno
       - get_V_inv_sqrt
   - title: "Phasing"
@@ -130,7 +132,7 @@ reference:
       - integrate_gwas_haplotypes
       - rank_haplotype_blocks
   - title: "Utilities"
-    desc: Summary statistics and visualisation for block tables.
+    desc: Summary statistics and visualisation.
     contents:
       - summarise_blocks
       - plot_ld_blocks

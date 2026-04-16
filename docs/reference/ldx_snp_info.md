@@ -62,4 +62,25 @@ table(ldx_snp_info$CHR)   # 80 80 70
 #> 
 #>  1  2  3 
 #> 80 80 70 
+
+# \donttest{
+# Compute LD decay and chromosome-specific decay distances
+data(ldx_geno)
+decay <- compute_ld_decay(
+  geno         = ldx_geno,
+  snp_info     = ldx_snp_info,
+  sampling     = "random",
+  r2_threshold = "both",
+  n_pairs      = 3000L,
+  verbose      = FALSE
+)
+decay$critical_r2_param   # background LD level
+#>        95% 
+#> 0.02851638 
+decay$decay_dist          # per-chromosome decay distances (kb)
+#>   CHR decay_dist_bp decay_dist_kb threshold_used r2_col_used censored
+#> 1   1         47921         47.92     0.02851638    r2_loess    FALSE
+#> 2   2         53601         53.60     0.02851638    r2_loess    FALSE
+#> 3   3         44062         44.06     0.02851638    r2_loess    FALSE
+# }
 ```

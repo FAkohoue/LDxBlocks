@@ -19,7 +19,6 @@
 #' @section Pipeline overview:
 #' \enumerate{
 #'   \item Read genotype data: \code{\link{read_geno}} -- auto-detects CSV,
-#'     HapMap, VCF, GDS, BED, or plain matrix.
 #'     HapMap, VCF, GDS, BED, or plain matrix. For WGS panels where peak RAM
 #'     is a concern, use \code{\link{read_geno_bigmemory}} to build a
 #'     memory-mapped store (requires \pkg{bigmemory}).
@@ -31,7 +30,12 @@
 #'   \item Compute diversity metrics: \code{\link{compute_haplotype_diversity}}.
 #'   \item Build prediction feature matrix:
 #'     \code{\link{build_haplotype_feature_matrix}}.
-#'   \item Map GWAS hits to QTL regions: \code{\link{define_qtl_regions}}.
+#'   \item Compute LD decay and chromosome-specific decay distances:
+#'     \code{\link{compute_ld_decay}}. Provides the critical r\eqn{^2}
+#'     threshold (parametric: 95th percentile of unlinked-marker r\eqn{^2})
+#'     and per-chromosome decay distances for candidate gene windows.
+#'   \item Map GWAS hits to QTL regions (LD-aware windows when
+#'     \code{ld_decay} is supplied): \code{\link{define_qtl_regions}}.
 #'   \item Genomic prediction (Tong et al. 2024/2025):
 #'     \code{\link{run_haplotype_prediction}} -- full pipeline from BLUEs to
 #'     block importance; or step-by-step via
@@ -102,6 +106,14 @@
 #' Traag VA, Waltman L, van Eck NJ (2019). From Louvain to Leiden: guaranteeing
 #' well-connected communities. \emph{Scientific Reports} \strong{9}:5233.
 #' \doi{10.1038/s41598-019-41695-z}
+#'
+#' Hill WG, Weir BS (1988). Variances and covariances of squared linkage
+#' disequilibria in finite populations. \emph{Theoretical Population Biology}
+#' \strong{33}(1):54-78. \doi{10.1016/0040-5809(88)90004-4}
+#'
+#' Remington DL et al. (2001). Structure of linkage disequilibrium and
+#' phenotypic associations in the maize genome. \emph{PNAS}
+#' \strong{98}(20):11479-11484. \doi{10.1073/pnas.201394398}
 #' @docType package
 #' @name LDxBlocks-package
 #' @aliases LDxBlocks
@@ -113,7 +125,8 @@
 #' @importFrom stats cor median quantile na.omit setNames var
 #' @importFrom igraph graph_from_adjacency_matrix coreness max_cliques cliques components
 #' @importFrom igraph cluster_louvain cluster_leiden membership as_edgelist
-#' @importFrom utils globalVariables read.table
+#' @importFrom igraph induced_subgraph is_connected
+#' @importFrom utils globalVariables head read.table tail
 "_PACKAGE"
 
 utils::globalVariables(c(
@@ -121,5 +134,6 @@ utils::globalVariables(c(
   "block_idx", ".N", "block_name", "length_snps", "length_bp",
   "n_unassigned", "n_forced", "n_blocks", "penalty_bp",
   "REF", "ALT", "SNP", "POS", "..samp_cols", ".",
-  "start_x", "end_x", "chr_int"
+  "start_x", "end_x", "chr_int",
+  "dist_kb", "r2_plot", "r2"
 ))

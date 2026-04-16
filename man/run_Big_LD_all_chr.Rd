@@ -36,12 +36,12 @@ spanning all chromosomes.}
 \item{snp_info}{Data frame with columns \code{CHR}, \code{SNP}, \code{POS}.
 Column order is flexible; columns are matched by name.}
 
-\item{CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare, checkLargest, CLQmode, kin_method, split, digits, seed, verbose}{Forwarded to \code{\link{Big_LD}}. See that function's documentation for
+\item{CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare, checkLargest, CLQmode, kin_method, split, digits, seed, verbose}{Forwarded to \code{Big_LD()}. See that function's documentation for
 details.}
 
 \item{method}{Character. LD metric: \code{"r2"} (default, standard squared
 Pearson correlation) or \code{"rV2"} (kinship-adjusted). See
-\code{\link{Big_LD}} for details.}
+\code{Big_LD()} for details.}
 
 \item{n_threads}{Integer. Number of OpenMP threads for the C++ LD kernel.
 Default \code{1L}. Increase for multi-core systems.}
@@ -49,7 +49,7 @@ Default \code{1L}. Increase for multi-core systems.}
 \item{singleton_as_block}{Logical. If \code{TRUE}, SNPs that pass MAF
 filtering but are not assigned to any clique are returned as single-SNP
 blocks (\code{start == end}, \code{length_bp == 1}). Default \code{FALSE}.
-See \code{\link{Big_LD}} for details.}
+See \code{Big_LD()} for details.}
 
 \item{min_snps_chr}{Integer. Chromosomes with fewer SNPs than this after
 MAF filtering are skipped. Default \code{10L}. Increase to skip small
@@ -83,7 +83,7 @@ A \code{data.frame} with columns:
   Rows are sorted by \code{CHR} then \code{start.bp}.
 }
 \description{
-Applies \code{\link{Big_LD}} chromosome by chromosome, collects results and
+Applies \code{Big_LD()} chromosome by chromosome, collects results and
 returns a single tidy data frame annotated with chromosome and block length.
 This is the recommended entry point for genome-wide analyses.
 }
@@ -104,6 +104,6 @@ summarise_blocks(blocks)
 
 }
 \seealso{
-\code{\link{Big_LD}}, \code{\link{tune_LD_params}},
+\code{Big_LD()}, \code{\link{tune_LD_params}},
   \code{\link{extract_haplotypes}}
 }

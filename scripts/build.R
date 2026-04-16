@@ -80,9 +80,11 @@ list.files("pkgdown/favicon")
 # 1. Remove the installed package so no old DLL can be loaded by mistake.
 remove.packages("LDxBlocks")
 
+unlink(file.path(.libPaths()[1], "00LOCK-LDxBlocks"), recursive = TRUE)
+
 # 2. Delete the compiled DLL from the source tree (src/*.so / src/*.dll).
 #    Do this BEFORE the restart so there is nothing to unload conflicts with.
-devtools::clean_dll()
+#devtools::clean_dll()
 
 # 3. Restart R.  All loaded DLLs are released, file locks are cleared.
 .rs.restartR()
@@ -150,7 +152,6 @@ pkgdown::build_site()
 
 # 10. Build package
 devtools::build()
-
 
 
 

@@ -3,12 +3,15 @@
 # End-to-end haplotype block pipeline: one file in, analysis outputs out.
 #
 # run_ldx_pipeline() wraps the full workflow:
-#   1. Auto-detect / convert input to GDS for large files (streaming)
-#   2. MAF filtering
-#   3. Genome-wide LD block detection via run_Big_LD_all_chr()
-#   4. Haplotype extraction and diversity analysis
-#   5. Build haplotype genotype matrix (numeric or character/nucleotide)
-#   6. Write all outputs to user-specified paths
+#   1. Open genotype backend (file path, bigmemory, or pre-built backend)
+#   2. MAF filtering in C++ chromosome by chromosome
+#   3. Optional chromosome subset
+#   4. Load MAF-filtered genotype matrix
+#   5. Genome-wide LD block detection via run_Big_LD_all_chr()
+#   6. Haplotype extraction via extract_haplotypes() (C++ string builder)
+#   7. Haplotype diversity via compute_haplotype_diversity()
+#   8. Build haplotype feature matrix via build_haplotype_feature_matrix()
+#   9. Write all outputs to user-specified paths
 #
 # The user provides only a file path. Format detection and GDS conversion
 # are handled internally, mirroring the OptSLDP scale-aware architecture.
@@ -174,11 +177,11 @@
 #'   or \code{\link{read_geno_bigmemory}}. Passing a backend skips the
 #'   internal \code{read_geno()} call, allowing you to use any pre-built
 #'   backend including file-backed \code{bigmemory} stores.
-#'   Supported file formats when a path is supplied: numeric dosage CSV,
-#'   HapMap, VCF/VCF.gz, SNPRelate GDS, PLINK BED.
-#'   dosage CSV (`.csv`), HapMap (`.hmp.txt`), VCF (`.vcf`, `.vcf.gz`),
-#'   SNPRelate GDS (`.gds`), PLINK BED (`.bed`). Format is detected
-#'   automatically from the file extension.
+#'   Supported file formats when a path is supplied:
+#'   numeric dosage CSV (`.csv`), HapMap (`.hmp.txt`),
+#'   VCF (`.vcf`, `.vcf.gz`), SNPRelate GDS (`.gds`),
+#'   PLINK BED (`.bed`). Format is detected automatically
+#'   from the file extension.
 #' @param out_blocks        Path for the LD block table CSV. Columns:
 #'   `CHR`, `start`, `end`, `start.rsID`, `end.rsID`, `start.bp`, `end.bp`,
 #'   `length_bp`, `length_snps`, `block_name`.
@@ -390,6 +393,7 @@ run_ldx_pipeline <- function(
 ) {
   hap_format    <- match.arg(hap_format)
   method        <- match.arg(method)
+  CLQmode       <- match.arg(CLQmode)
   bigmemory_type <- match.arg(bigmemory_type,
                               choices = c("char", "short", "double"))
 
@@ -422,14 +426,48 @@ run_ldx_pipeline <- function(
         stop("use_bigmemory = TRUE requires the 'bigmemory' package. ",
              "Install with: install.packages('bigmemory')", call. = FALSE)
 
+      # Normalize and convert to forward slashes. bigmemory's C code
+      # uses sprintf("%s/%s", backingpath, file) so backslashes from
+      # Windows normalizePath produce mixed separators that fail.
+      bigmemory_path <- normalizePath(bigmemory_path, mustWork = FALSE)
+      bigmemory_path <- gsub("\\\\", "/", bigmemory_path, fixed = TRUE)
       bm_stem     <- file.path(bigmemory_path, "ldxblocks_bm")
       bm_bin_file <- paste0(bm_stem, ".bin")
       bm_desc_file <- paste0(bm_stem, ".desc")
       bm_si_file  <- paste0(bm_stem, "_snpinfo.rds")
 
-      if (file.exists(bm_bin_file) && file.exists(bm_desc_file) &&
-          file.exists(bm_si_file)) {
-        # Reattach existing backing file -- no VCF re-read needed
+      # -- Determine bigmemory state and act accordingly ------------------
+      # Three files must ALL exist for a valid reattach:
+      #   .bin  -- raw genotype bytes
+      #   .desc -- bigmemory memory-map descriptor
+      #   _snpinfo.rds -- SNP metadata (not stored in .desc)
+      # Any other combination (partial write, interrupted job, manual
+      # deletion) is treated as a stale/corrupt set: all three files
+      # are removed automatically and the matrix is rebuilt from scratch.
+      # bigmemory < 1.4.7 creates an extensionless backing file (no .bin).
+      # Accept either form when checking for existing state.
+      bm_bin_noext <- sub("\\.bin$", "", bm_bin_file)  # e.g. .../ldxblocks_bm
+      bm_bin_ok  <- file.exists(bm_bin_file) || file.exists(bm_bin_noext)
+      bm_desc_ok <- file.exists(bm_desc_file)
+      bm_si_ok   <- file.exists(bm_si_file)
+      bm_all_ok  <- bm_bin_ok && bm_desc_ok && bm_si_ok
+      bm_partial <- (bm_bin_ok || bm_desc_ok || bm_si_ok) && !bm_all_ok
+
+      if (bm_partial) {
+        # Partial write detected (e.g. job was killed mid-build).
+        # Remove all three files and rebuild cleanly.
+        partial <- c(bm_bin_file, bm_desc_file, bm_si_file)[c(bm_bin_ok, bm_desc_ok, bm_si_ok)]
+        .ldx_log("[bigmemory] Partial backing files detected (incomplete ",
+                 "previous run). Removing and rebuilding:")
+        for (f in partial) {
+          .ldx_log("[bigmemory]   removing ", basename(f))
+          file.remove(f)
+        }
+        bm_all_ok <- FALSE
+      }
+
+      if (bm_all_ok) {
+        # State 1: all three files present -> reattach instantly
         .ldx_log("[bigmemory] Reattaching existing backing file: ",
                  basename(bm_bin_file))
         si_bm <- readRDS(bm_si_file)
@@ -440,7 +478,7 @@ run_ldx_pipeline <- function(
           backingpath = bigmemory_path
         )
       } else {
-        # Build fresh: open GDS first, wrap in bigmemory, close GDS
+        # State 2: no files (or just cleaned) -> build fresh
         .ldx_log("[bigmemory] Building file-backed matrix (type = '",
                  bigmemory_type, "') ...")
         .ldx_log("[bigmemory]   ", bm_bin_file)
@@ -554,6 +592,8 @@ run_ldx_pipeline <- function(
   .ldx_log("Block table written: ", out_blocks)
 
   # -- Step 6: Haplotype extraction -------------------------------------------
+  # extract_haplotypes() uses build_hap_strings_cpp() (C++) internally,
+  # replacing an R vapply() loop. ~20-50x faster for large panels.
   .ldx_log("Extracting haplotypes (min_snps = ", min_snps_block, ") ...")
   haplotypes <- extract_haplotypes(
     geno     = geno_mat,

@@ -105,6 +105,27 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1  2  3 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 80 80 70 </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="co"># Compute LD decay and chromosome-specific decay distances</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">decay</span> <span class="op">&lt;-</span> <span class="fu"><a href="compute_ld_decay.html">compute_ld_decay</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  geno         <span class="op">=</span> <span class="va">ldx_geno</span>,</span></span>
+<span class="r-in"><span>  snp_info     <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span></span>
+<span class="r-in"><span>  sampling     <span class="op">=</span> <span class="st">"random"</span>,</span></span>
+<span class="r-in"><span>  r2_threshold <span class="op">=</span> <span class="st">"both"</span>,</span></span>
+<span class="r-in"><span>  n_pairs      <span class="op">=</span> <span class="fl">3000L</span>,</span></span>
+<span class="r-in"><span>  verbose      <span class="op">=</span> <span class="cn">FALSE</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">decay</span><span class="op">$</span><span class="va">critical_r2_param</span>   <span class="co"># background LD level</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        95% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 0.02851638 </span>
+<span class="r-in"><span><span class="va">decay</span><span class="op">$</span><span class="va">decay_dist</span>          <span class="co"># per-chromosome decay distances (kb)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   CHR decay_dist_bp decay_dist_kb threshold_used r2_col_used censored</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1   1         47921         47.92     0.02851638    r2_loess    FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   2         53601         53.60     0.02851638    r2_loess    FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3   3         44062         44.06     0.02851638    r2_loess    FALSE</span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

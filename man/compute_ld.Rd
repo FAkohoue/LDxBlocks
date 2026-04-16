@@ -40,6 +40,6 @@ range(ld_r2)
 }
 \seealso{
 \code{\link{compute_r2}}, \code{\link{compute_rV2}},
-  \code{\link{prepare_geno}}, \code{\link{Big_LD}}
+  \code{\link{prepare_geno}}, \code{Big_LD()}
 }
 \keyword{internal}

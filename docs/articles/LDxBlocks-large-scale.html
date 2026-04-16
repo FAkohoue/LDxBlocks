@@ -94,7 +94,7 @@ them to your own data.</p>
 <div class="section level2">
 <h2 id="why-scale-matters-the-original-big-ld-limitation">1. Why scale matters: the original Big-LD limitation<a class="anchor" aria-label="anchor" href="#why-scale-matters-the-original-big-ld-limitation"></a>
 </h2>
-<p>The original <code><a href="../reference/Big_LD.html">Big_LD()</a></code> function (Kim et al. 2018) accepts
+<p>The original <code>Big_LD()</code> function (Kim et al. 2018) accepts
 a plain R numeric matrix – the entire genotype dataset must be in RAM
 simultaneously. For a 500-individual panel with 50,000 SNPs this works
 fine. For modern breeding programmes operating with whole-genome
@@ -413,12 +413,44 @@ dosage data. Backing files persist across sessions:</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="plink-bed-backend-bedmatrix">6. PLINK BED backend (BEDMatrix)<a class="anchor" aria-label="anchor" href="#plink-bed-backend-bedmatrix"></a>
+<h2 id="ld-decay-analysis-on-large-panels">6. LD decay analysis on large panels<a class="anchor" aria-label="anchor" href="#ld-decay-analysis-on-large-panels"></a>
+</h2>
+<p><code><a href="../reference/compute_ld_decay.html">compute_ld_decay()</a></code> uses the same backend interface as
+block detection. It never loads a full chromosome – pair indices are
+sampled from SNP positions only, then <code><a href="../reference/read_chunk.html">read_chunk()</a></code> is
+called once for the unique SNPs involved:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># For GDS or bigmemory backends, read_chunk() is called for sampled SNPs only.</span></span>
+<span><span class="co"># For 50k random pairs on a 500k-SNP chromosome: ~10k unique SNPs -&gt; ~40 MB.</span></span>
+<span><span class="va">decay</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_ld_decay.html">compute_ld_decay</a></span><span class="op">(</span></span>
+<span>  geno         <span class="op">=</span> <span class="va">be_gds</span>,      <span class="co"># any backend type</span></span>
+<span>  sampling     <span class="op">=</span> <span class="st">"random"</span>,</span>
+<span>  r2_threshold <span class="op">=</span> <span class="st">"both"</span>,      <span class="co"># parametric threshold: unlinked-marker 95th pctile</span></span>
+<span>  n_pairs      <span class="op">=</span> <span class="fl">50000L</span>,</span>
+<span>  max_dist     <span class="op">=</span> <span class="fl">5000000L</span>,    <span class="co"># 5 Mb</span></span>
+<span>  fit_model    <span class="op">=</span> <span class="st">"loess"</span>,</span>
+<span>  n_threads    <span class="op">=</span> <span class="fl">8L</span>,          <span class="co"># OpenMP for compute_r2_sparse_cpp</span></span>
+<span>  verbose      <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">decay</span><span class="op">$</span><span class="va">critical_r2_param</span>   <span class="co"># background kinship LD level (use rV2 if &gt; 0.05)</span></span>
+<span><span class="va">decay</span><span class="op">$</span><span class="va">decay_dist</span>           <span class="co"># per-chromosome decay distances for candidate gene search</span></span>
+<span></span>
+<span><span class="co"># Visualise the decay curve</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"ggplot2"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/plot_ld_decay.html">plot_ld_decay</a></span><span class="op">(</span><span class="va">decay</span>, plot_threshold <span class="op">=</span> <span class="cn">TRUE</span>, facet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Pass to define_qtl_regions for biologically justified GWAS windows</span></span>
+<span><span class="va">qtl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/define_qtl_regions.html">define_qtl_regions</a></span><span class="op">(</span><span class="va">gwas</span>, <span class="va">blocks</span>, <span class="va">snp_info</span>, ld_decay <span class="op">=</span> <span class="va">decay</span><span class="op">)</span></span>
+<span><span class="co"># qtl$candidate_region_start / end ready for BioMart / Ensembl Plants</span></span></code></pre></div>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="plink-bed-backend-bedmatrix">7. PLINK BED backend (BEDMatrix)<a class="anchor" aria-label="anchor" href="#plink-bed-backend-bedmatrix"></a>
 </h2>
 <div class="section level3">
 <h3 id="installation-1">4.1 Installation<a class="anchor" aria-label="anchor" href="#installation-1"></a>
 </h3>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BEDMatrix"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -426,7 +458,7 @@ dosage data. Backing files persist across sessions:</p>
 </h3>
 <p>The <code>.bim</code> and <code>.fam</code> files must exist at the
 same path stem:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">be_bed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">"mydata.bed"</span><span class="op">)</span>   <span class="co"># reads .bim and .fam automatically</span></span>
 <span><span class="va">be_bed</span></span>
 <span><span class="co"># LDxBlocks backend</span></span>
@@ -512,7 +544,7 @@ candidate cut position, with cost scaling as
 per chromosome. For a 500 k-SNP chromosome with <code>leng = 200</code>
 this is ~20 billion element comparisons. Reduce <code>leng</code> to
 50–100 for very dense panels:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Dense WGS panel: reduce leng, increase subSegmSize</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="va">be_gds</span>,</span>
@@ -528,7 +560,7 @@ this is ~20 billion element comparisons. Reduce <code>leng</code> to
 </h3>
 <p>OpenMP thread scaling is efficient up to approximately 8–16 threads
 for typical window sizes. Benchmark on your hardware:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span>, <span class="fl">4L</span>, <span class="fl">8L</span>, <span class="fl">16L</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">nt</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
 <span>    <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be_gds</span>, method <span class="op">=</span> <span class="st">"r2"</span>, CLQcut <span class="op">=</span> <span class="fl">0.7</span>,</span>
@@ -545,7 +577,7 @@ for typical window sizes. Benchmark on your hardware:</p>
 </h2>
 <p>For large panels, extract haplotypes one chromosome at a time to
 avoid loading the full genome matrix:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">be</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">"wgs_panel.gds"</span><span class="op">)</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"r2"</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span>,</span>
 <span>                              n_threads <span class="op">=</span> <span class="fl">16L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -582,7 +614,7 @@ avoid loading the full genome matrix:</p>
 <span></span>
 <span><span class="fu"><a href="../reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span></span></code></pre></div>
 <p>For chromosome-specific analyses (e.g. a single chromosome only):</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Filter blocks and extract by chromosome — backend still streams</span></span>
 <span><span class="va">haps_chr1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">be</span>, <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
 <span>                                 chr <span class="op">=</span> <span class="st">"1"</span>, min_snps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div>

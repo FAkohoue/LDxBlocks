@@ -766,8 +766,12 @@ read_chunk <- function(backend, col_idx) {
          bigmemory = {
            # bigmemory file-backed matrix -- OS pages on demand.
            # as.matrix() triggers page faults for requested columns only.
+           # Return integer matrix directly -- avoids a redundant int->double
+           # conversion. Rcpp kernels (compute_r2_cpp, build_hap_strings_cpp)
+           # all accept integer input and convert internally as needed.
            m <- bigmemory::as.matrix(backend$.bm[, col_idx, drop = FALSE])
-           storage.mode(m) <- "numeric"
+           # Restore NA: bigmemory char type stores NA as -128; map back to NA_integer_
+           m[m == -128L] <- NA_integer_
            rownames(m) <- backend$sample_ids
            colnames(m) <- backend$snp_info$SNP[col_idx]
            m
@@ -1017,6 +1021,13 @@ read_geno_bigmemory <- function(source,
   if (!requireNamespace("bigmemory", quietly = TRUE))
     stop("Package 'bigmemory' is required. Install with: install.packages('bigmemory')",
          call. = FALSE)
+
+  # Normalize backingpath. On Windows, bigmemory's C code uses
+  # sprintf("%s/%s", backingpath, file) internally, so the path
+  # must use forward slashes only (no backslashes). We normalize
+  # first to resolve . / .. / symlinks, then convert separators.
+  backingpath <- normalizePath(backingpath, mustWork = FALSE)
+  backingpath <- gsub("\\\\", "/", backingpath, fixed = TRUE)
 
   # -- Reattach from descriptor ----------------------------------------------
   if (is.character(source) && length(source) == 1L && grepl("\\.desc$", source)) {

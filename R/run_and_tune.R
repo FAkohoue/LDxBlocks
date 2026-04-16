@@ -5,7 +5,7 @@
 #' Genome-Wide LD Block Detection by Chromosome
 #'
 #' @description
-#' Applies \code{\link{Big_LD}} chromosome by chromosome, collects results and
+#' Applies \code{Big_LD()} chromosome by chromosome, collects results and
 #' returns a single tidy data frame annotated with chromosome and block length.
 #' This is the recommended entry point for genome-wide analyses.
 #'
@@ -15,7 +15,7 @@
 #'   Column order is flexible; columns are matched by name.
 #' @param method Character. LD metric: \code{"r2"} (default, standard squared
 #'   Pearson correlation) or \code{"rV2"} (kinship-adjusted). See
-#'   \code{\link{Big_LD}} for details.
+#'   \code{Big_LD()} for details.
 #' @param n_threads Integer. Number of OpenMP threads for the C++ LD kernel.
 #'   Default \code{1L}. Increase for multi-core systems.
 #' @param min_snps_chr Integer. Chromosomes with fewer SNPs than this after
@@ -33,7 +33,7 @@
 #' @param singleton_as_block Logical. If \code{TRUE}, SNPs that pass MAF
 #'   filtering but are not assigned to any clique are returned as single-SNP
 #'   blocks (\code{start == end}, \code{length_bp == 1}). Default \code{FALSE}.
-#'   See \code{\link{Big_LD}} for details.
+#'   See \code{Big_LD()} for details.
 #' @param max_bp_distance Integer. Maximum base-pair distance between a SNP
 #'   pair for its r\eqn{^2} to be computed. Pairs beyond this distance are set
 #'   to zero in the adjacency matrix (assumed to be in negligible LD).
@@ -44,7 +44,7 @@
 #'   \code{max_bp_distance}. Requires sorted SNP positions within each
 #'   sub-segment (guaranteed by \code{run_Big_LD_all_chr}).
 #' @param CLQcut,clstgap,leng,subSegmSize,MAFcut,appendrare,checkLargest,CLQmode,kin_method,split,digits,seed,verbose
-#'   Forwarded to \code{\link{Big_LD}}. See that function's documentation for
+#'   Forwarded to \code{Big_LD()}. See that function's documentation for
 #'   details.
 #'
 #' @return A \code{data.frame} with columns:
@@ -52,7 +52,7 @@
 #'   \code{start.bp}, \code{end.bp}, \code{CHR}, \code{length_bp}.
 #'   Rows are sorted by \code{CHR} then \code{start.bp}.
 #'
-#' @seealso \code{\link{Big_LD}}, \code{\link{tune_LD_params}},
+#' @seealso \code{Big_LD()}, \code{\link{tune_LD_params}},
 #'   \code{\link{extract_haplotypes}}
 #'
 #' @examples
@@ -277,7 +277,7 @@ run_Big_LD_all_chr <- function(
 #' Auto-Tune LD Block Detection Parameters
 #'
 #' @description
-#' Performs a grid search over \code{\link{Big_LD}} parameters and selects the
+#' Performs a grid search over \code{Big_LD()} parameters and selects the
 #' combination that minimises, in order of priority:
 #' \enumerate{
 #'   \item Unassigned GWAS markers (markers not falling in any block).
@@ -339,7 +339,7 @@ run_Big_LD_all_chr <- function(
 #' blocks in wheat. \emph{Frontiers in Plant Science} \strong{14}:1168547.
 #' \doi{10.3389/fpls.2023.1168547}
 #'
-#' @seealso \code{\link{run_Big_LD_all_chr}}, \code{\link{Big_LD}}
+#' @seealso \code{\link{run_Big_LD_all_chr}}, \code{Big_LD()}
 #'
 #' @export
 tune_LD_params <- function(

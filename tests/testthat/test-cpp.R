@@ -1,6 +1,6 @@
 ## tests/testthat/test-cpp.R
 ## ─────────────────────────────────────────────────────────────────────────────
-## Unit tests for all seven exported C++ kernels in src/ld_core.cpp.
+## Unit tests for all eight exported C++ kernels in src/ld_core.cpp.
 ## Tests are property-based: verify mathematical guarantees rather than
 ## exact numeric values, so they pass regardless of BLAS implementation.
 ## ─────────────────────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ test_that("col_r2_cpp: matches corresponding row of full r2 matrix", {
 test_that("compute_r2_sparse_cpp: returns triplet list", {
   bp     <- as.integer(seq(1000, by = 5000, length.out = 30))
   result <- compute_r2_sparse_cpp(G_small, bp, max_bp_dist = 20000L,
-                                   threshold = 0.0)
+                                  threshold = 0.0)
   expect_type(result, "list")
   expect_true(all(c("row","col","r2") %in% names(result)))
   expect_equal(length(result$row), length(result$col))
@@ -159,16 +159,16 @@ test_that("compute_r2_sparse_cpp: returns triplet list", {
 test_that("compute_r2_sparse_cpp: all r2 values in [0,1]", {
   bp     <- as.integer(seq(1000, by = 5000, length.out = 30))
   result <- compute_r2_sparse_cpp(G_small, bp, max_bp_dist = 30000L,
-                                   threshold = 0.0)
+                                  threshold = 0.0)
   expect_true(all(result$r2 >= 0 & result$r2 <= 1 + 1e-8))
 })
 
 test_that("compute_r2_sparse_cpp: threshold filters pairs correctly", {
   bp     <- as.integer(seq(1000, by = 1000, length.out = 30))
   full   <- compute_r2_sparse_cpp(G_small, bp, max_bp_dist = 30000L,
-                                   threshold = 0.0)
+                                  threshold = 0.0)
   thresh <- compute_r2_sparse_cpp(G_small, bp, max_bp_dist = 30000L,
-                                   threshold = 0.3)
+                                  threshold = 0.3)
   expect_true(length(thresh$row) <= length(full$row))
   expect_true(all(thresh$r2 >= 0.3))
 })
@@ -177,7 +177,7 @@ test_that("compute_r2_sparse_cpp: threshold filters pairs correctly", {
 test_that("boundary_scan_cpp: returns 0/1 integer vector of correct length", {
   Gc  <- scale(G_small, center = TRUE, scale = FALSE)
   res <- boundary_scan_cpp(Gc, start = 5L, end = 20L,
-                            half_w = 3L, threshold = 0.5)
+                           half_w = 3L, threshold = 0.5)
   expect_equal(length(res), 16L)
   expect_true(all(res %in% c(0L, 1L)))
 })
@@ -189,4 +189,54 @@ test_that("boundary_scan_cpp: high threshold yields more valid cuts", {
   # threshold=0.99: very few pairs exceed it -> most positions are valid cuts
   high <- boundary_scan_cpp(Gc, 3L, 25L, 3L, threshold = 0.99)
   expect_true(sum(high == 1L) >= sum(low == 1L))
+})
+
+# ── build_hap_strings_cpp ─────────────────────────────────────────────────────
+test_that("build_hap_strings_cpp: returns character vector of correct length", {
+  blk <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
+  out <- build_hap_strings_cpp(blk, ".")
+  expect_type(out, "character")
+  expect_equal(length(out), nrow(G_small))
+})
+
+test_that("build_hap_strings_cpp: each string has length equal to n_snps", {
+  blk <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
+  out <- build_hap_strings_cpp(blk, ".")
+  expect_true(all(nchar(out) == 10L))
+})
+
+test_that("build_hap_strings_cpp: characters are 0/1/2 only (no NA)", {
+  blk <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
+  out <- build_hap_strings_cpp(blk, ".")
+  chars <- unique(unlist(strsplit(paste(out, collapse=""), "")))
+  expect_true(all(chars %in% c("0","1","2")))
+})
+
+test_that("build_hap_strings_cpp: NA_integer_ encoded as na_char", {
+  blk    <- matrix(as.integer(G_small[, 1:5]), nrow = nrow(G_small))
+  blk[1, 3] <- NA_integer_
+  out <- build_hap_strings_cpp(blk, ".")
+  # Individual 1 string should have "." at position 3
+  expect_equal(substr(out[1], 3, 3), ".")
+  # Other individuals should not have "."
+  expect_false(any(grepl(".", out[-1], fixed=TRUE)))
+})
+
+test_that("build_hap_strings_cpp: custom na_char respected", {
+  blk    <- matrix(as.integer(G_small[, 1:5]), nrow = nrow(G_small))
+  blk[2, 1] <- NA_integer_
+  out <- build_hap_strings_cpp(blk, "X")
+  expect_equal(substr(out[2], 1, 1), "X")
+})
+
+test_that("build_hap_strings_cpp: matches R vapply reference implementation", {
+  blk    <- matrix(as.integer(G_small[, 1:8]), nrow = nrow(G_small))
+  # Reference R implementation
+  ref <- vapply(seq_len(nrow(blk)), function(i) {
+    v <- as.character(blk[i, ])
+    v[is.na(blk[i, ])] <- "."
+    paste(v, collapse="")
+  }, character(1L))
+  out <- build_hap_strings_cpp(blk, ".")
+  expect_equal(out, ref)
 })

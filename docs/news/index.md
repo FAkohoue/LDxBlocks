@@ -2,6 +2,99 @@
 
 ## LDxBlocks 0.3.1 (development)
 
+### New functions
+
+- **[`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)**
+  – LD decay analysis per chromosome. Estimates the distance at which r²
+  (or rV²) drops below a critical threshold using a memory-efficient
+  position-first random sampling strategy: pair indices are sampled from
+  SNP positions only, then
+  [`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md)
+  loads only the unique SNP columns involved (~2% of a WGS chromosome
+  for 50k random pairs). `compute_r2_sparse_cpp()` (Armadillo BLAS +
+  OpenMP) is called once per chromosome in place of an R pair-by-pair
+  loop. Two threshold approaches: fixed numeric (e.g. 0.1, standard GWAS
+  practice) and parametric (95th percentile of r² between unlinked
+  markers on different chromosomes, measuring the background
+  kinship-induced LD level). Optional LOESS and Hill-Weir (1988)
+  nonlinear decay model fitting. Chromosome-specific decay distances can
+  be passed directly to `define_qtl_regions(ld_decay = decay)` to define
+  biologically justified candidate gene windows. Censored distances
+  (threshold never crossed within `max_dist`) are flagged with
+  `censored = TRUE` in output and emitted as warnings. Requires no
+  change to existing code.
+
+- **[`plot_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/plot_ld_decay.md)**
+  – ggplot2 visualisation of r² vs physical distance per chromosome,
+  with optional raw points, threshold line, per-chromosome decay
+  distance markers, and facet option.
+
+### Algorithm improvements
+
+- **LD-informed overlap resolution** replacing blind union merge in
+  `Big_LD()`. Overlapping blocks at sub-segment seams are now resolved
+  by a cumulative-score boundary rule: for each disputed SNP,
+  `score = mean_r2(with left core) - mean_r2(with right core)`. The
+  cumulative sum is tracked across the overlap zone and the split
+  boundary is placed at the last position where the cumulative score is
+  \>= 0. Representatives are selected from boundary-adjacent SNPs of
+  each core (nearest to the overlap zone, not first-k). Three clean
+  cases: all-left (block A keeps overlap, block B shrinks), all-right
+  (block A shrinks, block B keeps overlap), mixed (split at cumulative
+  boundary). Falls back to union merge only when one core is empty (one
+  block fully inside the other).
+
+### C++ updates
+
+- **`compute_r2_sparse_cpp()`** gains an `n_threads` parameter (OpenMP).
+  Thread-local vector accumulation prevents contention; results are
+  merged after the parallel loop. The R wrapper in `RcppExports.R` is
+  updated to expose the new argument with default `n_threads = 1L`.
+
+### Bug fixes and robustness
+
+- **[`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
+  pair sampling** – `snp_info` is now sorted by POS within each
+  chromosome before any pair index sampling. Previously, unsorted input
+  could produce incorrect pair distances silently.
+- **[`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
+  column precomputation** – prepared columns (mean-imputed, optionally
+  whitened) are now computed once per chunk, not per pair. Monomorphic
+  columns (sd \< 1e-6 after preparation) are skipped before any r²
+  computation.
+- **[`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
+  `both` mode** – sliding-window and random pairs are now kept separate:
+  sliding window feeds the decay curve, random pairs feed the parametric
+  threshold only. Previously they were merged into one pool, biasing the
+  curve shape estimate.
+- **[`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
+  fitting failures** – LOESS and Hill-Weir nonlinear failures now emit
+  [`warning()`](https://rdrr.io/r/base/warning.html) with chromosome
+  name and error message instead of being silently swallowed by
+  `tryCatch(..., error = function(e) NULL)`.
+- **[`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
+  threshold crossing** – linear interpolation between the last-above and
+  first-below bins for sub-bin precision (was: first-below bin
+  midpoint). Non-monotone curves fall back to first-below.
+- **`r2_threshold` validation** – numeric thresholds outside \[0,1\], NA
+  values, and unrecognised strings now produce informative errors
+  instead of silent wrong results.
+
+### Performance improvements
+
+- **[`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
+  C++ optimisation** — haplotype strings now built via
+  `build_hap_strings_cpp()`, replacing an R
+  [`vapply()`](https://rdrr.io/r/base/lapply.html) loop that incurred
+  one function call per individual per block. For a 3M-SNP panel with
+  17,078 blocks and 204 individuals: ~3.5 million R calls -\> one C++
+  call per block. Expected speedup: 20-50x (3.5 hours -\> ~5-10 minutes
+  for that panel).
+- **[`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md)
+  bigmemory NA fix** — char-type big.matrix stores NA as -128; these are
+  now correctly restored to `NA_integer_`. Also removed a redundant
+  integer-\>double type conversion.
+
 ### WGS-scale acceleration — three new approaches
 
 - **Louvain/Leiden community detection** (`CLQmode = "Louvain"` or
@@ -15,7 +108,7 @@
   are equivalent to or better than the Density mode for WGS panels where
   LD structure is dense. Available in
   [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md),
-  [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md),
+  `Big_LD()`,
   [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md),
   [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md),
   and
@@ -315,6 +408,17 @@ blocks <- run_Big_LD_all_chr(
 
 ### Tests
 
+- `test-ld-decay.R`: 33 tests for
+  [`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
+  and
+  [`plot_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/plot_ld_decay.md)
+  covering: input validation, `LDxBlocks_decay` object structure, all
+  sampling modes, unsorted `snp_info` handling, all threshold types
+  (fixed, parametric, both, NULL), `fit_model` options, decay distance
+  correctness, censored flag, all three backend types (matrix,
+  `LDxBlocks_backend`, bigmemory), print and plot methods, and
+  [`define_qtl_regions()`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md)
+  integration with `ld_decay=`.
 - `test-basic.R`: smoke tests covering all major functions via the
   230-SNP example dataset (3 chromosomes, 9 LD blocks).
 - `test-algorithm.R`: property-based tests for the Big-LD segmentation
@@ -345,9 +449,8 @@ blocks <- run_Big_LD_all_chr(
 
 - [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md):
   fixed `re_idx` tracking after dense-core pre-pass.
-- [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md):
-  [`vapply()`](https://rdrr.io/r/base/lapply.html) used throughout for
-  type-stability.
+- `Big_LD()`: [`vapply()`](https://rdrr.io/r/base/lapply.html) used
+  throughout for type-stability.
 
 ------------------------------------------------------------------------
 
@@ -355,7 +458,7 @@ blocks <- run_Big_LD_all_chr(
 
 Initial release.
 
-- [`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md),
+- `Big_LD()`,
   [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md),
   [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md),
   [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md).

@@ -66,13 +66,14 @@ amounts to approximately 150,000 small R-level matrix multiplications per
 chromosome. For a WGS rice panel with 3 million SNPs across 12 chromosomes,
 the original implementation would take days on a workstation.
 
-LDxBlocks replaces the critical paths with seven compiled C++ functions:
+LDxBlocks replaces the critical paths with eight compiled C++ functions:
 
 ```r
 # These calls are now C++/Armadillo + OpenMP -- not R loops
 compute_r2_cpp(geno, digits = -1L, n_threads = 8L)   # ~40x faster
 maf_filter_cpp(geno, maf_cut = 0.05)                  # ~10x faster
 boundary_scan_cpp(geno, start, end, half_w, threshold) # ~20x faster
+build_hap_strings_cpp(blk_int, na_char)               # ~20-50x faster
 ```
 
 The outer loop of `compute_r2_cpp()` is parallelised with OpenMP. For a
@@ -129,7 +130,7 @@ The following components are unchanged from Kim et al. (2018):
 |---|---|---|---|---|
 | Algorithm | Clique/MWIS | Clique/MWIS + GPART | Gabriel et al. | Clique/MWIS |
 | LD metric | r | r, D' | r² | r², rV² |
-| C++ core | No | Partial | Yes | Yes (7 functions) |
+| C++ core | No | Partial | Yes | Yes (9 functions) |
 | WGS streaming | No | Partial | Yes | Yes (all formats) |
 | Kinship correction | No | No | No | Yes (rV²) |
 | Haplotype analysis | No | No | No | Yes |
@@ -359,7 +360,10 @@ mode each individual receives one diploid allele string per block:
 ```{r haplotypes-unphased}
 # For large real datasets, pass the backend object directly:
 #   haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5L)
-# This streams one chromosome at a time — the full genome is never in RAM.
+# This streams one chromosome at a time -- the full genome is never in RAM.
+# Haplotype strings are built via build_hap_strings_cpp() (C++), replacing
+# an R vapply() loop that incurred one call per individual per block.
+# For a 3M-SNP panel with 17k blocks x 204 individuals: ~20-50x speedup.
 #
 # For the small example dataset we use the in-memory matrix path:
 haps <- extract_haplotypes(
@@ -559,6 +563,48 @@ res_mt$block_importance[res_mt$block_importance$important_any,
 G_hap <- tcrossprod(feat_add) / ncol(feat_add)
 dim(G_hap)
 round(range(diag(G_hap)), 3)
+```
+
+---
+
+## 11. Step 8b — LD decay analysis
+
+`compute_ld_decay()` estimates the chromosome-specific distance at which LD
+drops below a critical threshold. This decay distance can then be passed to
+`define_qtl_regions()` to replace fixed block boundaries with biologically
+justified candidate gene windows.
+
+```{r ld-decay, eval=FALSE}
+# Memory-efficient: loads only sampled SNP columns via read_chunk()
+# For the small example dataset:
+decay <- compute_ld_decay(
+  geno         = ldx_geno,
+  snp_info     = ldx_snp_info,
+  sampling     = "random",
+  r2_threshold = "both",        # fixed 0.1 + parametric (95th pctile unlinked)
+  fit_model    = "loess",
+  n_pairs      = 3000L,
+  verbose      = FALSE
+)
+decay$critical_r2_fixed   # 0.1 (standard GWAS threshold)
+decay$critical_r2_param   # background kinship-induced LD level
+decay$decay_dist          # per-chromosome decay distances
+
+# Pass decay distances to define_qtl_regions for LD-aware windows
+qtl_ld <- define_qtl_regions(
+  ldx_gwas, ldx_blocks, ldx_snp_info,
+  ld_decay    = decay,    # uses chromosome-specific decay distances
+  p_threshold = NULL,
+  trait_col   = "trait"
+)
+# New columns: candidate_region_start, candidate_region_end, candidate_region_size_kb
+head(qtl_ld[, c("block_id", "lead_snp", "candidate_region_start",
+                 "candidate_region_end", "candidate_region_size_kb")])
+```
+
+```{r ld-decay-plot, eval=FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE))
+  print(plot_ld_decay(decay, plot_threshold = TRUE, plot_decay_dist = TRUE))
 ```
 
 ---

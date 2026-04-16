@@ -31,6 +31,21 @@ Genomic metadata for the 230 SNPs in \code{\link{ldx_geno}}.
 data(ldx_snp_info)
 head(ldx_snp_info)
 table(ldx_snp_info$CHR)   # 80 80 70
+
+\donttest{
+# Compute LD decay and chromosome-specific decay distances
+data(ldx_geno)
+decay <- compute_ld_decay(
+  geno         = ldx_geno,
+  snp_info     = ldx_snp_info,
+  sampling     = "random",
+  r2_threshold = "both",
+  n_pairs      = 3000L,
+  verbose      = FALSE
+)
+decay$critical_r2_param   # background LD level
+decay$decay_dist          # per-chromosome decay distances (kb)
+}
 }
 \seealso{
 \code{\link{ldx_geno}}, \code{\link{ldx_blocks}}

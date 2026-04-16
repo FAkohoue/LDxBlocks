@@ -9,13 +9,11 @@ own data.
 
 ## 1. Why scale matters: the original Big-LD limitation
 
-The original
-[`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-function (Kim et al. 2018) accepts a plain R numeric matrix – the entire
-genotype dataset must be in RAM simultaneously. For a 500-individual
-panel with 50,000 SNPs this works fine. For modern breeding programmes
-operating with whole-genome sequencing data, the numbers become
-untenable:
+The original `Big_LD()` function (Kim et al. 2018) accepts a plain R
+numeric matrix – the entire genotype dataset must be in RAM
+simultaneously. For a 500-individual panel with 50,000 SNPs this works
+fine. For modern breeding programmes operating with whole-genome
+sequencing data, the numbers become untenable:
 
 | Dataset              | SNPs       | Individuals | RAM required (naive) |
 |----------------------|------------|-------------|----------------------|
@@ -255,7 +253,42 @@ close_backend(be_bm)
 
 ------------------------------------------------------------------------
 
-## 6. PLINK BED backend (BEDMatrix)
+## 6. LD decay analysis on large panels
+
+[`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
+uses the same backend interface as block detection. It never loads a
+full chromosome – pair indices are sampled from SNP positions only, then
+[`read_chunk()`](https://FAkohoue.github.io/LDxBlocks/reference/read_chunk.md)
+is called once for the unique SNPs involved:
+
+``` r
+# For GDS or bigmemory backends, read_chunk() is called for sampled SNPs only.
+# For 50k random pairs on a 500k-SNP chromosome: ~10k unique SNPs -> ~40 MB.
+decay <- compute_ld_decay(
+  geno         = be_gds,      # any backend type
+  sampling     = "random",
+  r2_threshold = "both",      # parametric threshold: unlinked-marker 95th pctile
+  n_pairs      = 50000L,
+  max_dist     = 5000000L,    # 5 Mb
+  fit_model    = "loess",
+  n_threads    = 8L,          # OpenMP for compute_r2_sparse_cpp
+  verbose      = TRUE
+)
+decay$critical_r2_param   # background kinship LD level (use rV2 if > 0.05)
+decay$decay_dist           # per-chromosome decay distances for candidate gene search
+
+# Visualise the decay curve
+if (requireNamespace("ggplot2", quietly = TRUE))
+  print(plot_ld_decay(decay, plot_threshold = TRUE, facet = TRUE))
+
+# Pass to define_qtl_regions for biologically justified GWAS windows
+qtl <- define_qtl_regions(gwas, blocks, snp_info, ld_decay = decay)
+# qtl$candidate_region_start / end ready for BioMart / Ensembl Plants
+```
+
+------------------------------------------------------------------------
+
+## 7. PLINK BED backend (BEDMatrix)
 
 ### 4.1 Installation
 

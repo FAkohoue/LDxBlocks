@@ -44,12 +44,16 @@ OS-page-fault column access.
 
 ## LD computation
 
-LD matrix computation: standard r2 and kinship-adjusted rV2.
+LD matrix computation, decay analysis, and threshold estimation.
 
 - [`compute_r2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.md)
   : Compute Standard r^2 LD Matrix
 - [`compute_rV2()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_rV2.md)
   : Compute Kinship-Adjusted rV^2 LD Matrix
+- [`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
+  : Compute LD Decay and Chromosome-Specific Decay Distances
+- [`plot_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/plot_ld_decay.md)
+  : Plot LD Decay Curve
 - [`prepare_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md)
   : Prepare Genotype Matrix for LD Computation
 - [`get_V_inv_sqrt()`](https://FAkohoue.github.io/LDxBlocks/reference/get_V_inv_sqrt.md)
@@ -128,7 +132,7 @@ haplotype stacking candidate identification.
 
 ## Utilities
 
-Summary statistics and visualisation for block tables.
+Summary statistics and visualisation.
 
 - [`summarise_blocks()`](https://FAkohoue.github.io/LDxBlocks/reference/summarise_blocks.md)
   : Summarise LD Block Characteristics

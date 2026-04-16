@@ -38,10 +38,9 @@ and genomics programmes.
 
 ### 2.1 Computational bottleneck
 
-The original
-[`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-calls [`cor()`](https://rdrr.io/r/stats/cor.html) inside the
-boundary-scan loop and once per
+The original `Big_LD()` calls
+[`cor()`](https://rdrr.io/r/stats/cor.html) inside the boundary-scan
+loop and once per
 [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md) call,
 with all matrix operations running through the R interpreter. For a
 50,000-SNP chromosome with the default `leng = 200` this amounts to
@@ -50,13 +49,14 @@ chromosome. For a WGS rice panel with 3 million SNPs across 12
 chromosomes, the original implementation would take days on a
 workstation.
 
-LDxBlocks replaces the critical paths with seven compiled C++ functions:
+LDxBlocks replaces the critical paths with eight compiled C++ functions:
 
 ``` r
 # These calls are now C++/Armadillo + OpenMP -- not R loops
 compute_r2_cpp(geno, digits = -1L, n_threads = 8L)   # ~40x faster
 maf_filter_cpp(geno, maf_cut = 0.05)                  # ~10x faster
 boundary_scan_cpp(geno, start, end, half_w, threshold) # ~20x faster
+build_hap_strings_cpp(blk_int, na_char)               # ~20-50x faster
 ```
 
 The outer loop of `compute_r2_cpp()` is parallelised with OpenMP. For a
@@ -65,11 +65,10 @@ milliseconds rather than seconds.
 
 ### 2.2 Memory wall
 
-The original
-[`Big_LD()`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-requires the complete genotype matrix in RAM before detection begins.
-For a 10M-marker, 5,000-individual WGS dataset this is approximately 400
-GB as an R `double` matrix – impossible on any workstation.
+The original `Big_LD()` requires the complete genotype matrix in RAM
+before detection begins. For a 10M-marker, 5,000-individual WGS dataset
+this is approximately 400 GB as an R `double` matrix – impossible on any
+workstation.
 
 LDxBlocks enforces a strict never-full-genome memory model. All six
 supported formats stream genotypes one chromosome window at a time:
@@ -116,7 +115,7 @@ The following components are unchanged from Kim et al. (2018):
 |----|----|----|----|----|
 | Algorithm | Clique/MWIS | Clique/MWIS + GPART | Gabriel et al. | Clique/MWIS |
 | LD metric | r | r, D’ | r² | r², rV² |
-| C++ core | No | Partial | Yes | Yes (7 functions) |
+| C++ core | No | Partial | Yes | Yes (9 functions) |
 | WGS streaming | No | Partial | Yes | Yes (all formats) |
 | Kinship correction | No | No | No | Yes (rV²) |
 | Haplotype analysis | No | No | No | Yes |
@@ -408,7 +407,10 @@ block:
 ``` r
 # For large real datasets, pass the backend object directly:
 #   haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5L)
-# This streams one chromosome at a time — the full genome is never in RAM.
+# This streams one chromosome at a time -- the full genome is never in RAM.
+# Haplotype strings are built via build_hap_strings_cpp() (C++), replacing
+# an R vapply() loop that incurred one call per individual per block.
+# For a 3M-SNP panel with 17k blocks x 204 individuals: ~20-50x speedup.
 #
 # For the small example dataset we use the in-memory matrix path:
 haps <- extract_haplotypes(
@@ -547,9 +549,13 @@ head(qtl[, c("block_id","CHR","n_snps_block","n_sig_markers",
 #>   pleiotropic
 #> 1       FALSE
 subset(qtl, pleiotropic)      # blocks with hits from both TraitA and TraitB
-#>  [1] block_id      CHR           start_bp      end_bp        n_snps_block 
-#>  [6] n_sig_markers lead_snp      lead_p        lead_beta     sig_snps     
-#> [11] sig_betas     traits        n_traits      pleiotropic  
+#>  [1] block_id                 CHR                      start_bp                
+#>  [4] end_bp                   search_start             search_end              
+#>  [7] ld_decay_bp              n_snps_block             n_sig_markers           
+#> [10] lead_snp                 lead_p                   candidate_region_start  
+#> [13] candidate_region_end     candidate_region_size_kb lead_beta               
+#> [16] sig_snps                 sig_betas                traits                  
+#> [19] n_traits                 pleiotropic             
 #> <0 rows> (or 0-length row.names)
 ```
 
@@ -661,6 +667,50 @@ dim(G_hap)
 #> [1] 120 120
 round(range(diag(G_hap)), 3)
 #> [1] 0.300 2.969
+```
+
+------------------------------------------------------------------------
+
+## 11. Step 8b — LD decay analysis
+
+[`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
+estimates the chromosome-specific distance at which LD drops below a
+critical threshold. This decay distance can then be passed to
+[`define_qtl_regions()`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md)
+to replace fixed block boundaries with biologically justified candidate
+gene windows.
+
+``` r
+# Memory-efficient: loads only sampled SNP columns via read_chunk()
+# For the small example dataset:
+decay <- compute_ld_decay(
+  geno         = ldx_geno,
+  snp_info     = ldx_snp_info,
+  sampling     = "random",
+  r2_threshold = "both",        # fixed 0.1 + parametric (95th pctile unlinked)
+  fit_model    = "loess",
+  n_pairs      = 3000L,
+  verbose      = FALSE
+)
+decay$critical_r2_fixed   # 0.1 (standard GWAS threshold)
+decay$critical_r2_param   # background kinship-induced LD level
+decay$decay_dist          # per-chromosome decay distances
+
+# Pass decay distances to define_qtl_regions for LD-aware windows
+qtl_ld <- define_qtl_regions(
+  ldx_gwas, ldx_blocks, ldx_snp_info,
+  ld_decay    = decay,    # uses chromosome-specific decay distances
+  p_threshold = NULL,
+  trait_col   = "trait"
+)
+# New columns: candidate_region_start, candidate_region_end, candidate_region_size_kb
+head(qtl_ld[, c("block_id", "lead_snp", "candidate_region_start",
+                 "candidate_region_end", "candidate_region_size_kb")])
+```
+
+``` r
+if (requireNamespace("ggplot2", quietly = TRUE))
+  print(plot_ld_decay(decay, plot_threshold = TRUE, plot_decay_dist = TRUE))
 ```
 
 ------------------------------------------------------------------------

@@ -243,7 +243,33 @@ blocks_rv2 <- run_Big_LD_all_chr(be, method = "rV2", CLQcut = 0.70,
                                   kin_method = "chol")
 ```
 
-## 10. References
+## 10. LD decay and the parametric threshold
+
+The parametric threshold in `compute_ld_decay(r2_threshold = "parametric")`
+estimates the 95th percentile of r² between markers on different chromosomes
+(unlinked markers). This is conceptually identical to the kinship inflation
+demonstrated in Sections 5 and 6 above: unlinked markers should have r² = 0
+in an ideal population; any inflation above zero is caused by kinship/structure.
+
+```{r ld-decay-demo, eval=FALSE}
+decay <- compute_ld_decay(
+  ldx_geno, ldx_snp_info,
+  r2_threshold = "both",    # parametric + fixed 0.1
+  n_pairs = 2000L, verbose = FALSE
+)
+# High critical_r2_param -> structured population -> use method = "rV2"
+cat("Parametric threshold:", round(decay$critical_r2_param, 4), "\n")
+cat("Standard 0.1 threshold: fixed\n")
+cat("Decay distances (kb):\n")
+print(decay$decay_dist[, c("CHR", "decay_dist_kb", "censored")])
+```
+
+A high parametric threshold (e.g. > 0.05) is direct evidence that
+`method = "rV2"` should be used for block detection -- the same kinship
+inflation that this vignette demonstrates algebraically is visible in the
+distribution of unlinked-marker r² values.
+
+## 11. References
 
 - Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block detection method for dense genome sequencing data based on interval graph modeling and dynamic programming. *Bioinformatics* **34**(4):588-596.
   <https://doi.org/10.1093/bioinformatics/btx609>

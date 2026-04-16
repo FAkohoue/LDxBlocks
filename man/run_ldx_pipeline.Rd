@@ -44,11 +44,11 @@ run_ldx_pipeline(
 or \code{\link{read_geno_bigmemory}}. Passing a backend skips the
 internal \code{read_geno()} call, allowing you to use any pre-built
 backend including file-backed \code{bigmemory} stores.
-Supported file formats when a path is supplied: numeric dosage CSV,
-HapMap, VCF/VCF.gz, SNPRelate GDS, PLINK BED.
-dosage CSV (`.csv`), HapMap (`.hmp.txt`), VCF (`.vcf`, `.vcf.gz`),
-SNPRelate GDS (`.gds`), PLINK BED (`.bed`). Format is detected
-automatically from the file extension.}
+Supported file formats when a path is supplied:
+numeric dosage CSV (`.csv`), HapMap (`.hmp.txt`),
+VCF (`.vcf`, `.vcf.gz`), SNPRelate GDS (`.gds`),
+PLINK BED (`.bed`). Format is detected automatically
+from the file extension.}
 
 \item{out_blocks}{Path for the LD block table CSV. Columns:
 `CHR`, `start`, `end`, `start.rsID`, `end.rsID`, `start.bp`, `end.bp`,

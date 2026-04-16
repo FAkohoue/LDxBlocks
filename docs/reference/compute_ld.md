@@ -43,7 +43,7 @@ Symmetric p x p numeric matrix, diagonal 0, values in \[0, 1\].
 [`compute_r2`](https://FAkohoue.github.io/LDxBlocks/reference/compute_r2.md),
 [`compute_rV2`](https://FAkohoue.github.io/LDxBlocks/reference/compute_rV2.md),
 [`prepare_geno`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md),
-[`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
+`Big_LD()`
 
 ## Examples
 

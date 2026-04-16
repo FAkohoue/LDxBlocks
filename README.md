@@ -1,7 +1,7 @@
 # LDxBlocks — Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic Prediction Features
 
 <p align="center">
-  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="90%">
+  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="100%">
 </p>
 
 <!-- badges: start -->
@@ -9,6 +9,78 @@
 [![pkgdown](https://github.com/FAkohoue/LDxBlocks/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/FAkohoue/LDxBlocks/actions/workflows/pkgdown.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <!-- badges: end -->
+
+---
+
+## Table of contents
+1. [Motivation](#1-motivation)
+2. [Summary](#2-summary)
+3. [Relationship to the original Big-LD algorithm](#3-relationship-to-the-original-big-ld-algorithm)
+   - 3.1. [Computational core: R loops replaced by C++](#31-computational-core-r-loops-replaced-by-c)
+   - 3.2. [Memory model: never-full-genome](#32-memory-model-never-full-genome)
+   - 3.3. [Kinship correction: rV²](#33-kinship-correction-rv)
+   - 3.4. [Singleton SNP handling](#34-singleton-snp-handling)
+   - 3.5. [Bug fix: zero-row assignment](#35-bug-fix-zero-row-assignment)
+   - 3.6. [Downstream pipeline](#36-downstream-pipeline)
+   - 3.7. [What is kept exactly](#37-what-is-kept-exactly)
+4. [Installation](#4-installation)
+5. [Quick start](#5-quick-start)
+6. [Input formats](#6-input-formats)
+   - 6.1. [Genotype input format](#61-genotype-input-format)
+   - 6.2. [Phenotype input format](#62-phenotype-input-format)
+     - 6.2.1. [Format 1 — Named numeric vector](#621-format-1--named-numeric-vector-single-trait-simplest)
+     - 6.2.2. [Format 2 — Data frame, single trait](#622-format-2--data-frame-single-trait)
+     - 6.2.3. [Format 3 — Data frame, multiple traits](#623-format-3--data-frame-multiple-traits)
+     - 6.2.4. [Format 4 — Named list](#624-format-4--named-list-different-individuals-per-trait)
+   - 6.3. [ID matching rules](#63-id-matching-rules)
+   - 6.4. [Preparing BLUEs from raw phenotype data](#64-preparing-blues-from-raw-phenotype-data)
+7. [Statistical background](#7-statistical-background)
+   - 7.1. [MAF filtering](#71-maf-filtering)
+   - 7.2. [Genotype preparation](#72-genotype-preparation)
+   - 7.3. [Subsegmentation](#73-subsegmentation)
+   - 7.4. [Clique detection (CLQD)](#74-clique-detection-clqd)
+   - 7.5. [Block construction](#75-block-construction)
+8. [LD metrics: r² versus rV²](#8-ld-metrics-r-versus-rv)
+9. [Clique detection mode (CLQmode)](#9-clique-detection-mode-clqmode)
+   - 9.1. [Mode 1 — Density](#91-mode-1--density-clqmode--density-default)
+   - 9.2. [Mode 2 — Maximal](#92-mode-2--maximal-clqmode--maximal)
+   - 9.3. [Mode 3 — Louvain](#93-mode-3--louvain-clqmode--louvain)
+   - 9.4. [Mode 4 — Leiden](#94-mode-4--leiden-clqmode--leiden)
+   - 9.5. [Summary comparison](#95-summary-comparison)
+   - 9.6. [Recommended configurations](#96-recommended-configurations)
+10. [Haplotype analysis](#10-haplotype-analysis)
+    - 10.1. [Phase-free haplotype extraction](#101-phase-free-haplotype-extraction)
+    - 10.2. [Haplotype diversity metrics](#102-haplotype-diversity-metrics)
+    - 10.3. [Haplotype feature matrix for genomic prediction](#103-haplotype-feature-matrix-for-genomic-prediction)
+    - 10.4. [Haplotype-based genomic prediction pipeline](#104-haplotype-based-genomic-prediction-pipeline)
+11. [Parameter auto-tuning](#11-parameter-auto-tuning)
+12. [Scale strategies and backends](#12-scale-strategies-and-backends)
+    - 12.1. [The LDxBlocks_backend interface](#121-the-ldxblocks_backend-interface)
+    - 12.2. [Memory requirements by configuration](#122-memory-requirements-by-configuration)
+    - 12.3. [Recommended configurations by dataset size](#123-recommended-configurations-by-dataset-size)
+13. [Full pipeline walkthrough](#13-full-pipeline-walkthrough)
+14. [Function reference](#14-function-reference)
+    - 14.1. [Main pipeline](#141-main-pipeline)
+    - 14.2. [I/O](#142-io)
+    - 14.3. [LD computation](#143-ld-computation)
+    - 14.4. [C++ kernels (direct access)](#144-c-kernels-direct-access)
+    - 14.5. [Haplotype analysis](#145-haplotype-analysis)
+    - 14.6. [Utilities](#146-utilities)
+15. [Output objects](#15-output-objects)
+    - 15.1. [`run_Big_LD_all_chr()` — block table](#151-run_big_ld_all_chr--block-table)
+    - 15.2. [`tune_LD_params()` — named list](#152-tune_ld_params--named-list)
+    - 15.3. [`extract_haplotypes()` — named list](#153-extract_haplotypes--named-list)
+    - 15.4. [`compute_haplotype_diversity()` — data.frame](#154-compute_haplotype_diversity--dataframe)
+    - 15.5. [`read_geno()` — LDxBlocks_backend](#155-read_geno--ldxblocks_backend)
+16. [Memory and performance notes](#16-memory-and-performance-notes)
+    - 16.1. [C++ core](#161-c-core)
+    - 16.2. [Never-full-genome memory model](#162-never-full-genome-memory-model)
+    - 16.3. [OpenMP thread count](#163-openmp-thread-count)
+17. [Documentation](#17-documentation)
+18. [Citation](#18-citation)
+19. [Contributing](#19-contributing)
+20. [License](#20-license)
+21. [References](#21-references)
 
 ---
 
@@ -87,6 +159,8 @@ pipeline that the original implementation does not provide.
 
 ---
 
+---
+
 ## 2. Summary
 
 `LDxBlocks` is a complete pipeline for genome-wide LD block detection in
@@ -150,6 +224,8 @@ algorithm of Kim et al. (2018) with 15 concrete improvements:
 
 ---
 
+---
+
 ## 3. Relationship to the original Big-LD algorithm
 
 LDxBlocks is built on the clique-based segmentation algorithm of Kim et al.
@@ -159,7 +235,7 @@ bins, maximum-weight independent set block construction, and Bron-Kerbosch
 clique enumeration via igraph — is preserved exactly. LDxBlocks extends that
 foundation in the following concrete ways.
 
-### 3.1 Computational core: R loops replaced by C++
+### 3.1. Computational core: R loops replaced by C++
 
 The original `Big_LD()` calls `cor()` inside the boundary-scan loop — up to
 three separate R-level matrix operations per candidate cut position. For a
@@ -180,7 +256,7 @@ The outer loop of `compute_r2_cpp()` is parallelised with OpenMP, controlled
 by `n_threads =`. Thread scaling is efficient up to 8-16 threads for typical
 `subSegmSize = 1500` windows.
 
-### 3.2 Memory model: never-full-genome
+### 3.2. Memory model: never-full-genome
 
 The original `Big_LD()` accepts a plain R matrix — the entire genotype dataset
 must fit in RAM simultaneously. For a 10M-marker, 5,000-individual WGS panel
@@ -199,7 +275,7 @@ a strict memory contract regardless of format:
 - **Chromosome loop**: `rm()` and `gc(FALSE)` are called after each chromosome
   completes, preventing heap fragmentation across 20-30 chromosome passes.
 
-### 3.3 Kinship correction: rV²
+### 3.3. Kinship correction: rV²
 
 The original implementation uses Pearson r as the LD metric. For related
 populations (livestock half-sib families, inbred plant lines, family-based
@@ -213,7 +289,7 @@ eigendecomposition), then applied to the centred genotype matrix before passing
 to the same `compute_r2_cpp()` kernel. In related populations, rV² blocks are
 typically 10-30% smaller and more precisely delimited than r² blocks.
 
-### 3.4 Singleton SNP handling
+### 3.4. Singleton SNP handling
 
 The original `Big_LD()` silently discards SNPs that pass MAF filtering but
 receive `NA` from `CLQD()` (no clique partner above `CLQcut`). These
@@ -226,7 +302,7 @@ single-SNP entries (`start == end`, `length_bp == 1`). With the default
 `singleton_as_block = FALSE` the original behaviour is preserved for backward
 compatibility.
 
-### 3.5 Bug fix: zero-row assignment
+### 3.5. Bug fix: zero-row assignment
 
 The original main loop body contains:
 
@@ -240,7 +316,7 @@ as a backwards sequence, causing `replacement has length zero`. LDxBlocks wraps
 this with `if (nrow(nowLD) > 0L)`, making the function robust to sparse
 chromosomal regions and small input datasets.
 
-### 3.6 Downstream pipeline
+### 3.6. Downstream pipeline
 
 The original Big-LD stops at the block table. LDxBlocks adds a complete
 downstream module:
@@ -258,7 +334,7 @@ downstream module:
 | Multi-format I/O | PLINK, VCF (gpart) | Numeric CSV, HapMap, VCF, GDS, BED, R matrix via unified backend |
 | WGS-scale streaming | Partial (gpart GDS) | Full never-full-genome model for all formats |
 
-### 3.7 What is kept exactly
+### 3.7. What is kept exactly
 
 - The interval graph modelling of LD bins (cliques of strong pairwise LD SNPs)
 - `CLQD()`: bin vector assignment via maximal clique enumeration and greedy
@@ -275,36 +351,9 @@ downstream module:
 
 ---
 
-## 4. Table of contents
-
-1. [5. Installation](#5-installation)
-2. [6. Quick start](#6-quick-start)
-3. [7. Input formats](#7-input-formats)
-4. [8. Phenotype input format](#8-phenotype-input-format)
-5. [9. Statistical background](#9-statistical-background)
-   - [9.1 MAF filtering](#91-maf-filtering)
-   - [9.2 Genotype preparation](#92-genotype-preparation)
-   - [9.3 Subsegmentation](#93-subsegmentation)
-   - [9.4 Clique detection (CLQD)](#94-clique-detection-clqd)
-   - [9.5 Block construction](#95-block-construction)
-6. [10. LD metrics: r² versus rV²](#10-ld-metrics-r-versus-rv)
-7. [11. Clique detection mode (CLQmode)](#11-clique-detection-mode-clqmode)
-8. [12. Haplotype analysis](#12-haplotype-analysis)
-9. [13. Parameter auto-tuning](#13-parameter-auto-tuning)
-10. [14. Scale strategies and backends](#14-scale-strategies-and-backends)
-11. [15. Full pipeline walkthrough](#15-full-pipeline-walkthrough)
-12. [16. Function reference](#16-function-reference)
-13. [17. Output objects](#17-output-objects)
-14. [18. Memory and performance notes](#18-memory-and-performance-notes)
-15. [19. Documentation](#19-documentation)
-16. [20. Citation](#20-citation)
-17. [21. Contributing](#21-contributing)
-18. [22. License](#22-license)
-19. [23. References](#23-references)
-
 ---
 
-## 5. Installation
+## 4. Installation
 
 Install from GitHub with vignettes (recommended):
 
@@ -365,7 +414,9 @@ install.packages("ggplot2")
 
 ---
 
-## 6. Quick start
+---
+
+## 5. Quick start
 
 ```r
 library(LDxBlocks)
@@ -441,19 +492,20 @@ result$gwas_assigned   # every GWAS marker assigned to a block
 
 ---
 
-## 7. Input formats
+---
+
+## 6. Input formats
 
 `read_geno()` accepts a path to a genotype file (or an in-memory R matrix)
 and an optional `format =` override. The format is auto-detected from the
 file extension when `format` is not supplied.
 
-Phenotype data is not an input to block detection. If you need to align sample
-IDs between a genotype file and a phenotype table — for example, to
-subset to phenotyped individuals before running the pipeline — see the
-`read_pheno()` and `align_geno_pheno()` utilities documented under
-[Utility functions](#utilities).
+Phenotype data is not an input to block detection. If you need to subset to
+phenotyped individuals before running the pipeline, filter the genotype matrix
+by `rownames(geno_matrix)` before calling `run_Big_LD_all_chr()` or
+`run_ldx_pipeline()`.
 
-### 7.1 Genotype file
+### 6.1. Genotype input format
 
 | Format | Extension | `format =` |
 |--------|-----------|------------|
@@ -526,14 +578,14 @@ matched correctly.
 
 ---
 
-## 8. Phenotype input format
+### 6.2. Phenotype input format
 
 The `blues` argument of `run_haplotype_prediction()` and
 `prepare_gblup_inputs()` accepts pre-adjusted phenotype means (BLUEs, BLUPs,
 or adjusted entry means from a mixed model). Four input formats are accepted
 interchangeably through a single argument:
 
-### 8.1 Format 1 — Named numeric vector (single trait, simplest)
+### 6.2.1. Format 1 — Named numeric vector (single trait, simplest)
 
 ```r
 blues <- c(G001 = 4.21, G002 = 3.87, G003 = 5.14)
@@ -543,7 +595,7 @@ res <- run_haplotype_prediction(geno, snp_info, blocks, blues = blues)
 
 No `id_col` or `blue_col` arguments needed.
 
-### 8.2 Format 2 — Data frame, single trait
+### 6.2.2. Format 2 — Data frame, single trait
 
 The most common format when reading a results file from a mixed model
 (ASReml-R, lme4, SpATS):
@@ -570,7 +622,7 @@ Column name requirements:
 - `blue_col` — any column name containing the numeric BLUE values. Default
   `"blue"`.
 
-### 8.3 Format 3 — Data frame, multiple traits
+### 6.2.3. Format 3 — Data frame, multiple traits
 
 | id | YLD | DIS | PHT |
 |----|-----|-----|-----|
@@ -596,7 +648,7 @@ automatically — no need to split the data into separate data frames.
 `run_haplotype_prediction()` fits `rrBLUP::kin.blup()` per trait with a
 shared GRM, so cross-trait block importance values are directly comparable.
 
-### 8.4 Format 4 — Named list (different individuals per trait)
+### 6.2.4. Format 4 — Named list (different individuals per trait)
 
 Use a named list when each trait's BLUEs come from a separate model run, or
 when individual sets differ substantially between traits. Each list element is
@@ -623,7 +675,7 @@ vector with only the individuals that were actually measured.
 > Format 4 (named list) is more convenient when traits come from separate
 > model outputs or when the individual sets differ substantially.
 
-### 8.5 ID matching rules
+### 6.3. ID matching rules
 
 In all four formats, genotype IDs in the phenotype data must match
 `rownames(geno_matrix)` exactly. The function:
@@ -636,7 +688,7 @@ Mismatches are the most common source of errors. Common causes: leading/trailing
 spaces, `"G001"` vs `"g001"` (case), `"001"` vs `"G001"` (prefix), Excel
 auto-converting `"001"` to `1`.
 
-### 8.6 Preparing BLUEs from raw phenotype data
+### 6.4. Preparing BLUEs from raw phenotype data
 
 `run_haplotype_prediction()` does **not** fit the field trial model — it takes
 BLUEs as input. BLUEs must be produced externally:
@@ -665,9 +717,11 @@ system.file("extdata", "example_blues.csv", package = "LDxBlocks")
 
 ---
 
-## 9. Statistical background
+---
 
-### 9.1 MAF filtering
+## 7. Statistical background
+
+### 7.1. MAF filtering
 
 The ALT allele frequency is estimated from the dosage matrix as:
 
@@ -685,7 +739,7 @@ removed unconditionally regardless of the MAF threshold. Both operations run in
 a single O(np) C++ pass by `maf_filter_cpp()`, handling NA imputation in the
 same loop.
 
-### 9.2 Genotype preparation
+### 7.2. Genotype preparation
 
 Before computing LD, the genotype matrix $G$ (individuals × SNPs) is centred
 and optionally whitened depending on the chosen LD metric. This step is
@@ -742,7 +796,7 @@ which is computed by passing $X^v$ to the same `compute_r2_cpp()` kernel
 as the standard r² path. Both paths expose the same `compute_r2_cpp()` C++ kernel; the distinction is
 only in the preparation step.
 
-### 9.3 Subsegmentation
+### 7.3. Subsegmentation
 
 For chromosomes with more SNPs than `subSegmSize` (default 1,500), the
 algorithm first identifies weak-LD boundary positions to divide the chromosome
@@ -771,7 +825,7 @@ algorithm switches to forced equal-size splits placed at the minimum-LD
 positions within each oversized segment, identified by a secondary scan with
 a narrow tick window of `leng / 5` SNPs each side.
 
-### 9.4 Clique detection (CLQD)
+### 7.4. Clique detection (CLQD)
 
 Within each sub-segment, an undirected graph is constructed where SNPs are
 nodes and edges connect pairs with $r^2 \geq \tau_{\mathrm{CLQ}}$ (`CLQcut`,
@@ -827,7 +881,7 @@ more than `clstgap` base pairs (default 40,000) are split at the largest
 internal gap. This prevents a single bin from containing biologically unrelated
 SNPs that happen to share high r² due to long-range LD.
 
-### 9.5 Block construction
+### 7.5. Block construction
 
 Bin assignments from CLQD are converted to genomic intervals by a
 maximum-weight independent set (MWIS) procedure operating on the **interval
@@ -847,7 +901,9 @@ that `start` and `end` columns count from 1 over all SNPs in the original input.
 
 ---
 
-## 10. LD metrics: r² versus rV²
+---
+
+## 8. LD metrics: r² versus rV²
 
 The choice between `method = "r2"` and `method = "rV2"` is the most important
 modelling decision in LDxBlocks. The table below summarises when each is
@@ -947,7 +1003,9 @@ blocks_rv2 <- run_Big_LD_all_chr(be, method = "rV2", CLQcut = 0.70,
 
 ---
 
-## 11. Clique detection mode (CLQmode)
+---
+
+## 9. Clique detection mode (CLQmode)
 
 The `CLQmode` parameter controls how SNPs within each sub-segment are grouped
 into candidate LD bins before block construction. It is the single most
@@ -955,7 +1013,7 @@ important parameter to set correctly for WGS-scale datasets. Four modes are
 available, each with different computational complexity, statistical guarantees,
 and biological interpretation.
 
-### 11.1 Mode 1 — Density (`CLQmode = "Density"`, default)
+### 9.1. Mode 1 — Density (`CLQmode = "Density"`, default)
 
 **Algorithm.** Enumerates all maximal cliques in the LD graph via the
 Bron-Kerbosch algorithm (`igraph::max_cliques()`). Each clique is scored as:
@@ -993,7 +1051,7 @@ is not a constraint.
 
 ---
 
-### 11.2 Mode 2 — Maximal (`CLQmode = "Maximal"`)
+### 9.2. Mode 2 — Maximal (`CLQmode = "Maximal"`)
 
 **Algorithm.** Same Bron-Kerbosch enumeration as Density, but the scoring
 function is simply:
@@ -1026,7 +1084,7 @@ for genomic prediction regardless of physical compactness.
 
 ---
 
-### 11.3 Mode 3 — Louvain (`CLQmode = "Louvain"`)
+### 9.3. Mode 3 — Louvain (`CLQmode = "Louvain"`)
 
 **Algorithm.** Replaces Bron-Kerbosch with modularity-maximising community
 detection (`igraph::cluster_louvain()`; Blondel et al. 2008). Edges are
@@ -1062,7 +1120,7 @@ Louvain output. In all other cases, **prefer Leiden**.
 
 ---
 
-### 11.4 Mode 4 — Leiden (`CLQmode = "Leiden"`) **[Recommended for WGS]**
+### 9.4. Mode 4 — Leiden (`CLQmode = "Leiden"`)
 
 **Algorithm.** Replaces Bron-Kerbosch with the Leiden algorithm
 (`igraph::cluster_leiden()`; Traag et al. 2019). Leiden improves on Louvain
@@ -1099,7 +1157,7 @@ configuration for 3M-SNP WGS panels.
 
 ---
 
-### 11.5 Summary comparison
+### 9.5. Summary comparison
 
 | | Density | Maximal | Louvain | Leiden |
 |---|---|---|---|---|
@@ -1111,7 +1169,7 @@ configuration for 3M-SNP WGS panels.
 | **Biologically motivated scoring?** | **Yes** | Partially | Via edge weights | Via edge weights |
 | **Recommended for** | Chip panels (< 100k SNPs/chr) | Sparse chip panels | Not recommended (use Leiden) | **WGS panels (2M+ SNPs)** |
 
-### 11.6 Recommended configurations
+### 9.6. Recommended configurations
 
 ```r
 # Chip or low-density panel (< 100k SNPs per chromosome)
@@ -1131,14 +1189,16 @@ blocks <- run_Big_LD_all_chr(be, CLQmode = "Leiden", CLQcut = 0.80,
 
 ---
 
-## 12. Haplotype analysis
+---
+
+## 10. Haplotype analysis
 
 Within each LD block, the SNPs co-segregate as a unit. The multiallelic
 haplotype defined by the joint allele configuration at those SNPs is more
 informative than any single SNP in the block. LDxBlocks provides three
 functions for haplotype-level analyses downstream of block detection.
 
-### 12.1 Phase-free haplotype extraction
+### 10.1. Phase-free haplotype extraction
 
 `extract_haplotypes()` concatenates each individual's allele codes (0, 1, or
 2) for all SNPs within a block into a single character string:
@@ -1160,7 +1220,7 @@ frequency calculations in `compute_haplotype_diversity()`.
 > If gametic phases are required, phase first and convert the phased VCF to
 > 0/1/2 dosages before reading with `read_geno()`.
 
-### 12.2 Haplotype diversity metrics
+### 10.2. Haplotype diversity metrics
 
 `compute_haplotype_diversity()` returns four metrics per block from the
 haplotype string frequency distribution:
@@ -1189,7 +1249,7 @@ for equal-frequency haplotypes.
 haplotype string. Values near 1.0 indicate a selective sweep or a strong
 founder effect in the region.
 
-### 12.3 Haplotype feature matrix for genomic prediction
+### 10.3. Haplotype feature matrix for genomic prediction
 
 `build_haplotype_feature_matrix()` converts haplotype strings to a numeric
 dosage matrix suitable for GBLUP, BayesB, random forests, or any other genomic
@@ -1220,7 +1280,7 @@ SNP-based models in livestock panels; the advantage is greatest for traits with
 strong dominance or in populations where blocks are well-defined by long-range
 LD.
 
-### 12.4 Haplotype-based genomic prediction pipeline
+### 10.4. Haplotype-based genomic prediction pipeline
 
 Beyond diversity analysis, LDxBlocks implements the complete haplotype stacking
 pipeline of Tong et al. (2024, 2025) for translating LD block structure into
@@ -1282,7 +1342,9 @@ priority[priority$priority_score == 3, ]  # top candidates
 
 ---
 
-## 13. Parameter auto-tuning
+---
+
+## 11. Parameter auto-tuning
 
 When GWAS-significant markers are available, `tune_LD_params()` automatically
 selects the `CLQcut` (and optionally other parameters) that best captures those
@@ -1333,9 +1395,11 @@ result <- tune_LD_params(my_geno, my_snp_info, my_gwas, parallel = TRUE)
 
 ---
 
-## 14. Scale strategies and backends
+---
 
-### 14.1 The LDxBlocks_backend interface
+## 12. Scale strategies and backends
+
+### 12.1. The LDxBlocks_backend interface
 
 All functions that require genotype data operate through the
 `LDxBlocks_backend` S3 object rather than directly on a matrix. This single
@@ -1361,7 +1425,7 @@ close_backend(be)                     # releases memory-mapped file handle
 For GDS and BED backends, only the requested column slice is loaded per call.
 The genome-wide matrix never exists in RAM simultaneously.
 
-### 14.2 Memory requirements by configuration
+### 12.2. Memory requirements by configuration
 
 The table below gives approximate peak RAM for a 500-individual, 10 M-SNP
 whole-genome dataset under different backends and methods.
@@ -1374,7 +1438,7 @@ whole-genome dataset under different backends and methods.
 | Any backend, rV², `method = "rV2"` | ~4 GB | GRM n×n + whitening factor always in RAM |
 | bigmemory, r², `subSegmSize = 500` | ~0.8 MB/window | OS pages only requested columns; full matrix never in RAM |
 
-### 14.3 Recommended configurations by dataset size
+### 12.3. Recommended configurations by dataset size
 
 | Markers | Individuals | Recommended configuration |
 |---|---|---|
@@ -1386,7 +1450,9 @@ whole-genome dataset under different backends and methods.
 
 ---
 
-## 15. Full pipeline walkthrough
+---
+
+## 13. Full pipeline walkthrough
 
 The numbered steps below describe what `run_Big_LD_all_chr()` executes for
 each chromosome in order.
@@ -1454,9 +1520,11 @@ blocks <- run_Big_LD_all_chr(
 
 ---
 
-## 16. Function reference
+---
 
-### 16.1 Main pipeline
+## 14. Function reference
+
+### 14.1. Main pipeline
 
 | Function | Description |
 |----------|-------------|
@@ -1465,7 +1533,7 @@ blocks <- run_Big_LD_all_chr(
 | `CLQD()` | Clique detection within one sub-segment. Called internally by `Big_LD()`. Not exported. |
 | `tune_LD_params()` | Grid-search auto-tuner minimising unassigned GWAS marker placements. |
 
-### 16.2 I/O
+### 14.2. I/O
 
 | Function | Description |
 |----------|-------------|
@@ -1475,7 +1543,7 @@ blocks <- run_Big_LD_all_chr(
 | `read_geno_bigmemory()` | Create a file-backed memory-mapped store from any source.
     Peak RAM = columns accessed × n_samples × 8 bytes. Backing files persist across sessions. |
 
-### 16.3 LD computation
+### 14.3. LD computation
 
 | Function | Description |
 |----------|-------------|
@@ -1485,7 +1553,7 @@ blocks <- run_Big_LD_all_chr(
 | `prepare_geno()` | Centre (r²) or centre + whiten (rV²). Returns list of `adj_geno` and `V_inv_sqrt`. |
 | `get_V_inv_sqrt()` | Whitening factor A such that AVA' = I (Cholesky or eigendecomposition). |
 
-### 16.4 C++ kernels (direct access)
+### 14.4. C++ kernels (direct access)
 
 | Function | Description |
 |----------|-------------|
@@ -1497,7 +1565,7 @@ blocks <- run_Big_LD_all_chr(
 | `compute_r2_sparse_cpp()` | Sparse r² for pairs within a bp distance window. Returns triplet (row, col, r²). |
 | `boundary_scan_cpp()` | Cross-boundary LD scan. Returns 0/1 vector of valid cut positions. |
 
-### 16.5 Haplotype analysis
+### 14.5. Haplotype analysis
 
 | Function | Description |
 |----------|-------------|
@@ -1512,33 +1580,27 @@ blocks <- run_Big_LD_all_chr(
 | `define_qtl_regions()` | Map GWAS hits to LD blocks; detect pleiotropic blocks. |
 | `backsolve_snp_effects()` | Derive per-SNP effects from GEBV (Tong et al. 2025). |
 | `compute_local_gebv()` | Local haplotype GEBV per block per individual. |
-| `prepare_gblup_inputs()` | Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, BGLR, ASReml-R). See [8. Phenotype input format](#8-phenotype-input-format) for accepted column layouts. |
+| `prepare_gblup_inputs()` | Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, BGLR, ASReml-R). See [Phenotype input format](#phenotype-input-format) for accepted column layouts. |
 | `run_haplotype_prediction()` | Single or multi-trait Tong et al. (2025) haplotype stacking pipeline.
     `blues` accepts any of four formats (named vector, single-trait or multi-trait data frame, named list).
-    See [8. Phenotype input format](#8-phenotype-input-format). Uses rrBLUP::kin.blup() per trait with a shared GRM. |
+    See [Phenotype input format](#phenotype-input-format). Uses rrBLUP::kin.blup() per trait with a shared GRM. |
 | `integrate_gwas_haplotypes()` | Combine GWAS, variance, and diversity evidence per block. |
 | `rank_haplotype_blocks()` | Unified block ranking across 3 use cases (diversity/GWAS/phenotype). |
 
-### 16.6 Utilities
+### 14.6. Utilities
 
 | Function | Description |
 |----------|-------------|
 | `summarise_blocks()` | Per-chromosome and genome-wide block size summary statistics. |
 | `plot_ld_blocks()` | ggplot2 block diagram coloured by block size or chromosome. |
 
-**Sample-alignment helpers** (not required for block detection; useful when
-subsetting to phenotyped individuals before running the pipeline):
-
-| Function | Description |
-|----------|-------------|
-| `read_pheno()` | Read a delimited phenotype/covariate file; auto-detect sample ID column; optionally align rows to a backend. |
-| `align_geno_pheno()` | Intersect and reorder a backend and phenotype data frame to their common sample IDs. |
+---
 
 ---
 
-## 17. Output objects
+## 15. Output objects
 
-### 17.1 `run_Big_LD_all_chr()` — block table
+### 15.1. `run_Big_LD_all_chr()` — block table
 
 A `data.frame` with one row per detected LD block:
 
@@ -1553,7 +1615,7 @@ A `data.frame` with one row per detected LD block:
 | `CHR` | character | Chromosome label (normalised, no `chr` prefix). |
 | `length_bp` | integer | `end.bp - start.bp + 1`. |
 
-### 17.2 `tune_LD_params()` — named list
+### 15.2. `tune_LD_params()` — named list
 
 | Element | Type | Description |
 |---------|------|-------------|
@@ -1563,14 +1625,14 @@ A `data.frame` with one row per detected LD block:
 | `final_blocks` | data.table | Block table from `best_params`, all chromosomes. |
 | `gwas_assigned` | data.frame | Input GWAS data with `LD_block` column added. Entries ending in `*` denote forced (nearest-block) assignments. |
 
-### 17.3 `extract_haplotypes()` — named list
+### 15.3. `extract_haplotypes()` — named list
 
 | Element | Type | Description |
 |---------|------|-------------|
 | `block_<start>_<end>` | character vector | One haplotype string per individual (length n_samples). One element per block. |
 | `attr(., "block_info")` | data.frame | Block metadata: block_id, CHR, start_bp, end_bp, n_snps. |
 
-### 17.4 `compute_haplotype_diversity()` — data.frame
+### 15.4. `compute_haplotype_diversity()` — data.frame
 
 | Column | Description |
 |--------|-------------|
@@ -1588,7 +1650,7 @@ A `data.frame` with one row per detected LD block:
 | `sweep_flag` | TRUE when freq_dominant ≥ 0.90 (possible sweep). |
 | `phased` | Logical: was phased input used? |
 
-### 17.5 `read_geno()` — LDxBlocks_backend
+### 15.5. `read_geno()` — LDxBlocks_backend
 
 | Element | Type | Description |
 |---------|------|-------------|
@@ -1600,9 +1662,11 @@ A `data.frame` with one row per detected LD block:
 
 ---
 
-## 18. Memory and performance notes
+---
 
-### 18.1 C++ core
+## 16. Memory and performance notes
+
+### 16.1. C++ core
 
 The seven compiled functions in `src/ld_core.cpp` (428 lines,
 RcppArmadillo + OpenMP) replace the most expensive R operations:
@@ -1625,7 +1689,7 @@ imputation and monomorphic detection in the same loop.
 **`build_adj_matrix_cpp()`** replaces `ifelse(LD >= cut, 1L, 0L)` with a C++
 write in place, avoiding the allocation of the intermediate logical matrix.
 
-### 18.2 Never-full-genome memory model
+### 16.2. Never-full-genome memory model
 
 LDxBlocks enforces a strict memory contract: **the full genotype matrix is never
 held in RAM at once for any dataset size or format.**
@@ -1650,7 +1714,7 @@ each chromosome is extracted, processed, freed with `rm()`, and `gc(FALSE)` is
 called before the next chromosome is touched, preventing heap fragmentation
 from accumulating across 20–30 chromosome passes.
 
-### 18.3 OpenMP thread count
+### 16.3. OpenMP thread count
 
 The `n_threads` parameter controls the number of OpenMP threads in
 `compute_r2_cpp()`. Thread scaling is efficient up to approximately 8–16
@@ -1665,7 +1729,9 @@ blocks <- run_Big_LD_all_chr(be, n_threads = n_thr)
 
 ---
 
-## 19. Documentation
+---
+
+## 17. Documentation
 
 Full documentation, function reference, and tutorials are available at:
 
@@ -1679,7 +1745,9 @@ vignette("LDxBlocks-workflow", package = "LDxBlocks")
 
 ---
 
-## 20. Citation
+---
+
+## 18. Citation
 
 If you use `LDxBlocks` in published research, please cite:
 
@@ -1723,7 +1791,9 @@ https://doi.org/10.1073/pnas.70.12.3321
 
 ---
 
-## 21. Contributing
+---
+
+## 19. Contributing
 
 Bug reports, feature requests, and pull requests are welcome:
 
@@ -1737,15 +1807,17 @@ Before opening a pull request, please:
 
 ---
 
-## 22. License
+---
+
+## 20. License
 
 MIT + file LICENSE © Félicien Akohoue
 
 ---
 
-## 23. References
+## 21. References
 
-### 23.1 Foundational algorithms
+### Foundational algorithms
 
 Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block
 detection method for dense genome sequencing data based on interval graph
@@ -1807,7 +1879,7 @@ Nei M (1973). Analysis of gene diversity in subdivided populations.
 *Proceedings of the National Academy of Sciences* **70**(12):3321–3323.
 <https://doi.org/10.1073/pnas.70.12.3321>
 
-### 23.2 Community detection algorithms used for LD graph partitioning
+### Community detection algorithms used for LD graph partitioning
 
 Blondel VD, Guillaume J-L, Lambiotte R, Lefebvre E (2008). Fast unfolding of
 communities in large networks. *Journal of Statistical Mechanics: Theory and

@@ -13,7 +13,8 @@ define_qtl_regions(
   snp_info,
   p_threshold = 5e-08,
   trait_col = "trait",
-  min_snps = 3L
+  min_snps = 3L,
+  ld_decay = NULL
 )
 ```
 
@@ -45,6 +46,16 @@ define_qtl_regions(
 - min_snps:
 
   Minimum SNPs per block. Default `3L`.
+
+- ld_decay:
+
+  Optional `LDxBlocks_decay` object from
+  [`compute_ld_decay`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md),
+  or a data frame with columns `CHR` and `decay_dist_bp`. When supplied,
+  candidate gene windows are extended by the chromosome-specific decay
+  distance on both sides of each lead SNP position, adding columns
+  `candidate_region_start`, `candidate_region_end`, and
+  `candidate_region_size_kb` to the output. Default `NULL`.
 
 ## Value
 

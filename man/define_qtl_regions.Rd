@@ -10,7 +10,8 @@ define_qtl_regions(
   snp_info,
   p_threshold = 5e-08,
   trait_col = "trait",
-  min_snps = 3L
+  min_snps = 3L,
+  ld_decay = NULL
 )
 }
 \arguments{
@@ -29,6 +30,14 @@ define_qtl_regions(
 \code{"trait"}.}
 
 \item{min_snps}{Minimum SNPs per block. Default \code{3L}.}
+
+\item{ld_decay}{Optional \code{LDxBlocks_decay} object from
+\code{\link{compute_ld_decay}}, or a data frame with columns
+\code{CHR} and \code{decay_dist_bp}. When supplied, candidate
+gene windows are extended by the chromosome-specific decay distance
+on both sides of each lead SNP position, adding columns
+\code{candidate_region_start}, \code{candidate_region_end}, and
+\code{candidate_region_size_kb} to the output. Default \code{NULL}.}
 }
 \value{
 Data frame with one row per block containing significant markers:

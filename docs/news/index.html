@@ -51,8 +51,45 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.1" id="ldxblocks-031-development">LDxBlocks 0.3.1 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-031-development"></a></h2>
 <div class="section level3">
+<h3 id="new-functions-0-3-1">New functions<a class="anchor" aria-label="anchor" href="#new-functions-0-3-1"></a></h3>
+<ul><li><p><strong><code><a href="../reference/compute_ld_decay.html">compute_ld_decay()</a></code></strong> – LD decay analysis per chromosome. Estimates the distance at which r² (or rV²) drops below a critical threshold using a memory-efficient position-first random sampling strategy: pair indices are sampled from SNP positions only, then <code><a href="../reference/read_chunk.html">read_chunk()</a></code> loads only the unique SNP columns involved (~2% of a WGS chromosome for 50k random pairs). <code>compute_r2_sparse_cpp()</code> (Armadillo BLAS + OpenMP) is called once per chromosome in place of an R pair-by-pair loop. Two threshold approaches: fixed numeric (e.g. 0.1, standard GWAS practice) and parametric (95th percentile of r² between unlinked markers on different chromosomes, measuring the background kinship-induced LD level). Optional LOESS and Hill-Weir (1988) nonlinear decay model fitting. Chromosome-specific decay distances can be passed directly to <code>define_qtl_regions(ld_decay = decay)</code> to define biologically justified candidate gene windows. Censored distances (threshold never crossed within <code>max_dist</code>) are flagged with <code>censored = TRUE</code> in output and emitted as warnings. Requires no change to existing code.</p></li>
+<li><p><strong><code><a href="../reference/plot_ld_decay.html">plot_ld_decay()</a></code></strong> – ggplot2 visualisation of r² vs physical distance per chromosome, with optional raw points, threshold line, per-chromosome decay distance markers, and facet option.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="algorithm-improvements-0-3-1">Algorithm improvements<a class="anchor" aria-label="anchor" href="#algorithm-improvements-0-3-1"></a></h3>
+<ul><li>
+<strong>LD-informed overlap resolution</strong> replacing blind union merge in <code>Big_LD()</code>. Overlapping blocks at sub-segment seams are now resolved by a cumulative-score boundary rule: for each disputed SNP, <code>score = mean_r2(with left core) -   mean_r2(with right core)</code>. The cumulative sum is tracked across the overlap zone and the split boundary is placed at the last position where the cumulative score is &gt;= 0. Representatives are selected from boundary-adjacent SNPs of each core (nearest to the overlap zone, not first-k). Three clean cases: all-left (block A keeps overlap, block B shrinks), all-right (block A shrinks, block B keeps overlap), mixed (split at cumulative boundary). Falls back to union merge only when one core is empty (one block fully inside the other).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="c-updates-0-3-1">C++ updates<a class="anchor" aria-label="anchor" href="#c-updates-0-3-1"></a></h3>
+<ul><li>
+<strong><code>compute_r2_sparse_cpp()</code></strong> gains an <code>n_threads</code> parameter (OpenMP). Thread-local vector accumulation prevents contention; results are merged after the parallel loop. The R wrapper in <code>RcppExports.R</code> is updated to expose the new argument with default <code>n_threads = 1L</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-and-robustness-0-3-1">Bug fixes and robustness<a class="anchor" aria-label="anchor" href="#bug-fixes-and-robustness-0-3-1"></a></h3>
+<ul><li>
+<strong><code><a href="../reference/compute_ld_decay.html">compute_ld_decay()</a></code> pair sampling</strong> – <code>snp_info</code> is now sorted by POS within each chromosome before any pair index sampling. Previously, unsorted input could produce incorrect pair distances silently.</li>
+<li>
+<strong><code><a href="../reference/compute_ld_decay.html">compute_ld_decay()</a></code> column precomputation</strong> – prepared columns (mean-imputed, optionally whitened) are now computed once per chunk, not per pair. Monomorphic columns (sd &lt; 1e-6 after preparation) are skipped before any r² computation.</li>
+<li>
+<strong><code><a href="../reference/compute_ld_decay.html">compute_ld_decay()</a></code> <code>both</code> mode</strong> – sliding-window and random pairs are now kept separate: sliding window feeds the decay curve, random pairs feed the parametric threshold only. Previously they were merged into one pool, biasing the curve shape estimate.</li>
+<li>
+<strong><code><a href="../reference/compute_ld_decay.html">compute_ld_decay()</a></code> fitting failures</strong> – LOESS and Hill-Weir nonlinear failures now emit <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code> with chromosome name and error message instead of being silently swallowed by <code>tryCatch(..., error = function(e) NULL)</code>.</li>
+<li>
+<strong><code><a href="../reference/compute_ld_decay.html">compute_ld_decay()</a></code> threshold crossing</strong> – linear interpolation between the last-above and first-below bins for sub-bin precision (was: first-below bin midpoint). Non-monotone curves fall back to first-below.</li>
+<li>
+<strong><code>r2_threshold</code> validation</strong> – numeric thresholds outside [0,1], NA values, and unrecognised strings now produce informative errors instead of silent wrong results.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="performance-improvements-0-3-1">Performance improvements<a class="anchor" aria-label="anchor" href="#performance-improvements-0-3-1"></a></h3>
+<ul><li>
+<strong><code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code> C++ optimisation</strong> — haplotype strings now built via <code>build_hap_strings_cpp()</code>, replacing an R <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code> loop that incurred one function call per individual per block. For a 3M-SNP panel with 17,078 blocks and 204 individuals: ~3.5 million R calls -&gt; one C++ call per block. Expected speedup: 20-50x (3.5 hours -&gt; ~5-10 minutes for that panel).</li>
+<li>
+<strong><code><a href="../reference/read_chunk.html">read_chunk()</a></code> bigmemory NA fix</strong> — char-type big.matrix stores NA as -128; these are now correctly restored to <code>NA_integer_</code>. Also removed a redundant integer-&gt;double type conversion.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="wgs-scale-acceleration--three-new-approaches-0-3-1">WGS-scale acceleration — three new approaches<a class="anchor" aria-label="anchor" href="#wgs-scale-acceleration--three-new-approaches-0-3-1"></a></h3>
-<ul><li><p><strong>Louvain/Leiden community detection</strong> (<code>CLQmode = "Louvain"</code> or <code>"Leiden"</code>): Polynomial-time O(n log n) community detection replaces Bron-Kerbosch (<code><a href="https://r.igraph.org/reference/cliques.html" class="external-link">igraph::max_cliques()</a></code>) which has exponential worst-case complexity. The original Big-LD run on a 3M-SNP WGS panel found 4.26 million maximal cliques in a single 1500-SNP window and ran for &gt; 1 hour without completing. Louvain/Leiden finish the same window in &lt; 1 second. Block boundaries are equivalent to or better than the Density mode for WGS panels where LD structure is dense. Available in <code><a href="../reference/CLQD.html">CLQD()</a></code>, <code><a href="../reference/Big_LD.html">Big_LD()</a></code>, <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>, <code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>, and <code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>. Edge weights are inversely proportional to base-pair distance so local LD structure is respected.</p></li>
+<ul><li><p><strong>Louvain/Leiden community detection</strong> (<code>CLQmode = "Louvain"</code> or <code>"Leiden"</code>): Polynomial-time O(n log n) community detection replaces Bron-Kerbosch (<code><a href="https://r.igraph.org/reference/cliques.html" class="external-link">igraph::max_cliques()</a></code>) which has exponential worst-case complexity. The original Big-LD run on a 3M-SNP WGS panel found 4.26 million maximal cliques in a single 1500-SNP window and ran for &gt; 1 hour without completing. Louvain/Leiden finish the same window in &lt; 1 second. Block boundaries are equivalent to or better than the Density mode for WGS panels where LD structure is dense. Available in <code><a href="../reference/CLQD.html">CLQD()</a></code>, <code>Big_LD()</code>, <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>, <code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>, and <code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code>. Edge weights are inversely proportional to base-pair distance so local LD structure is respected.</p></li>
 <li><p><strong>Sparse LD computation</strong> (<code>max_bp_distance</code> parameter): When <code>max_bp_distance &gt; 0</code>, only SNP pairs within that physical distance have their r² computed via <code>compute_r2_sparse_cpp()</code>. Pairs beyond the threshold are assumed to be in negligible LD and set to zero in the adjacency matrix. This reduces O(p²) LD computation to near-O(p) for WGS panels — at 500 kb, approximately 70–90% of pairs are skipped. Available in <code><a href="../reference/CLQD.html">CLQD()</a></code>, propagated through all callers. Default <code>0L</code> (disabled) preserves original behaviour.</p></li>
 <li><p><strong>Memory-mapped genotype store</strong> (<code><a href="../reference/read_geno_bigmemory.html">read_geno_bigmemory()</a></code>): Wraps any genotype source in a <code><a href="https://rdrr.io/pkg/bigmemory/man/big.matrix.html" class="external-link">bigmemory::big.matrix</a></code> backed by a binary file on disk. <code><a href="../reference/read_chunk.html">read_chunk()</a></code> retrieves columns via OS page faults — only the requested bytes are loaded into RAM. Peak RAM is proportional to <code>n_samples × subSegmSize × 8 bytes</code>, not the full genome matrix. Backing files persist across R sessions: supply the <code>.desc</code> path to reattach without re-loading source data. Storage type <code>"char"</code> (1 byte per cell) saves 8× RAM vs double for 0/1/2 dosage values. Requires <code>bigmemory</code> (added to Suggests).</p></li>
 </ul></div>
@@ -241,6 +278,8 @@
 <div class="section level3">
 <h3 id="tests-0-3-0">Tests<a class="anchor" aria-label="anchor" href="#tests-0-3-0"></a></h3>
 <ul><li>
+<code>test-ld-decay.R</code>: 33 tests for <code><a href="../reference/compute_ld_decay.html">compute_ld_decay()</a></code> and <code><a href="../reference/plot_ld_decay.html">plot_ld_decay()</a></code> covering: input validation, <code>LDxBlocks_decay</code> object structure, all sampling modes, unsorted <code>snp_info</code> handling, all threshold types (fixed, parametric, both, NULL), <code>fit_model</code> options, decay distance correctness, censored flag, all three backend types (matrix, <code>LDxBlocks_backend</code>, bigmemory), print and plot methods, and <code><a href="../reference/define_qtl_regions.html">define_qtl_regions()</a></code> integration with <code>ld_decay=</code>.</li>
+<li>
 <code>test-basic.R</code>: smoke tests covering all major functions via the 230-SNP example dataset (3 chromosomes, 9 LD blocks).</li>
 <li>
 <code>test-algorithm.R</code>: property-based tests for the Big-LD segmentation algorithm: <code>CLQD</code>, <code>Big_LD</code>, <code>run_Big_LD_all_chr</code>, <code>summarise_blocks</code>, <code>plot_ld_blocks</code>.</li>
@@ -263,14 +302,14 @@
 <ul><li>
 <code><a href="../reference/CLQD.html">CLQD()</a></code>: fixed <code>re_idx</code> tracking after dense-core pre-pass.</li>
 <li>
-<code><a href="../reference/Big_LD.html">Big_LD()</a></code>: <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code> used throughout for type-stability.</li>
+<code>Big_LD()</code>: <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code> used throughout for type-stability.</li>
 </ul><hr></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="ldxblocks-010-2025-04-07">LDxBlocks 0.1.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-010-2025-04-07"></a></h2>
 <p>Initial release.</p>
 <ul><li>
-<code><a href="../reference/Big_LD.html">Big_LD()</a></code>, <code><a href="../reference/CLQD.html">CLQD()</a></code>, <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>, <code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>.</li>
+<code>Big_LD()</code>, <code><a href="../reference/CLQD.html">CLQD()</a></code>, <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>, <code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>.</li>
 <li>
 <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>, <code><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>, <code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>.</li>
 <li>

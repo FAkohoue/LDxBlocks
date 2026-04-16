@@ -60,8 +60,7 @@ run_ldx_pipeline(
   [`read_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
   call, allowing you to use any pre-built backend including file-backed
   `bigmemory` stores. Supported file formats when a path is supplied:
-  numeric dosage CSV, HapMap, VCF/VCF.gz, SNPRelate GDS, PLINK BED.
-  dosage CSV (\`.csv\`), HapMap (\`.hmp.txt\`), VCF (\`.vcf\`,
+  numeric dosage CSV (\`.csv\`), HapMap (\`.hmp.txt\`), VCF (\`.vcf\`,
   \`.vcf.gz\`), SNPRelate GDS (\`.gds\`), PLINK BED (\`.bed\`). Format
   is detected automatically from the file extension.
 
@@ -498,14 +497,14 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [bigmemory]   chr 1 loaded (80/230 SNPs)
 #> [bigmemory]   chr 2 loaded (160/230 SNPs)
 #> [bigmemory]   chr 3 loaded (230/230 SNPs)
-#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN/ldxbm8e5c39e57e6.bin
-#> [13:22:22] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
-#> [13:22:22] MAF filtering (>= 0.05) ...
+#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmpy0D0w5/ldxbm70041976533b.bin
+#> [12:56:02] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
+#> [12:56:02] MAF filtering (>= 0.05) ...
 #> [MAF filter] Computing MAF for 230 SNPs ...
 #> [MAF filter] 230 / 230 SNPs pass MAF >= 0.05
-#> [13:22:23] Loading filtered genotype matrix ...
-#> [13:22:23] Genotype matrix: 120 x 230
-#> [13:22:23] Running genome-wide LD block detection ...
+#> [12:56:02] Loading filtered genotype matrix ...
+#> [12:56:02] Genotype matrix: 120 x 230
+#> [12:56:02] Running genome-wide LD block detection ...
 #> 
 #> [run_Big_LD_all_chr] Processing 1 ...
 #> [Big_LD] Subsegmenting via C++ boundary scan...
@@ -555,21 +554,21 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [CLQD] Building graph on 70 SNPs...
 #> [CLQD] Found 3 maximal cliques.
 #> [Big_LD] Segment 1/1 done.
-#> [13:22:23] Detected 9 LD blocks
-#> [13:22:23] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c50196aca.csv
-#> [13:22:23] Extracting haplotypes (min_snps = 3) ...
-#> [13:22:23] Haplotypes extracted for 9 blocks
-#> [13:22:23] Computing haplotype diversity ...
-#> [13:22:23] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c46de729e.csv
-#> [13:22:23] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
-#> [13:22:23] Haplotype matrix: 120 individuals x 85 haplotype allele columns
-#> [13:22:23] Writing haplotype matrix (format = numeric) ...
-#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c22166373.csv (85 haplotypes x 120 individuals)
-#> [13:22:24] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp6l0fxN\file8e5c22166373.csv
-#> [13:22:24] Pipeline complete.
-#> [13:22:24]   Blocks:              9
-#> [13:22:24]   Haplotype blocks:    9
-#> [13:22:24]   Haplotype columns:   85
-#> [13:22:24]   Individuals:         120
+#> [12:56:03] Detected 9 LD blocks
+#> [12:56:03] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpy0D0w5\file700436806ec.csv
+#> [12:56:03] Extracting haplotypes (min_snps = 3) ...
+#> [12:56:03] Haplotypes extracted for 9 blocks
+#> [12:56:03] Computing haplotype diversity ...
+#> [12:56:03] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpy0D0w5\file70042d8f11e0.csv
+#> [12:56:03] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
+#> [12:56:03] Haplotype matrix: 120 individuals x 85 haplotype allele columns
+#> [12:56:03] Writing haplotype matrix (format = numeric) ...
+#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmpy0D0w5\file70043c7055ac.csv (85 haplotypes x 120 individuals)
+#> [12:56:03] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpy0D0w5\file70043c7055ac.csv
+#> [12:56:03] Pipeline complete.
+#> [12:56:03]   Blocks:              9
+#> [12:56:03]   Haplotype blocks:    9
+#> [12:56:03]   Haplotype columns:   85
+#> [12:56:03]   Individuals:         120
 # }
 ```

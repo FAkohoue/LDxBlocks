@@ -502,3 +502,56 @@ test_that("integrate_gwas_haplotypes: returns priority_score 0-3", {
   expect_true(all(out$priority_score == cummax(rev(out$priority_score))[rev(seq_len(nrow(out)))]) ||
                 TRUE)  # just check no errors; ordering is by score desc
 })
+
+# ── build_hap_strings_cpp integration (via extract_haplotypes) ────────────────
+# These tests verify that the C++ haplotype string builder (replacing the R
+# vapply loop) produces identical output to the reference R implementation.
+
+test_that("extract_haplotypes C++ path: strings match R reference for small block", {
+  # Build haplotype strings via extract_haplotypes (uses C++ internally)
+  blk1 <- ldx_blocks[ldx_blocks$CHR == "1", ][1, ]
+  haps_cpp <- extract_haplotypes(ldx_geno, ldx_snp_info, blk1, min_snps = 3)
+  expect_equal(length(haps_cpp), 1L)
+
+  # Build reference strings manually in R
+  si    <- ldx_snp_info[ldx_snp_info$CHR == "1", ]
+  idx   <- which(si$POS >= blk1$start.bp & si$POS <= blk1$end.bp)
+  sub   <- ldx_geno[, which(ldx_snp_info$CHR == "1")[idx], drop = FALSE]
+  ref_strings <- vapply(seq_len(nrow(sub)), function(i) {
+    v <- as.character(sub[i, ])
+    v[is.na(sub[i, ])] <- "."
+    paste(v, collapse = "")
+  }, character(1L))
+  names(ref_strings) <- rownames(ldx_geno)
+
+  expect_equal(haps_cpp[[1]], ref_strings)
+})
+
+test_that("extract_haplotypes C++ path: handles NA genotypes correctly", {
+  G_na <- ldx_geno
+  G_na[5, 1:5] <- NA   # NA in first 5 SNPs for individual 5
+  blk1 <- ldx_blocks[ldx_blocks$CHR == "1", ][1, ]
+  haps <- extract_haplotypes(G_na, ldx_snp_info, blk1, min_snps = 3,
+                             na_char = ".")
+  # Individual 5 should have "." characters at positions 1-5
+  s5 <- haps[[1]][5]
+  expect_true(grepl(".", s5, fixed = TRUE))
+  # Other individuals should have no "." (assuming no other NAs)
+  others <- haps[[1]][-5]
+  expect_false(any(grepl(".", others, fixed = TRUE)))
+})
+
+test_that("extract_haplotypes C++ path: backend streaming matches matrix path", {
+  # Backend (streaming) path
+  be <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
+  on.exit(close_backend(be))
+  haps_be <- extract_haplotypes(be, be$snp_info, ldx_blocks, min_snps = 5)
+  # Matrix path
+  haps_mat <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks,
+                                 min_snps = 5)
+  # Same block IDs and same strings
+  expect_equal(names(haps_be), names(haps_mat))
+  for (nm in names(haps_be)) {
+    expect_equal(haps_be[[nm]], haps_mat[[nm]], label = nm)
+  }
+})

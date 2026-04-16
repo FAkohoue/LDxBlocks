@@ -57,7 +57,7 @@ The following `Suggests` packages are optional:
   When absent or when the multi-trait model fails to converge, the function
   silently falls back to `rrBLUP::kin.blup()` per trait. Guarded with
   `requireNamespace("sommer", quietly = TRUE)`.
-- `ggplot2` -- required only for `plot_ld_blocks()`.
+- `ggplot2` -- required only for `plot_ld_blocks()` and `plot_ld_decay()`.
 - `usethis` -- used only in `data-raw/generate_example_data.R`, which is
   excluded from the tarball via `.Rbuildignore`.
 - `knitr`, `rmarkdown` -- required to build vignettes.
@@ -68,11 +68,33 @@ before use. No `Suggests` package is loaded unconditionally.
 
 ---
 ## Notes on example data
-The four datasets in `data/` (`ldx_geno`, `ldx_snp_info`, `ldx_blocks`,
-`ldx_gwas`) are small simulated objects (120 individuals, 230 SNPs, 3
-chromosomes) stored as compressed `.rda` files (`compress = "xz"`) and
-occupy less than 100 KB combined. The `data-raw/` directory is excluded
-from the tarball via `.Rbuildignore`.
+The five datasets in `data/` (`ldx_geno`, `ldx_snp_info`, `ldx_blocks`,
+`ldx_gwas`, `ldx_blues`) are small simulated objects (120 individuals, 230 SNPs,
+3 chromosomes) stored as compressed `.rda` files (`compress = "xz"`) and
+occupy less than 150 KB combined. The `data-raw/` directory is excluded from
+the tarball via `.Rbuildignore`.
+
+- `ldx_geno` / `ldx_snp_info` / `ldx_blocks` -- genotype matrix, SNP metadata,
+  and pre-computed block table for block detection examples and tests.
+- `ldx_gwas` -- 20 toy GWAS markers with p-values and trait labels for
+  `tune_LD_params()` and `define_qtl_regions()` examples.
+- `ldx_blues` -- pre-adjusted phenotype means (BLUEs) for two simulated traits
+  (YLD, RES) across all 120 individuals, for `run_haplotype_prediction()` demos.
+
+---
+## Notes on LD decay analysis (v0.3.1)
+`compute_ld_decay()` estimates chromosome-specific r² decay distances using a
+memory-efficient position-first sampling strategy: pair indices are drawn from
+SNP positions (no genotype I/O), then `read_chunk()` loads only the unique
+columns needed. Two threshold approaches are supported:
+- Fixed numeric threshold (e.g. 0.1, standard GWAS practice).
+- Parametric threshold: 95th percentile of r² between unlinked markers
+  on different chromosomes, measuring background kinship-induced LD.
+Optional curve fitting: LOESS smoothing or Hill-Weir (1988) nonlinear model.
+Decay distances integrate directly with `define_qtl_regions(ld_decay = decay)`
+for LD-aware candidate gene windows. Censored distances (threshold never
+crossed within `max_dist`) are flagged with `censored = TRUE` and emitted
+as warnings.
 
 ---
 ## Downstream dependencies

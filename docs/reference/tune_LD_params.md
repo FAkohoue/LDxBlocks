@@ -1,9 +1,7 @@
 # Auto-Tune LD Block Detection Parameters
 
-Performs a grid search over
-[`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-parameters and selects the combination that minimises, in order of
-priority:
+Performs a grid search over `Big_LD()` parameters and selects the
+combination that minimises, in order of priority:
 
 1.  Unassigned GWAS markers (markers not falling in any block).
 
@@ -136,4 +134,4 @@ wheat. *Frontiers in Plant Science* **14**:1168547.
 ## See also
 
 [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md),
-[`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
+`Big_LD()`

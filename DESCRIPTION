@@ -39,6 +39,14 @@ Description: Fast, scalable linkage disequilibrium (LD) block detection for
     Block importance is aggregated across traits (mean scaled variance,
     n_traits_important, important_any, important_all) for robust haplotype
     stacking candidate identification.
+    LD decay analysis (compute_ld_decay) estimates the distance at which r2
+    or rV2 drops below a critical threshold per chromosome, using a
+    memory-efficient position-first random sampling strategy and optional
+    Hill-Weir (1988) nonlinear or LOESS curve fitting. Chromosome-specific
+    decay distances can be passed to define_qtl_regions() to replace fixed
+    block boundaries with LD-aware candidate gene windows around GWAS hits.
+    Five example datasets are shipped in data/: ldx_geno, ldx_snp_info,
+    ldx_blocks, ldx_gwas, and ldx_blues (pre-adjusted BLUEs for two traits).
     The pipeline also includes: VanRaden GRM from haplotype features
     (compute_haplotype_grm); backsolved per-SNP effects
     (backsolve_snp_effects, Tong et al. 2025); local haplotype GEBV per
@@ -73,6 +81,7 @@ Suggests:
     BEDMatrix,
     bigmemory,
     future.apply,
+    sommer,
     ggplot2,
     parallel,
     usethis,

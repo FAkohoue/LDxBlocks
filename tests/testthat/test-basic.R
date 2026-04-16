@@ -343,3 +343,159 @@ test_that("example_blues.csv extdata file exists and is readable", {
   expect_equal(nrow(blues), 120L)
   expect_type(blues$YLD, "double")
 })
+
+# ── run_ldx_pipeline ──────────────────────────────────────────────────────────
+test_that("run_ldx_pipeline: Path A (file path) returns correct result list", {
+  f <- system.file("extdata", "example_genotypes_numeric.csv",
+                   package = "LDxBlocks")
+  skip_if(!file.exists(f), "extdata CSV not available")
+  res <- run_ldx_pipeline(
+    geno_source    = f,
+    out_blocks     = tempfile(fileext = ".csv"),
+    out_diversity  = tempfile(fileext = ".csv"),
+    out_hap_matrix = tempfile(fileext = ".csv"),
+    CLQcut         = 0.5, leng = 10L, subSegmSize = 80L,
+    min_snps_block = 3L, verbose = FALSE
+  )
+  expect_true(all(c("blocks","diversity","hap_matrix","haplotypes",
+                    "geno_matrix","snp_info_filtered") %in% names(res)))
+  expect_s3_class(res$blocks, "data.frame")
+  expect_true(nrow(res$blocks) >= 1L)
+  expect_true(all(c("He","Shannon","sweep_flag") %in% names(res$diversity)))
+  expect_equal(nrow(res$hap_matrix), 120L)
+})
+
+test_that("run_ldx_pipeline: Path A accepts LDxBlocks_backend as geno_source", {
+  data(ldx_geno,     package = "LDxBlocks")
+  data(ldx_snp_info, package = "LDxBlocks")
+  be <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
+  on.exit(close_backend(be))
+  res <- run_ldx_pipeline(
+    geno_source    = be,
+    out_blocks     = tempfile(fileext = ".csv"),
+    out_diversity  = tempfile(fileext = ".csv"),
+    out_hap_matrix = tempfile(fileext = ".csv"),
+    CLQcut         = 0.5, leng = 10L, subSegmSize = 70L,
+    min_snps_block = 3L, verbose = FALSE
+  )
+  expect_s3_class(res$blocks, "data.frame")
+  expect_true(nrow(res$blocks) >= 1L)
+})
+
+test_that("run_ldx_pipeline: use_bigmemory=TRUE builds bigmemory backend internally", {
+  skip_if_not_installed("bigmemory")
+  f <- system.file("extdata", "example_genotypes_numeric.csv",
+                   package = "LDxBlocks")
+  skip_if(!file.exists(f), "extdata CSV not available")
+  # Use a unique directory per test — avoids cross-test contamination
+  # from shared tempdir() and Windows memory-mapped file locks.
+  bm_path <- file.path(tempdir(), paste0("ldxbm_test_", as.integer(Sys.time())))
+  dir.create(bm_path, recursive = TRUE, showWarnings = FALSE)
+  # Ensure directory was actually created (path may be invalid on some systems)
+  skip_if(!dir.exists(bm_path), "Could not create bigmemory temp directory")
+  on.exit(unlink(bm_path, recursive = TRUE), add = TRUE)
+
+  res <- run_ldx_pipeline(
+    geno_source    = f,
+    out_blocks     = tempfile(fileext = ".csv"),
+    out_diversity  = tempfile(fileext = ".csv"),
+    out_hap_matrix = tempfile(fileext = ".csv"),
+    CLQcut         = 0.5, leng = 10L, subSegmSize = 80L,
+    min_snps_block = 3L, verbose = FALSE,
+    use_bigmemory  = TRUE,
+    bigmemory_path = bm_path,
+    bigmemory_type = "char"
+  )
+  expect_s3_class(res$blocks, "data.frame")
+  expect_true(nrow(res$blocks) >= 1L)
+  # Check that backing files were created. On Windows, bigmemory uses
+  # forward slashes internally so we check both separator variants.
+  # We also use list.files() as a robust alternative to file.exists().
+  bm_path_norm <- normalizePath(bm_path, mustWork = FALSE)
+  bm_path_fwd  <- gsub("\\\\", "/", bm_path_norm, fixed = TRUE)
+  created_files <- list.files(bm_path_norm, recursive = FALSE)
+  # bigmemory >= 1.4.7 names the file "ldxblocks_bm.bin";
+  # older versions omit the .bin extension ("ldxblocks_bm").
+  # Accept either form.
+  bin_exists  <- any(c("ldxblocks_bm.bin", "ldxblocks_bm") %in% created_files) ||
+    file.exists(file.path(bm_path_fwd, "ldxblocks_bm.bin")) ||
+    file.exists(file.path(bm_path_fwd, "ldxblocks_bm"))
+  desc_exists <- "ldxblocks_bm.desc"      %in% created_files ||
+    file.exists(file.path(bm_path_fwd, "ldxblocks_bm.desc"))
+  si_exists   <- "ldxblocks_bm_snpinfo.rds" %in% created_files ||
+    file.exists(file.path(bm_path_fwd, "ldxblocks_bm_snpinfo.rds"))
+  expect_true(bin_exists,
+              label = paste0("ldxblocks_bm(.bin) in '", bm_path_norm, "' (found: ",
+                             paste(created_files, collapse=", "), ")"))
+  expect_true(desc_exists, label = "ldxblocks_bm.desc should exist")
+  expect_true(si_exists,   label = "ldxblocks_bm_snpinfo.rds should exist")
+})
+
+test_that("run_ldx_pipeline: use_bigmemory reattaches on second call", {
+  skip_if_not_installed("bigmemory")
+  f <- system.file("extdata", "example_genotypes_numeric.csv",
+                   package = "LDxBlocks")
+  skip_if(!file.exists(f), "extdata CSV not available")
+  bm_path <- file.path(tempdir(), paste0("ldxbm_reattach_", as.integer(Sys.time())))
+  dir.create(bm_path, showWarnings = FALSE)
+  on.exit(unlink(bm_path, recursive = TRUE), add = TRUE)
+
+  # First run: builds the backing files
+  run_ldx_pipeline(
+    geno_source    = f,
+    out_blocks     = tempfile(fileext = ".csv"),
+    out_diversity  = tempfile(fileext = ".csv"),
+    out_hap_matrix = tempfile(fileext = ".csv"),
+    CLQcut = 0.5, leng = 10L, subSegmSize = 80L,
+    min_snps_block = 3L, verbose = FALSE,
+    use_bigmemory = TRUE, bigmemory_path = bm_path
+  )
+  # Normalize path to match what pipeline.R writes to (forward slashes).
+  # Accept both ldxblocks_bm.bin (bigmemory >= 1.4.7) and ldxblocks_bm (older).
+  bm_path_r <- normalizePath(bm_path, mustWork = FALSE)
+  bm_path_r <- gsub("\\\\", "/", bm_path_r, fixed = TRUE)
+  created_r <- list.files(bm_path_r, recursive = FALSE)
+  skip_if(!any(c("ldxblocks_bm.bin", "ldxblocks_bm") %in% created_r),
+          "First run did not create backing files -- skipping reattach test")
+  # Second run: should reattach without rebuilding
+  expect_no_error(
+    run_ldx_pipeline(
+      geno_source    = f,
+      out_blocks     = tempfile(fileext = ".csv"),
+      out_diversity  = tempfile(fileext = ".csv"),
+      out_hap_matrix = tempfile(fileext = ".csv"),
+      CLQcut = 0.5, leng = 10L, subSegmSize = 80L,
+      min_snps_block = 3L, verbose = FALSE,
+      use_bigmemory = TRUE, bigmemory_path = bm_path
+    )
+  )
+})
+
+test_that("run_ldx_pipeline: partial backing files cleaned automatically", {
+  skip_if_not_installed("bigmemory")
+  f <- system.file("extdata", "example_genotypes_numeric.csv",
+                   package = "LDxBlocks")
+  skip_if(!file.exists(f), "extdata CSV not available")
+  bm_path <- file.path(tempdir(), paste0("ldxbm_partial_", as.integer(Sys.time())))
+  dir.create(bm_path, showWarnings = FALSE)
+  on.exit(unlink(bm_path, recursive = TRUE), add = TRUE)
+
+  # Write only the .bin file (simulate interrupted previous run)
+  # Use a small text file — bigmemory will remove and replace it
+  writeLines("stale content", file.path(bm_path, "ldxblocks_bm.bin"))
+  expect_true(file.exists(file.path(bm_path, "ldxblocks_bm.bin")))
+  expect_false(file.exists(file.path(bm_path, "ldxblocks_bm.desc")))
+
+  # Pipeline should detect partial state, clean it, and rebuild without error
+  expect_no_error(
+    run_ldx_pipeline(
+      geno_source    = f,
+      out_blocks     = tempfile(fileext = ".csv"),
+      out_diversity  = tempfile(fileext = ".csv"),
+      out_hap_matrix = tempfile(fileext = ".csv"),
+      CLQcut = 0.5, leng = 10L, subSegmSize = 80L,
+      min_snps_block = 3L, verbose = FALSE,
+      use_bigmemory = TRUE, bigmemory_path = bm_path
+    )
+  )
+})

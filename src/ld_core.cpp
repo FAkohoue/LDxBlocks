@@ -8,7 +8,7 @@
 //   maf_filter_cpp        -- fast MAF + monomorphic filter
 //   build_adj_matrix_cpp  -- threshold adjacency from LD matrix
 //   col_r2_cpp            -- r² of one column against all others (for boundary scan)
-//   compute_r2_sparse_cpp -- sparse r² (only pairs within bp window)
+//   compute_r2_sparse_cpp -- sparse r² (only pairs within bp window, OpenMP)
 //   boundary_scan_cpp     -- weak-LD cut position scan (subsegmentation)
 
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -218,7 +218,8 @@ List compute_r2_sparse_cpp(
     const arma::mat& X,
     const arma::ivec& bp,
     int    max_bp_dist,
-    double threshold = 0.0
+    double threshold  = 0.0,
+    int    n_threads  = 1
 ) {
   arma::uword n = X.n_rows;
   arma::uword p = X.n_cols;
@@ -237,17 +238,51 @@ List compute_r2_sparse_cpp(
   std::vector<double> vals;
   rows.reserve(p * 20); cols.reserve(p * 20); vals.reserve(p * 20);
 
-  for (arma::uword j = 0; j < p; ++j) {
-    for (arma::uword k = j + 1; k < p; ++k) {
-      if (std::abs(bp(k) - bp(j)) > max_bp_dist) break; // sorted bp assumed
-      double r  = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
-      double r2 = std::min(r * r, 1.0);
-      if (r2 >= threshold) {
-        rows.push_back((int)j + 1); // 1-based for R
-        cols.push_back((int)k + 1);
-        vals.push_back(r2);
+  // Use n_threads for OpenMP parallelism over the outer loop.
+  // Thread-local vectors avoid locking; merged after the loop.
+#ifdef _OPENMP
+  int n_thr = (n_threads == 0) ? omp_get_max_threads() : n_threads;
+#else
+  int n_thr = 1; (void)n_threads;
+#endif
+  // Serial path (n_thr=1) or parallel accumulation
+  if (n_thr <= 1) {
+    for (arma::uword j = 0; j < p; ++j) {
+      for (arma::uword k = j + 1; k < p; ++k) {
+        if (std::abs(bp(k) - bp(j)) > max_bp_dist) break;
+        double r  = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
+        double r2 = std::min(r * r, 1.0);
+        if (r2 >= threshold) {
+          rows.push_back((int)j + 1);
+          cols.push_back((int)k + 1);
+          vals.push_back(r2);
+        }
       }
     }
+  } else {
+#ifdef _OPENMP
+    std::vector<std::vector<int>>    t_rows(n_thr), t_cols(n_thr);
+    std::vector<std::vector<double>> t_vals(n_thr);
+#pragma omp parallel for schedule(dynamic, 4) num_threads(n_thr)
+    for (int j = 0; j < (int)p; ++j) {
+      int tid = omp_get_thread_num();
+      for (arma::uword k = (arma::uword)j + 1; k < p; ++k) {
+        if (std::abs(bp(k) - bp(j)) > max_bp_dist) break;
+        double r  = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
+        double r2 = std::min(r * r, 1.0);
+        if (r2 >= threshold) {
+          t_rows[tid].push_back(j + 1);
+          t_cols[tid].push_back((int)k + 1);
+          t_vals[tid].push_back(r2);
+        }
+      }
+    }
+    for (int t = 0; t < n_thr; ++t) {
+      rows.insert(rows.end(), t_rows[t].begin(), t_rows[t].end());
+      cols.insert(cols.end(), t_cols[t].begin(), t_cols[t].end());
+      vals.insert(vals.end(), t_vals[t].begin(), t_vals[t].end());
+    }
+#endif
   }
 
   return List::create(
@@ -306,4 +341,40 @@ IntegerVector boundary_scan_cpp(
     result[ci] = has_ld ? 0 : 1;
   }
   return result;
+}
+
+// ============================================================================
+// build_hap_strings_cpp()
+// Build haplotype strings from a dosage submatrix.
+// Input:  geno_block  -- integer matrix n_ind x n_snps (0/1/2, NA=-1 or NA_INTEGER)
+//         na_char     -- character to use for missing genotypes (e.g. ".")
+// Output: CharacterVector of length n_ind, each element = concatenated string
+//         of allele codes (e.g. "01210")
+// This replaces the vapply(seq_len(n_ind), function(i) paste(...)) R loop,
+// which incurs one R function call per individual per block.
+// For 17,078 blocks x 204 individuals = 3.5M R calls -> one C++ call per block.
+// ============================================================================
+// [[Rcpp::export]]
+Rcpp::CharacterVector build_hap_strings_cpp(
+    Rcpp::IntegerMatrix geno_block,
+    std::string na_char = "."
+) {
+  int n_ind  = geno_block.nrow();
+  int n_snps = geno_block.ncol();
+  Rcpp::CharacterVector out(n_ind);
+
+  for (int i = 0; i < n_ind; i++) {
+    std::string s;
+    s.reserve(n_snps);
+    for (int j = 0; j < n_snps; j++) {
+      int g = geno_block(i, j);
+      if (g == NA_INTEGER || g < 0) {
+        s += na_char;
+      } else {
+        s += std::to_string(g);
+      }
+    }
+    out[i] = s;
+  }
+  return out;
 }

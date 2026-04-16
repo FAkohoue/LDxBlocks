@@ -1,10 +1,8 @@
 # Genome-Wide LD Block Detection by Chromosome
 
-Applies
-[`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-chromosome by chromosome, collects results and returns a single tidy
-data frame annotated with chromosome and block length. This is the
-recommended entry point for genome-wide analyses.
+Applies `Big_LD()` chromosome by chromosome, collects results and
+returns a single tidy data frame annotated with chromosome and block
+length. This is the recommended entry point for genome-wide analyses.
 
 ## Usage
 
@@ -50,16 +48,14 @@ run_Big_LD_all_chr(
 - CLQcut, clstgap, leng, subSegmSize, MAFcut, appendrare, checkLargest,
   CLQmode, kin_method, split, digits, seed, verbose:
 
-  Forwarded to
-  [`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md).
-  See that function's documentation for details.
+  Forwarded to `Big_LD()`. See that function's documentation for
+  details.
 
 - method:
 
   Character. LD metric: `"r2"` (default, standard squared Pearson
-  correlation) or `"rV2"` (kinship-adjusted). See
-  [`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-  for details.
+  correlation) or `"rV2"` (kinship-adjusted). See `Big_LD()` for
+  details.
 
 - n_threads:
 
@@ -70,9 +66,7 @@ run_Big_LD_all_chr(
 
   Logical. If `TRUE`, SNPs that pass MAF filtering but are not assigned
   to any clique are returned as single-SNP blocks (`start == end`,
-  `length_bp == 1`). Default `FALSE`. See
-  [`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md)
-  for details.
+  `length_bp == 1`). Default `FALSE`. See `Big_LD()` for details.
 
 - min_snps_chr:
 
@@ -113,7 +107,7 @@ A `data.frame` with columns: `start`, `end`, `start.rsID`, `end.rsID`,
 
 ## See also
 
-[`Big_LD`](https://FAkohoue.github.io/LDxBlocks/reference/Big_LD.md),
+`Big_LD()`,
 [`tune_LD_params`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md),
 [`extract_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
 
