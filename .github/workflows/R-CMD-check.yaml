@@ -14,8 +14,8 @@ jobs:
   R-CMD-check:
     name: ${{ matrix.config.os }} (R ${{ matrix.config.r }})
     runs-on: ${{ matrix.config.os }}
-    # bigmemory matrix build + haplotype extraction can take >30 min on slow runners
     timeout-minutes: 90
+
     strategy:
       fail-fast: false
       matrix:
@@ -29,8 +29,6 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: true
-      # NOT_CRAN=true causes testthat to run skip_on_cran() blocks and
-      # R CMD check to honour \donttest{} as testable examples.
       NOT_CRAN: true
 
     steps:
@@ -46,23 +44,20 @@ jobs:
           use-public-rspm: true
 
       # ── OpenMP on macOS ──────────────────────────────────────────────────────
-      # Apple clang does not ship with OpenMP. Install libomp via Homebrew so
-      # that $(SHLIB_OPENMP_CXXFLAGS) in src/Makevars resolves to a real flag.
-      # Without this, the package still compiles (SHLIB_OPENMP_CXXFLAGS is
-      # empty on vanilla macOS R) but n_threads > 1 becomes a no-op.
+      # Apple clang does not ship OpenMP. Install libomp and expose the
+      # required compile/link flags so $(SHLIB_OPENMP_CXXFLAGS) works during
+      # package compilation and the runtime loader can also find libomp.
       - name: Install OpenMP runtime (macOS)
         if: runner.os == 'macOS'
         run: |
           brew install libomp
-          # Tell the compiler and linker where libomp lives.
-          # R on macOS reads these from ~/.R/Makevars at build time.
           mkdir -p ~/.R
           LIBOMP=$(brew --prefix libomp)
-          cat >> ~/.R/Makevars << EOF
-          CPPFLAGS += -Xpreprocessor -fopenmp -I${LIBOMP}/include
-          CFLAGS   += -Xpreprocessor -fopenmp
-          CXXFLAGS += -Xpreprocessor -fopenmp
-          LDFLAGS  += -L${LIBOMP}/lib -lomp
+          cat > ~/.R/Makevars << EOF
+          SHLIB_OPENMP_CFLAGS = -Xpreprocessor -fopenmp
+          SHLIB_OPENMP_CXXFLAGS = -Xpreprocessor -fopenmp
+          CPPFLAGS += -I${LIBOMP}/include
+          LDFLAGS  += -L${LIBOMP}/lib -Wl,-rpath,${LIBOMP}/lib
           EOF
 
       # ── System libraries (Linux) ─────────────────────────────────────────────
@@ -85,9 +80,6 @@ jobs:
             libjpeg-dev
 
       # ── Bioconductor packages ────────────────────────────────────────────────
-      # SNPRelate and gdsfmt are in Suggests — install before CRAN deps so
-      # that setup-r-dependencies does not try to source-build them.
-      # ASRgenomics depends on vsn (Bioconductor) so install vsn here too.
       - name: Install Bioconductor packages
         shell: Rscript {0}
         run: |
@@ -95,15 +87,16 @@ jobs:
             install.packages("BiocManager", repos = "https://cloud.r-project.org")
           BiocManager::install(ask = FALSE, update = FALSE)
           bioc_pkgs <- c("SNPRelate", "gdsfmt", "vsn")
-          to_install <- bioc_pkgs[!vapply(bioc_pkgs, requireNamespace,
-                                          logical(1L), quietly = TRUE)]
+          to_install <- bioc_pkgs[!vapply(
+            bioc_pkgs,
+            requireNamespace,
+            logical(1L),
+            quietly = TRUE
+          )]
           if (length(to_install))
             BiocManager::install(to_install, ask = FALSE, update = FALSE)
 
       # ── R package cache ──────────────────────────────────────────────────────
-      # Cache is keyed on DESCRIPTION so it invalidates when any dependency
-      # version changes. Must come AFTER Bioc install so cached state includes
-      # Bioc packages.
       - name: Cache R packages
         uses: actions/cache@v4
         with:
@@ -122,11 +115,6 @@ jobs:
           needs: check
 
       # ── R CMD check ──────────────────────────────────────────────────────────
-      # --run-donttest: run \donttest{} examples (bigmemory Path B, WGS examples)
-      #   when NOT_CRAN=true. Without this flag those examples are always skipped
-      #   even with NOT_CRAN set.
-      # --no-manual: skip PDF manual build (requires LaTeX, slow, not needed for CI).
-      # --as-cran: apply CRAN-level checks (no T/F, no partial matching, etc.).
       - name: Check package
         uses: r-lib/actions/check-r-package@v2
         with:
@@ -134,7 +122,7 @@ jobs:
           build_args: 'c("--no-manual")'
           args: 'c("--no-manual", "--as-cran", "--run-donttest")'
 
-      # ── Upload logs on failure ────────────────────────────────────────────────
+      # ── Upload logs on failure ───────────────────────────────────────────────
       - name: Upload check results
         if: failure()
         uses: actions/upload-artifact@v4

@@ -136,15 +136,15 @@ al. 2012, eq. 1–2). Subscripts $`i`$ and $`j`$ index SNPs. This is
 equivalent to $`[\mathrm{Cor}(X^v_i, X^v_j)]^2`$.
 
 > **Notation.** $`G`$ denotes the raw $`n\times m`$ dosage matrix
-> ($`G_{ij} \in \{0,1,2\}`$); $`\tilde{G}`$ its mean-centred form
-> ($`\tilde{G}_{ij} = G_{ij}-\bar{G}_j`$, used for LD computation);
-> $`Z`$ its frequency-centred form ($`Z_{ij} = G_{ij}-2p_j`$, used for
-> the GRM). $`V`$ denotes the GRM to avoid collision with $`G`$ the
-> dosage matrix. In the Mangin (2012) paper the GRM is called $`K`$ and
-> is equivalent to $`V`$ here; VanRaden (2008) calls it $`G`$. Every
-> pairwise correlation in the Big-LD algorithm is replaced with rV²,
-> giving block boundaries that reflect true recombination structure
-> rather than population-structure artefacts.
+> ($`G_{ij} \in \{0,1,2\}`$); $`\tilde{G}`$ its mean-centred form (G̃\_ij
+> = G_ij − Ḡ_j, used for LD computation; $`Z`$ its frequency-centred
+> form (Z_ij = G_ij − 2p_j, used for the GRM). $`V`$ denotes the GRM to
+> avoid collision with $`G`$ the dosage matrix. In the Mangin (2012)
+> paper the GRM is called $`K`$ and is equivalent to $`V`$ here;
+> VanRaden (2008) calls it $`G`$. Every pairwise correlation in the
+> Big-LD algorithm is replaced with rV², giving block boundaries that
+> reflect true recombination structure rather than population-structure
+> artefacts.
 
 **The scale problem.** The original Big-LD implementation (Kim et
 al. 2018) contains no compiled code – every matrix operation runs
