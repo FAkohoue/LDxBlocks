@@ -44,9 +44,8 @@ jobs:
           use-public-rspm: true
 
       # ── OpenMP on macOS ──────────────────────────────────────────────────────
-      # Apple clang does not ship OpenMP. Install libomp and expose the
-      # required compile/link flags so $(SHLIB_OPENMP_CXXFLAGS) works during
-      # package compilation and the runtime loader can also find libomp.
+      # Apple clang has no OpenMP runtime by default. Install libomp and define
+      # both compile and link flags so package compilation and dynamic loading work.
       - name: Install OpenMP runtime (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -54,7 +53,7 @@ jobs:
           mkdir -p ~/.R
           LIBOMP=$(brew --prefix libomp)
           cat > ~/.R/Makevars << EOF
-          SHLIB_OPENMP_CFLAGS = -Xpreprocessor -fopenmp
+          SHLIB_OPENMP_CFLAGS   = -Xpreprocessor -fopenmp
           SHLIB_OPENMP_CXXFLAGS = -Xpreprocessor -fopenmp
           CPPFLAGS += -I${LIBOMP}/include
           LDFLAGS  += -L${LIBOMP}/lib -Wl,-rpath,${LIBOMP}/lib
