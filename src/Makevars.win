@@ -1,16 +1,34 @@
 ## src/Makevars
-##
-## OpenMP support — platform-aware.
-##
-## Linux / Windows:
-##   $(SHLIB_OPENMP_CXXFLAGS) typically expands to -fopenmp and is sufficient
-##   for both compilation and linking.
-##
-## macOS:
-##   Apple clang needs libomp from Homebrew. The CI workflow writes the
-##   required SHLIB_OPENMP_* flags and search paths into ~/.R/Makevars.
-##   Here we simply consume them.
+#
+# OpenMP support — platform-aware.
+#
+# Linux / Windows (GCC): $(SHLIB_OPENMP_CXXFLAGS) = -fopenmp, which compiles
+#   AND links libgomp. Nothing extra needed.
+#
+# macOS (Apple Clang): $(SHLIB_OPENMP_CXXFLAGS) = -Xpreprocessor -fopenmp
+#   (compile only — does NOT link the runtime). PKG_LIBS must add -lomp
+#   explicitly, otherwise __kmpc_* symbols are unresolved at load time.
+#   libomp is installed from Homebrew; its prefix is obtained via
+#   `brew --prefix libomp` which works on both Apple Silicon and Intel.
+#   If Homebrew / libomp is absent, the build falls back to single-threaded
+#   (all OpenMP pragmas are guarded with #ifdef _OPENMP in ld_core.cpp).
+#
+# ARMA_NO_DEBUG: disables Armadillo's tinyformat exception messages.
+#   Prevents R_AMD64_IMAGEBASE linker warnings from binutils >= 2.40.
 
-PKG_CPPFLAGS = -DARMA_NO_DEBUG
-PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS)
-PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S), Darwin)
+  LIBOMP_PREFIX := $(shell brew --prefix libomp 2>/dev/null)
+  ifneq ($(LIBOMP_PREFIX),)
+    PKG_CXXFLAGS = -Xpreprocessor -fopenmp -I$(LIBOMP_PREFIX)/include -DARMA_NO_DEBUG
+    PKG_LIBS     = -L$(LIBOMP_PREFIX)/lib -lomp -Wl,-rpath,$(LIBOMP_PREFIX)/lib \
+                   $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+  else
+    PKG_CXXFLAGS = -DARMA_NO_DEBUG
+    PKG_LIBS     = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+  endif
+else
+  PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -DARMA_NO_DEBUG
+  PKG_LIBS     = $(SHLIB_OPENMP_CXXFLAGS) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+endif
