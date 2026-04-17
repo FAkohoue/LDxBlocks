@@ -12,7 +12,11 @@
 //   boundary_scan_cpp     -- weak-LD cut position scan (subsegmentation)
 
 // [[Rcpp::depends(RcppArmadillo)]]
-// [[Rcpp::plugins(openmp)]]
+// OpenMP: flags are set via src/Makevars (platform-aware).
+// Do NOT use [[Rcpp::plugins(openmp)]] here — on macOS that plugin
+// injects -fopenmp into the link step via Apple Clang's OpenMP stub
+// rather than Homebrew libomp, leaving __kmpc_* symbols unresolved
+// at runtime. Makevars adds -lomp explicitly on Darwin.
 #include <RcppArmadillo.h>
 #include <cmath>
 #include <vector>
@@ -40,63 +44,64 @@ static inline arma::vec col_means(const arma::mat& X) {
 //    Returns symmetric p × p matrix, diagonal = 0, values in [0,1].
 // ─────────────────────────────────────────────────────────────────────────────
 
-// [[Rcpp::export]]
-arma::mat compute_r2_cpp(
-    const arma::mat& X,
-    int digits     = -1,
-    int n_threads  = 1
-) {
-  arma::uword n = X.n_rows;
-  arma::uword p = X.n_cols;
+//' @noRd
+ // [[Rcpp::export]]
+ arma::mat compute_r2_cpp(
+     const arma::mat& X,
+     int digits     = -1,
+     int n_threads  = 1
+ ) {
+   arma::uword n = X.n_rows;
+   arma::uword p = X.n_cols;
 
-  // Mean-impute NAs and standardise
-  arma::mat Z(n, p);
-  for (arma::uword j = 0; j < p; ++j) {
-    arma::vec col = X.col(j);
-    // replace NaN/NA with column mean
-    double mu = 0.0; arma::uword cnt = 0;
-    for (arma::uword i = 0; i < n; ++i) {
-      if (std::isfinite(col(i))) { mu += col(i); cnt++; }
-    }
-    mu = (cnt > 0) ? mu / cnt : 0.0;
-    for (arma::uword i = 0; i < n; ++i) {
-      Z(i, j) = std::isfinite(col(i)) ? col(i) - mu : 0.0;
-    }
-    double sd = arma::norm(Z.col(j), 2) / std::sqrt((double)(n - 1));
-    if (sd > 1e-10) Z.col(j) /= sd;
-    else            Z.col(j).zeros();
-  }
+   // Mean-impute NAs and standardise
+   arma::mat Z(n, p);
+   for (arma::uword j = 0; j < p; ++j) {
+     arma::vec col = X.col(j);
+     // replace NaN/NA with column mean
+     double mu = 0.0; arma::uword cnt = 0;
+     for (arma::uword i = 0; i < n; ++i) {
+       if (std::isfinite(col(i))) { mu += col(i); cnt++; }
+     }
+     mu = (cnt > 0) ? mu / cnt : 0.0;
+     for (arma::uword i = 0; i < n; ++i) {
+       Z(i, j) = std::isfinite(col(i)) ? col(i) - mu : 0.0;
+     }
+     double sd = arma::norm(Z.col(j), 2) / std::sqrt((double)(n - 1));
+     if (sd > 1e-10) Z.col(j) /= sd;
+     else            Z.col(j).zeros();
+   }
 
-  // r² = (Z'Z / (n-1))²  — but columns already unit-variance, so
-  // Z'Z/(n-1) is already the correlation matrix
-  arma::mat R(p, p, arma::fill::zeros);
+   // r² = (Z'Z / (n-1))²  — but columns already unit-variance, so
+   // Z'Z/(n-1) is already the correlation matrix
+   arma::mat R(p, p, arma::fill::zeros);
 #ifdef _OPENMP
-  int n_thr = (n_threads == 0) ? omp_get_max_threads() : n_threads;
+   int n_thr = (n_threads == 0) ? omp_get_max_threads() : n_threads;
 #else
-  int n_thr = 1;  // OpenMP unavailable (e.g. Apple Clang)
-  (void)n_threads;  // suppress unused-parameter warning
+   int n_thr = 1;  // OpenMP unavailable (e.g. Apple Clang)
+   (void)n_threads;  // suppress unused-parameter warning
 #endif
 
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic, 4) num_threads(n_thr)
 #endif
-  for (arma::uword j = 0; j < p; ++j) {
-    for (arma::uword k = j + 1; k < p; ++k) {
-      double r = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
-      double r2 = r * r;
-      // clamp numerical noise
-      if (r2 > 1.0) r2 = 1.0;
-      R(j, k) = r2;
-      R(k, j) = r2;
-    }
-  }
+   for (arma::uword j = 0; j < p; ++j) {
+     for (arma::uword k = j + 1; k < p; ++k) {
+       double r = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
+       double r2 = r * r;
+       // clamp numerical noise
+       if (r2 > 1.0) r2 = 1.0;
+       R(j, k) = r2;
+       R(k, j) = r2;
+     }
+   }
 
-  if (digits >= 0) {
-    double fac = std::pow(10.0, (double)digits);
-    R = arma::round(R * fac) / fac;
-  }
-  return R;
-}
+   if (digits >= 0) {
+     double fac = std::pow(10.0, (double)digits);
+     R = arma::round(R * fac) / fac;
+   }
+   return R;
+ }
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,15 +111,16 @@ arma::mat compute_r2_cpp(
 //    computes the squared correlations, matching compute_r2_cpp logic.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// [[Rcpp::export]]
-arma::mat compute_rV2_cpp(
-    const arma::mat& X,
-    int digits    = -1,
-    int n_threads = 1
-) {
-  // For rV², input is already whitened so we just standardise and correlate
-  return compute_r2_cpp(X, digits, n_threads);
-}
+//' @noRd
+ // [[Rcpp::export]]
+ arma::mat compute_rV2_cpp(
+     const arma::mat& X,
+     int digits    = -1,
+     int n_threads = 1
+ ) {
+   // For rV², input is already whitened so we just standardise and correlate
+   return compute_r2_cpp(X, digits, n_threads);
+ }
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -123,30 +129,31 @@ arma::mat compute_rV2_cpp(
 //    Faster than apply() in R for large matrices.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// [[Rcpp::export]]
-LogicalVector maf_filter_cpp(const arma::mat& G, double maf_cut = 0.05) {
-  arma::uword p = G.n_cols;
-  arma::uword n = G.n_rows;
-  LogicalVector keep(p);
+//' @noRd
+ // [[Rcpp::export]]
+ LogicalVector maf_filter_cpp(const arma::mat& G, double maf_cut = 0.05) {
+   arma::uword p = G.n_cols;
+   arma::uword n = G.n_rows;
+   LogicalVector keep(p);
 
-  for (arma::uword j = 0; j < p; ++j) {
-    double sum_g = 0.0; arma::uword cnt = 0;
-    bool monomorphic = true;
-    double first_val = -1.0;
-    for (arma::uword i = 0; i < n; ++i) {
-      double v = G(i, j);
-      if (!std::isfinite(v)) continue;
-      sum_g += v; cnt++;
-      if (first_val < 0.0) first_val = v;
-      else if (v != first_val) monomorphic = false;
-    }
-    if (monomorphic || cnt == 0) { keep[j] = false; continue; }
-    double freq = sum_g / (2.0 * cnt);
-    double maf  = (freq > 0.5) ? 1.0 - freq : freq;
-    keep[j] = (maf >= maf_cut);
-  }
-  return keep;
-}
+   for (arma::uword j = 0; j < p; ++j) {
+     double sum_g = 0.0; arma::uword cnt = 0;
+     bool monomorphic = true;
+     double first_val = -1.0;
+     for (arma::uword i = 0; i < n; ++i) {
+       double v = G(i, j);
+       if (!std::isfinite(v)) continue;
+       sum_g += v; cnt++;
+       if (first_val < 0.0) first_val = v;
+       else if (v != first_val) monomorphic = false;
+     }
+     if (monomorphic || cnt == 0) { keep[j] = false; continue; }
+     double freq = sum_g / (2.0 * cnt);
+     double maf  = (freq > 0.5) ? 1.0 - freq : freq;
+     keep[j] = (maf >= maf_cut);
+   }
+   return keep;
+ }
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,19 +162,20 @@ LogicalVector maf_filter_cpp(const arma::mat& G, double maf_cut = 0.05) {
 //    More efficient than ifelse() in R because it writes in-place.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// [[Rcpp::export]]
-arma::imat build_adj_matrix_cpp(const arma::mat& LD, double threshold) {
-  arma::uword p = LD.n_rows;
-  arma::imat A(p, p, arma::fill::zeros);
-  for (arma::uword j = 0; j < p; ++j) {
-    for (arma::uword k = j + 1; k < p; ++k) {
-      if (LD(j, k) >= threshold) {
-        A(j, k) = 1; A(k, j) = 1;
-      }
-    }
-  }
-  return A;
-}
+//' @noRd
+ // [[Rcpp::export]]
+ arma::imat build_adj_matrix_cpp(const arma::mat& LD, double threshold) {
+   arma::uword p = LD.n_rows;
+   arma::imat A(p, p, arma::fill::zeros);
+   for (arma::uword j = 0; j < p; ++j) {
+     for (arma::uword k = j + 1; k < p; ++k) {
+       if (LD(j, k) >= threshold) {
+         A(j, k) = 1; A(k, j) = 1;
+       }
+     }
+   }
+   return A;
+ }
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,34 +184,35 @@ arma::imat build_adj_matrix_cpp(const arma::mat& LD, double threshold) {
 //    Used in cutsequence boundary scan — replaces many compute_r2 calls.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// [[Rcpp::export]]
-arma::vec col_r2_cpp(const arma::mat& X, int query_col) {
-  arma::uword p  = X.n_cols;
-  arma::uword n  = X.n_rows;
-  arma::uword qc = (arma::uword)(query_col - 1); // convert to 0-based
-  arma::vec result(p, arma::fill::zeros);
+//' @noRd
+ // [[Rcpp::export]]
+ arma::vec col_r2_cpp(const arma::mat& X, int query_col) {
+   arma::uword p  = X.n_cols;
+   arma::uword n  = X.n_rows;
+   arma::uword qc = (arma::uword)(query_col - 1); // convert to 0-based
+   arma::vec result(p, arma::fill::zeros);
 
-  // Standardise query column
-  arma::vec q = X.col(qc);
-  double mu_q = arma::mean(q);
-  q -= mu_q;
-  double sd_q = arma::norm(q, 2) / std::sqrt((double)(n - 1));
-  if (sd_q < 1e-10) return result; // constant column
-  q /= sd_q;
+   // Standardise query column
+   arma::vec q = X.col(qc);
+   double mu_q = arma::mean(q);
+   q -= mu_q;
+   double sd_q = arma::norm(q, 2) / std::sqrt((double)(n - 1));
+   if (sd_q < 1e-10) return result; // constant column
+   q /= sd_q;
 
-  for (arma::uword k = 0; k < p; ++k) {
-    if (k == qc) continue;
-    arma::vec col = X.col(k);
-    double mu_k = arma::mean(col);
-    col -= mu_k;
-    double sd_k = arma::norm(col, 2) / std::sqrt((double)(n - 1));
-    if (sd_k < 1e-10) { result(k) = 0.0; continue; }
-    col /= sd_k;
-    double r = arma::dot(q, col) / (double)(n - 1);
-    result(k) = std::min(r * r, 1.0);
-  }
-  return result;
-}
+   for (arma::uword k = 0; k < p; ++k) {
+     if (k == qc) continue;
+     arma::vec col = X.col(k);
+     double mu_k = arma::mean(col);
+     col -= mu_k;
+     double sd_k = arma::norm(col, 2) / std::sqrt((double)(n - 1));
+     if (sd_k < 1e-10) { result(k) = 0.0; continue; }
+     col /= sd_k;
+     double r = arma::dot(q, col) / (double)(n - 1);
+     result(k) = std::min(r * r, 1.0);
+   }
+   return result;
+ }
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -213,84 +222,85 @@ arma::vec col_r2_cpp(const arma::mat& X, int query_col) {
 //    Critical for large chromosomes — avoids O(p²) full matrix.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// [[Rcpp::export]]
-List compute_r2_sparse_cpp(
-    const arma::mat& X,
-    const arma::ivec& bp,
-    int    max_bp_dist,
-    double threshold  = 0.0,
-    int    n_threads  = 1
-) {
-  arma::uword n = X.n_rows;
-  arma::uword p = X.n_cols;
+//' @noRd
+ // [[Rcpp::export]]
+ List compute_r2_sparse_cpp(
+     const arma::mat& X,
+     const arma::ivec& bp,
+     int    max_bp_dist,
+     double threshold  = 0.0,
+     int    n_threads  = 1
+ ) {
+   arma::uword n = X.n_rows;
+   arma::uword p = X.n_cols;
 
-  // Pre-standardise all columns
-  arma::mat Z(n, p, arma::fill::zeros);
-  for (arma::uword j = 0; j < p; ++j) {
-    arma::vec col = X.col(j);
-    double mu = arma::mean(col);
-    col -= mu;
-    double sd = arma::norm(col, 2) / std::sqrt((double)(n - 1));
-    if (sd > 1e-10) Z.col(j) = col / sd;
-  }
+   // Pre-standardise all columns
+   arma::mat Z(n, p, arma::fill::zeros);
+   for (arma::uword j = 0; j < p; ++j) {
+     arma::vec col = X.col(j);
+     double mu = arma::mean(col);
+     col -= mu;
+     double sd = arma::norm(col, 2) / std::sqrt((double)(n - 1));
+     if (sd > 1e-10) Z.col(j) = col / sd;
+   }
 
-  std::vector<int>    rows, cols;
-  std::vector<double> vals;
-  rows.reserve(p * 20); cols.reserve(p * 20); vals.reserve(p * 20);
+   std::vector<int>    rows, cols;
+   std::vector<double> vals;
+   rows.reserve(p * 20); cols.reserve(p * 20); vals.reserve(p * 20);
 
-  // Use n_threads for OpenMP parallelism over the outer loop.
-  // Thread-local vectors avoid locking; merged after the loop.
+   // Use n_threads for OpenMP parallelism over the outer loop.
+   // Thread-local vectors avoid locking; merged after the loop.
 #ifdef _OPENMP
-  int n_thr = (n_threads == 0) ? omp_get_max_threads() : n_threads;
+   int n_thr = (n_threads == 0) ? omp_get_max_threads() : n_threads;
 #else
-  int n_thr = 1; (void)n_threads;
+   int n_thr = 1; (void)n_threads;
 #endif
-  // Serial path (n_thr=1) or parallel accumulation
-  if (n_thr <= 1) {
-    for (arma::uword j = 0; j < p; ++j) {
-      for (arma::uword k = j + 1; k < p; ++k) {
-        if (std::abs(bp(k) - bp(j)) > max_bp_dist) break;
-        double r  = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
-        double r2 = std::min(r * r, 1.0);
-        if (r2 >= threshold) {
-          rows.push_back((int)j + 1);
-          cols.push_back((int)k + 1);
-          vals.push_back(r2);
-        }
-      }
-    }
-  } else {
+   // Serial path (n_thr=1) or parallel accumulation
+   if (n_thr <= 1) {
+     for (arma::uword j = 0; j < p; ++j) {
+       for (arma::uword k = j + 1; k < p; ++k) {
+         if (std::abs(bp(k) - bp(j)) > max_bp_dist) break;
+         double r  = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
+         double r2 = std::min(r * r, 1.0);
+         if (r2 >= threshold) {
+           rows.push_back((int)j + 1);
+           cols.push_back((int)k + 1);
+           vals.push_back(r2);
+         }
+       }
+     }
+   } else {
 #ifdef _OPENMP
-    std::vector<std::vector<int>>    t_rows(n_thr), t_cols(n_thr);
-    std::vector<std::vector<double>> t_vals(n_thr);
+     std::vector<std::vector<int>>    t_rows(n_thr), t_cols(n_thr);
+     std::vector<std::vector<double>> t_vals(n_thr);
 #pragma omp parallel for schedule(dynamic, 4) num_threads(n_thr)
-    for (int j = 0; j < (int)p; ++j) {
-      int tid = omp_get_thread_num();
-      for (arma::uword k = (arma::uword)j + 1; k < p; ++k) {
-        if (std::abs(bp(k) - bp(j)) > max_bp_dist) break;
-        double r  = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
-        double r2 = std::min(r * r, 1.0);
-        if (r2 >= threshold) {
-          t_rows[tid].push_back(j + 1);
-          t_cols[tid].push_back((int)k + 1);
-          t_vals[tid].push_back(r2);
-        }
-      }
-    }
-    for (int t = 0; t < n_thr; ++t) {
-      rows.insert(rows.end(), t_rows[t].begin(), t_rows[t].end());
-      cols.insert(cols.end(), t_cols[t].begin(), t_cols[t].end());
-      vals.insert(vals.end(), t_vals[t].begin(), t_vals[t].end());
-    }
+     for (int j = 0; j < (int)p; ++j) {
+       int tid = omp_get_thread_num();
+       for (arma::uword k = (arma::uword)j + 1; k < p; ++k) {
+         if (std::abs(bp(k) - bp(j)) > max_bp_dist) break;
+         double r  = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
+         double r2 = std::min(r * r, 1.0);
+         if (r2 >= threshold) {
+           t_rows[tid].push_back(j + 1);
+           t_cols[tid].push_back((int)k + 1);
+           t_vals[tid].push_back(r2);
+         }
+       }
+     }
+     for (int t = 0; t < n_thr; ++t) {
+       rows.insert(rows.end(), t_rows[t].begin(), t_rows[t].end());
+       cols.insert(cols.end(), t_cols[t].begin(), t_cols[t].end());
+       vals.insert(vals.end(), t_vals[t].begin(), t_vals[t].end());
+     }
 #endif
-  }
+   }
 
-  return List::create(
-    Named("row") = IntegerVector(rows.begin(), rows.end()),
-    Named("col") = IntegerVector(cols.begin(), cols.end()),
-    Named("r2")  = NumericVector(vals.begin(), vals.end())
-  );
-}
+   return List::create(
+     Named("row") = IntegerVector(rows.begin(), rows.end()),
+     Named("col") = IntegerVector(cols.begin(), cols.end()),
+     Named("r2")  = NumericVector(vals.begin(), vals.end())
+   );
+ }
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -300,48 +310,49 @@ List compute_r2_sparse_cpp(
 //    has r² >= threshold. Returns integer vector of positions with weak LD.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// [[Rcpp::export]]
-IntegerVector boundary_scan_cpp(
-    const arma::mat& X,
-    int start,
-    int end,
-    int half_w,
-    double threshold
-) {
-  arma::uword n = X.n_rows;
-  arma::uword p = X.n_cols;
-  int len = end - start + 1;
-  IntegerVector result(len, 1); // default: valid cut
+//' @noRd
+ // [[Rcpp::export]]
+ IntegerVector boundary_scan_cpp(
+     const arma::mat& X,
+     int start,
+     int end,
+     int half_w,
+     double threshold
+ ) {
+   arma::uword n = X.n_rows;
+   arma::uword p = X.n_cols;
+   int len = end - start + 1;
+   IntegerVector result(len, 1); // default: valid cut
 
-  // Pre-standardise
-  arma::mat Z(n, p, arma::fill::zeros);
-  for (arma::uword j = 0; j < p; ++j) {
-    arma::vec col = X.col(j);
-    double mu = arma::mean(col);
-    col -= mu;
-    double sd = arma::norm(col, 2) / std::sqrt((double)(n - 1));
-    if (sd > 1e-10) Z.col(j) = col / sd;
-  }
+   // Pre-standardise
+   arma::mat Z(n, p, arma::fill::zeros);
+   for (arma::uword j = 0; j < p; ++j) {
+     arma::vec col = X.col(j);
+     double mu = arma::mean(col);
+     col -= mu;
+     double sd = arma::norm(col, 2) / std::sqrt((double)(n - 1));
+     if (sd > 1e-10) Z.col(j) = col / sd;
+   }
 
-  for (int ci = 0; ci < len; ++ci) {
-    int cut = start + ci - 1; // 0-based cut position
-    int l_start = std::max(0, cut - half_w + 1);
-    int l_end   = cut;
-    int r_start = cut + 1;
-    int r_end   = std::min((int)p - 1, cut + half_w);
+   for (int ci = 0; ci < len; ++ci) {
+     int cut = start + ci - 1; // 0-based cut position
+     int l_start = std::max(0, cut - half_w + 1);
+     int l_end   = cut;
+     int r_start = cut + 1;
+     int r_end   = std::min((int)p - 1, cut + half_w);
 
-    bool has_ld = false;
-    for (int j = l_start; j <= l_end && !has_ld; ++j) {
-      for (int k = r_start; k <= r_end && !has_ld; ++k) {
-        double r  = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
-        double r2 = std::min(r * r, 1.0);
-        if (r2 >= threshold) has_ld = true;
-      }
-    }
-    result[ci] = has_ld ? 0 : 1;
-  }
-  return result;
-}
+     bool has_ld = false;
+     for (int j = l_start; j <= l_end && !has_ld; ++j) {
+       for (int k = r_start; k <= r_end && !has_ld; ++k) {
+         double r  = arma::dot(Z.col(j), Z.col(k)) / (double)(n - 1);
+         double r2 = std::min(r * r, 1.0);
+         if (r2 >= threshold) has_ld = true;
+       }
+     }
+     result[ci] = has_ld ? 0 : 1;
+   }
+   return result;
+ }
 
 // ============================================================================
 // build_hap_strings_cpp()
@@ -354,27 +365,28 @@ IntegerVector boundary_scan_cpp(
 // which incurs one R function call per individual per block.
 // For 17,078 blocks x 204 individuals = 3.5M R calls -> one C++ call per block.
 // ============================================================================
-// [[Rcpp::export]]
-Rcpp::CharacterVector build_hap_strings_cpp(
-    Rcpp::IntegerMatrix geno_block,
-    std::string na_char = "."
-) {
-  int n_ind  = geno_block.nrow();
-  int n_snps = geno_block.ncol();
-  Rcpp::CharacterVector out(n_ind);
+//' @noRd
+ // [[Rcpp::export]]
+ Rcpp::CharacterVector build_hap_strings_cpp(
+     Rcpp::IntegerMatrix geno_block,
+     std::string na_char = "."
+ ) {
+   int n_ind  = geno_block.nrow();
+   int n_snps = geno_block.ncol();
+   Rcpp::CharacterVector out(n_ind);
 
-  for (int i = 0; i < n_ind; i++) {
-    std::string s;
-    s.reserve(n_snps);
-    for (int j = 0; j < n_snps; j++) {
-      int g = geno_block(i, j);
-      if (g == NA_INTEGER || g < 0) {
-        s += na_char;
-      } else {
-        s += std::to_string(g);
-      }
-    }
-    out[i] = s;
-  }
-  return out;
-}
+   for (int i = 0; i < n_ind; i++) {
+     std::string s;
+     s.reserve(n_snps);
+     for (int j = 0; j < n_snps; j++) {
+       int g = geno_block(i, j);
+       if (g == NA_INTEGER || g < 0) {
+         s += na_char;
+       } else {
+         s += std::to_string(g);
+       }
+     }
+     out[i] = s;
+   }
+   return out;
+ }

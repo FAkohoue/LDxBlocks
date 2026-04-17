@@ -1,0 +1,44 @@
+#!/bin/sh
+# configure — detect OpenMP support and write src/Makevars from src/Makevars.in
+# Called automatically by R CMD INSTALL before compilation.
+
+echo "*** Configuring LDxBlocks OpenMP support ***"
+
+OPENMP_CXXFLAGS=""
+OPENMP_LIBS=""
+
+# Detect platform
+OS=$(uname -s 2>/dev/null || echo "unknown")
+
+if [ "$OS" = "Darwin" ]; then
+  # macOS: Apple Clang needs libomp from Homebrew.
+  # brew --prefix libomp gives the correct path for both Apple Silicon
+  # (/opt/homebrew/opt/libomp) and Intel (/usr/local/opt/libomp).
+  LIBOMP_PREFIX=$(brew --prefix libomp 2>/dev/null)
+  if [ -n "$LIBOMP_PREFIX" ] && [ -f "$LIBOMP_PREFIX/lib/libomp.dylib" ]; then
+    echo "    libomp found: $LIBOMP_PREFIX"
+    OPENMP_CXXFLAGS="-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include"
+    OPENMP_LIBS="-L${LIBOMP_PREFIX}/lib -lomp -Wl,-rpath,${LIBOMP_PREFIX}/lib"
+  else
+    echo "    libomp not found — building without OpenMP (n_threads ignored)"
+    OPENMP_CXXFLAGS=""
+    OPENMP_LIBS=""
+  fi
+else
+  # Linux / other Unix: GCC -fopenmp links libgomp automatically
+  echo "    Non-macOS platform ($OS) — using -fopenmp"
+  OPENMP_CXXFLAGS="-fopenmp"
+  OPENMP_LIBS="-fopenmp"
+fi
+
+echo "    PKG_CXXFLAGS addition: $OPENMP_CXXFLAGS"
+echo "    PKG_LIBS addition:     $OPENMP_LIBS"
+
+# Write src/Makevars from template
+sed \
+  -e "s|@OPENMP_CXXFLAGS@|${OPENMP_CXXFLAGS}|g" \
+  -e "s|@OPENMP_LIBS@|${OPENMP_LIBS}|g" \
+  src/Makevars.in > src/Makevars
+
+echo "    src/Makevars written"
+echo "*** Configuration complete ***"

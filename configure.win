@@ -1,0 +1,14 @@
+#!/bin/sh
+# configure.win — Windows counterpart of configure.
+# On Windows with Rtools (MinGW GCC), -fopenmp links libgomp automatically.
+# No platform detection needed.
+
+echo "*** Configuring LDxBlocks OpenMP support (Windows) ***"
+
+sed \
+  -e "s|@OPENMP_CXXFLAGS@|-fopenmp|g" \
+  -e "s|@OPENMP_LIBS@|-fopenmp|g" \
+  src/Makevars.in > src/Makevars.win
+
+echo "    src/Makevars.win written"
+echo "*** Configuration complete ***"
