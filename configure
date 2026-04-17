@@ -11,19 +11,12 @@ OPENMP_LIBS=""
 OS=$(uname -s 2>/dev/null || echo "unknown")
 
 if [ "$OS" = "Darwin" ]; then
-  # macOS: Apple Clang needs libomp from Homebrew.
-  # brew --prefix libomp gives the correct path for both Apple Silicon
-  # (/opt/homebrew/opt/libomp) and Intel (/usr/local/opt/libomp).
-  LIBOMP_PREFIX=$(brew --prefix libomp 2>/dev/null)
-  if [ -n "$LIBOMP_PREFIX" ] && [ -f "$LIBOMP_PREFIX/lib/libomp.dylib" ]; then
-    echo "    libomp found: $LIBOMP_PREFIX"
-    OPENMP_CXXFLAGS="-Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include"
-    OPENMP_LIBS="-L${LIBOMP_PREFIX}/lib -lomp -Wl,-rpath,${LIBOMP_PREFIX}/lib"
-  else
-    echo "    libomp not found — building without OpenMP (n_threads ignored)"
-    OPENMP_CXXFLAGS=""
-    OPENMP_LIBS=""
-  fi
+  # macOS: build without OpenMP.
+  # The C++ code is guarded with #ifdef _OPENMP and will fall back
+  # safely to single-threaded execution.
+  echo "    macOS detected — building without OpenMP"
+  OPENMP_CXXFLAGS=""
+  OPENMP_LIBS=""
 else
   # Linux / other Unix: GCC -fopenmp links libgomp automatically
   echo "    Non-macOS platform ($OS) — using -fopenmp"

@@ -43,20 +43,6 @@ jobs:
           r-version: ${{ matrix.config.r }}
           use-public-rspm: true
 
-      # ── OpenMP on macOS ──────────────────────────────────────────────────────
-      - name: Install libomp and configure R Makevars (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install libomp
-          mkdir -p ~/.R
-          LIBOMP=$(brew --prefix libomp)
-          cat > ~/.R/Makevars << EOF
-          SHLIB_OPENMP_CFLAGS   = -Xpreprocessor -fopenmp -I${LIBOMP}/include
-          SHLIB_OPENMP_CXXFLAGS = -Xpreprocessor -fopenmp -I${LIBOMP}/include -L${LIBOMP}/lib -lomp -Wl,-rpath,${LIBOMP}/lib
-          EOF
-          echo "LIBOMP=${LIBOMP}" >> $GITHUB_ENV
-
-      # ── System libraries (Linux) ─────────────────────────────────────────────
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -75,7 +61,6 @@ jobs:
             libtiff5-dev \
             libjpeg-dev
 
-      # ── Bioconductor packages ────────────────────────────────────────────────
       - name: Install Bioconductor packages
         shell: Rscript {0}
         run: |
@@ -92,7 +77,6 @@ jobs:
           if (length(to_install))
             BiocManager::install(to_install, ask = FALSE, update = FALSE)
 
-      # ── R package cache ──────────────────────────────────────────────────────
       - name: Cache R packages
         uses: actions/cache@v4
         with:
@@ -101,7 +85,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-r-${{ matrix.config.r }}-
 
-      # ── CRAN + GitHub dependencies ───────────────────────────────────────────
       - name: Install R dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -110,24 +93,13 @@ jobs:
             any::covr
           needs: check
 
-      # ── Diagnostics (macOS) ──────────────────────────────────────────────────
-      - name: Show macOS OpenMP config
-        if: runner.os == 'macOS'
-        run: |
-          cat ~/.R/Makevars
-          ls -l "${LIBOMP}/lib"
-
-      # ── R CMD check ──────────────────────────────────────────────────────────
       - name: Check package
         uses: r-lib/actions/check-r-package@v2
-        env:
-          DYLD_FALLBACK_LIBRARY_PATH: ${{ runner.os == 'macOS' && format('{0}/lib', env.LIBOMP) || '' }}
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual")'
           args: 'c("--no-manual", "--as-cran", "--run-donttest")'
 
-      # ── Upload logs on failure ───────────────────────────────────────────────
       - name: Upload check results
         if: failure()
         uses: actions/upload-artifact@v4
