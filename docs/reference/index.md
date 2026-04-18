@@ -130,6 +130,59 @@ haplotype stacking candidate identification.
 - [`rank_haplotype_blocks()`](https://FAkohoue.github.io/LDxBlocks/reference/rank_haplotype_blocks.md)
   : Rank Haplotype Blocks by Evidence Strength
 
+## Analysis extensions
+
+Cross-validation, population comparison, stability, export, and effect
+decomposition
+
+- [`cv_haplotype_prediction()`](https://FAkohoue.github.io/LDxBlocks/reference/cv_haplotype_prediction.md)
+  : K-Fold Cross-Validation for Haplotype-Based Genomic Prediction
+- [`compare_haplotype_populations()`](https://FAkohoue.github.io/LDxBlocks/reference/compare_haplotype_populations.md)
+  : Compare Haplotype Allele Frequencies Between Two Population Groups
+- [`plot_haplotype_network()`](https://FAkohoue.github.io/LDxBlocks/reference/plot_haplotype_network.md)
+  : Plot a Minimum-Spanning Haplotype Network for One LD Block
+- [`run_haplotype_stability()`](https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_stability.md)
+  : Finlay-Wilkinson Stability Analysis of Haplotype Effects Across
+  Environments
+- [`export_candidate_regions()`](https://FAkohoue.github.io/LDxBlocks/reference/export_candidate_regions.md)
+  : Export Candidate Gene Regions to BED, CSV, or biomaRt Format
+- [`decompose_block_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/decompose_block_effects.md)
+  : Decompose Per-SNP Effects into Per-Haplotype-Allele Effect Table
+- [`scan_diversity_windows()`](https://FAkohoue.github.io/LDxBlocks/reference/scan_diversity_windows.md)
+  : Sliding-Window Genome-Wide Diversity Scan
+
+## Haplotype inference and harmonisation
+
+True diplotype inference, rare-allele collapsing, and cross-panel label
+harmonisation
+
+- [`infer_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/infer_block_haplotypes.md)
+  : Infer Structured Block-Level Diplotypes Per Individual
+- [`collapse_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/collapse_haplotypes.md)
+  : Collapse Rare Haplotype Alleles Into Biologically Meaningful Groups
+- [`harmonize_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/harmonize_haplotypes.md)
+  : Harmonize Haplotype Allele Labels Across Panels or Analysis Runs
+
+## Haplotype association testing
+
+Block-level association tests and diplotype effect estimation (Q+K mixed
+model)
+
+- [`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md)
+  : Block-Level Haplotype Association Testing (Q+K Mixed Linear Model)
+- [`estimate_diplotype_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/estimate_diplotype_effects.md)
+  : Estimate Diplotype Effects and Dominance Deviations Per LD Block
+
+## Breeding decision tools
+
+Haplotype portfolio scoring and parent allele inventory for stacking
+decisions
+
+- [`score_favorable_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/score_favorable_haplotypes.md)
+  : Score Individual Haplotype Portfolios Against Known Allele Effects
+- [`summarize_parent_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/summarize_parent_haplotypes.md)
+  : Summarise Haplotype Allele Inventory Per Candidate Parent
+
 ## Utilities
 
 Summary statistics and visualisation.
@@ -154,3 +207,5 @@ blocks) for examples and tests.
   : Example GWAS Marker Table
 - [`ldx_blues`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_blues.md)
   : Pre-Adjusted Phenotype Means (BLUEs) for Genomic Prediction Examples
+- [`ldx_blues_list`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_blues_list.md)
+  : Per-Environment BLUEs for Stability Analysis Examples

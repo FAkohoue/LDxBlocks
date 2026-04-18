@@ -300,11 +300,11 @@ original Big-LD output</li>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ldx_snp_info</span><span class="op">)</span>        <span class="co"># SNP, CHR, POS, REF, ALT</span></span>
 <span><span class="co">#&gt;      SNP CHR  POS REF ALT</span></span>
 <span><span class="co">#&gt; 1 rs1001   1 1000   G   C</span></span>
-<span><span class="co">#&gt; 2 rs1002   1 2134   C   G</span></span>
-<span><span class="co">#&gt; 3 rs1003   1 3089   T   A</span></span>
-<span><span class="co">#&gt; 4 rs1004   1 4067   A   G</span></span>
-<span><span class="co">#&gt; 5 rs1005   1 5246   G   A</span></span>
-<span><span class="co">#&gt; 6 rs1006   1 6312   C   T</span></span>
+<span><span class="co">#&gt; 2 rs1002   1 2192   C   G</span></span>
+<span><span class="co">#&gt; 3 rs1003   1 3253   T   A</span></span>
+<span><span class="co">#&gt; 4 rs1004   1 4132   A   G</span></span>
+<span><span class="co">#&gt; 5 rs1005   1 5188   G   A</span></span>
+<span><span class="co">#&gt; 6 rs1006   1 6314   C   T</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">ldx_snp_info</span><span class="op">$</span><span class="va">CHR</span><span class="op">)</span>   <span class="co"># chr1, chr2, chr3</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;  1  2  3 </span></span>
@@ -389,11 +389,11 @@ formats are supported:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">be</span><span class="op">$</span><span class="va">snp_info</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      SNP CHR  POS REF ALT</span></span>
 <span><span class="co">#&gt; 1 rs1001   1 1000   G   C</span></span>
-<span><span class="co">#&gt; 2 rs1002   1 2134   C   G</span></span>
-<span><span class="co">#&gt; 3 rs1003   1 3089   T   A</span></span>
-<span><span class="co">#&gt; 4 rs1004   1 4067   A   G</span></span>
-<span><span class="co">#&gt; 5 rs1005   1 5246   G   A</span></span>
-<span><span class="co">#&gt; 6 rs1006   1 6312   C   T</span></span>
+<span><span class="co">#&gt; 2 rs1002   1 2192   C   G</span></span>
+<span><span class="co">#&gt; 3 rs1003   1 3253   T   A</span></span>
+<span><span class="co">#&gt; 4 rs1004   1 4132   A   G</span></span>
+<span><span class="co">#&gt; 5 rs1005   1 5188   G   A</span></span>
+<span><span class="co">#&gt; 6 rs1006   1 6314   C   T</span></span>
 <span><span class="va">chunk</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_chunk.html">read_chunk</a></span><span class="op">(</span><span class="va">be</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">chunk</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120  30</span></span>
@@ -480,9 +480,9 @@ unmatched individuals trigger an informative message.</td>
 <span><span class="va">blues</span>      <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">blues_file</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">blues</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;       id     YLD     RES</span></span>
-<span><span class="co">#&gt; 1 ind001  0.8909 -0.8208</span></span>
-<span><span class="co">#&gt; 2 ind002 -0.8711  0.9927</span></span>
-<span><span class="co">#&gt; 3 ind003 -0.9154 -0.9956</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 ind001 -0.5175  0.6771</span></span>
+<span><span class="co">#&gt; 2 ind002  0.7635  1.3764</span></span>
+<span><span class="co">#&gt; 3 ind003 -1.3093 -0.9946</span></span></code></pre></div>
 <p>The most common source of errors is an ID mismatch between the
 phenotype file and the genotype matrix. Verify with:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
@@ -511,12 +511,12 @@ phenotype file and the genotype matrix. Verify with:</p>
 <span><span class="co">#&gt; [1] 9</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">blocks</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   start end start.rsID end.rsID start.bp end.bp CHR length_bp</span></span>
-<span><span class="co">#&gt; 1     1  25     rs1001   rs1025     1000  25535   1     24536</span></span>
-<span><span class="co">#&gt; 2    31  50     rs1031   rs1050    81986 100878   1     18893</span></span>
-<span><span class="co">#&gt; 3    56  80     rs1056   rs1080   156776 181114   1     24339</span></span>
-<span><span class="co">#&gt; 4     1  30     rs2001   rs2030     1000  29445   2     28446</span></span>
-<span><span class="co">#&gt; 5    36  55     rs2036   rs2055    85463 104532   2     19070</span></span>
-<span><span class="co">#&gt; 6    61  80     rs2061   rs2080   160237 178996   2     18760</span></span></code></pre></div>
+<span><span class="co">#&gt; 1     1  25     rs1001   rs1025     1000  25027   1     24028</span></span>
+<span><span class="co">#&gt; 2    31  50     rs1031   rs1050    81064  99022   1     17959</span></span>
+<span><span class="co">#&gt; 3    56  80     rs1056   rs1080   155368 179371   1     24004</span></span>
+<span><span class="co">#&gt; 4     1  30     rs2001   rs2030     1000  30023   2     29024</span></span>
+<span><span class="co">#&gt; 5    36  55     rs2036   rs2055    86236 105290   2     19055</span></span>
+<span><span class="co">#&gt; 6    61  80     rs2061   rs2080   161515 180473   2     18959</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="single-chromosome">6.2 Single chromosome<a class="anchor" aria-label="anchor" href="#single-chromosome"></a>
@@ -570,10 +570,10 @@ stall for hours. Two parameters fix this:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summarise_blocks.html">summarise_blocks</a></span><span class="op">(</span><span class="va">blocks</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      CHR n_blocks min_bp median_bp  mean_bp max_bp total_bp_covered</span></span>
-<span><span class="co">#&gt; 1      1        3  18893     24339 22589.33  24536            67768</span></span>
-<span><span class="co">#&gt; 2      2        3  18760     19070 22092.00  28446            66276</span></span>
-<span><span class="co">#&gt; 3      3        3  18995     19653 19481.33  19796            58444</span></span>
-<span><span class="co">#&gt; 4 GENOME        9  18760     19653 21387.56  28446           192488</span></span></code></pre></div>
+<span><span class="co">#&gt; 1      1        3  17959     24004 21997.00  24028            65991</span></span>
+<span><span class="co">#&gt; 2      2        3  18959     19055 22346.00  29024            67038</span></span>
+<span><span class="co">#&gt; 3      3        3  18069     18356 18385.00  18730            55155</span></span>
+<span><span class="co">#&gt; 4 GENOME        9  17959     18959 20909.33  29024           188184</span></span></code></pre></div>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"ggplot2"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/plot_ld_blocks.html">plot_ld_blocks</a></span><span class="op">(</span><span class="va">blocks</span>, colour_by <span class="op">=</span> <span class="st">"length_bp"</span>, mb_scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
@@ -615,22 +615,22 @@ receives one diploid allele string per block:</p>
 <span><span class="co">#&gt; [1] 9</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">haps</span>, <span class="st">"block_info"</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                block_id CHR start_bp end_bp n_snps phased</span></span>
-<span><span class="co">#&gt; 1    block_1_1000_25535   1     1000  25535     25  FALSE</span></span>
-<span><span class="co">#&gt; 2  block_1_81986_100878   1    81986 100878     20  FALSE</span></span>
-<span><span class="co">#&gt; 3 block_1_156776_181114   1   156776 181114     25  FALSE</span></span>
-<span><span class="co">#&gt; 4    block_2_1000_29445   2     1000  29445     30  FALSE</span></span>
-<span><span class="co">#&gt; 5  block_2_85463_104532   2    85463 104532     20  FALSE</span></span>
-<span><span class="co">#&gt; 6 block_2_160237_178996   2   160237 178996     20  FALSE</span></span>
-<span><span class="co">#&gt; 7    block_3_1000_19994   3     1000  19994     20  FALSE</span></span>
-<span><span class="co">#&gt; 8   block_3_76186_95838   3    76186  95838     20  FALSE</span></span>
-<span><span class="co">#&gt; 9 block_3_151654_171449   3   151654 171449     20  FALSE</span></span>
+<span><span class="co">#&gt; 1    block_1_1000_25027   1     1000  25027     25  FALSE</span></span>
+<span><span class="co">#&gt; 2   block_1_81064_99022   1    81064  99022     20  FALSE</span></span>
+<span><span class="co">#&gt; 3 block_1_155368_179371   1   155368 179371     25  FALSE</span></span>
+<span><span class="co">#&gt; 4    block_2_1000_30023   2     1000  30023     30  FALSE</span></span>
+<span><span class="co">#&gt; 5  block_2_86236_105290   2    86236 105290     20  FALSE</span></span>
+<span><span class="co">#&gt; 6 block_2_161515_180473   2   161515 180473     20  FALSE</span></span>
+<span><span class="co">#&gt; 7    block_3_1000_19068   3     1000  19068     20  FALSE</span></span>
+<span><span class="co">#&gt; 8   block_3_74532_92887   3    74532  92887     19  FALSE</span></span>
+<span><span class="co">#&gt; 9 block_3_149647_168376   3   149647 168376     20  FALSE</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">haps</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                      ind001                      ind002 </span></span>
-<span><span class="co">#&gt; "0000000000000000000000000" "1111111111111111111111111" </span></span>
+<span><span class="co">#&gt; "2022222002222002220020220" "0121011210110111102212101" </span></span>
 <span><span class="co">#&gt;                      ind003                      ind004 </span></span>
-<span><span class="co">#&gt; "1111111111111111111111111" "1111111111111111111111111" </span></span>
+<span><span class="co">#&gt; "1011121012111011210020110" "0020000000000000002202000" </span></span>
 <span><span class="co">#&gt;                      ind005                      ind006 </span></span>
-<span><span class="co">#&gt; "0000000000000000000000000" "1111101111211111111111111"</span></span></code></pre></div>
+<span><span class="co">#&gt; "2022222002222002220020220" "2022222002222002220020220"</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="phased-mode">8.2 Phased mode<a class="anchor" aria-label="anchor" href="#phased-mode"></a>
@@ -668,19 +668,19 @@ estimates:</p>
 <code class="sourceCode R"><span><span class="va">div</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity</a></span><span class="op">(</span><span class="va">haps</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">div</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                block_id CHR start_bp end_bp n_snps n_ind n_haplotypes        He</span></span>
-<span><span class="co">#&gt; 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8488796</span></span>
-<span><span class="co">#&gt; 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8460784</span></span>
-<span><span class="co">#&gt; 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8826331</span></span>
-<span><span class="co">#&gt; 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8866947</span></span>
-<span><span class="co">#&gt; 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8535014</span></span>
-<span><span class="co">#&gt; 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8484594</span></span>
+<span><span class="co">#&gt; 1    block_1_1000_25027   1     1000  25027     25   120           30 0.9163866</span></span>
+<span><span class="co">#&gt; 2   block_1_81064_99022   1    81064  99022     20   120           21 0.8988796</span></span>
+<span><span class="co">#&gt; 3 block_1_155368_179371   1   155368 179371     25   120           26 0.9159664</span></span>
+<span><span class="co">#&gt; 4    block_2_1000_30023   2     1000  30023     30   120           31 0.9161064</span></span>
+<span><span class="co">#&gt; 5  block_2_86236_105290   2    86236 105290     20   120           22 0.8955182</span></span>
+<span><span class="co">#&gt; 6 block_2_161515_180473   2   161515 180473     20   120           25 0.9155462</span></span>
 <span><span class="co">#&gt;    Shannon n_eff_alleles freq_dominant sweep_flag phased</span></span>
-<span><span class="co">#&gt; 1 2.768290         6.321     0.3583333      FALSE  FALSE</span></span>
-<span><span class="co">#&gt; 2 2.654193         6.212     0.3000000      FALSE  FALSE</span></span>
-<span><span class="co">#&gt; 3 2.966925         8.018     0.2916667      FALSE  FALSE</span></span>
-<span><span class="co">#&gt; 4 3.108972         8.285     0.2833333      FALSE  FALSE</span></span>
-<span><span class="co">#&gt; 5 2.649231         6.510     0.2833333      FALSE  FALSE</span></span>
-<span><span class="co">#&gt; 6 2.604423         6.305     0.3083333      FALSE  FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 2.745726        10.959     0.1833333      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 2 2.476482         9.207     0.1833333      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 3 2.667890        10.909     0.1666667      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 4 2.772723        10.926     0.2000000      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 5 2.485949         8.933     0.2166667      FALSE  FALSE</span></span>
+<span><span class="co">#&gt; 6 2.642908        10.860     0.1500000      FALSE  FALSE</span></span></code></pre></div>
 <table class="table">
 <thead><tr class="header">
 <th>Metric</th>
@@ -759,7 +759,7 @@ blocks to define QTL regions and flag pleiotropic blocks:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">qtl</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"CHR"</span>,<span class="st">"n_snps_block"</span>,<span class="st">"n_sig_markers"</span>,</span>
 <span>             <span class="st">"lead_snp"</span>,<span class="st">"traits"</span>,<span class="st">"pleiotropic"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                block_id CHR n_snps_block n_sig_markers lead_snp traits</span></span>
-<span><span class="co">#&gt; 1 block_1_156776_181114   1           25             1   rs1070 TraitA</span></span>
+<span><span class="co">#&gt; 1 block_1_155368_179371   1           25             1   rs1070 TraitA</span></span>
 <span><span class="co">#&gt;   pleiotropic</span></span>
 <span><span class="co">#&gt; 1       FALSE</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">qtl</span>, <span class="va">pleiotropic</span><span class="op">)</span>      <span class="co"># blocks with hits from both TraitA and TraitB</span></span>
@@ -871,7 +871,7 @@ rankings are not specific to any single trait:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">G_hap</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120 120</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">G_hap</span><span class="op">)</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 0.300 2.969</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 0.357 1.698</span></span></code></pre></div>
 <hr>
 </div>
 </div>
@@ -936,7 +936,7 @@ gene windows.</p>
 <span><span class="op">)</span></span>
 <span><span class="va">result</span><span class="op">$</span><span class="va">best_params</span></span>
 <span><span class="co">#&gt; $CLQcut</span></span>
-<span><span class="co">#&gt; [1] 0.45</span></span>
+<span><span class="co">#&gt; [1] 0.55</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $min_freq</span></span>
 <span><span class="co">#&gt; [1] 0.01</span></span>
@@ -972,7 +972,7 @@ gene windows.</p>
 <span><span class="co">#&gt; [1] FALSE</span></span>
 <span><span class="va">result</span><span class="op">$</span><span class="va">score_table</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"CLQcut"</span>,<span class="st">"n_unassigned"</span>,<span class="st">"n_forced"</span>,<span class="st">"n_blocks"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;   CLQcut n_unassigned n_forced n_blocks</span></span>
-<span><span class="co">#&gt; 1   0.45            0        0        9</span></span>
+<span><span class="co">#&gt; 1   0.45            0        1        9</span></span>
 <span><span class="co">#&gt; 2   0.55            0        0        9</span></span>
 <span><span class="co">#&gt; 3   0.65            0        0        9</span></span></code></pre></div>
 <hr>
@@ -1031,6 +1031,270 @@ gene windows.</p>
 <span></span>
 <span><span class="fu"><a href="../reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span></span></code></pre></div>
 <hr>
+</div>
+<div class="section level2">
+<h2 id="step-10-advanced-analysis-cv-population-comparison-harmonisation">13. Step 10 — Advanced analysis: CV, population comparison,
+harmonisation<a class="anchor" aria-label="anchor" href="#step-10-advanced-analysis-cv-population-comparison-harmonisation"></a>
+</h2>
+<p>The ten new analysis extension functions slot naturally after the
+main prediction pipeline.</p>
+<div class="section level3">
+<h3 id="cross-validation">13.1 Cross-validation<a class="anchor" aria-label="anchor" href="#cross-validation"></a>
+</h3>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cv_haplotype_prediction.html">cv_haplotype_prediction</a></span><span class="op">(</span></span>
+<span>  geno_matrix <span class="op">=</span> <span class="va">ldx_geno</span>,</span>
+<span>  snp_info    <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span>
+<span>  blocks      <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  blues       <span class="op">=</span> <span class="va">blues</span>,</span>
+<span>  k           <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  n_rep       <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>  id_col      <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>  blue_col    <span class="op">=</span> <span class="st">"YLD"</span>,</span>
+<span>  verbose     <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">cv</span><span class="op">$</span><span class="va">pa_mean</span>   <span class="co"># mean PA and RMSE per trait across folds and replications</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="population-comparison">13.2 Population comparison<a class="anchor" aria-label="anchor" href="#population-comparison"></a>
+</h3>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">)</span></span>
+<span><span class="va">cmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_haplotype_populations.html">compare_haplotype_populations</a></span><span class="op">(</span></span>
+<span>  haplotypes  <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  group1      <span class="op">=</span> <span class="va">ids</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">60</span><span class="op">]</span>,</span>
+<span>  group2      <span class="op">=</span> <span class="va">ids</span><span class="op">[</span><span class="fl">61</span><span class="op">:</span><span class="fl">120</span><span class="op">]</span>,</span>
+<span>  group1_name <span class="op">=</span> <span class="st">"cycle1"</span>,</span>
+<span>  group2_name <span class="op">=</span> <span class="st">"cycle2"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">cmp</span><span class="op">[</span><span class="va">cmp</span><span class="op">$</span><span class="va">divergent</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>, <span class="st">"FST"</span>, <span class="st">"max_freq_diff"</span>, <span class="st">"chisq_p"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="haplotype-network-for-one-block">13.3 Haplotype network for one block<a class="anchor" aria-label="anchor" href="#haplotype-network-for-one-block"></a>
+</h3>
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"igraph"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/plot_haplotype_network.html">plot_haplotype_network</a></span><span class="op">(</span><span class="va">haps</span>, block_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">haps</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="diplotype-inference-rare-allele-collapsing-and-label-harmonisation">13.4 Diplotype inference, rare-allele collapsing, and label
+harmonisation<a class="anchor" aria-label="anchor" href="#diplotype-inference-rare-allele-collapsing-and-label-harmonisation"></a>
+</h3>
+<p>For training/validation workflows, collapse rare alleles then
+harmonise labels before building feature matrices to ensure allele
+identity transfers correctly:</p>
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Build reference panel haplotypes and collapse rare alleles</span></span>
+<span><span class="va">haps_ref</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">ref_geno</span>, <span class="va">ldx_snp_info</span>, <span class="va">blocks</span><span class="op">)</span></span>
+<span><span class="va">haps_ref</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/collapse_haplotypes.html">collapse_haplotypes</a></span><span class="op">(</span><span class="va">haps_ref</span>, min_freq <span class="op">=</span> <span class="fl">0.05</span>, collapse <span class="op">=</span> <span class="st">"nearest"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Match validation panel alleles to the reference dictionary</span></span>
+<span><span class="va">haps_tgt</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">val_geno</span>,  <span class="va">ldx_snp_info</span>, <span class="va">blocks</span><span class="op">)</span></span>
+<span><span class="va">haps_harm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/harmonize_haplotypes.html">harmonize_haplotypes</a></span><span class="op">(</span><span class="va">haps_tgt</span>, <span class="va">haps_ref</span>, max_hamming <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">haps_harm</span>, <span class="st">"harmonization_report"</span><span class="op">)</span>  <span class="co"># per-block matching quality</span></span>
+<span></span>
+<span><span class="co"># Structured diplotype table</span></span>
+<span><span class="va">dip</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/infer_block_haplotypes.html">infer_block_haplotypes</a></span><span class="op">(</span><span class="va">haps_harm</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dip</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"id"</span>,<span class="st">"diplotype"</span>,<span class="st">"heterozygous"</span>,<span class="st">"phase_ambiguous"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="candidate-region-export-and-allele-effect-decomposition">13.5 Candidate region export and allele effect decomposition<a class="anchor" aria-label="anchor" href="#candidate-region-export-and-allele-effect-decomposition"></a>
+</h3>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Export QTL windows as BED file</span></span>
+<span><span class="fu"><a href="../reference/export_candidate_regions.html">export_candidate_regions</a></span><span class="op">(</span><span class="va">qtl</span>, format <span class="op">=</span> <span class="st">"bed"</span>, chr_prefix <span class="op">=</span> <span class="st">"chr"</span>,</span>
+<span>                          out_file <span class="op">=</span> <span class="st">"candidate_regions.bed"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Decompose per-SNP effects into per-allele effects</span></span>
+<span><span class="va">allele_tbl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/decompose_block_effects.html">decompose_block_effects</a></span><span class="op">(</span><span class="va">haps</span>, <span class="va">ldx_snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                       snp_effects <span class="op">=</span> <span class="va">pred</span><span class="op">$</span><span class="va">snp_effects</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">allele_tbl</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">allele_tbl</span><span class="op">$</span><span class="va">allele_effect</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Sliding-window diversity scan (independent of block boundaries)</span></span>
+<span><span class="va">scan</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/scan_diversity_windows.html">scan_diversity_windows</a></span><span class="op">(</span><span class="va">ldx_geno</span>, <span class="va">ldx_snp_info</span>,</span>
+<span>                                window_bp <span class="op">=</span> <span class="fl">50000L</span>, step_bp <span class="op">=</span> <span class="fl">25000L</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="haplotype-association-testing">13.6 Haplotype association testing<a class="anchor" aria-label="anchor" href="#haplotype-association-testing"></a>
+</h3>
+<p><code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code> tests every LD block for
+association using a unified Q+K mixed linear model: y = μ + α·x_hap +
+Σβ_k·PC_k + g + ε. The GRM is built once from the haplotype feature
+matrix and inverted once per trait (<code><a href="https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html" class="external-link">rrBLUP::mixed.solve()</a></code>).
+Per-allele Wald tests across all blocks are then fully vectorised in a
+single BLAS call. An omnibus F-test per block identifies which blocks
+drive overall association.</p>
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">blues_vec</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">ldx_blues</span><span class="op">$</span><span class="va">YLD</span>, <span class="va">ldx_blues</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># EMMAX (pure GRM correction, n_pcs = 0 — default)</span></span>
+<span><span class="va">assoc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span></span>
+<span>  haplotypes <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  blues      <span class="op">=</span> <span class="va">blues_vec</span>,</span>
+<span>  blocks     <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  n_pcs      <span class="op">=</span> <span class="fl">0L</span>,       <span class="co"># 0 = EMMAX; &gt;0 = Q+K model</span></span>
+<span>  min_freq   <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  verbose    <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Access results</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Total allele tests:"</span>, <span class="va">assoc</span><span class="op">$</span><span class="va">n_tests</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Significant alleles (Bonferroni):"</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">assoc</span><span class="op">$</span><span class="va">allele_tests</span><span class="op">$</span><span class="va">significant</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Significant blocks (omnibus):"</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">assoc</span><span class="op">$</span><span class="va">block_tests</span><span class="op">$</span><span class="va">significant_omnibus</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Top blocks by omnibus p-value</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">assoc</span><span class="op">$</span><span class="va">block_tests</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">assoc</span><span class="op">$</span><span class="va">block_tests</span><span class="op">$</span><span class="va">p_omnibus</span><span class="op">)</span>,</span>
+<span>                        <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"CHR"</span>,<span class="st">"start_bp"</span>,<span class="st">"n_alleles_tested"</span>,</span>
+<span>                          <span class="st">"F_stat"</span>,<span class="st">"p_omnibus"</span>,<span class="st">"var_explained"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">5</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Significant per-allele associations with their effects</span></span>
+<span><span class="va">assoc</span><span class="op">$</span><span class="va">allele_tests</span><span class="op">[</span><span class="va">assoc</span><span class="op">$</span><span class="va">allele_tests</span><span class="op">$</span><span class="va">significant</span>,</span>
+<span>                   <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"trait"</span>,<span class="st">"allele"</span>,<span class="st">"frequency"</span>,<span class="st">"effect"</span>,<span class="st">"SE"</span>,<span class="st">"p_wald"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>When strong discrete population structure is present (e.g. multiple
+breeds or ecotypes), use the Q+K model by setting
+<code>n_pcs &gt; 0</code>. The PCs are derived from the GRM itself,
+ensuring mathematical consistency between the fixed-effect population
+structure correction and the kinship random effect:</p>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Q+K model — 3 GRM-derived PCs as fixed effects + GRM kinship random effect</span></span>
+<span><span class="va">assoc_qk</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span></span>
+<span>  haplotypes <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  blues      <span class="op">=</span> <span class="va">blues_vec</span>,</span>
+<span>  blocks     <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  n_pcs      <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>  verbose    <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"PCs used:"</span>, <span class="va">assoc_qk</span><span class="op">$</span><span class="va">n_pcs_used</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Multi-trait: all traits share the same GRM — one call tests all</span></span>
+<span><span class="va">assoc_mt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span></span>
+<span>  haplotypes <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  blues      <span class="op">=</span> <span class="va">ldx_blues</span>,</span>
+<span>  blocks     <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  id_col     <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>  blue_cols  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"YLD"</span>, <span class="st">"RES"</span><span class="op">)</span>,</span>
+<span>  n_pcs      <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>  verbose    <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co"># Compare block significance across traits</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="va">assoc_mt</span><span class="op">$</span><span class="va">block_tests</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">significant_omnibus</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">block_id</span>, <span class="va">CHR</span>, <span class="va">trait</span>, <span class="va">p_omnibus</span>, <span class="va">var_explained</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/estimate_diplotype_effects.html">estimate_diplotype_effects()</a></code> decomposes phenotypic
+variation into additive and dominance components at each block. The
+dominance ratio d/a classifies gene action: 0 = purely additive; ±1 =
+complete dominance; |d/a| &gt; 1 = overdominance (heterozygote
+advantage, evidence for heterosis at this block).</p>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dip</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/estimate_diplotype_effects.html">estimate_diplotype_effects</a></span><span class="op">(</span></span>
+<span>  haplotypes      <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  blues           <span class="op">=</span> <span class="va">blues_vec</span>,</span>
+<span>  blocks          <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  min_n_diplotype <span class="op">=</span> <span class="fl">3L</span>,   <span class="co"># minimum individuals per diplotype class</span></span>
+<span>  verbose         <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Diplotype class means (de-regressed phenotype scale)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dip</span><span class="op">$</span><span class="va">diplotype_means</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">dip</span><span class="op">$</span><span class="va">diplotype_means</span><span class="op">$</span><span class="va">mean_blue</span>, decreasing<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>                          <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"diplotype"</span>,<span class="st">"n"</span>,<span class="st">"mean_blue"</span>,<span class="st">"se_mean"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">8</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Dominance decomposition: a and d for each allele pair</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dip</span><span class="op">$</span><span class="va">dominance_table</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"allele_A"</span>,<span class="st">"allele_B"</span>,</span>
+<span>                               <span class="st">"a"</span>,<span class="st">"d"</span>,<span class="st">"d_over_a"</span>,<span class="st">"overdominance"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">8</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Blocks showing overdominance — potential heterosis targets</span></span>
+<span><span class="va">od</span> <span class="op">&lt;-</span> <span class="va">dip</span><span class="op">$</span><span class="va">dominance_table</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">dip</span><span class="op">$</span><span class="va">dominance_table</span><span class="op">$</span><span class="va">overdominance</span><span class="op">)</span> <span class="op">&amp;</span></span>
+<span>                           <span class="va">dip</span><span class="op">$</span><span class="va">dominance_table</span><span class="op">$</span><span class="va">overdominance</span>, <span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Overdominant allele pairs:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">od</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Statistically significant diplotype effects</span></span>
+<span><span class="va">dip</span><span class="op">$</span><span class="va">omnibus_tests</span><span class="op">[</span><span class="va">dip</span><span class="op">$</span><span class="va">omnibus_tests</span><span class="op">$</span><span class="va">significant</span>,</span>
+<span>                  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"n_diplotypes"</span>,<span class="st">"F_stat"</span>,<span class="st">"p_omnibus_adj"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="breeding-decision-tools-haplotype-stacking">13.7 Breeding decision tools: haplotype stacking<a class="anchor" aria-label="anchor" href="#breeding-decision-tools-haplotype-stacking"></a>
+</h3>
+<p>Once per-allele effects are known,
+<code><a href="../reference/score_favorable_haplotypes.html">score_favorable_haplotypes()</a></code> and
+<code><a href="../reference/summarize_parent_haplotypes.html">summarize_parent_haplotypes()</a></code> translate genomic prediction
+results into actionable selection and crossing decisions.</p>
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Step 1: Get per-allele effects from the prediction pipeline</span></span>
+<span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span></span>
+<span>  geno_matrix <span class="op">=</span> <span class="va">ldx_geno</span>,</span>
+<span>  snp_info    <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span>
+<span>  blocks      <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  blues       <span class="op">=</span> <span class="va">blues_vec</span>,</span>
+<span>  verbose     <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ae</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/decompose_block_effects.html">decompose_block_effects</a></span><span class="op">(</span></span>
+<span>  haplotypes  <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  snp_info    <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span>
+<span>  blocks      <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  snp_effects <span class="op">=</span> <span class="va">pred</span><span class="op">$</span><span class="va">snp_effects</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>   <span class="co"># first trait</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Allele effect table:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">ae</span><span class="op">)</span>, <span class="st">"alleles across"</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">ae</span><span class="op">$</span><span class="va">block_id</span><span class="op">)</span><span class="op">)</span>, <span class="st">"blocks\n"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ae</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">ae</span><span class="op">$</span><span class="va">allele_effect</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"allele"</span>,<span class="st">"frequency"</span>,<span class="st">"allele_effect"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Step 2: Score every individual's genome-wide haplotype portfolio</span></span>
+<span><span class="va">scores</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/score_favorable_haplotypes.html">score_favorable_haplotypes</a></span><span class="op">(</span></span>
+<span>  haplotypes     <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  allele_effects <span class="op">=</span> <span class="va">ae</span>,</span>
+<span>  min_freq       <span class="op">=</span> <span class="fl">0.02</span>,   <span class="co"># exclude private alleles</span></span>
+<span>  normalize      <span class="op">=</span> <span class="cn">TRUE</span>    <span class="co"># [0,1] scale within this panel</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Top 10 selection candidates</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">scores</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>,<span class="st">"stacking_index"</span>,<span class="st">"n_blocks_scored"</span>,<span class="st">"rank"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Which blocks drive the top candidate's genome-wide score?</span></span>
+<span><span class="va">top_candidate</span> <span class="op">&lt;-</span> <span class="va">scores</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
+<span><span class="va">block_scores</span>  <span class="op">&lt;-</span> <span class="va">scores</span><span class="op">[</span><span class="va">scores</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">top_candidate</span>,</span>
+<span>                         <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"^score_"</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">scores</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">top5_blocks</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">block_scores</span><span class="op">)</span>, decreasing<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Top 5 contributing blocks for"</span>, <span class="va">top_candidate</span>, <span class="st">":\n"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">top5_blocks</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Step 3: Allele inventory for candidate parents</span></span>
+<span><span class="co"># — who carries what, at which blocks, in what dosage?</span></span>
+<span><span class="va">top10</span> <span class="op">&lt;-</span> <span class="va">scores</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="va">scores</span><span class="op">$</span><span class="va">rank</span> <span class="op">&lt;=</span> <span class="fl">10</span><span class="op">]</span></span>
+<span></span>
+<span><span class="va">inv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/summarize_parent_haplotypes.html">summarize_parent_haplotypes</a></span><span class="op">(</span></span>
+<span>  haplotypes     <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  candidate_ids  <span class="op">=</span> <span class="va">top10</span>,</span>
+<span>  allele_effects <span class="op">=</span> <span class="va">ae</span>,</span>
+<span>  min_freq       <span class="op">=</span> <span class="fl">0.02</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Candidates carrying rare favourable alleles (freq &lt; 10%)</span></span>
+<span><span class="va">inv_rare</span> <span class="op">&lt;-</span> <span class="va">inv</span><span class="op">[</span><span class="va">inv</span><span class="op">$</span><span class="va">dosage</span> <span class="op">&gt;</span> <span class="fl">0</span> <span class="op">&amp;</span> <span class="va">inv</span><span class="op">$</span><span class="va">is_rare</span> <span class="op">&amp;</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">inv</span><span class="op">$</span><span class="va">allele_effect</span><span class="op">)</span> <span class="op">&amp;</span></span>
+<span>                <span class="va">inv</span><span class="op">$</span><span class="va">allele_effect</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Rare favourable allele carriers:\n"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">inv_rare</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">inv_rare</span><span class="op">$</span><span class="va">allele_effect</span><span class="op">)</span>,</span>
+<span>               <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>,<span class="st">"block_id"</span>,<span class="st">"CHR"</span>,<span class="st">"allele"</span>,<span class="st">"dosage"</span>,<span class="st">"allele_freq"</span>,<span class="st">"allele_effect"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Step 4: Identify blocks where top candidates carry different alleles</span></span>
+<span><span class="co"># — these are the most promising crossing targets for allele stacking</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="va">inv</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">dosage</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">block_id</span>, <span class="va">CHR</span>, <span class="va">start_bp</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span></span>
+<span>    n_unique_alleles <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/n_distinct.html" class="external-link">n_distinct</a></span><span class="op">(</span><span class="va">allele</span><span class="op">)</span>,</span>
+<span>    carriers         <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">id</span><span class="op">)</span>, collapse<span class="op">=</span><span class="st">","</span><span class="op">)</span>,</span>
+<span>    max_effect       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">allele_effect</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
+<span>    .groups          <span class="op">=</span> <span class="st">"drop"</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">n_unique_alleles</span> <span class="op">&gt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span>            <span class="co"># complementary alleles present</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="va">max_effect</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span>               <span class="co"># rank by largest effect available</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span></code></pre></div>
+<p>This workflow — prediction → effect decomposition → portfolio scoring
+→ parent inventory → crossing design — forms the complete
+haplotype-based breeding decision layer implemented in LDxBlocks.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="references">14. References<a class="anchor" aria-label="anchor" href="#references"></a>

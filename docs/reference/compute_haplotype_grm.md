@@ -63,5 +63,5 @@ G    <- compute_haplotype_grm(feat)
 dim(G)
 #> [1] 120 120
 round(range(diag(G)), 3)  # diagonal ~= 1 for typical populations
-#> [1] 0.484 1.244
+#> [1] 0.301 1.479
 ```

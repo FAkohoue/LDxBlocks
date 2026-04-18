@@ -19,7 +19,7 @@ A \code{data.frame} with 9 rows and 8 columns:
 }
 }
 \source{
-Derived analytically from the simulation structure in
+Derived analytically from the founder-haplotype simulation in
   \code{data-raw/generate_example_data.R}; matches expected
   \code{run_Big_LD_all_chr(ldx_geno, ldx_snp_info, CLQcut = 0.6)} output.
 }
@@ -36,6 +36,21 @@ used in examples and tests as the expected output of
 data(ldx_blocks)
 ldx_blocks
 summarise_blocks(ldx_blocks)
+
+\donttest{
+# Compare haplotype allele frequencies between two sample groups
+data(ldx_geno, ldx_snp_info)
+haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks)
+ids  <- rownames(ldx_geno)
+cmp  <- compare_haplotype_populations(
+  haplotypes  = haps,
+  group1      = ids[1:60],
+  group2      = ids[61:120],
+  group1_name = "cycle1",
+  group2_name = "cycle2"
+)
+head(cmp[, c("block_id","n1","n2","FST","divergent")])
+}
 }
 \seealso{
 \code{\link{ldx_geno}}, \code{\link{run_Big_LD_all_chr}},

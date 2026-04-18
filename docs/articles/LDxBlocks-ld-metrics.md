@@ -68,11 +68,11 @@ standard r² path.
 prep_r2 <- prepare_geno(ldx_geno[, 1:30], method = "r2")
 str(prep_r2)   # adj_geno = centred matrix; V_inv_sqrt = NULL
 #> List of 2
-#>  $ adj_geno  : num [1:120, 1:30] -0.542 0.458 0.458 0.458 -0.542 ...
+#>  $ adj_geno  : num [1:120, 1:30] 1.4 -0.6 0.4 -0.6 1.4 1.4 1.4 1.4 -0.6 -0.6 ...
 #>   ..- attr(*, "dimnames")=List of 2
 #>   .. ..$ : chr [1:120] "ind001" "ind002" "ind003" "ind004" ...
 #>   .. ..$ : chr [1:30] "rs1001" "rs1002" "rs1003" "rs1004" ...
-#>   ..- attr(*, "scaled:center")= Named num [1:30] 0.542 0.558 0.525 0.542 0.533 ...
+#>   ..- attr(*, "scaled:center")= Named num [1:30] 0.6 0.417 1.317 1.025 0.583 ...
 #>   .. ..- attr(*, "names")= chr [1:30] "rs1001" "rs1002" "rs1003" "rs1004" ...
 #>  $ V_inv_sqrt: NULL
 
@@ -125,9 +125,9 @@ A_eig  <- get_V_inv_sqrt(V_demo, method = "eigen")
 
 # Verify: A V A' ≈ I
 max(abs(A_chol %*% V_demo %*% t(A_chol) - diag(120)))
-#> [1] 131.4961
+#> [1] 80.21798
 max(abs(A_eig  %*% V_demo %*% t(A_eig)  - diag(120)))
-#> [1] 1.064704e-13
+#> [1] 4.574119e-14
 ```
 
 ## 5. Comparing r² and rV² on example data
@@ -144,9 +144,9 @@ X_whit <- A_toy %*% Gc_25
 rv2_mat <- compute_rV2(X_whit)
 
 cat("Mean r² :", round(mean(r2_mat[upper.tri(r2_mat)]),  4), "\n")
-#> Mean r² : 0.8892
+#> Mean r² : 0.3302
 cat("Mean rV²:", round(mean(rv2_mat[upper.tri(rv2_mat)]), 4), "\n")
-#> Mean rV²: 0.9398
+#> Mean rV²: 0.3388
 ```
 
 ``` r

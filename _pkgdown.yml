@@ -131,6 +131,32 @@ reference:
       - compute_local_gebv
       - integrate_gwas_haplotypes
       - rank_haplotype_blocks
+  - title: Analysis extensions
+    desc: Cross-validation, population comparison, stability, export, and effect decomposition
+    contents:
+      - cv_haplotype_prediction
+      - compare_haplotype_populations
+      - plot_haplotype_network
+      - run_haplotype_stability
+      - export_candidate_regions
+      - decompose_block_effects
+      - scan_diversity_windows
+  - title: Haplotype inference and harmonisation
+    desc: True diplotype inference, rare-allele collapsing, and cross-panel label harmonisation
+    contents:
+      - infer_block_haplotypes
+      - collapse_haplotypes
+      - harmonize_haplotypes
+  - title: Haplotype association testing
+    desc: Block-level association tests and diplotype effect estimation (Q+K mixed model)
+    contents:
+      - test_block_haplotypes
+      - estimate_diplotype_effects
+  - title: Breeding decision tools
+    desc: Haplotype portfolio scoring and parent allele inventory for stacking decisions
+    contents:
+      - score_favorable_haplotypes
+      - summarize_parent_haplotypes
   - title: "Utilities"
     desc: Summary statistics and visualisation.
     contents:
@@ -146,6 +172,7 @@ reference:
       - ldx_blocks
       - ldx_gwas
       - ldx_blues
+      - ldx_blues_list
 news:
   releases:
     - text: "LDxBlocks 0.3.1 (development)"

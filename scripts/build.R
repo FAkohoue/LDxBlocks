@@ -170,7 +170,7 @@ unlink("vignettes/LDxBlocks-large-scale_cache", recursive = TRUE)
 pkgdown::build_article("LDxBlocks-large-scale")
 
 
-file <- "R/read_geno.R"
+file <- "R/haplotype_association.R"
 
 txt <- readLines(file, encoding = "UTF-8")
 
@@ -181,10 +181,10 @@ txt <- gsub("…", "...", txt, fixed = TRUE)
 
 writeLines(txt, file, useBytes = TRUE)
 
-tools::showNonASCIIfile("R/read_geno.R")
+tools::showNonASCIIfile("R/haplotype_analysis.R")
 
 
-file <- "R/read_geno.R"
+file <- "R/haplotype_analysis.R"
 
 txt <- readLines(file, encoding = "UTF-8")
 
@@ -193,4 +193,4 @@ txt <- gsub("—", "-", txt, fixed = TRUE)
 
 writeLines(txt, file, useBytes = TRUE)
 
-tools::showNonASCIIfile("R/read_geno.R")
+tools::showNonASCIIfile("R/haplotype_analysis.R")

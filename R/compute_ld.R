@@ -199,6 +199,12 @@ prepare_geno <- function(
   }
 
   # rV^2 path: compute GRM, whiten
+  if (!requireNamespace("AGHmatrix", quietly = TRUE))
+    stop("AGHmatrix is required for method = 'rV2'. ",
+         "Install with: install.packages('AGHmatrix')", call. = FALSE)
+  if (!requireNamespace("ASRgenomics", quietly = TRUE))
+    stop("ASRgenomics is required for method = 'rV2'. ",
+         "Install with: install.packages('ASRgenomics')", call. = FALSE)
   if (isTRUE(verbose)) cat("[prepare_geno] Computing VanRaden GRM...\n")
   kin <- AGHmatrix::Gmatrix(geno, method = "VanRaden")
   dimnames(kin) <- list(ids, ids)

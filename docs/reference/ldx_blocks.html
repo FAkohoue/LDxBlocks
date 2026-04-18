@@ -98,7 +98,7 @@ used in examples and tests as the expected output of
 </dl></div>
     <div class="section level2">
     <h2 id="source">Source<a class="anchor" aria-label="anchor" href="#source"></a></h2>
-    <p>Derived analytically from the simulation structure in
+    <p>Derived analytically from the founder-haplotype simulation in
   <code>data-raw/generate_example_data.R</code>; matches expected
   <code>run_Big_LD_all_chr(ldx_geno, ldx_snp_info, CLQcut = 0.6)</code> output.</p>
     </div>
@@ -113,21 +113,43 @@ used in examples and tests as the expected output of
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">ldx_blocks</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">ldx_blocks</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   start end start.rsID end.rsID start.bp end.bp CHR length_bp</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1     1  25     rs1001   rs1025     1000  25535   1     24536</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2    31  50     rs1031   rs1050    81986 100878   1     18893</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3    56  80     rs1056   rs1080   156776 181114   1     24339</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4    81 110     rs2001   rs2030     1000  29445   2     28446</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5   116 135     rs2036   rs2055    85463 104532   2     19070</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6   141 160     rs2061   rs2080   160237 178996   2     18760</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7   161 180     rs3001   rs3020     1000  19994   3     18995</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8   186 205     rs3026   rs3045    76186  95838   3     19653</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9   211 230     rs3051   rs3070   151654 171449   3     19796</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     1  25     rs1001   rs1025     1000  25027   1     24028</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2    31  50     rs1031   rs1050    81064  99022   1     17959</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3    56  80     rs1056   rs1080   155368 179371   1     24004</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4    81 110     rs2001   rs2030     1000  30023   2     29024</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5   116 135     rs2036   rs2055    86236 105290   2     19055</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6   141 160     rs2061   rs2080   161515 180473   2     18959</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7   161 180     rs3001   rs3020     1000  19068   3     18069</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8   186 205     rs3026   rs3045    74532  93854   3     19323</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9   211 230     rs3051   rs3070   149647 168376   3     18730</span>
 <span class="r-in"><span><span class="fu"><a href="summarise_blocks.html">summarise_blocks</a></span><span class="op">(</span><span class="va">ldx_blocks</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      CHR n_blocks min_bp median_bp  mean_bp max_bp total_bp_covered</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1      1        3  18893     24339 22589.33  24536            67768</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2      2        3  18760     19070 22092.00  28446            66276</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3      3        3  18995     19653 19481.33  19796            58444</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 GENOME        9  18760     19653 21387.56  28446           192488</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1      1        3  17959     24004 21997.00  24028            65991</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2      2        3  18959     19055 22346.00  29024            67038</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3      3        3  18069     18730 18707.33  19323            56122</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 GENOME        9  17959     19055 21016.78  29024           189151</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="co"># Compare haplotype allele frequencies between two sample groups</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">ldx_geno</span>, <span class="va">ldx_snp_info</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">haps</span> <span class="op">&lt;-</span> <span class="fu"><a href="extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">ldx_geno</span>, <span class="va">ldx_snp_info</span>, <span class="va">ldx_blocks</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">ids</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">cmp</span>  <span class="op">&lt;-</span> <span class="fu"><a href="compare_haplotype_populations.html">compare_haplotype_populations</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  haplotypes  <span class="op">=</span> <span class="va">haps</span>,</span></span>
+<span class="r-in"><span>  group1      <span class="op">=</span> <span class="va">ids</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">60</span><span class="op">]</span>,</span></span>
+<span class="r-in"><span>  group2      <span class="op">=</span> <span class="va">ids</span><span class="op">[</span><span class="fl">61</span><span class="op">:</span><span class="fl">120</span><span class="op">]</span>,</span></span>
+<span class="r-in"><span>  group1_name <span class="op">=</span> <span class="st">"cycle1"</span>,</span></span>
+<span class="r-in"><span>  group2_name <span class="op">=</span> <span class="st">"cycle2"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cmp</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"n1"</span>,<span class="st">"n2"</span>,<span class="st">"FST"</span>,<span class="st">"divergent"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                block_id n1 n2    FST divergent</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    block_1_1000_25027 60 60 0.0096     FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   block_1_81064_99022 60 60 0.0068     FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 block_1_155368_179371 60 60 0.0072     FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4    block_2_1000_30023 60 60 0.0046     FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  block_2_86236_105290 60 60 0.0034     FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 block_2_161515_180473 60 60 0.0099     FALSE</span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

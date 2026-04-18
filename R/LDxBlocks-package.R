@@ -115,17 +115,22 @@
 #' phenotypic associations in the maize genome. \emph{PNAS}
 #' \strong{98}(20):11479-11484. \doi{10.1073/pnas.201394398}
 #' @docType package
+#' @importFrom graphics legend
+#' @importFrom utils write.table
 #' @name LDxBlocks-package
 #' @aliases LDxBlocks
 #' @keywords package
 #'
-#' @importFrom rrBLUP kin.blup
+#' @importFrom rrBLUP kin.blup mixed.solve
 #' @import Rcpp
 #' @importFrom data.table fread fwrite rbindlist setnames setorder :=
-#' @importFrom stats cor median quantile na.omit setNames var
+#' @importFrom stats cor median quantile na.omit setNames var aggregate sd lm coef
+#'   residuals pt chisq.test as.dist hclust cutree anova pf prcomp
+#'   loess nls nls.control predict
 #' @importFrom igraph graph_from_adjacency_matrix coreness max_cliques cliques components
 #' @importFrom igraph cluster_louvain cluster_leiden membership as_edgelist
-#' @importFrom igraph induced_subgraph is_connected
+#' @importFrom igraph induced_subgraph is_connected mst E V vcount layout_nicely
+#' @importFrom grDevices hcl.colors
 #' @importFrom utils globalVariables head read.table tail
 "_PACKAGE"
 

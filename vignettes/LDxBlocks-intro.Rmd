@@ -690,6 +690,277 @@ close_backend(be)
 
 ---
 
+## 13. Step 10 — Advanced analysis: CV, population comparison, harmonisation
+
+The ten new analysis extension functions slot naturally after the main prediction pipeline.
+
+### 13.1 Cross-validation
+
+```{r cv-prediction, eval=FALSE}
+cv <- cv_haplotype_prediction(
+  geno_matrix = ldx_geno,
+  snp_info    = ldx_snp_info,
+  blocks      = blocks,
+  blues       = blues,
+  k           = 5L,
+  n_rep       = 3L,
+  id_col      = "id",
+  blue_col    = "YLD",
+  verbose     = FALSE
+)
+cv$pa_mean   # mean PA and RMSE per trait across folds and replications
+```
+
+### 13.2 Population comparison
+
+```{r pop-compare, eval=FALSE}
+ids <- rownames(ldx_geno)
+cmp <- compare_haplotype_populations(
+  haplotypes  = haps,
+  group1      = ids[1:60],
+  group2      = ids[61:120],
+  group1_name = "cycle1",
+  group2_name = "cycle2"
+)
+cmp[cmp$divergent, c("block_id", "FST", "max_freq_diff", "chisq_p")]
+```
+
+### 13.3 Haplotype network for one block
+
+```{r hap-network, eval=FALSE}
+if (requireNamespace("igraph", quietly = TRUE))
+  plot_haplotype_network(haps, block_id = names(haps)[1])
+```
+
+### 13.4 Diplotype inference, rare-allele collapsing, and label harmonisation
+
+For training/validation workflows, collapse rare alleles then harmonise labels
+before building feature matrices to ensure allele identity transfers correctly:
+
+```{r harmonise, eval=FALSE}
+# Build reference panel haplotypes and collapse rare alleles
+haps_ref  <- extract_haplotypes(ref_geno, ldx_snp_info, blocks)
+haps_ref  <- collapse_haplotypes(haps_ref, min_freq = 0.05, collapse = "nearest")
+
+# Match validation panel alleles to the reference dictionary
+haps_tgt  <- extract_haplotypes(val_geno,  ldx_snp_info, blocks)
+haps_harm <- harmonize_haplotypes(haps_tgt, haps_ref, max_hamming = 3L)
+attr(haps_harm, "harmonization_report")  # per-block matching quality
+
+# Structured diplotype table
+dip <- infer_block_haplotypes(haps_harm)
+head(dip[, c("block_id","id","diplotype","heterozygous","phase_ambiguous")])
+```
+
+### 13.5 Candidate region export and allele effect decomposition
+
+```{r export-effects, eval=FALSE}
+# Export QTL windows as BED file
+export_candidate_regions(qtl, format = "bed", chr_prefix = "chr",
+                          out_file = "candidate_regions.bed")
+
+# Decompose per-SNP effects into per-allele effects
+allele_tbl <- decompose_block_effects(haps, ldx_snp_info, blocks,
+                                       snp_effects = pred$snp_effects[[1]])
+head(allele_tbl[order(-allele_tbl$allele_effect), ])
+
+# Sliding-window diversity scan (independent of block boundaries)
+scan <- scan_diversity_windows(ldx_geno, ldx_snp_info,
+                                window_bp = 50000L, step_bp = 25000L)
+```
+
+### 13.6 Haplotype association testing
+
+`test_block_haplotypes()` tests every LD block for association using a unified
+Q+K mixed linear model: y = μ + α·x_hap + Σβ_k·PC_k + g + ε. The GRM is built
+once from the haplotype feature matrix and inverted once per trait
+(`rrBLUP::mixed.solve()`). Per-allele Wald tests across all blocks are then
+fully vectorised in a single BLAS call. An omnibus F-test per block identifies
+which blocks drive overall association.
+
+```r
+blues_vec <- setNames(ldx_blues$YLD, ldx_blues$id)
+
+# EMMAX (pure GRM correction, n_pcs = 0 — default)
+assoc <- test_block_haplotypes(
+  haplotypes = haps,
+  blues      = blues_vec,
+  blocks     = blocks,
+  n_pcs      = 0L,       # 0 = EMMAX; >0 = Q+K model
+  min_freq   = 0.05,
+  verbose    = FALSE
+)
+
+# Access results
+cat("Total allele tests:", assoc$n_tests, "\n")
+cat("Significant alleles (Bonferroni):", sum(assoc$allele_tests$significant), "\n")
+cat("Significant blocks (omnibus):", sum(assoc$block_tests$significant_omnibus), "\n")
+
+# Top blocks by omnibus p-value
+head(assoc$block_tests[order(assoc$block_tests$p_omnibus),
+                        c("block_id","CHR","start_bp","n_alleles_tested",
+                          "F_stat","p_omnibus","var_explained")], 5)
+
+# Significant per-allele associations with their effects
+assoc$allele_tests[assoc$allele_tests$significant,
+                   c("block_id","trait","allele","frequency","effect","SE","p_wald")]
+```
+
+When strong discrete population structure is present (e.g. multiple breeds or
+ecotypes), use the Q+K model by setting `n_pcs > 0`. The PCs are derived from
+the GRM itself, ensuring mathematical consistency between the fixed-effect
+population structure correction and the kinship random effect:
+
+```r
+# Q+K model — 3 GRM-derived PCs as fixed effects + GRM kinship random effect
+assoc_qk <- test_block_haplotypes(
+  haplotypes = haps,
+  blues      = blues_vec,
+  blocks     = blocks,
+  n_pcs      = 3L,
+  verbose    = FALSE
+)
+cat("PCs used:", assoc_qk$n_pcs_used, "\n")
+
+# Multi-trait: all traits share the same GRM — one call tests all
+assoc_mt <- test_block_haplotypes(
+  haplotypes = haps,
+  blues      = ldx_blues,
+  blocks     = blocks,
+  id_col     = "id",
+  blue_cols  = c("YLD", "RES"),
+  n_pcs      = 3L,
+  verbose    = FALSE
+)
+# Compare block significance across traits
+library(dplyr)
+assoc_mt$block_tests |>
+  filter(significant_omnibus) |>
+  select(block_id, CHR, trait, p_omnibus, var_explained)
+```
+
+`estimate_diplotype_effects()` decomposes phenotypic variation into additive and
+dominance components at each block. The dominance ratio d/a classifies gene
+action: 0 = purely additive; ±1 = complete dominance; |d/a| > 1 = overdominance
+(heterozygote advantage, evidence for heterosis at this block).
+
+```r
+dip <- estimate_diplotype_effects(
+  haplotypes      = haps,
+  blues           = blues_vec,
+  blocks          = blocks,
+  min_n_diplotype = 3L,   # minimum individuals per diplotype class
+  verbose         = FALSE
+)
+
+# Diplotype class means (de-regressed phenotype scale)
+head(dip$diplotype_means[order(dip$diplotype_means$mean_blue, decreasing=TRUE),
+                          c("block_id","diplotype","n","mean_blue","se_mean")], 8)
+
+# Dominance decomposition: a and d for each allele pair
+head(dip$dominance_table[, c("block_id","allele_A","allele_B",
+                               "a","d","d_over_a","overdominance")], 8)
+
+# Blocks showing overdominance — potential heterosis targets
+od <- dip$dominance_table[!is.na(dip$dominance_table$overdominance) &
+                           dip$dominance_table$overdominance, ]
+cat("Overdominant allele pairs:", nrow(od), "\n")
+
+# Statistically significant diplotype effects
+dip$omnibus_tests[dip$omnibus_tests$significant,
+                  c("block_id","n_diplotypes","F_stat","p_omnibus_adj")]
+```
+
+### 13.7 Breeding decision tools: haplotype stacking
+
+Once per-allele effects are known, `score_favorable_haplotypes()` and
+`summarize_parent_haplotypes()` translate genomic prediction results into
+actionable selection and crossing decisions.
+
+```r
+# Step 1: Get per-allele effects from the prediction pipeline
+pred <- run_haplotype_prediction(
+  geno_matrix = ldx_geno,
+  snp_info    = ldx_snp_info,
+  blocks      = blocks,
+  blues       = blues_vec,
+  verbose     = FALSE
+)
+
+ae <- decompose_block_effects(
+  haplotypes  = haps,
+  snp_info    = ldx_snp_info,
+  blocks      = blocks,
+  snp_effects = pred$snp_effects[[1]]   # first trait
+)
+cat("Allele effect table:", nrow(ae), "alleles across",
+    length(unique(ae$block_id)), "blocks\n")
+head(ae[order(-ae$allele_effect), c("block_id","allele","frequency","allele_effect")], 5)
+```
+
+```r
+# Step 2: Score every individual's genome-wide haplotype portfolio
+scores <- score_favorable_haplotypes(
+  haplotypes     = haps,
+  allele_effects = ae,
+  min_freq       = 0.02,   # exclude private alleles
+  normalize      = TRUE    # [0,1] scale within this panel
+)
+
+# Top 10 selection candidates
+head(scores[, c("id","stacking_index","n_blocks_scored","rank")], 10)
+
+# Which blocks drive the top candidate's genome-wide score?
+top_candidate <- scores$id[1]
+block_scores  <- scores[scores$id == top_candidate,
+                         grepl("^score_", names(scores))]
+top5_blocks   <- names(sort(as.numeric(block_scores), decreasing=TRUE))[1:5]
+cat("Top 5 contributing blocks for", top_candidate, ":\n")
+print(top5_blocks)
+```
+
+```r
+# Step 3: Allele inventory for candidate parents
+# — who carries what, at which blocks, in what dosage?
+top10 <- scores$id[scores$rank <= 10]
+
+inv <- summarize_parent_haplotypes(
+  haplotypes     = haps,
+  candidate_ids  = top10,
+  allele_effects = ae,
+  min_freq       = 0.02
+)
+
+# Candidates carrying rare favourable alleles (freq < 10%)
+inv_rare <- inv[inv$dosage > 0 & inv$is_rare & !is.na(inv$allele_effect) &
+                inv$allele_effect > 0, ]
+cat("Rare favourable allele carriers:\n")
+print(inv_rare[order(-inv_rare$allele_effect),
+               c("id","block_id","CHR","allele","dosage","allele_freq","allele_effect")])
+```
+
+```r
+# Step 4: Identify blocks where top candidates carry different alleles
+# — these are the most promising crossing targets for allele stacking
+library(dplyr)
+inv |>
+  filter(dosage > 0) |>
+  group_by(block_id, CHR, start_bp) |>
+  summarise(
+    n_unique_alleles = n_distinct(allele),
+    carriers         = paste(unique(id), collapse=","),
+    max_effect       = max(allele_effect, na.rm = TRUE),
+    .groups          = "drop"
+  ) |>
+  filter(n_unique_alleles > 1) |>            # complementary alleles present
+  arrange(desc(max_effect)) |>               # rank by largest effect available
+  head(10)
+```
+
+This workflow — prediction → effect decomposition → portfolio scoring →
+parent inventory → crossing design — forms the complete haplotype-based
+breeding decision layer implemented in LDxBlocks.
+
 ## 14. References
 
 - Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block detection method for dense genome sequencing data based on interval graph modeling and dynamic programming. *Bioinformatics* **34**(4):588-596.

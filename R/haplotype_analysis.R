@@ -1,5 +1,5 @@
 # ==============================================================================
-# analysis_extensions.R
+# haplotype_analysis.R
 # Seven complementary analysis functions extending the LDxBlocks pipeline.
 #
 # 1. cv_haplotype_prediction()        k-fold cross-validation for genomic
@@ -236,17 +236,18 @@ print.LDxBlocks_cv <- function(x, ...) {
 #' @param missing_string Character. Missing haplotype placeholder.
 #'   Default \code{"."}.
 #'
-#' @return Data frame with one row per block:
-#'   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
-#'   \code{n1} (group 1 sample size), \code{n2},
-#'   \code{n_alleles} (number of distinct alleles),
-#'   \code{FST} (Weir-Cockerham single-locus estimate),
-#'   \code{max_freq_diff} (max absolute frequency difference across alleles),
-#'   \code{dominant_g1} (most frequent allele in group 1),
-#'   \code{dominant_g2} (most frequent allele in group 2),
-#'   \code{chisq_p} (chi-squared p-value, \code{NA} if < 2 alleles in
-#'   either group),
-#'   \code{divergent} (\code{TRUE} when FST > 0.1 and chisq_p < 0.05).
+#' @return Data frame with one row per block, sorted by \code{CHR} and
+#'   \code{start_bp}.
+#'   \describe{
+#'     \item{\code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp}}{Block coordinates.}
+#'     \item{\code{n1}, \code{n2}}{Sample sizes for group 1 and group 2.}
+#'     \item{\code{n_alleles}}{Number of distinct alleles in this block.}
+#'     \item{\code{FST}}{Weir-Cockerham FST, clamped to [0,1].}
+#'     \item{\code{max_freq_diff}}{Maximum absolute allele frequency difference.}
+#'     \item{\code{dominant_g1}, \code{dominant_g2}}{Most frequent allele in each group.}
+#'     \item{\code{chisq_p}}{Chi-squared p-value (Monte Carlo). \code{NA} if < 2 alleles.}
+#'     \item{\code{divergent}}{Logical; TRUE when FST > 0.1 and chisq_p < 0.05.}
+#'   }
 #'
 #' @examples
 #' \donttest{
@@ -401,6 +402,7 @@ compare_haplotype_populations <- function(
 #' }
 #' @seealso \code{\link{extract_haplotypes}},
 #'   \code{\link{compute_haplotype_diversity}}
+#' @importFrom graphics legend
 #' @export
 plot_haplotype_network <- function(
     haplotypes,
@@ -521,14 +523,18 @@ plot_haplotype_network <- function(
 #' @param min_snps     Integer. Minimum SNPs per block. Default \code{3L}.
 #' @param verbose      Logical. Default \code{TRUE}.
 #'
-#' @return Data frame with one row per block:
-#'   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
-#'   \code{b} (Finlay-Wilkinson slope — stability coefficient),
-#'   \code{b_se} (standard error of b),
-#'   \code{r2_fw} (R² of the FW regression),
-#'   \code{s2d} (deviation mean square — non-linear instability),
-#'   \code{stable} (\code{TRUE} when b is not significantly different from 1
-#'   at alpha=0.05).
+#' @return Data frame with one row per block, sorted by \code{CHR} and
+#'   \code{start_bp}.
+#'   \describe{
+#'     \item{\code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp}}{Block coordinates.}
+#'     \item{\code{b}}{Finlay-Wilkinson slope. b=1: average stability;
+#'       b>1: exploits good environments; b<1: robust across environments.}
+#'     \item{\code{b_se}}{Standard error of b.}
+#'     \item{\code{r2_fw}}{R-squared of the FW regression.}
+#'     \item{\code{s2d}}{Deviation mean square (non-linear instability).}
+#'     \item{\code{stable}}{Logical; TRUE when b is not significantly
+#'       different from 1 at alpha=0.05.}
+#'   }
 #'
 #' @examples
 #' \donttest{
@@ -590,7 +596,7 @@ run_haplotype_stability <- function(
     y <- blues_list[[env]]
     common <- intersect(names(y), rownames(G))
     if (length(common) < 5L) {
-      warning("Fewer than 5 common individuals for env '", env, "' — skipping.")
+      warning("Fewer than 5 common individuals for env '", env, "' - skipping.")
       next
     }
     G_sub <- G[common, common, drop = FALSE]
@@ -615,7 +621,7 @@ run_haplotype_stability <- function(
       blocks      = blocks,
       snp_effects = snp_fx
     )
-    local_by_env[[env]] <- local_gebv
+    local_by_env[[env]] <- local_gebv$local_gebv  # extract the matrix
   }
 
   if (length(local_by_env) < 2L)
@@ -623,7 +629,9 @@ run_haplotype_stability <- function(
 
   # Finlay-Wilkinson regression per block
   block_ids <- colnames(local_by_env[[1]])
-  env_means <- vapply(local_by_env, function(m) mean(m, na.rm = TRUE), numeric(1L))
+  env_means <- vapply(local_by_env,
+                      function(m) mean(as.numeric(m), na.rm = TRUE),
+                      numeric(1L))
 
   rows <- lapply(block_ids, function(bid) {
     bi_info <- blocks[1, , drop = FALSE]   # placeholder
@@ -670,10 +678,14 @@ run_haplotype_stability <- function(
   out  <- do.call(rbind, rows)
 
   # Merge block metadata
+  # ldx_blocks has no 'block_name' column; reconstruct block_id from
+  # CHR + start.bp + end.bp to match the format used by extract_haplotypes()
   if (all(c("CHR", "start.bp", "end.bp") %in% names(blocks))) {
-    bk <- blocks[, c("block_name", "CHR", "start.bp", "end.bp"),
-                 drop = FALSE]
-    names(bk)[1] <- "block_id"
+    bk <- blocks[, c("CHR", "start.bp", "end.bp"), drop = FALSE]
+    bk$block_id <- paste0("block_", bk$CHR, "_",
+                          as.integer(bk$start.bp), "_",
+                          as.integer(bk$end.bp))
+    bk <- bk[, c("block_id", "CHR", "start.bp", "end.bp"), drop = FALSE]
     out <- merge(bk, out, by = "block_id", all.y = TRUE)
   }
 
@@ -734,6 +746,7 @@ run_haplotype_stability <- function(
 #' #                values  = bm, mart = my_mart)
 #' }
 #' @seealso \code{\link{define_qtl_regions}}, \code{\link{compute_ld_decay}}
+#' @importFrom utils write.table
 #' @export
 export_candidate_regions <- function(
     qtl_regions,
@@ -751,24 +764,34 @@ export_candidate_regions <- function(
 
   # Determine region boundaries
   has_cand <- all(c("candidate_region_start","candidate_region_end") %in%
-                    names(qtl_regions))
+                    names(qtl_regions)) &&
+    any(!is.na(qtl_regions$candidate_region_start))
   if (use_lead_snp && has_cand) {
-    reg_start <- pmax(0L, qtl_regions$candidate_region_start - padding_bp)
-    reg_end   <- qtl_regions$candidate_region_end + padding_bp
+    reg_start <- pmax(0L, as.integer(qtl_regions$candidate_region_start) -
+                        1L - padding_bp)
+    reg_end   <- as.integer(qtl_regions$candidate_region_end) + padding_bp
   } else {
-    reg_start <- pmax(0L, qtl_regions$start_bp - padding_bp)
-    reg_end   <- qtl_regions$end_bp + padding_bp
+    reg_start <- pmax(0L, as.integer(qtl_regions$start_bp) -
+                        1L - padding_bp)
+    reg_end   <- as.integer(qtl_regions$end_bp) + padding_bp
   }
-  chr_str <- paste0(chr_prefix, qtl_regions$CHR)
+  # Clamp any remaining NA coordinates to block boundaries (safety net)
+  reg_start[is.na(reg_start)] <- pmax(0L,
+                                      as.integer(qtl_regions$start_bp[is.na(reg_start)]) - 1L - padding_bp)
+  reg_end[is.na(reg_end)]     <- as.integer(
+    qtl_regions$end_bp[is.na(reg_end)]) + padding_bp
+  chr_str   <- paste0(chr_prefix, qtl_regions$CHR)
+  qtl_valid <- qtl_regions
 
   if (format == "bed") {
     out <- data.frame(
       chrom  = chr_str,
-      start  = as.integer(reg_start) - 1L,   # BED is 0-based
+      start  = as.integer(reg_start),   # 0-based: pmax(0, start_bp - 1 - padding)
       end    = as.integer(reg_end),
-      name   = qtl_regions$block_id,
-      score  = if ("n_sig_markers" %in% names(qtl_regions))
-        qtl_regions$n_sig_markers else 0L,
+      name   = qtl_valid$block_id,
+      score  = if ("n_sig_markers" %in% names(qtl_valid))
+        qtl_valid$n_sig_markers
+      else rep(0L, nrow(qtl_valid)),
       strand = ".",
       stringsAsFactors = FALSE
     )
@@ -782,16 +805,16 @@ export_candidate_regions <- function(
 
   if (format == "csv") {
     if (!is.null(out_file)) {
-      data.table::fwrite(qtl_regions, out_file)
+      data.table::fwrite(qtl_valid, out_file)
       message("CSV written: ", out_file)
     }
-    return(invisible(qtl_regions))
+    return(invisible(qtl_valid))
   }
 
   if (format == "biomart") {
     # biomaRt expects vectors, one entry per region
     out <- list(
-      chromosome_name = qtl_regions$CHR,
+      chromosome_name = qtl_valid$CHR,
       start           = as.integer(reg_start),
       end             = as.integer(reg_end)
     )
@@ -827,25 +850,26 @@ export_candidate_regions <- function(
 #' @param missing_string Character. Missing haplotype placeholder.
 #'   Default \code{"."}.
 #'
-#' @return Data frame with one row per allele per block:
-#'   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
-#'   \code{allele} (the haplotype string), \code{frequency},
-#'   \code{allele_effect} (sum of SNP effects for this allele),
-#'   \code{effect_rank} (rank within block, 1 = most positive effect),
-#'   \code{n_snps_block}.
-#'   Sorted by \code{CHR}, \code{start_bp}, \code{effect_rank}.
+#' @return Data frame with one row per allele per block, sorted by
+#'   \code{CHR}, \code{start_bp}, \code{effect_rank}.
+#'   \describe{
+#'     \item{\code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp}}{Block coordinates.}
+#'     \item{\code{allele}}{Haplotype allele string.}
+#'     \item{\code{frequency}}{Allele frequency in the panel.}
+#'     \item{\code{allele_effect}}{Sum of SNP effects weighted by allele dosage.}
+#'     \item{\code{effect_rank}}{Rank within block; 1 = most positive effect.}
+#'     \item{\code{n_snps_block}}{Number of SNPs in this block.}
+#'   }
 #'
 #' @examples
 #' \donttest{
 #' data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
 #' haps    <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks)
-#' hap_mat <- build_haplotype_feature_matrix(haps)
-#' G       <- compute_haplotype_grm(hap_mat)
 #' res     <- run_haplotype_prediction(ldx_geno, ldx_snp_info, ldx_blocks,
 #'                                      blues = ldx_blues, id_col = "id",
 #'                                      blue_col = "YLD", verbose = FALSE)
-#' # Use first trait's SNP effects
-#' snp_fx  <- res$snp_effects[[1]]
+#' # Single-trait: res$snp_effects is the named numeric vector directly
+#' snp_fx  <- res$snp_effects
 #' allele_tbl <- decompose_block_effects(haps, ldx_snp_info, ldx_blocks,
 #'                                        snp_effects = snp_fx)
 #' head(allele_tbl[order(-allele_tbl$allele_effect), ])
@@ -953,19 +977,27 @@ decompose_block_effects <- function(
 #' @param window_bp     Integer. Window size in base pairs. Default \code{1e6L}
 #'   (1 Mb).
 #' @param step_bp       Integer. Step size in base pairs. Default
-#'   \code{5e5L} (500 kb, i.e. 50% overlap).
+#'   \code{5e5L} (500 kb, i.e. 50\% overlap).
 #' @param min_snps_win  Integer. Minimum SNPs in a window to compute
 #'   diversity (windows with fewer are skipped). Default \code{5L}.
 #' @param missing_val   Numeric. Value representing missing data in
 #'   \code{geno_matrix}. Default \code{NA}.
 #'
-#' @return Data frame with one row per window:
-#'   \code{CHR}, \code{win_start}, \code{win_end}, \code{win_mid},
-#'   \code{n_snps}, \code{n_ind}, \code{n_haplotypes},
-#'   \code{He} (Nei 1973, sample-size corrected),
-#'   \code{Shannon}, \code{n_eff_alleles}, \code{freq_dominant},
-#'   \code{sweep_flag}.
-#'   Sorted by \code{CHR}, \code{win_start}.
+#' @return Data frame with one row per sliding window, sorted by
+#'   \code{CHR} then \code{win_start}. Columns:
+#'   \describe{
+#'     \item{\code{CHR}}{Chromosome label.}
+#'     \item{\code{win_start}, \code{win_end}}{Window boundaries (bp).}
+#'     \item{\code{win_mid}}{Window midpoint (bp).}
+#'     \item{\code{n_snps}}{Number of SNPs in the window.}
+#'     \item{\code{n_ind}}{Number of individuals with non-missing data.}
+#'     \item{\code{n_haplotypes}}{Number of distinct haplotype strings.}
+#'     \item{\code{He}}{Nei (1973) expected heterozygosity, sample-size corrected.}
+#'     \item{\code{Shannon}}{Shannon entropy of haplotype frequencies.}
+#'     \item{\code{n_eff_alleles}}{Effective number of alleles (1/sum(p_i^2)).}
+#'     \item{\code{freq_dominant}}{Frequency of the most common haplotype.}
+#'     \item{\code{sweep_flag}}{Logical; TRUE when freq_dominant >= 0.90.}
+#'   }
 #'
 #' @examples
 #' \donttest{
@@ -981,7 +1013,7 @@ decompose_block_effects <- function(
 #' chr1 <- scan[scan$CHR == "1", ]
 #' plot(chr1$win_mid / 1e3, chr1$He, type = "l",
 #'      xlab = "Position (kb)", ylab = "He",
-#'      main = "Haplotype diversity scan — chr 1")
+#'      main = "Haplotype diversity scan - chr 1")
 #' }
 #' @seealso \code{\link{compute_haplotype_diversity}},
 #'   \code{\link{compare_haplotype_populations}}

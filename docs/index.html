@@ -83,7 +83,7 @@
 </h1>
 </div>
 <p align="center">
-<img src="reference/figures/logo.png" alt="LDxBlocks logo" width="100%"></p>
+<img src="reference/figures/logo.png" alt="LDxBlocks logo" width="150%"></p>
 <!-- badges: start -->
 
 <hr>
@@ -121,13 +121,13 @@
 </li>
 <li>6.2. <a href="#id_62-phenotype-input-format">Phenotype input format</a>
 <ul>
-<li>6.2.1. <a href="#id_621-format-1--named-numeric-vector-single-trait-simplest">Format 1 — Named numeric vector</a>
+<li>6.2.1. <a href="#id_621-format-1-named-numeric-vector-single-trait-simplest">Format 1 — Named numeric vector</a>
 </li>
-<li>6.2.2. <a href="#id_622-format-2--data-frame-single-trait">Format 2 — Data frame, single trait</a>
+<li>6.2.2. <a href="#id_622-format-2-data-frame-single-trait">Format 2 — Data frame, single trait</a>
 </li>
-<li>6.2.3. <a href="#id_623-format-3--data-frame-multiple-traits">Format 3 — Data frame, multiple traits</a>
+<li>6.2.3. <a href="#id_623-format-3-data-frame-multiple-traits">Format 3 — Data frame, multiple traits</a>
 </li>
-<li>6.2.4. <a href="#id_624-format-4--named-list-different-individuals-per-trait">Format 4 — Named list</a>
+<li>6.2.4. <a href="#id_624-format-4-named-list-different-individuals-per-trait">Format 4 — Named list</a>
 </li>
 </ul>
 </li>
@@ -156,13 +156,13 @@
 <li>
 <a href="#id_9-clique-detection-mode-clqmode">Clique detection mode (CLQmode)</a>
 <ul>
-<li>9.1. <a href="#id_91-mode-1--density-clqmode--density-default">Mode 1 — Density</a>
+<li>9.1. <a href="#id_91-mode-1-density-clqmode-density-default">Mode 1 — Density</a>
 </li>
-<li>9.2. <a href="#id_92-mode-2--maximal-clqmode--maximal">Mode 2 — Maximal</a>
+<li>9.2. <a href="#id_92-mode-2-maximal-clqmode-maximal">Mode 2 — Maximal</a>
 </li>
-<li>9.3. <a href="#id_93-mode-3--louvain-clqmode--louvain">Mode 3 — Louvain</a>
+<li>9.3. <a href="#id_93-mode-3-louvain-clqmode-louvain">Mode 3 — Louvain</a>
 </li>
-<li>9.4. <a href="#id_94-mode-4--leiden-clqmode--leiden">Mode 4 — Leiden</a>
+<li>9.4. <a href="#id_94-mode-4-leiden-clqmode-leiden">Mode 4 — Leiden</a>
 </li>
 <li>9.5. <a href="#id_95-summary-comparison">Summary comparison</a>
 </li>
@@ -181,13 +181,37 @@
 </li>
 <li>10.4. <a href="#id_104-haplotype-based-genomic-prediction-pipeline">Haplotype-based genomic prediction pipeline</a>
 </li>
+<li>10.5. <a href="#id_105-cross-validation-and-prediction-accuracy">Cross-validation and prediction accuracy</a>
+</li>
+<li>10.6. <a href="#id_106-between-population-comparison">Between-population comparison</a>
+</li>
+<li>10.7. <a href="#id_107-haplotype-network-visualisation">Haplotype network visualisation</a>
+</li>
+<li>10.8. <a href="#id_108-multi-environment-stability">Multi-environment stability</a>
+</li>
+<li>10.9. <a href="#id_109-candidate-region-export">Candidate region export</a>
+</li>
+<li>10.10. <a href="#id_1010-per-allele-effect-decomposition">Per-allele effect decomposition</a>
+</li>
+<li>10.11. <a href="#id_1011-sliding-window-diversity-scan">Sliding-window diversity scan</a>
+</li>
+<li>10.12. <a href="#id_1012-true-diplotype-inference">True diplotype inference</a>
+</li>
+<li>10.13. <a href="#id_1013-rare-allele-collapsing">Rare-allele collapsing</a>
+</li>
+<li>10.14. <a href="#id_1014-cross-panel-harmonisation">Cross-panel harmonisation</a>
+</li>
+<li>10.15. <a href="#id_1015-haplotype-association-testing">Haplotype association testing</a>
+</li>
+<li>10.16. <a href="#id_1016-breeding-decision-tools">Breeding decision tools</a>
+</li>
 </ul>
 </li>
 <li><a href="#id_11-parameter-auto-tuning">Parameter auto-tuning</a></li>
 <li>
 <a href="#id_12-scale-strategies-and-backends">Scale strategies and backends</a>
 <ul>
-<li>12.1. <a href="#id_121-the-ldxblocks_backend-interface">The LDxBlocks_backend interface</a>
+<li>12.1. <a href="#id_121-the-ldxblocksbackend-interface">The LDxBlocks_backend interface</a>
 </li>
 <li>12.2. <a href="#id_122-memory-requirements-by-configuration">Memory requirements by configuration</a>
 </li>
@@ -209,25 +233,45 @@
 </li>
 <li>14.5. <a href="#id_145-haplotype-analysis">Haplotype analysis</a>
 </li>
-<li>14.6. <a href="#id_146-utilities">Utilities</a>
+<li>14.6. <a href="#id_146-analysis-extensions">Analysis extensions</a>
+</li>
+<li>14.7. <a href="#id_147-true-haplotype-inference-and-harmonisation">True haplotype inference and harmonisation</a>
+</li>
+<li>14.8. <a href="#id_148-haplotype-association-testing">Haplotype association testing</a>
+</li>
+<li>14.9. <a href="#id_149-breeding-decision-tools">Breeding decision tools</a>
+</li>
+<li>14.10. <a href="#id_1410-utilities">Utilities</a>
 </li>
 </ul>
 </li>
 <li>
 <a href="#id_15-output-objects">Output objects</a>
 <ul>
-<li>15.1. <a href="#id_151-run_big_ld_all_chr--block-table"><code>run_Big_LD_all_chr()</code> — block table</a>
+<li>15.1. <a href="#id_151-runbigldallchr-block-table"><code>run_Big_LD_all_chr()</code> — block table</a>
 </li>
-<li>15.2. <a href="#id_152-tune_ld_params--named-list"><code>tune_LD_params()</code> — named list</a>
+<li>15.2. <a href="#id_152-tuneldparams-named-list"><code>tune_LD_params()</code> — named list</a>
 </li>
-<li>15.3. <a href="#id_153-extract_haplotypes--named-list"><code>extract_haplotypes()</code> — named list</a>
+<li>15.3. <a href="#id_153-extracthaplotypes-named-list"><code>extract_haplotypes()</code> — named list</a>
 </li>
-<li>15.4. <a href="#id_154-compute_haplotype_diversity--dataframe"><code>compute_haplotype_diversity()</code> — data.frame</a>
+<li>15.4. <a href="#id_154-computehaplotypediversity-dataframe"><code>compute_haplotype_diversity()</code> — data.frame</a>
 </li>
-<li>15.5. <a href="#id_155-read_geno--ldxblocks_backend"><code>read_geno()</code> — LDxBlocks_backend</a>
+<li>15.5. <a href="#id_155-readgeno-ldxblocksbackend"><code>read_geno()</code> — LDxBlocks_backend</a>
 </li>
 </ul>
 </li>
+</ol>
+<ul>
+<li>15.6. <a href="#id_156-test_block_haplotypes--ldxblocks_haplotype_assoc"><code>test_block_haplotypes()</code> — LDxBlocks_haplotype_assoc</a>
+</li>
+<li>15.7. <a href="#id_157-estimate_diplotype_effects--ldxblocks_diplotype"><code>estimate_diplotype_effects()</code> — LDxBlocks_diplotype</a>
+</li>
+<li>15.8. <a href="#id_158-score_favorable_haplotypes--data-frame"><code>score_favorable_haplotypes()</code> — data frame</a>
+</li>
+<li>15.9. <a href="#id_159-summarize_parent_haplotypes--data-frame"><code>summarize_parent_haplotypes()</code> — data frame</a>
+</li>
+</ul>
+<ol start="16" style="list-style-type: decimal">
 <li>
 <a href="#id_16-memory-and-performance-notes">Memory and performance notes</a>
 <ul>
@@ -252,10 +296,10 @@
 </h2>
 <p>Linkage disequilibrium (LD) block detection is a foundational step in modern genomic analyses. Knowing which SNPs co-segregate as a unit determines how GWAS results are interpreted, how haplotypes are defined for population genetics, and how genomic prediction models should be structured. Despite its importance, most implementations of LD block detection suffer from three problems that limit their usefulness in practice.</p>
 <p><strong>The kinship problem.</strong> Classical LD estimators (r²) assume independence between individuals. In livestock, crop, or family-based human cohorts this assumption is systematically violated. Cryptic relatedness inflates pairwise correlations, causing LD to appear stronger than it is and blocks to be drawn too broadly or in the wrong places. The kinship-adjusted squared correlation rV² (Mangin et al. 2012, <em>Heredity</em> 108:285-291) corrects for this by whitening the genotype matrix with the inverse square root of the genomic relationship matrix (GRM):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msubsup><mi>V</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mfrac><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo>,</mo><mspace width="0.167em"></mspace><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">rV^2_{ij} = \frac{\mathrm{Cov}(X^v_i,\, X^v_j)^2}{\mathrm{Var}(X^v_i)\,\mathrm{Var}(X^v_j)}</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>v</mi></msup><mo>=</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mover><mi>G</mi><mo accent="true">̃</mo></mover></mrow><annotation encoding="application/x-tex">X^v = V^{-1/2}\tilde{G}</annotation></semantics></math> is the kinship-whitened, mean-centred genotype matrix; <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mi>Z</mi><msup><mi>Z</mi><mi>⊤</mi></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">V = ZZ^\top / (2\sum_j p_j q_j)</annotation></semantics></math> is the VanRaden (2008) GRM (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">Z_{ij} = G_{ij} - 2p_j</annotation></semantics></math> = frequency-centred raw dosage, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">q_j = 1-p_j</annotation></semantics></math>); and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math> is its inverse square root (Mangin et al. 2012, eq. 1–2). Subscripts <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> index SNPs. This is equivalent to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mrow><mo stretchy="true" form="prefix">[</mo><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo>,</mo><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup><annotation encoding="application/x-tex">[\mathrm{Cor}(X^v_i, X^v_j)]^2</annotation></semantics></math>.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>rV²ᵢⱼ <span class="ot">=</span> <span class="fu">Cov</span>(Xᵛᵢ, Xᵛⱼ)² <span class="sc">/</span> [<span class="fu">Var</span>(Xᵛᵢ) · <span class="fu">Var</span>(Xᵛⱼ)]</span></code></pre></div>
+<p>where <strong>X</strong>ᵛ = <strong>V</strong>⁻¹⁄² <strong>G̃</strong> is the kinship-whitened, mean-centred genotype matrix; <strong>V</strong> = <strong>ZZ</strong>ᵀ / (2 Σⱼ pⱼqⱼ) is the VanRaden (2008) GRM (Z_ij = G_ij − 2p_j = frequency-centred raw dosage, q_j = 1 − p_j); and <strong>V</strong>⁻¹⁄² is its inverse square root (Mangin et al. 2012, eq. 1–2). Subscripts i and j index SNPs. This is equivalent to [Cor(X_i^v, X_j^v)]².</p>
 <blockquote>
-<p><strong>Notation.</strong> <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math> denotes the raw <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>m</mi></mrow><annotation encoding="application/x-tex">n\times m</annotation></semantics></math> dosage matrix (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">G_{ij} \in \{0,1,2\}</annotation></semantics></math>); <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>G</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{G}</annotation></semantics></math> its mean-centred form (G̃_ij = G_ij − Ḡ_j, used for LD computation; <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math> its frequency-centred form (Z_ij = G_ij − 2p_j, used for the GRM). <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> denotes the GRM to avoid collision with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math> the dosage matrix. In the Mangin (2012) paper the GRM is called <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math> and is equivalent to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> here; VanRaden (2008) calls it <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>. Every pairwise correlation in the Big-LD algorithm is replaced with rV², giving block boundaries that reflect true recombination structure rather than population-structure artefacts.</p>
+<p><strong>Notation.</strong> <strong>G</strong> denotes the raw n × m dosage matrix (G_ij ∈ {0, 1, 2}); <strong>G̃</strong> its mean-centred form (G̃_ij = G_ij − Ḡ_j, used for LD computation); <strong>Z</strong> its frequency-centred form (Z_ij = G_ij − 2p_j, used for the GRM). <strong>V</strong> denotes the GRM to avoid collision with <strong>G</strong> the dosage matrix. In the Mangin (2012) paper the GRM is called K and is equivalent to V here; VanRaden (2008) calls it G. Every pairwise correlation in the Big-LD algorithm is replaced with rV², giving block boundaries that reflect true recombination structure rather than population-structure artefacts.</p>
 </blockquote>
 <p><strong>The scale problem.</strong> The original Big-LD implementation (Kim et al. 2018) contains no compiled code – every matrix operation runs through the R interpreter. For modern whole-genome sequencing panels with 2-10 million markers the inner loops are prohibitively slow, and loading the full genotype matrix before detection is impossible on most workstations. LDxBlocks addresses this with a C++/Armadillo computational core compiled via Rcpp, OpenMP-parallelised LD computation, a unified multi-format I/O layer, and a strict never-full-genome memory model: the full genotype matrix is never loaded into RAM simultaneously regardless of dataset size or format.</p>
 <p><strong>The pipeline gap.</strong> The original Big-LD stops at block boundaries. In breeding programmes and GWAS follow-up studies the immediate next questions are: What haplotypes exist within each block? How diverse are they? Which blocks harbour QTLs? How do I build a genomic prediction model that captures multi-locus block effects? These questions require a coherent downstream pipeline that the original implementation does not provide.</p>
@@ -272,7 +316,7 @@
 <div class="section level2">
 <h2 id="id_2-summary">2. Summary<a class="anchor" aria-label="anchor" href="#id_2-summary"></a>
 </h2>
-<p><code>LDxBlocks</code> is a complete pipeline for genome-wide LD block detection in related or structured populations, with downstream haplotype analysis and genomic prediction utilities. It extends the Big-LD clique-based segmentation algorithm of Kim et al. (2018) with 15 concrete improvements:</p>
+<p><code>LDxBlocks</code> is a complete pipeline for genome-wide LD block detection in related or structured populations, with downstream haplotype analysis and genomic prediction utilities. It extends the Big-LD clique-based segmentation algorithm of Kim et al. (2018) with 15 core improvements and 10 additional analysis extension functions:</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>Dual LD metric</strong> — standard r² (default, fast, no kinship correction, suitable for 10 M+ markers) and kinship-adjusted rV² (for structured or related populations) selectable via a single <code>method =</code> argument.</li>
@@ -399,7 +443,7 @@
 <h3 id="id_35-bug-fix-zero-row-assignment">3.5. Bug fix: zero-row assignment<a class="anchor" aria-label="anchor" href="#id_35-bug-fix-zero-row-assignment"></a>
 </h3>
 <p>The original main loop body contains:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">LDblocks</span><span class="op">[</span><span class="op">(</span><span class="va">preleng1</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">:</span><span class="op">(</span><span class="va">preleng1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">nowLDblocks</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="va">nowLDblocks</span></span></code></pre></div>
 <p>When a sub-segment contains no valid cliques (all singletons above the MAF threshold) <code>nowLDblocks</code> has zero rows and R evaluates <code>(preleng1+1):preleng1</code> as a backwards sequence, causing <code>replacement has length zero</code>. LDxBlocks wraps this with <code>if (nrow(nowLD) &gt; 0L)</code>, making the function robust to sparse chromosomal regions and small input datasets.</p>
 </div>
@@ -504,20 +548,20 @@
 <h2 id="id_4-installation">4. Installation<a class="anchor" aria-label="anchor" href="#id_4-installation"></a>
 </h2>
 <p>Install from GitHub with vignettes (recommended):</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/LDxBlocks"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Install without vignettes for a faster build:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"FAkohoue/LDxBlocks"</span>,</span>
 <span>  build_vignettes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  dependencies    <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><strong>Required dependencies</strong> (installed automatically):</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  <span class="st">"Rcpp"</span>,            <span class="co"># C++ interface</span></span>
 <span>  <span class="st">"RcppArmadillo"</span>,   <span class="co"># linear algebra C++ library</span></span>
@@ -526,7 +570,7 @@
 <span>  <span class="st">"dplyr"</span>            <span class="co"># pipeline utilities</span></span>
 <span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Optional dependencies</strong> for additional backends and features:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># GDS backend — required for .gds files; recommended for panels &gt; 2 M SNPs</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"BiocManager"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"BiocManager"</span><span class="op">)</span></span>
@@ -552,7 +596,7 @@
 <div class="section level2">
 <h2 id="id_5-quick-start">5. Quick start<a class="anchor" aria-label="anchor" href="#id_5-quick-start"></a>
 </h2>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/FAkohoue/LDxBlocks" class="external-link">LDxBlocks</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># ── Option A: from files (all formats accepted) ───────────────────────────────</span></span>
@@ -583,7 +627,7 @@
 <span><span class="co"># 13 GENOME  1502   2000     82000    88940  512000       133548316</span></span>
 <span></span>
 <span><span class="fu"><a href="reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ── Option B: plain R matrix (backward-compatible, unchanged API) ─────────────</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="va">my_geno_matrix</span>,</span>
@@ -591,7 +635,7 @@
 <span>  method    <span class="op">=</span> <span class="st">"r2"</span>,</span>
 <span>  CLQcut    <span class="op">=</span> <span class="fl">0.70</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ── Haplotype analysis — pass the backend directly for chromosome streaming ───</span></span>
 <span><span class="co"># extract_haplotypes() detects LDxBlocks_backend input and processes one</span></span>
 <span><span class="co"># chromosome at a time, freeing RAM before moving to the next.</span></span>
@@ -604,7 +648,7 @@
 <span></span>
 <span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># 500 x (n_blocks * 5)</span></span></code></pre></div>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ── Parameter auto-tuning against GWAS markers ────────────────────────────────</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span></span>
 <span>  geno_matrix    <span class="op">=</span> <span class="va">my_geno</span>,</span>
@@ -898,7 +942,7 @@
 <div class="section level3">
 <h3 id="id_621-format-1--named-numeric-vector-single-trait-simplest">6.2.1. Format 1 — Named numeric vector (single trait, simplest)<a class="anchor" aria-label="anchor" href="#id_621-format-1--named-numeric-vector-single-trait-simplest"></a>
 </h3>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">4.21</span>, G002 <span class="op">=</span> <span class="fl">3.87</span>, G003 <span class="op">=</span> <span class="fl">5.14</span><span class="op">)</span></span>
 <span><span class="co"># names = genotype IDs; values = BLUE</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>, blues <span class="op">=</span> <span class="va">blues</span><span class="op">)</span></span></code></pre></div>
@@ -928,7 +972,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues.csv"</span><span class="op">)</span>   <span class="co"># any column names</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
 <span>                                 blues    <span class="op">=</span> <span class="va">blues</span>,</span>
@@ -973,7 +1017,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="st">"blues_mt.csv"</span><span class="op">)</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
 <span>                                 blues           <span class="op">=</span> <span class="va">blues</span>,</span>
@@ -986,7 +1030,7 @@
 <h3 id="id_624-format-4--named-list-different-individuals-per-trait">6.2.4. Format 4 — Named list (different individuals per trait)<a class="anchor" aria-label="anchor" href="#id_624-format-4--named-list-different-individuals-per-trait"></a>
 </h3>
 <p>Use a named list when each trait’s BLUEs come from a separate model run, or when individual sets differ substantially between traits. Each list element is a named numeric vector (names = genotype IDs, values = BLUEs):</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  YLD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">4.21</span>, G002 <span class="op">=</span> <span class="fl">3.87</span>, G003 <span class="op">=</span> <span class="fl">5.14</span><span class="op">)</span>,</span>
 <span>  DIS <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>G001 <span class="op">=</span> <span class="fl">0.32</span>, G003 <span class="op">=</span> <span class="fl">0.28</span>, G004 <span class="op">=</span> <span class="fl">0.67</span><span class="op">)</span>  <span class="co"># G002 absent, G004 extra</span></span>
@@ -1012,7 +1056,7 @@
 <h3 id="id_64-preparing-blues-from-raw-phenotype-data">6.4. Preparing BLUEs from raw phenotype data<a class="anchor" aria-label="anchor" href="#id_64-preparing-blues-from-raw-phenotype-data"></a>
 </h3>
 <p><code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code> does <strong>not</strong> fit the field trial model — it takes BLUEs as input. BLUEs must be produced externally:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Example with lme4 (single environment)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lme4/lme4/" class="external-link">lme4</a></span><span class="op">)</span></span>
 <span><span class="va">m</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lme4/man/lmer.html" class="external-link">lmer</a></span><span class="op">(</span><span class="va">YLD</span> <span class="op">~</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">id</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">rep</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">field_data</span><span class="op">)</span></span>
@@ -1023,7 +1067,7 @@
 <span><span class="co"># asr_fit &lt;- asreml(YLD ~ env, random = ~id:env, ...)</span></span>
 <span><span class="co"># blues    &lt;- predict(asr_fit, classify = "id")$pvals</span></span></code></pre></div>
 <p>The <code>example_blues.csv</code> in <code>inst/extdata/</code> and the <code>ldx_blues</code> dataset show the expected format:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"example_blues.csv"</span>, package <span class="op">=</span> <span class="st">"LDxBlocks"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; id, YLD, RES</span></span>
 <span><span class="co">#&gt; ind001, 0.3412, -0.7821</span></span>
@@ -1039,60 +1083,62 @@
 <h3 id="id_71-maf-filtering">7.1. MAF filtering<a class="anchor" aria-label="anchor" href="#id_71-maf-filtering"></a>
 </h3>
 <p>The ALT allele frequency is estimated from the dosage matrix as:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><mrow><mn>2</mn><mspace width="0.167em"></mspace><msub><mi>n</mi><mi>i</mi></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">\mathrm{AF}_i = \frac{\sum_j g_{ij}}{2\, n_i}</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">g_{ij} \in \{0, 1, 2, \mathrm{NA}\}</annotation></semantics></math> is the dosage for SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> in sample <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>n</mi><mi>i</mi></msub><annotation encoding="application/x-tex">n_i</annotation></semantics></math> is the number of non-missing observations for SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>. The minor allele frequency is:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo>=</mo><mo>min</mo><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mrow><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo>,</mo><mspace width="0.278em"></mspace><mn>1</mn><mo>−</mo><msub><mrow><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathrm{MAF}_i = \min\!\left(\mathrm{AF}_i,\; 1 - \mathrm{AF}_i\right)</annotation></semantics></math></p>
-<p>SNPs with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">A</mi><mi mathvariant="normal">F</mi></mrow><mi>i</mi></msub><mo>&lt;</mo><msub><mi>τ</mi><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">f</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\mathrm{MAF}_i &lt; \tau_{\mathrm{maf}}</annotation></semantics></math> (default 0.05) are removed before any LD computation. Monomorphic SNPs (all observations identical) are removed unconditionally regardless of the MAF threshold. Both operations run in a single O(np) C++ pass by <code>maf_filter_cpp()</code>, handling NA imputation in the same loop.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>AF_i <span class="ot">=</span> (Σⱼ g_ij) <span class="sc">/</span> (<span class="dv">2</span> n_i)</span></code></pre></div>
+<p>where g_ij ∈ {0, 1, 2, NA} is the dosage for SNP i in sample j and n_i is the number of non-missing observations for SNP i. The minor allele frequency is:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>MAF_i <span class="ot">=</span> <span class="fu">min</span>(AF_i, <span class="dv">1</span> − AF_i)</span></code></pre></div>
+<p>SNPs with MAF_i &lt; τ_maf (default 0.05) are removed before any LD computation. Monomorphic SNPs (all observations identical) are removed unconditionally regardless of the MAF threshold. Both operations run in a single O(np) C++ pass by <code>maf_filter_cpp()</code>, handling NA imputation in the same loop.</p>
 </div>
 <div class="section level3">
 <h3 id="id_72-genotype-preparation">7.2. Genotype preparation<a class="anchor" aria-label="anchor" href="#id_72-genotype-preparation"></a>
 </h3>
-<p>Before computing LD, the genotype matrix <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math> (individuals × SNPs) is centred and optionally whitened depending on the chosen LD metric. This step is performed by <code><a href="reference/prepare_geno.html">prepare_geno()</a></code>.</p>
+<p>Before computing LD, the genotype matrix <strong>G</strong> (individuals × SNPs) is centred and optionally whitened depending on the chosen LD metric. This step is performed by <code><a href="reference/prepare_geno.html">prepare_geno()</a></code>.</p>
 <p><strong>Standard r² path (<code>method = "r2"</code>):</strong></p>
-<p>For two SNPs <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>, where individual <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> has dosage values <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>,</mo><msub><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>,</mo><mn>2</mn><mo>,</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">A</mi></mrow><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">g_{ij}, g_{ik} \in \{0, 1, 2, \mathrm{NA}\}</annotation></semantics></math>, the squared Pearson correlation is:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mfrac><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.167em"></mspace><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">r^2_{jk} = \frac{\mathrm{Cov}(g_j,\, g_k)^2}{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}</annotation></semantics></math></p>
-<p>Estimated from <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>n</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">n_{jk}</annotation></semantics></math> non-missing individuals as:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mfrac><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>n</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><msub><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo>−</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>n</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub><munder><mo>∑</mo><mi>i</mi></munder><msubsup><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>n</mi><mrow><mi>j</mi><mi>k</mi></mrow></msub><munder><mo>∑</mo><mi>i</mi></munder><msubsup><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>g</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">r^2_{jk} = \frac{\left(n_{jk}\sum_i g_{ij}g_{ik} - \sum_i g_{ij}\sum_i g_{ik}\right)^2}{\left(n_{jk}\sum_i g_{ij}^2 - \left(\sum_i g_{ij}\right)^2\right)\left(n_{jk}\sum_i g_{ik}^2 - \left(\sum_i g_{ik}\right)^2\right)}</annotation></semantics></math></p>
-<p>In <code>compute_r2_cpp()</code> this is computed equivalently via column standardisation (mean-impute NA, subtract column mean, divide by standard deviation) followed by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><msubsup><mover><mi>𝐠</mi><mo accent="true">̃</mo></mover><mi>j</mi><mi>⊤</mi></msubsup><msub><mover><mi>𝐠</mi><mo accent="true">̃</mo></mover><mi>k</mi></msub><mspace width="0.167em"></mspace><mi>/</mi><mspace width="0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">r^2_{jk} = [\tilde{\mathbf{g}}_j^\top\tilde{\mathbf{g}}_k\,/\,(n-1)]^2</annotation></semantics></math>, which is numerically identical and benefits from BLAS-level matrix multiplication with OpenMP parallelism. No kinship matrix is required.</p>
+<p>For two SNPs j and k, where individual i has dosage values g_ij, g_ik ∈ {0, 1, 2, NA}, the squared Pearson correlation is:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a>r²_jk <span class="ot">=</span> <span class="fu">Cov</span>(gⱼ, g_k)² <span class="sc">/</span> [<span class="fu">Var</span>(gⱼ) · <span class="fu">Var</span>(g_k)]</span></code></pre></div>
+<p>Estimated from n_jk non-missing individuals as:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a>r²_jk <span class="ot">=</span> [n_jk·Σᵢ g_ij g_ik − (Σᵢ g_ij)(Σᵢ g_ik)]²</span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>       <span class="sc">/</span> {[n_jk·Σᵢ g_ij² − (Σᵢ g_ij)²] · [n_jk·Σᵢ g_ik² − (Σᵢ g_ik)²]}</span></code></pre></div>
+<p>In <code>compute_r2_cpp()</code> this is computed equivalently via column standardisation (mean-impute NA, subtract column mean, divide by standard deviation) followed by r²_jk = [g̃ⱼᵀ g̃_k / (n−1)]², which is numerically identical and benefits from BLAS-level matrix multiplication with OpenMP parallelism. No kinship matrix is required.</p>
 <p><strong>Kinship-adjusted rV² path (<code>method = "rV2"</code>):</strong></p>
 <ol style="list-style-type: decimal">
 <li>
 <p>Compute the VanRaden (2008) GRM via <code><a href="https://rdrr.io/pkg/AGHmatrix/man/Gmatrix.html" class="external-link">AGHmatrix::Gmatrix()</a></code>:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mfrac><mrow><mi>Z</mi><msup><mi>Z</mi><mi>⊤</mi></msup></mrow><mrow><mn>2</mn><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">V = \frac{ZZ^\top}{2\sum_j p_j q_j}</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math> is the <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>m</mi></mrow><annotation encoding="application/x-tex">n \times m</annotation></semantics></math> frequency-centred genotype matrix with elements <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">z_{ij} = g_{ij} - 2p_j</annotation></semantics></math> (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mi>j</mi></msub><annotation encoding="application/x-tex">p_j</annotation></semantics></math> = frequency of allele <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>A</mi><mn>2</mn></msub><annotation encoding="application/x-tex">A_2</annotation></semantics></math> at SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">q_j = 1 - p_j</annotation></semantics></math>), and the denominator <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">2\sum_j p_j q_j</annotation></semantics></math> scales <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> to resemble the numerator relationship matrix. Note that <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math> is frequency-centred (by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">2p_j</annotation></semantics></math>) and distinct from the mean-centred <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>G</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{G}</annotation></semantics></math> used in LD computation above.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="sc">**</span>V<span class="sc">**</span> <span class="er">=</span> <span class="er">**</span>ZZ<span class="sc">**</span>ᵀ <span class="sc">/</span> (<span class="dv">2</span> Σⱼ pⱼ qⱼ)</span></code></pre></div>
+<p>where <strong>Z</strong> is the n × m frequency-centred genotype matrix with elements z_ij = g_ij − 2p_j (p_j = frequency of allele A2 at SNP j, q_j = 1 − p_j), and the denominator 2 Σⱼ pⱼqⱼ scales <strong>V</strong> to resemble the numerator relationship matrix. Note that <strong>Z</strong> is frequency-centred (by 2p_j) and distinct from the mean-centred <strong>G̃</strong> used in LD computation above.</p>
 </li>
-<li><p>Bend and condition-number tune <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math> via <code>ASRgenomics::G.tuneup(bend = TRUE, rcn = TRUE)</code> to ensure positive-definiteness.</p></li>
+<li><p>Bend and condition-number tune <strong>V</strong> via <code>ASRgenomics::G.tuneup(bend = TRUE, rcn = TRUE)</code> to ensure positive-definiteness.</p></li>
 <li>
 <p>Compute the whitening factor:</p>
 <ul>
 <li>
-<code>kin_method = "chol"</code> (default): <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><msup><mi>R</mi><mrow><mi>−</mi><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">A = R^{-1}</annotation></semantics></math> where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><msup><mi>R</mi><mi>⊤</mi></msup><mi>R</mi></mrow><annotation encoding="application/x-tex">V = R^\top R</annotation></semantics></math> via Cholesky. Fast and numerically stable.</li>
+<code>kin_method = "chol"</code> (default): <strong>A</strong> = <strong>R</strong>⁻¹ where <strong>V</strong> = <strong>R</strong>ᵀ<strong>R</strong> via Cholesky. Fast and numerically stable.</li>
 <li>
-<code>kin_method = "eigen"</code>: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><mi>Q</mi><msup><mi>Λ</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msup><mi>Q</mi><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">A = Q\Lambda^{-1/2}Q^\top</annotation></semantics></math>. Symmetric; eigenvalues floored at <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>6</mn></mrow></msup><annotation encoding="application/x-tex">10^{-6}</annotation></semantics></math> for stability. Preferred for near-singular matrices.</li>
+<code>kin_method = "eigen"</code>: <strong>A</strong> = <strong>Q</strong> Λ⁻¹⁄² <strong>Q</strong>ᵀ. Symmetric; eigenvalues floored at 1e-6 for stability. Preferred for near-singular matrices.</li>
 </ul>
 </li>
-<li><p>Apply whitening to the <strong>mean-centred</strong> genotype matrix: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>v</mi></msup><mo>=</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mover><mi>G</mi><mo accent="true">̃</mo></mover></mrow><annotation encoding="application/x-tex">X^v = V^{-1/2}\tilde{G}</annotation></semantics></math> (code: <code>V_inv_sqrt %*% geno_centered</code>). Note: Mangin et al. (2012) write <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>X</mi><mi>v</mi></msup><mo>=</mo><msup><mi>K</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><mi>G</mi></mrow><annotation encoding="application/x-tex">X^v = K^{-1/2}G</annotation></semantics></math> using the raw matrix; in LDxBlocks the mean-centering is applied first, which is equivalent because centering commutes with the whitening transform (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mover><mi>G</mi><mo accent="true">‾</mo></mover><mi>j</mi></msub><msup><mn>𝟏</mn><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">V^{-1/2}\bar{G}_j\mathbf{1}^\top</annotation></semantics></math> is a constant column shift, removed by the subsequent correlation computation).</p></li>
+<li><p>Apply whitening to the <strong>mean-centred</strong> genotype matrix: <strong>X</strong>ᵛ = <strong>V</strong>⁻¹⁄² <strong>G̃</strong> (code: <code>V_inv_sqrt %*% geno_centered</code>). Note: Mangin et al. (2012) write <strong>X</strong>ᵛ = <strong>K</strong>⁻¹⁄² <strong>G</strong> using the raw matrix; in LDxBlocks the mean-centering is applied first, which is equivalent because centering commutes with the whitening transform (<strong>V</strong>⁻¹⁄² Ḡⱼ <strong>1</strong>ᵀ is a constant column shift, removed by the subsequent correlation computation).</p></li>
 </ol>
-<p>The rV² between SNPs <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> is then (Mangin et al. 2012, eq. 1):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msubsup><mi>V</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mfrac><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><msup><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo>,</mo><mspace width="0.167em"></mspace><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>i</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>X</mi><mi>j</mi><mi>v</mi></msubsup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">rV^2_{ij} = \frac{\mathrm{Cov}(X^v_i,\, X^v_j)^2}{\mathrm{Var}(X^v_i)\,\mathrm{Var}(X^v_j)}</annotation></semantics></math></p>
-<p>which is computed by passing <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>X</mi><mi>v</mi></msup><annotation encoding="application/x-tex">X^v</annotation></semantics></math> to the same <code>compute_r2_cpp()</code> kernel as the standard r² path. Both paths expose the same <code>compute_r2_cpp()</code> C++ kernel; the distinction is only in the preparation step.</p>
+<p>The rV² between SNPs i and j is then (Mangin et al. 2012, eq. 1):</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>rV²ᵢⱼ <span class="ot">=</span> <span class="fu">Cov</span>(Xᵛᵢ, Xᵛⱼ)² <span class="sc">/</span> [<span class="fu">Var</span>(Xᵛᵢ) · <span class="fu">Var</span>(Xᵛⱼ)]</span></code></pre></div>
+<p>which is computed by passing <strong>X</strong>ᵛ to the same <code>compute_r2_cpp()</code> kernel as the standard r² path. Both paths expose the same <code>compute_r2_cpp()</code> C++ kernel; the distinction is only in the preparation step.</p>
 </div>
 <div class="section level3">
 <h3 id="id_73-subsegmentation">7.3. Subsegmentation<a class="anchor" aria-label="anchor" href="#id_73-subsegmentation"></a>
 </h3>
 <p>For chromosomes with more SNPs than <code>subSegmSize</code> (default 1,500), the algorithm first identifies weak-LD boundary positions to divide the chromosome into manageable sub-segments, avoiding the O(p²) cost of computing the full chromosome LD matrix.</p>
-<p>For each candidate cut position <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>, the maximum cross-boundary squared correlation between a left window <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math> and right window <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math> of half-width <code>leng</code> (default 200 SNPs) is evaluated:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">cut</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1</mn><mo>⇔</mo><munder><mo>max</mo><mrow><mi>j</mi><mo>∈</mo><mi>L</mi><mo>,</mo><mspace width="0.278em"></mspace><mi>k</mi><mo>∈</mo><mi>R</mi></mrow></munder><msup><mi>r</mi><mn>2</mn></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>j</mi><mo>,</mo><mi>k</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&lt;</mo><msub><mi>τ</mi><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">L</mi><mi mathvariant="normal">Q</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\text{cut}(i) = 1 \iff \max_{j \in L,\; k \in R} r^2(j, k) &lt; \tau_{\mathrm{CLQ}}</annotation></semantics></math></p>
+<p>For each candidate cut position i, the maximum cross-boundary squared correlation between a left window L and right window R of half-width <code>leng</code> (default 200 SNPs) is evaluated:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="fu">cut</span>(i) <span class="ot">=</span> <span class="dv">1</span>  iff  max_{j∈L, k∈R} r²(j,k) <span class="sc">&lt;</span> τ_CLQ</span></code></pre></div>
 <p>This scan is implemented by <code>boundary_scan_cpp()</code>: a C++ function that pre-standardises all columns once, then iterates over every candidate cut position in compiled code. For a chromosome with 50,000 SNPs and <code>leng = 200</code>, this eliminates approximately 150,000 small matrix operations that would otherwise run through the R interpreter.</p>
 <p>Three candidate window sizes (1, 10, <code>leng</code> SNPs each side) are tested at each position in order of increasing cost. The first window size that shows cross-boundary LD moves on immediately; only if all three show no LD is a cut-point declared.</p>
-<p>If no weak-LD boundaries are found within <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mo>×</mo></mrow><annotation encoding="application/x-tex">5 \times</annotation></semantics></math><code>subSegmSize</code> SNPs, the algorithm switches to forced equal-size splits placed at the minimum-LD positions within each oversized segment, identified by a secondary scan with a narrow tick window of <code>leng / 5</code> SNPs each side.</p>
+<p>If no weak-LD boundaries are found within 5 × <code>subSegmSize</code> SNPs, the algorithm switches to forced equal-size splits placed at the minimum-LD positions within each oversized segment, identified by a secondary scan with a narrow tick window of <code>leng / 5</code> SNPs each side.</p>
 </div>
 <div class="section level3">
 <h3 id="id_74-clique-detection-clqd">7.4. Clique detection (CLQD)<a class="anchor" aria-label="anchor" href="#id_74-clique-detection-clqd"></a>
 </h3>
-<p>Within each sub-segment, an undirected graph is constructed where SNPs are nodes and edges connect pairs with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mn>2</mn></msup><mo>≥</mo><msub><mi>τ</mi><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">L</mi><mi mathvariant="normal">Q</mi></mrow></msub></mrow><annotation encoding="application/x-tex">r^2 \geq \tau_{\mathrm{CLQ}}</annotation></semantics></math> (<code>CLQcut</code>, default 0.5). The adjacency matrix is built by <code>build_adj_matrix_cpp()</code> in a single O(p²) compiled pass.</p>
+<p>Within each sub-segment, an undirected graph is constructed where SNPs are nodes and edges connect pairs with r² ≥ τ_CLQ (<code>CLQcut</code>, default 0.5). The adjacency matrix is built by <code>build_adj_matrix_cpp()</code> in a single O(p²) compiled pass.</p>
 <p>Maximal cliques in this graph are enumerated by <code><a href="https://r.igraph.org/reference/cliques.html" class="external-link">igraph::max_cliques()</a></code>, which wraps the Bron-Kerbosch algorithm. Each maximal clique represents a set of SNPs in mutual high LD. The cliques are prioritised by a score:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">score</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left" style="text-align: left"><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">a</mi><msub><mi mathvariant="normal">n</mi><mrow><mi mathvariant="normal">k</mi><mi mathvariant="normal">b</mi></mrow></msub></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mtext mathvariant="normal">Density mode (default)</mtext></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mtext mathvariant="normal">Maximal mode</mtext></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">\text{score}(\mathcal{K}) = \begin{cases} |\mathcal{K}| / (\mathrm{span_{kb}}(\mathcal{K}) + 1) &amp; \text{Density mode (default)} \\ |\mathcal{K}| &amp; \text{Maximal mode} \end{cases}</annotation></semantics></math></p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" tabindex="-1"></a><span class="fu">score</span>(K) <span class="ot">=</span> <span class="er">|</span>K<span class="sc">|</span> <span class="er">/</span> (<span class="fu">span_kb</span>(K) <span class="sc">+</span> <span class="dv">1</span>)   [Density mode, default]</span>
+<span id="cb24-2"><a href="#cb24-2" tabindex="-1"></a><span class="fu">score</span>(K) <span class="ot">=</span> <span class="er">|</span>K<span class="sc">|</span>                           [Maximal mode]</span></code></pre></div>
 <p><strong>Density mode</strong> (<code>CLQmode = "Density"</code>) prefers compact, high-density cliques that correspond to biologically meaningful LD blocks. <strong>Maximal mode</strong> (<code>CLQmode = "Maximal"</code>) prefers the largest cliques regardless of span — useful when the goal is to retain as many co-inherited SNPs as possible.</p>
 <p>A greedy assignment iteratively selects the highest-scoring clique and removes its SNPs from subsequent rounds until all SNPs are assigned or no cliques remain. The result is an integer bin vector assigning each SNP to a clique-bin or <code>NA</code> (singleton).</p>
 <p><strong>Polynomial community detection.</strong> When <code>CLQmode = "Louvain"</code> or <code>CLQmode = "Leiden"</code>, the igraph community detection algorithms replace Bron-Kerbosch entirely. Both run in polynomial time O(n log n) — they never exhibit exponential blowup regardless of window density. These are general graph community detection methods, originally developed for social and biological network analysis, that are highly effective for LD graph partitioning: the SNP LD graph has the same mathematical structure as any weighted undirected graph, and community detection naturally groups SNPs in mutual high LD into the same community. The Louvain algorithm (Blondel et al. 2008) and its refinement Leiden (Traag et al. 2019, which guarantees well-connected communities unlike Louvain) are accessed via <code><a href="https://r.igraph.org/reference/cluster_louvain.html" class="external-link">igraph::cluster_louvain()</a></code> and <code><a href="https://r.igraph.org/reference/cluster_leiden.html" class="external-link">igraph::cluster_leiden()</a></code> respectively. On a 3M-SNP WGS panel where Bron-Kerbosch found 4.26 million maximal cliques in a single 1500-SNP window (&gt; 1 hour), Louvain completes the same window in &lt; 1 second. Block boundaries are equivalent to or better than Density mode for WGS panels. Recommended setting for WGS: <code>CLQmode = "Leiden"</code> (guaranteed connected communities). <code>CLQmode = "Louvain"</code> is faster but can produce internally disconnected communities (Traag et al. 2019); LDxBlocks applies a connectivity post-processing fix, but Leiden is preferred.</p>
@@ -1163,16 +1209,17 @@
 </tbody>
 </table>
 <p><strong>When r² produces wrong blocks: the kinship inflation problem.</strong></p>
-<p>Consider any individual <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> in a structured population. Their dosage <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">g_{ij}</annotation></semantics></math> at SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> can be decomposed as:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>μ</mi><mi>j</mi></msub><mo>+</mo><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>j</mi></mrow></msub><mo>+</mo><msub><mi>e</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><annotation encoding="application/x-tex">g_{ij} = \mu_j + a_{f(i),j} + e_{ij}</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>j</mi></msub><annotation encoding="application/x-tex">\mu_j</annotation></semantics></math> is the population mean, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">a_{f(i),j}</annotation></semantics></math> is a family-specific allele contribution (the allele inherited from the shared ancestor, e.g. a common sire in livestock or a common founder in an inbred line), and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>e</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">e_{ij}</annotation></semantics></math> is the individual-specific Mendelian sampling deviation. The key point is that <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">a_{f(i),j}</annotation></semantics></math> is <strong>correlated across all SNPs</strong> for individuals in the same family, regardless of whether those SNPs are in LD.</p>
-<p>The sample covariance between SNPs <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math> is therefore:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo>,</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><munder><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mrow><mi>f</mi><mo>,</mo><mi>j</mi></mrow></msub><mo>,</mo><mspace width="0.167em"></mspace><msub><mi>a</mi><mrow><mi>f</mi><mo>,</mo><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mo accent="true">⏟</mo></munder><mtext mathvariant="normal">kinship term</mtext></munder><mo>+</mo><munder><munder><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>e</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.167em"></mspace><msub><mi>e</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mo accent="true">⏟</mo></munder><mtext mathvariant="normal">true LD term</mtext></munder></mrow><annotation encoding="application/x-tex">\mathrm{Cov}(g_j, g_k) = \underbrace{\mathrm{Cov}(a_{f,j},\, a_{f,k})}_{\text{kinship term}} + \underbrace{\mathrm{Cov}(e_j,\, e_k)}_{\text{true LD term}}</annotation></semantics></math></p>
-<p>The <strong>kinship term</strong> <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mrow><mi>f</mi><mo>,</mo><mi>j</mi></mrow></msub><mo>,</mo><msub><mi>a</mi><mrow><mi>f</mi><mo>,</mo><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\mathrm{Cov}(a_{f,j}, a_{f,k})</annotation></semantics></math> is non-zero whenever individuals from the same family tend to carry similar alleles at both SNPs simultaneously — which happens for <strong>any</strong> two SNPs in the genome, not just those in the same LD block. Inserting into the <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math> formula:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mtext mathvariant="normal">measured</mtext><mn>2</mn></msubsup><mo>=</mo><mfrac><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mtext mathvariant="normal">LD</mtext></msub><mo>+</mo><msub><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mtext mathvariant="normal">kinship</mtext></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mspace width="1.0em"></mspace><mo>≥</mo><mspace width="1.0em"></mspace><msubsup><mi>r</mi><mtext mathvariant="normal">true</mtext><mn>2</mn></msubsup><mo>=</mo><mfrac><msubsup><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mtext mathvariant="normal">LD</mtext><mn>2</mn></msubsup><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">r^2_{\text{measured}} = \frac{(\mathrm{Cov}_{\text{LD}} + \mathrm{Cov}_{\text{kinship}})^2}{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}
-\quad \geq \quad
-r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}</annotation></semantics></math></p>
-<p><strong>Numerical worked example.</strong> Consider a livestock panel with two half-sib families, each with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math> offspring from a common sire:</p>
+<p>Consider any individual i in a structured population. Their dosage g_ij at SNP j can be decomposed as:</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a>g_ij <span class="ot">=</span> μⱼ <span class="sc">+</span> a_{<span class="fu">f</span>(i),j} <span class="sc">+</span> e_ij</span></code></pre></div>
+<p>where μⱼ is the population mean, a_{f(i),j} is a family-specific allele contribution (the allele inherited from the shared ancestor, e.g. a common sire in livestock or a common founder in an inbred line), and e_ij is the individual-specific Mendelian sampling deviation. The key point is that a_{f(i),j} is <strong>correlated across all SNPs</strong> for individuals in the same family, regardless of whether those SNPs are in LD.</p>
+<p>The sample covariance between SNPs j and k is therefore:</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" tabindex="-1"></a><span class="fu">Cov</span>(gⱼ, g_k) <span class="ot">=</span> <span class="fu">Cov</span>(a_{f,j}, a_{f,k})  <span class="sc">+</span>  <span class="fu">Cov</span>(eⱼ, e_k)</span>
+<span id="cb26-2"><a href="#cb26-2" tabindex="-1"></a>                [kinship term]           [true LD term]</span></code></pre></div>
+<p>The <strong>kinship term</strong> Cov(a_{f,j}, a_{f,k}) is non-zero whenever individuals from the same family tend to carry similar alleles at both SNPs simultaneously — which happens for <strong>any</strong> two SNPs in the genome, not just those in the same LD block. Inserting into the r² formula:</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" tabindex="-1"></a>r²_measured <span class="ot">=</span> (Cov_LD <span class="sc">+</span> Cov_kinship)² <span class="sc">/</span> [<span class="fu">Var</span>(gⱼ)·<span class="fu">Var</span>(g_k)]</span>
+<span id="cb27-2"><a href="#cb27-2" tabindex="-1"></a>           ≥</span>
+<span id="cb27-3"><a href="#cb27-3" tabindex="-1"></a>r²_true     <span class="ot">=</span> Cov_LD² <span class="sc">/</span> [<span class="fu">Var</span>(gⱼ)·<span class="fu">Var</span>(g_k)]</span></code></pre></div>
+<p><strong>Numerical worked example.</strong> Consider a livestock panel with two half-sib families, each with n offspring from a common sire:</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -1181,8 +1228,8 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 </colgroup>
 <thead><tr>
 <th></th>
-<th>SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> (chr 1)</th>
-<th>SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math> (chr 3, unlinked)</th>
+<th>SNP j (chr 1)</th>
+<th>SNP k (chr 3, unlinked)</th>
 </tr></thead>
 <tbody>
 <tr>
@@ -1202,34 +1249,36 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 </tr>
 </tbody>
 </table>
-<p>Because dams contribute randomly and independently, there is <strong>zero gametic LD</strong> between SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math> and SNP <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math> — they are on different chromosomes. Yet the family-level means are:</p>
+<p>Because dams contribute randomly and independently, there is <strong>zero gametic LD</strong> between SNP j and SNP k — they are on different chromosomes. Yet the family-level means are:</p>
 <table class="table">
 <thead><tr>
 <th>Family</th>
-<th><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>g</mi><mo accent="true">‾</mo></mover><mi>j</mi></msub><annotation encoding="application/x-tex">\bar{g}_j</annotation></semantics></math></th>
-<th><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>g</mi><mo accent="true">‾</mo></mover><mi>k</mi></msub><annotation encoding="application/x-tex">\bar{g}_k</annotation></semantics></math></th>
+<th>ḡⱼ</th>
+<th>ḡ_k</th>
 </tr></thead>
 <tbody>
 <tr>
 <td>Family 1 (sire allele = 0)</td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>+</mo><mn>0.5</mn><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">0 + 0.5 = 0.5</annotation></semantics></math></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>+</mo><mn>0.5</mn><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">0 + 0.5 = 0.5</annotation></semantics></math></td>
+<td>0 + 0.5 = 0.5</td>
+<td>0 + 0.5 = 0.5</td>
 </tr>
 <tr>
 <td>Family 2 (sire allele = 1)</td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>+</mo><mn>0.5</mn><mo>=</mo><mn>1.5</mn></mrow><annotation encoding="application/x-tex">1 + 0.5 = 1.5</annotation></semantics></math></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>+</mo><mn>0.5</mn><mo>=</mo><mn>1.5</mn></mrow><annotation encoding="application/x-tex">1 + 0.5 = 1.5</annotation></semantics></math></td>
+<td>1 + 0.5 = 1.5</td>
+<td>1 + 0.5 = 1.5</td>
 </tr>
 </tbody>
 </table>
-<p>Computing analytically (equal family sizes, large <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo>,</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac displaystyle="false"><mn>1</mn><mn>2</mn></mfrac><mo>⋅</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0.5</mn><mo>×</mo><mn>0.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mfrac displaystyle="false"><mn>1</mn><mn>2</mn></mfrac><mo>⋅</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1.5</mn><mo>×</mo><mn>1.5</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mn>1.0</mn><mo>×</mo><mn>1.0</mn><mo>=</mo><mn>1.25</mn><mo>−</mo><mn>1.00</mn><mo>=</mo><mn>0.25</mn></mrow><annotation encoding="application/x-tex">\mathrm{Cov}(g_j, g_k) = \tfrac{1}{2}\cdot(0.5\times 0.5) + \tfrac{1}{2}\cdot(1.5\times 1.5) - 1.0\times 1.0 = 1.25 - 1.00 = 0.25</annotation></semantics></math></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mi mathvariant="normal">V</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.50</mn></mrow><annotation encoding="application/x-tex">\mathrm{Var}(g_j) = \mathrm{Var}(g_k) = 0.50</annotation></semantics></math></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>r</mi><mtext mathvariant="normal">measured</mtext><mn>2</mn></msubsup><mo>=</mo><mfrac><msup><mn>0.25</mn><mn>2</mn></msup><mrow><mn>0.50</mn><mo>×</mo><mn>0.50</mn></mrow></mfrac><mo>=</mo><mn mathvariant="bold">0.25</mn></mrow><annotation encoding="application/x-tex">r^2_{\text{measured}} = \frac{0.25^2}{0.50 \times 0.50} = \mathbf{0.25}</annotation></semantics></math></p>
-<p>A measured <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mn>2</mn></msup><mo>=</mo><mn>0.25</mn></mrow><annotation encoding="application/x-tex">r^2 = 0.25</annotation></semantics></math> for two SNPs on <strong>different chromosomes</strong> with <strong>zero true LD</strong> — purely an artefact of the half-sib family structure. In a panel where sires appear through hundreds of progeny, this inflation scales with the proportion of variance explained by family membership. Blocks drawn using <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math> in such a panel will be too broad and will merge SNPs from different recombination intervals that happen to co-segregate with the same sire.</p>
-<p><strong>How rV² corrects this.</strong> Pre-multiplying by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math> (the inverse square root of the GRM) decorrelates the individuals: after whitening, the effective covariance between individuals is identity, so <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>j</mi></mrow></msub><mo>,</mo><msub><mi>a</mi><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mi>k</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\mathrm{Cov}(a_{f(i),j}, a_{f(i),k}) = 0</annotation></semantics></math> in the transformed space and only the true Mendelian-sampling LD term survives. The block boundaries then reflect actual recombination structure rather than co-ancestry artefacts. In practice, rV² blocks are typically 10–30% smaller and more precisely delimited in related populations.</p>
-<p><strong>When r² is preferable.</strong> For large human biobank panels (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>&gt;</mo><mn>10</mn><mo>,</mo><mn>000</mn></mrow><annotation encoding="application/x-tex">n &gt; 10{,}000</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>&gt;</mo><mn>1</mn><mo>,</mo><mn>000</mn><mo>,</mo><mn>000</mn></mrow><annotation encoding="application/x-tex">p &gt; 1{,}000{,}000</annotation></semantics></math>) computing and inverting the <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">n \times n</annotation></semantics></math> GRM is computationally infeasible. In approximately random-mating populations the kinship term is small, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math> inflates LD modestly, and the 50× speed advantage of the pure C++ path dominates.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<p>Computing analytically (equal family sizes, large n):</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="fu">Cov</span>(gⱼ, g_k) <span class="ot">=</span> ½·(<span class="fl">0.5</span>×<span class="fl">0.5</span>) <span class="sc">+</span> ½·(<span class="fl">1.5</span>×<span class="fl">1.5</span>) − <span class="fl">1.0</span>×<span class="fl">1.0</span> <span class="ot">=</span> <span class="fl">1.25</span> − <span class="fl">1.00</span> <span class="ot">=</span> <span class="fl">0.25</span></span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a></span>
+<span id="cb28-3"><a href="#cb28-3" tabindex="-1"></a><span class="fu">Var</span>(gⱼ) <span class="ot">=</span> <span class="fu">Var</span>(g_k) <span class="ot">=</span> <span class="fl">0.50</span></span>
+<span id="cb28-4"><a href="#cb28-4" tabindex="-1"></a></span>
+<span id="cb28-5"><a href="#cb28-5" tabindex="-1"></a>r²_measured <span class="ot">=</span> <span class="fl">0.25</span>² <span class="sc">/</span> (<span class="fl">0.50</span> × <span class="fl">0.50</span>) <span class="ot">=</span> <span class="er">**</span><span class="fl">0.25</span><span class="sc">**</span></span></code></pre></div>
+<p>A measured r² = 0.25 for two SNPs on <strong>different chromosomes</strong> with <strong>zero true LD</strong> — purely an artefact of the half-sib family structure. In a panel where sires appear through hundreds of progeny, this inflation scales with the proportion of variance explained by family membership. Blocks drawn using r² in such a panel will be too broad and will merge SNPs from different recombination intervals that happen to co-segregate with the same sire.</p>
+<p><strong>How rV² corrects this.</strong> Pre-multiplying by <strong>V</strong>⁻¹⁄² (the inverse square root of the GRM) decorrelates the individuals: after whitening, the effective covariance between individuals is identity, so Cov(a_{f(i),j}, a_{f(i),k}) = 0 in the transformed space and only the true Mendelian-sampling LD term survives. The block boundaries then reflect actual recombination structure rather than co-ancestry artefacts. In practice, rV² blocks are typically 10–30% smaller and more precisely delimited in related populations.</p>
+<p><strong>When r² is preferable.</strong> For large human biobank panels (n &gt; 10,000, p &gt; 1,000,000) computing and inverting the n × n GRM is computationally infeasible. In approximately random-mating populations the kinship term is small, r² inflates LD modestly, and the 50× speed advantage of the pure C++ path dominates.</p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Switching LD metric requires only a single argument change</span></span>
 <span><span class="va">blocks_r2</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"r2"</span>,  CLQcut <span class="op">=</span> <span class="fl">0.70</span><span class="op">)</span></span>
 <span><span class="va">blocks_rv2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"rV2"</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span>,</span>
@@ -1245,8 +1294,8 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <h3 id="id_91-mode-1--density-clqmode--density-default">9.1. Mode 1 — Density (<code>CLQmode = "Density"</code>, default)<a class="anchor" aria-label="anchor" href="#id_91-mode-1--density-clqmode--density-default"></a>
 </h3>
 <p><strong>Algorithm.</strong> Enumerates all maximal cliques in the LD graph via the Bron-Kerbosch algorithm (<code><a href="https://r.igraph.org/reference/cliques.html" class="external-link">igraph::max_cliques()</a></code>). Each clique is scored as:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">score</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mfrac><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow><mrow><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">a</mi><msub><mi mathvariant="normal">n</mi><mrow><mi mathvariant="normal">k</mi><mi mathvariant="normal">b</mi></mrow></msub></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>1</mn></mrow></mfrac></mrow><annotation encoding="application/x-tex">\text{score}(\mathcal{K}) = \frac{|\mathcal{K}|}{\mathrm{span_{kb}}(\mathcal{K}) + 1}</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow><annotation encoding="application/x-tex">|\mathcal{K}|</annotation></semantics></math> is the number of SNPs and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">p</mi><mi mathvariant="normal">a</mi><msub><mi mathvariant="normal">n</mi><mrow><mi mathvariant="normal">k</mi><mi mathvariant="normal">b</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\mathrm{span_{kb}}</annotation></semantics></math> is the physical span in kilobases. A greedy assignment iteratively selects the highest-scoring clique, removes its SNPs, and repeats until all SNPs are assigned or no cliques remain.</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" tabindex="-1"></a><span class="fu">score</span>(K) <span class="ot">=</span> <span class="er">|</span>K<span class="sc">|</span> <span class="er">/</span> (<span class="fu">span_kb</span>(K) <span class="sc">+</span> <span class="dv">1</span>)</span></code></pre></div>
+<p>where |K| is the number of SNPs and span_kb is the physical span in kilobases. A greedy assignment iteratively selects the highest-scoring clique, removes its SNPs, and repeats until all SNPs are assigned or no cliques remain.</p>
 <p><strong>Biological interpretation.</strong> Divides by physical span, so a compact 10-SNP block spanning 5 kb scores higher than a diffuse 10-SNP block spanning 50 kb. This favours tight, physically co-located LD blocks that correspond to genuine recombination-suppressed intervals. This is the original scoring used by Kim et al. (2018) and is appropriate whenever clique enumeration is computationally feasible.</p>
 <p><strong>Pros.</strong> - Biologically motivated: rewards compact, high-density LD structure. - Exact — every maximal clique is found and scored. - Well-studied and validated in the original Big-LD benchmark. - Blocks reflect true recombination structure rather than graph topology.</p>
 <p><strong>Cons.</strong> - Bron-Kerbosch has exponential worst-case complexity. On dense WGS LD graphs a single 1,500-SNP window can enumerate millions of cliques and run for hours or fail to complete. - Completely impractical for WGS panels without <code>max_bp_distance</code> pruning.</p>
@@ -1257,7 +1306,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <h3 id="id_92-mode-2--maximal-clqmode--maximal">9.2. Mode 2 — Maximal (<code>CLQmode = "Maximal"</code>)<a class="anchor" aria-label="anchor" href="#id_92-mode-2--maximal-clqmode--maximal"></a>
 </h3>
 <p><strong>Algorithm.</strong> Same Bron-Kerbosch enumeration as Density, but the scoring function is simply:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">score</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">|</mo><mi>𝒦</mi><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex">\text{score}(\mathcal{K}) = |\mathcal{K}|</annotation></semantics></math></p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" tabindex="-1"></a><span class="fu">score</span>(K) <span class="ot">=</span> <span class="er">|</span>K<span class="sc">|</span></span></code></pre></div>
 <p>The greedy assignment prefers the largest cliques regardless of their physical span.</p>
 <p><strong>Biological interpretation.</strong> Maximises the number of co-inherited SNPs per block, without penalising physically dispersed cliques. A 20-SNP block spanning 200 kb scores higher than a 15-SNP block spanning 5 kb. This is appropriate when the goal is to capture as many co-inherited markers as possible per block, for example in sparse chip panels where blocks are few and large.</p>
 <p><strong>Pros.</strong> - Maximises haplotype block membership — each block captures the most SNPs. - Useful for sparse panels where compact-density scoring would fragment blocks.</p>
@@ -1361,7 +1410,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <div class="section level3">
 <h3 id="id_96-recommended-configurations">9.6. Recommended configurations<a class="anchor" aria-label="anchor" href="#id_96-recommended-configurations"></a>
 </h3>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Chip or low-density panel (&lt; 100k SNPs per chromosome)</span></span>
 <span><span class="co"># -- Density scoring is exact and biologically interpretable</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, CLQmode <span class="op">=</span> <span class="st">"Density"</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span>,</span>
@@ -1397,14 +1446,14 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <h3 id="id_102-haplotype-diversity-metrics">10.2. Haplotype diversity metrics<a class="anchor" aria-label="anchor" href="#id_102-haplotype-diversity-metrics"></a>
 </h3>
 <p><code><a href="reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code> returns four metrics per block from the haplotype string frequency distribution:</p>
-<p><strong>Richness (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>):</strong> number of unique haplotype strings. A highly recombined region will show many distinct haplotypes; a selective sweep will have one dominant haplotype with very high frequency.</p>
-<p><strong>Expected heterozygosity (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>H</mi><mi>e</mi></msub><annotation encoding="application/x-tex">H_e</annotation></semantics></math>):</strong> Nei’s (1973) gene diversity, corrected for sample size:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mi>e</mi></msub><mo>=</mo><mfrac><mi>n</mi><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></mfrac><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><munder><mo>∑</mo><mi>i</mi></munder><msubsup><mi>p</mi><mi>i</mi><mn>2</mn></msubsup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">H_e = \frac{n}{n-1}\left(1 - \sum_i p_i^2\right)</annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mi>i</mi></msub><annotation encoding="application/x-tex">p_i</annotation></semantics></math> is the frequency of haplotype <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math> is the number of individuals with non-missing haplotypes. <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mi>e</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">H_e = 0</annotation></semantics></math> for a monomorphic block; <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>H</mi><mi>e</mi></msub><mo>→</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">H_e \to 1</annotation></semantics></math> for many equally frequent haplotypes.</p>
-<p><strong>Shannon entropy (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mi>′</mi></mrow><annotation encoding="application/x-tex">H'</annotation></semantics></math>):</strong></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mi>′</mi><mo>=</mo><mi>−</mi><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>p</mi><mi>i</mi></msub><msub><mo>log</mo><mn>2</mn></msub><msub><mi>p</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">H' = -\sum_i p_i \log_2 p_i</annotation></semantics></math></p>
-<p>Sensitive to both richness and evenness. Measured in bits; equals <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>log</mo><mn>2</mn></msub><mi>k</mi></mrow><annotation encoding="application/x-tex">\log_2 k</annotation></semantics></math> for equal-frequency haplotypes.</p>
-<p><strong>Dominant haplotype frequency (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mo>max</mo></msub><annotation encoding="application/x-tex">f_{\max}</annotation></semantics></math>):</strong> frequency of the most common haplotype string. Values near 1.0 indicate a selective sweep or a strong founder effect in the region.</p>
+<p><strong>Richness (k):</strong> number of unique haplotype strings. A highly recombined region will show many distinct haplotypes; a selective sweep will have one dominant haplotype with very high frequency.</p>
+<p><strong>Expected heterozygosity (Hₑ):</strong> Nei’s (1973) gene diversity, corrected for sample size:</p>
+<div class="sourceCode" id="cb34"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" tabindex="-1"></a>Hₑ <span class="ot">=</span> n<span class="sc">/</span>(n−<span class="dv">1</span>) · (<span class="dv">1</span> − Σᵢ pᵢ²)</span></code></pre></div>
+<p>where pᵢ is the frequency of haplotype i and n is the number of individuals with non-missing haplotypes. Hₑ = 0 for a monomorphic block; Hₑ → 1 for many equally frequent haplotypes.</p>
+<p><strong>Shannon entropy (H’):</strong></p>
+<div class="sourceCode" id="cb35"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" tabindex="-1"></a>H<span class="st">' = −Σᵢ pᵢ log₂(pᵢ)</span></span></code></pre></div>
+<p>Sensitive to both richness and evenness. Measured in bits; equals log₂(k) for equal-frequency haplotypes.</p>
+<p><strong>Dominant haplotype frequency (f_max):</strong> frequency of the most common haplotype string. Values near 1.0 indicate a selective sweep or a strong founder effect in the region.</p>
 </div>
 <div class="section level3">
 <h3 id="id_103-haplotype-feature-matrix-for-genomic-prediction">10.3. Haplotype feature matrix for genomic prediction<a class="anchor" aria-label="anchor" href="#id_103-haplotype-feature-matrix-for-genomic-prediction"></a>
@@ -1412,7 +1461,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <p><code><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code> converts haplotype strings to a numeric dosage matrix suitable for GBLUP, BayesB, random forests, or any other genomic prediction framework. For each block, the <code>top_n</code> most frequent haplotypes are selected as reference haplotypes and each individual receives a dosage of: - <strong>Phased data</strong>: 0 (absent), 1 (one gamete), or 2 (both gametes) - <strong>Unphased data</strong>: 0 (absent) or 1 (present)</p>
 <p>The value 2 is not used for unphased data — the two chromosomes cannot be distinguished from unphased dosage strings.</p>
 <p>The resulting matrix has dimension n_individuals × (n_blocks × top_n):</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Build a haplotype-GRM for use in GBLUP</span></span>
 <span><span class="va">feat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># haplotype GRM</span></span>
@@ -1466,7 +1515,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 </tbody>
 </table>
 <p>Blocks scoring 3 — supported by all three evidence layers — are the top priority for haplotype stacking in a breeding programme.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Single trait</span></span>
 <span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
 <span>                                 blues    <span class="op">=</span> <span class="va">my_blues</span>,   <span class="co"># named vector</span></span>
@@ -1491,6 +1540,241 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <hr>
 <hr>
 </div>
+<div class="section level3">
+<h3 id="id_105-cross-validation-and-prediction-accuracy">10.5. Cross-validation and prediction accuracy<a class="anchor" aria-label="anchor" href="#id_105-cross-validation-and-prediction-accuracy"></a>
+</h3>
+<p><code><a href="reference/cv_haplotype_prediction.html">cv_haplotype_prediction()</a></code> estimates prediction accuracy via k-fold cross-validation. In each fold, a subset of individuals is masked from the phenotype and their GEBVs are predicted from the shared haplotype GRM. Pearson correlation between predicted and observed values is the predictive ability (PA). Multiple traits and multiple replications are supported. Returns a <code>LDxBlocks_cv</code> object with <code>pa_summary</code> (PA and RMSE per fold), <code>pa_mean</code> (mean ± SD across folds), and metadata.</p>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cv_haplotype_prediction.html">cv_haplotype_prediction</a></span><span class="op">(</span></span>
+<span>  geno_matrix <span class="op">=</span> <span class="va">geno</span>, snp_info <span class="op">=</span> <span class="va">snp_info</span>, blocks <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  blues <span class="op">=</span> <span class="va">my_blues</span>, k <span class="op">=</span> <span class="fl">5L</span>, n_rep <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>  id_col <span class="op">=</span> <span class="st">"id"</span>, blue_col <span class="op">=</span> <span class="st">"YLD"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">cv</span><span class="op">$</span><span class="va">pa_mean</span>   <span class="co"># mean PA and RMSE per trait</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_106-between-population-comparison">10.6. Between-population comparison<a class="anchor" aria-label="anchor" href="#id_106-between-population-comparison"></a>
+</h3>
+<p><code><a href="reference/compare_haplotype_populations.html">compare_haplotype_populations()</a></code> computes per-block allele frequency differences and Weir-Cockerham FST between two named sample groups. Returns <code>FST</code>, <code>max_freq_diff</code>, dominant allele per group, a chi-squared test p-value (Monte Carlo, B = 2000), and a <code>divergent</code> flag (FST &gt; 0.1 AND p &lt; 0.05). Useful for monitoring diversity changes between breeding cycles or comparing wild versus elite germplasm.</p>
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">geno</span><span class="op">)</span></span>
+<span><span class="va">cmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/compare_haplotype_populations.html">compare_haplotype_populations</a></span><span class="op">(</span></span>
+<span>  haplotypes  <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  group1      <span class="op">=</span> <span class="va">ids</span><span class="op">[</span><span class="va">wild_idx</span><span class="op">]</span>,</span>
+<span>  group2      <span class="op">=</span> <span class="va">ids</span><span class="op">[</span><span class="va">elite_idx</span><span class="op">]</span>,</span>
+<span>  group1_name <span class="op">=</span> <span class="st">"wild"</span>, group2_name <span class="op">=</span> <span class="st">"elite"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">cmp</span><span class="op">[</span><span class="va">cmp</span><span class="op">$</span><span class="va">divergent</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"FST"</span>,<span class="st">"max_freq_diff"</span>,<span class="st">"chisq_p"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_107-haplotype-network-visualisation">10.7. Haplotype network visualisation<a class="anchor" aria-label="anchor" href="#id_107-haplotype-network-visualisation"></a>
+</h3>
+<p><code><a href="reference/plot_haplotype_network.html">plot_haplotype_network()</a></code> draws a minimum-spanning network of haplotype alleles within one LD block using <code><a href="https://r.igraph.org/reference/mst.html" class="external-link">igraph::mst()</a></code>. Nodes represent alleles, sized proportionally to frequency; edge weights are Hamming distances (number of differing SNP positions). Optional group colouring via a named vector maps individual IDs to group labels. Returns the <code>igraph</code> MST object invisibly.</p>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/plot_haplotype_network.html">plot_haplotype_network</a></span><span class="op">(</span><span class="va">haps</span>, block_id <span class="op">=</span> <span class="st">"block_1_1000_80000"</span>,</span>
+<span>                        groups <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cycle1"</span>,<span class="st">"cycle2"</span><span class="op">)</span>, each<span class="op">=</span><span class="fl">60</span><span class="op">)</span>, <span class="va">ids</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_108-multi-environment-stability">10.8. Multi-environment stability<a class="anchor" aria-label="anchor" href="#id_108-multi-environment-stability"></a>
+</h3>
+<p><code><a href="reference/run_haplotype_stability.html">run_haplotype_stability()</a></code> runs Finlay-Wilkinson (1963) regression of per-block local GEBV contributions against the environmental index across environments. For each block, the slope b indicates adaptability: b = 1 means average stability (same response as the trial mean across environments), b &gt; 1 means above-average response to good environments, b &lt; 1 means broadly adapted across environments. Returns <code>b</code>, <code>b_se</code>, <code>R²</code>, deviation mean square <code>s²d</code>, and a <code>stable</code> flag (H0: b = 1 not rejected at α = 0.05).</p>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stab</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_stability.html">run_haplotype_stability</a></span><span class="op">(</span></span>
+<span>  geno_matrix <span class="op">=</span> <span class="va">geno</span>, snp_info <span class="op">=</span> <span class="va">snp_info</span>, blocks <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  blues_list  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>env1 <span class="op">=</span> <span class="va">blues_env1</span>, env2 <span class="op">=</span> <span class="va">blues_env2</span>,</span>
+<span>                     env3 <span class="op">=</span> <span class="va">blues_env3</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">stab</span><span class="op">[</span><span class="va">stab</span><span class="op">$</span><span class="va">stable</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"b"</span>,<span class="st">"b_se"</span>,<span class="st">"r2_fw"</span><span class="op">)</span><span class="op">]</span>   <span class="co"># broadly adapted blocks</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_109-candidate-region-export">10.9. Candidate region export<a class="anchor" aria-label="anchor" href="#id_109-candidate-region-export"></a>
+</h3>
+<p><code><a href="reference/export_candidate_regions.html">export_candidate_regions()</a></code> converts <code><a href="reference/define_qtl_regions.html">define_qtl_regions()</a></code> output to standard formats for downstream annotation:</p>
+<ul>
+<li>
+<code>format = "bed"</code> — standard BED (0-based, 6 columns), compatible with BEDtools, UCSC Genome Browser, and Ensembl Plants</li>
+<li>
+<code>format = "csv"</code> — plain CSV copy of the QTL regions table</li>
+<li>
+<code>format = "biomart"</code> — named list with <code>chromosome_name</code>, <code>start</code>, <code>end</code> ready for direct use in <code>biomaRt::getBM(filters = ...)</code>
+</li>
+</ul>
+<p>Supports <code>chr_prefix</code> for UCSC-style chromosome names, LD-extended windows via <code>use_lead_snp</code>, and <code>padding_bp</code> for extra flanking sequence.</p>
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># BED file for BEDtools intersection with gene annotation</span></span>
+<span><span class="fu"><a href="reference/export_candidate_regions.html">export_candidate_regions</a></span><span class="op">(</span><span class="va">qtl</span>, format <span class="op">=</span> <span class="st">"bed"</span>, chr_prefix <span class="op">=</span> <span class="st">"chr"</span>,</span>
+<span>                          out_file <span class="op">=</span> <span class="st">"candidate_regions.bed"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># biomaRt query</span></span>
+<span><span class="va">bm</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/export_candidate_regions.html">export_candidate_regions</a></span><span class="op">(</span><span class="va">qtl</span>, format <span class="op">=</span> <span class="st">"biomart"</span><span class="op">)</span></span>
+<span><span class="co"># biomaRt::getBM(attributes = c("ensembl_gene_id","external_gene_name"),</span></span>
+<span><span class="co">#                filters = c("chromosome_name","start","end"),</span></span>
+<span><span class="co">#                values  = bm, mart = my_mart)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_1010-per-allele-effect-decomposition">10.10. Per-allele effect decomposition<a class="anchor" aria-label="anchor" href="#id_1010-per-allele-effect-decomposition"></a>
+</h3>
+<p><code><a href="reference/decompose_block_effects.html">decompose_block_effects()</a></code> aggregates per-SNP additive effects (from <code><a href="reference/backsolve_snp_effects.html">backsolve_snp_effects()</a></code>) into a per-haplotype-allele effect table. For each allele string the effect is the sum of SNP effects weighted by the allele’s dosage at each SNP position. Returns <code>allele_effect</code>, <code>effect_rank</code> (1 = most positive within block), and <code>frequency</code>. This directly links the prediction model to selection index construction: “allele A of block 7 on chromosome 2B increases yield by X units.”</p>
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">snp_fx</span>    <span class="op">&lt;-</span> <span class="va">res</span><span class="op">$</span><span class="va">snp_effects</span><span class="op">[[</span><span class="st">"YLD"</span><span class="op">]</span><span class="op">]</span>   <span class="co"># from run_haplotype_prediction()</span></span>
+<span><span class="va">allele_tb</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/decompose_block_effects.html">decompose_block_effects</a></span><span class="op">(</span><span class="va">haps</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                      snp_effects <span class="op">=</span> <span class="va">snp_fx</span>, min_freq <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span>
+<span><span class="co"># Top-5 most positive alleles genome-wide</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">allele_tb</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">allele_tb</span><span class="op">$</span><span class="va">allele_effect</span><span class="op">)</span>, <span class="op">]</span>, <span class="fl">5</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_1011-sliding-window-diversity-scan">10.11. Sliding-window diversity scan<a class="anchor" aria-label="anchor" href="#id_1011-sliding-window-diversity-scan"></a>
+</h3>
+<p><code><a href="reference/scan_diversity_windows.html">scan_diversity_windows()</a></code> computes He, Shannon entropy, n_eff_alleles, and dominant haplotype frequency in sliding windows across the genome, independently of LD block boundaries. Useful for identifying diversity valleys (bottlenecks, selective sweeps) or comparing wild and elite panels genome-wide without pre-defined blocks.</p>
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">scan</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/scan_diversity_windows.html">scan_diversity_windows</a></span><span class="op">(</span></span>
+<span>  geno_matrix  <span class="op">=</span> <span class="va">geno</span>,</span>
+<span>  snp_info     <span class="op">=</span> <span class="va">snp_info</span>,</span>
+<span>  window_bp    <span class="op">=</span> <span class="fl">1e6L</span>,   <span class="co"># 1 Mb windows</span></span>
+<span>  step_bp      <span class="op">=</span> <span class="fl">5e5L</span>,   <span class="co"># 50% overlap</span></span>
+<span>  min_snps_win <span class="op">=</span> <span class="fl">5L</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co"># Plot He across chromosome 1</span></span>
+<span><span class="va">chr1</span> <span class="op">&lt;-</span> <span class="va">scan</span><span class="op">[</span><span class="va">scan</span><span class="op">$</span><span class="va">CHR</span> <span class="op">==</span> <span class="st">"1"</span>, <span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">chr1</span><span class="op">$</span><span class="va">win_mid</span> <span class="op">/</span> <span class="fl">1e3</span>, <span class="va">chr1</span><span class="op">$</span><span class="va">He</span>, type <span class="op">=</span> <span class="st">"l"</span>,</span>
+<span>     xlab <span class="op">=</span> <span class="st">"Position (kb)"</span>, ylab <span class="op">=</span> <span class="st">"He"</span>,</span>
+<span>     main <span class="op">=</span> <span class="st">"Sliding-window haplotype diversity — chr 1"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_1012-true-diplotype-inference">10.12. True diplotype inference<a class="anchor" aria-label="anchor" href="#id_1012-true-diplotype-inference"></a>
+</h3>
+<p><code><a href="reference/infer_block_haplotypes.html">infer_block_haplotypes()</a></code> converts raw haplotype strings from <code><a href="reference/extract_haplotypes.html">extract_haplotypes()</a></code> into a structured per-individual, per-block diplotype table. For <strong>phased input</strong> (<code><a href="reference/read_phased_vcf.html">read_phased_vcf()</a></code> / <code><a href="reference/phase_with_pedigree.html">phase_with_pedigree()</a></code>), <code>hap1</code> and <code>hap2</code> are the true gametic strings and <code>phase_ambiguous</code> is always <code>FALSE</code>. For <strong>unphased input</strong>, heterozygous individuals have <code>phase_ambiguous = TRUE</code> unless <code>resolve_unphased = TRUE</code> triggers a maximum-parsimony heuristic (not statistically rigorous — use <code><a href="reference/phase_with_beagle.html">phase_with_beagle()</a></code> for rigorous phasing). The <code>diplotype</code> column is the canonical sorted form <code>"alleleA/alleleB"</code> for direct comparison across individuals and datasets.</p>
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dip</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/infer_block_haplotypes.html">infer_block_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, resolve_unphased <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="co"># Proportion of heterozygous diplotypes per block</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/tapply.html" class="external-link">tapply</a></span><span class="op">(</span><span class="va">dip</span><span class="op">$</span><span class="va">heterozygous</span>, <span class="va">dip</span><span class="op">$</span><span class="va">block_id</span>, <span class="va">mean</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_1013-rare-allele-collapsing">10.13. Rare-allele collapsing<a class="anchor" aria-label="anchor" href="#id_1013-rare-allele-collapsing"></a>
+</h3>
+<p><code><a href="reference/collapse_haplotypes.html">collapse_haplotypes()</a></code> merges rare alleles (below <code>min_freq</code>) into biologically meaningful groups rather than dropping them, preventing information loss and stabilising association or prediction models with large numbers of rare alleles. Three strategies:</p>
+<ul>
+<li>
+<code>"rare_to_other"</code> — pool all rare alleles into a single <code>&lt;other&gt;</code> category</li>
+<li>
+<code>"nearest"</code> — merge each rare allele with the most similar common allele by Hamming distance; preserves biological similarity</li>
+<li>
+<code>"tree_based"</code> — UPGMA dendrogram on Hamming distances; merges rare alleles at the coarsest cut that avoids merging any two common alleles</li>
+</ul>
+<p>A <code>label_map</code> attribute records every original → collapsed mapping for downstream use by <code><a href="reference/harmonize_haplotypes.html">harmonize_haplotypes()</a></code>.</p>
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">haps_col</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/collapse_haplotypes.html">collapse_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, min_freq <span class="op">=</span> <span class="fl">0.05</span>, collapse <span class="op">=</span> <span class="st">"nearest"</span><span class="op">)</span></span>
+<span><span class="co"># Then build features on collapsed alleles</span></span>
+<span><span class="va">feat_col</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps_col</span>, min_freq <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_1014-cross-panel-harmonisation">10.14. Cross-panel harmonisation<a class="anchor" aria-label="anchor" href="#id_1014-cross-panel-harmonisation"></a>
+</h3>
+<p><code><a href="reference/harmonize_haplotypes.html">harmonize_haplotypes()</a></code> ensures haplotype allele labels are biologically comparable across training/validation splits, environments, or populations. Anchors allele identity to a <strong>reference dictionary</strong> built from alleles above <code>min_freq_ref</code> in the reference panel, then matches each target allele by:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Exact match</strong> → keep the reference label unchanged</li>
+<li>
+<strong>Nearest-Hamming match</strong> → assign the closest reference allele label</li>
+<li>
+<strong>Novel</strong> → label <code>"&lt;novel&gt;"</code> when distance exceeds <code>max_hamming</code>
+</li>
+</ol>
+<p>A <code>harmonization_report</code> attribute reports <code>n_exact</code>, <code>n_nearest</code>, <code>n_novel</code>, and <code>mean_hamming_dist</code> per block, giving full transparency on transfer quality.</p>
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">haps_ref</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">geno_train</span>, <span class="va">snp_info</span>, <span class="va">blocks</span><span class="op">)</span></span>
+<span><span class="va">haps_ref</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/collapse_haplotypes.html">collapse_haplotypes</a></span><span class="op">(</span><span class="va">haps_ref</span>, min_freq <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span>
+<span><span class="va">haps_val</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">geno_val</span>,  <span class="va">snp_info</span>, <span class="va">blocks</span><span class="op">)</span></span>
+<span><span class="va">haps_harm</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/harmonize_haplotypes.html">harmonize_haplotypes</a></span><span class="op">(</span><span class="va">haps_val</span>, <span class="va">haps_ref</span>, max_hamming <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">haps_harm</span>, <span class="st">"harmonization_report"</span><span class="op">)</span>  <span class="co"># inspect transfer quality per block</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_1015-haplotype-association-testing">10.15. Haplotype association testing<a class="anchor" aria-label="anchor" href="#id_1015-haplotype-association-testing"></a>
+</h3>
+<p><code><a href="reference/test_block_haplotypes.html">test_block_haplotypes()</a></code> tests every LD block for association with one or more quantitative traits using a unified Q+K mixed linear model. The GRM is always used as a random effect; <code>n_pcs</code> additionally includes GRM eigenvectors as fixed-effect covariates to capture discrete population structure.</p>
+<p><strong>When to use <code>n_pcs = 0</code> vs <code>n_pcs &gt; 0</code>:</strong></p>
+<ul>
+<li>
+<code>n_pcs = 0L</code> (default, EMMAX): the GRM random effect absorbs all structure and kinship. Use for populations with diffuse continuous kinship and no sharp subpopulation boundaries — livestock half-sib families, advanced inbred lines, or diverse panels without clear breed clusters.</li>
+<li>
+<code>n_pcs = 3</code> to <code>10</code> (Q+K model, Yu et al. 2006): top-k GRM eigenvectors as fixed effects capture discrete subpopulation membership; the GRM random effect captures residual within-subpopulation kinship. Use when the Q-Q plot shows genomic inflation under <code>n_pcs = 0</code>, which signals strong discrete structure.</li>
+<li>
+<code>n_pcs = NULL</code>: auto-selects via scree plot elbow, capped at 10.</li>
+</ul>
+<p><strong>Scaling:</strong> The GRM is inverted once per trait (O(n³), ~30 s for n = 5,000) via <code><a href="https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html" class="external-link">rrBLUP::mixed.solve()</a></code>. Per-allele tests across all blocks are then vectorised in a single <code><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">crossprod()</a></code> call — the same BLAS trick as marginal SNP screening — making the scan O(n × p) and completing in seconds for 17,000 blocks.</p>
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">haps</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">geno_matrix</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>, min_snps <span class="op">=</span> <span class="fl">5L</span><span class="op">)</span></span>
+<span><span class="va">blues_vec</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">ldx_blues</span><span class="op">$</span><span class="va">YLD</span>, <span class="va">ldx_blues</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># EMMAX (pure GRM, default)</span></span>
+<span><span class="va">assoc</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, blues <span class="op">=</span> <span class="va">blues_vec</span>, blocks <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>                               n_pcs <span class="op">=</span> <span class="fl">0L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Q+K model (3 GRM-derived PCs + GRM)</span></span>
+<span><span class="va">assoc_qk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, blues <span class="op">=</span> <span class="va">blues_vec</span>, blocks <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>                                   n_pcs <span class="op">=</span> <span class="fl">3L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Multi-trait: both traits tested in one call, sharing the same GRM</span></span>
+<span><span class="va">assoc_mt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, blues <span class="op">=</span> <span class="va">ldx_blues</span>, blocks <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>                                   id_col <span class="op">=</span> <span class="st">"id"</span>, blue_cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"YLD"</span>, <span class="st">"RES"</span><span class="op">)</span>,</span>
+<span>                                   n_pcs <span class="op">=</span> <span class="fl">3L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Results</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">assoc</span><span class="op">$</span><span class="va">block_tests</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">assoc</span><span class="op">$</span><span class="va">block_tests</span><span class="op">$</span><span class="va">p_omnibus</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">assoc</span><span class="op">$</span><span class="va">allele_tests</span><span class="op">[</span><span class="va">assoc</span><span class="op">$</span><span class="va">allele_tests</span><span class="op">$</span><span class="va">significant</span>, <span class="op">]</span></span></code></pre></div>
+<p><strong>Output structure:</strong> <code>assoc$allele_tests</code> has one row per allele per block per trait with columns <code>effect</code> (additive effect on de-regressed scale), <code>SE</code>, <code>t_stat</code>, <code>p_wald</code>, <code>p_wald_adj</code> (Bonferroni), and <code>significant</code>. <code>assoc$block_tests</code> has one row per block per trait with <code>F_stat</code>, <code>p_omnibus</code>, <code>p_omnibus_adj</code>, <code>var_explained</code>, and <code>significant_omnibus</code>.</p>
+<p><code><a href="reference/estimate_diplotype_effects.html">estimate_diplotype_effects()</a></code> decomposes phenotypic variation at each block into additive (a) and dominance (d) components from diplotype class means. The dominance ratio d/a classifies gene action: 0 = additive, ±1 = complete dominance, |d/a| &gt; 1 = overdominance (heterosis).</p>
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dip</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/estimate_diplotype_effects.html">estimate_diplotype_effects</a></span><span class="op">(</span><span class="va">haps</span>, blues <span class="op">=</span> <span class="va">blues_vec</span>, blocks <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>                                   min_n_diplotype <span class="op">=</span> <span class="fl">3L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Blocks with overdominance (|d/a| &gt; 1) — candidates for heterosis exploitation</span></span>
+<span><span class="va">dip</span><span class="op">$</span><span class="va">dominance_table</span><span class="op">[</span><span class="va">dip</span><span class="op">$</span><span class="va">dominance_table</span><span class="op">$</span><span class="va">overdominance</span>, <span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Statistically significant diplotype effects after Bonferroni correction</span></span>
+<span><span class="va">dip</span><span class="op">$</span><span class="va">omnibus_tests</span><span class="op">[</span><span class="va">dip</span><span class="op">$</span><span class="va">omnibus_tests</span><span class="op">$</span><span class="va">significant</span>, <span class="op">]</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_1016-breeding-decision-tools">10.16. Breeding decision tools<a class="anchor" aria-label="anchor" href="#id_1016-breeding-decision-tools"></a>
+</h3>
+<p>Once per-allele effects are known (from genomic prediction or association), two functions translate those effects into actionable breeding decisions.</p>
+<p><code><a href="reference/score_favorable_haplotypes.html">score_favorable_haplotypes()</a></code> produces a genome-wide stacking index for each individual. The block score = sum(allele_effect × dosage) across alleles at each block; the stacking index is the sum across all scored blocks, normalised to [0, 1] when <code>normalize = TRUE</code>.</p>
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Get allele effects from prediction pipeline</span></span>
+<span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction</a></span><span class="op">(</span><span class="va">geno_matrix</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                  blues <span class="op">=</span> <span class="va">blues_vec</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">ae</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/decompose_block_effects.html">decompose_block_effects</a></span><span class="op">(</span><span class="va">haps</span>, <span class="va">snp_info</span>, <span class="va">blocks</span>,</span>
+<span>                                 snp_effects <span class="op">=</span> <span class="va">pred</span><span class="op">$</span><span class="va">snp_effects</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Score every individual</span></span>
+<span><span class="va">scores</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/score_favorable_haplotypes.html">score_favorable_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, allele_effects <span class="op">=</span> <span class="va">ae</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">scores</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>,<span class="st">"stacking_index"</span>,<span class="st">"n_blocks_scored"</span>,<span class="st">"rank"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Per-block breakdown for the top candidate</span></span>
+<span><span class="va">top1_block_scores</span> <span class="op">&lt;-</span> <span class="va">scores</span><span class="op">[</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"^score_"</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">scores</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">top1_block_scores</span><span class="op">)</span>, decreasing <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span></code></pre></div>
+<p><code><a href="reference/summarize_parent_haplotypes.html">summarize_parent_haplotypes()</a></code> produces a tidy long-format allele inventory for a set of candidate parents — which alleles they carry at each block, in what dosage, and with what population frequency. Includes <code>is_rare = TRUE</code> for alleles with frequency &lt; 10%, highlighting parents that carry rare alleles absent from the general population.</p>
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Inventory for the top 10 selection candidates</span></span>
+<span><span class="va">top10</span> <span class="op">&lt;-</span> <span class="va">scores</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="va">scores</span><span class="op">$</span><span class="va">rank</span> <span class="op">&lt;=</span> <span class="fl">10</span><span class="op">]</span></span>
+<span><span class="va">inv</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/summarize_parent_haplotypes.html">summarize_parent_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, candidate_ids <span class="op">=</span> <span class="va">top10</span>,</span>
+<span>                                      allele_effects <span class="op">=</span> <span class="va">ae</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Blocks where candidates carry rare alleles (potential for introgression)</span></span>
+<span><span class="va">inv</span><span class="op">[</span><span class="va">inv</span><span class="op">$</span><span class="va">dosage</span> <span class="op">&gt;</span> <span class="fl">0</span> <span class="op">&amp;</span> <span class="va">inv</span><span class="op">$</span><span class="va">is_rare</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>,<span class="st">"block_id"</span>,<span class="st">"CHR"</span>,<span class="st">"start_bp"</span>,<span class="st">"allele"</span>,<span class="st">"dosage"</span>,<span class="st">"allele_freq"</span>,<span class="st">"allele_effect"</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Identify blocks where candidates are complementary (different alleles)</span></span>
+<span><span class="co"># — candidates for targeted crosses to stack both alleles</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="va">inv</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">dosage</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">block_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>n_unique_alleles <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/n_distinct.html" class="external-link">n_distinct</a></span><span class="op">(</span><span class="va">allele</span><span class="op">)</span>,</span>
+<span>            candidates       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">id</span>, collapse<span class="op">=</span><span class="st">","</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">n_unique_alleles</span> <span class="op">&gt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="va">n_unique_alleles</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="id_11-parameter-auto-tuning">11. Parameter auto-tuning<a class="anchor" aria-label="anchor" href="#id_11-parameter-auto-tuning"></a>
@@ -1507,7 +1791,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <strong>Deviation from target median block size</strong> — biological plausibility via <code>target_bp_band</code> (default 50 kb – 500 kb).</li>
 </ol>
 <p>When <code>prefer_perfect = TRUE</code> (default), combinations achieving zero unassigned and zero forced assignments are isolated first and the winner is selected from that subset by criteria 3 and 4.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span></span>
 <span>  geno_matrix    <span class="op">=</span> <span class="va">my_geno</span>,</span>
 <span>  snp_info       <span class="op">=</span> <span class="va">my_snp_info</span>,</span>
@@ -1526,7 +1810,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <span><span class="va">result</span><span class="op">$</span><span class="va">gwas_assigned</span>     <span class="co"># gwas_df with LD_block column added</span></span></code></pre></div>
 <p>The default grid searches <code>CLQcut</code> ∈ {0.65, 0.70, 0.75, 0.80} with all other parameters held at their defaults. A custom grid can be supplied as a <code>data.frame</code> where each row is one parameter combination.</p>
 <p>For parallel execution across grid combinations:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">4L</span><span class="op">)</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tune_LD_params.html">tune_LD_params</a></span><span class="op">(</span><span class="va">my_geno</span>, <span class="va">my_snp_info</span>, <span class="va">my_gwas</span>, parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
@@ -1540,7 +1824,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <h3 id="id_121-the-ldxblocks_backend-interface">12.1. The LDxBlocks_backend interface<a class="anchor" aria-label="anchor" href="#id_121-the-ldxblocks_backend-interface"></a>
 </h3>
 <p>All functions that require genotype data operate through the <code>LDxBlocks_backend</code> S3 object rather than directly on a matrix. This single abstraction makes all six input formats interchangeable with zero code change in the algorithm:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">be</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_geno.html">read_geno</a></span><span class="op">(</span><span class="st">"mydata.bed"</span><span class="op">)</span>      <span class="co"># opens PLINK BED, reads .bim/.fam</span></span>
 <span><span class="va">chunk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_chunk.html">read_chunk</a></span><span class="op">(</span><span class="va">be</span>, <span class="va">col_idx</span><span class="op">)</span>      <span class="co"># returns n_samples x length(col_idx) matrix</span></span>
 <span><span class="fu"><a href="reference/close_backend.html">close_backend</a></span><span class="op">(</span><span class="va">be</span><span class="op">)</span>                     <span class="co"># releases memory-mapped file handle</span></span></code></pre></div>
@@ -1799,7 +2083,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 </tbody>
 </table>
 <p><strong>Detailed example with all parameters:</strong></p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="co"># ── Genotype input ──────────────────────────────────────────────────────────</span></span>
 <span>  geno_matrix  <span class="op">=</span> <span class="va">be</span>,                  <span class="co"># LDxBlocks_backend or plain matrix</span></span>
@@ -2051,21 +2335,94 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 </tr>
 <tr>
 <td><code><a href="reference/prepare_gblup_inputs.html">prepare_gblup_inputs()</a></code></td>
-<td>Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, BGLR, ASReml-R). See <a href="#phenotype-input-format">Phenotype input format</a> for accepted column layouts.</td>
+<td>Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, BGLR, ASReml-R).</td>
 </tr>
 <tr>
 <td><code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code></td>
 <td>Single or multi-trait Tong et al. (2025) haplotype stacking pipeline.</td>
 </tr>
+<tr>
+<td><code><a href="reference/integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code></td>
+<td>Combine GWAS, variance, and diversity evidence per block.</td>
+</tr>
+<tr>
+<td><code><a href="reference/rank_haplotype_blocks.html">rank_haplotype_blocks()</a></code></td>
+<td>Unified block ranking across 3 use cases (diversity/GWAS/phenotype).</td>
+</tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb25"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="st">`</span><span class="at">blues</span><span class="st">`</span> accepts any of four <span class="fu">formats</span> (named vector, single<span class="sc">-</span>trait or multi<span class="sc">-</span>trait data frame, named list).</span>
-<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a>See [Phenotype input format](<span class="co">#phenotype-input-format). Uses rrBLUP::kin.blup() per trait with a shared GRM. |</span></span></code></pre></div>
-<div class="line-block">
-<code><a href="reference/integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code> | Combine GWAS, variance, and diversity evidence per block. |<br><code><a href="reference/rank_haplotype_blocks.html">rank_haplotype_blocks()</a></code> | Unified block ranking across 3 use cases (diversity/GWAS/phenotype). |</div>
 </div>
 <div class="section level3">
-<h3 id="id_146-utilities">14.6. Utilities<a class="anchor" aria-label="anchor" href="#id_146-utilities"></a>
+<h3 id="id_146-analysis-extensions">14.6. Analysis extensions<a class="anchor" aria-label="anchor" href="#id_146-analysis-extensions"></a>
+</h3>
+<p>Seven functions that extend the pipeline without modifying any existing function.</p>
+<p><strong><code>cv_haplotype_prediction(geno_matrix, snp_info, blocks, blues, k, n_rep, ...)</code></strong> K-fold cross-validation for the haplotype GBLUP model. Masks phenotype values fold-by-fold, predicts via <code><a href="https://rdrr.io/pkg/rrBLUP/man/kin.blup.html" class="external-link">rrBLUP::kin.blup()</a></code> using the shared haplotype GRM, and returns predictive ability (PA, Pearson r) and RMSE per trait per fold. Key parameters: <code>k</code> (folds, default 5), <code>n_rep</code> (replications, default 1), <code>seed</code> (default 42). Accepts the same four <code>blues</code> formats as <code><a href="reference/run_haplotype_prediction.html">run_haplotype_prediction()</a></code>. Returns a <code>LDxBlocks_cv</code> object with elements <code>pa_summary</code> (one row per trait × rep × fold), <code>pa_mean</code> (mean PA ± SD per trait), <code>k</code>, and <code>n_rep</code>.</p>
+<p><strong><code>compare_haplotype_populations(haplotypes, group1, group2, ...)</code></strong> Per-block allele frequency comparison between two named sample groups. Computes Weir-Cockerham (1984) FST, maximum absolute frequency difference across alleles, dominant allele per group, and a chi-squared test of independence (Monte Carlo, B = 2000). Returns one row per block with columns <code>FST</code> (clamped to [0, 1]), <code>max_freq_diff</code>, <code>dominant_g1</code>, <code>dominant_g2</code>, <code>chisq_p</code>, and <code>divergent</code> (TRUE when FST &gt; 0.1 AND p &lt; 0.05). Rare alleles below <code>min_freq</code> (default 0.02) in both groups are pooled into an <code>&lt;other&gt;</code> category before testing.</p>
+<p><strong><code>plot_haplotype_network(haplotypes, block_id, groups, min_freq, ...)</code></strong> Draws a minimum-spanning network (MSN) of haplotype alleles for one LD block. Edge weights are Hamming distances (number of differing SNP positions between allele strings). Node size is proportional to allele frequency. When <code>groups</code> is supplied (named character vector mapping individual IDs to group labels), nodes are coloured by the most common group among carriers of each allele. Edge labels show the Hamming distance when &gt; 1. Returns the <code>igraph</code> MST object invisibly; the plot is produced as a side effect.</p>
+<p><strong><code>run_haplotype_stability(geno_matrix, snp_info, blocks, blues_list, ...)</code></strong> Finlay-Wilkinson (1963) regression of per-block local GEBV contributions against the environmental index. For each block, the mean GEBV contribution across individuals is computed per environment, then regressed on the environment mean (the environmental index). Returns: <code>b</code> (regression slope — the stability coefficient; b = 1 = average stability, b &gt; 1 = exploits good environments, b &lt; 1 = robust across environments), <code>b_se</code>, <code>r2_fw</code>, <code>s2d</code> (deviation mean square), <code>p_b1</code> (p-value for H0: b = 1), and <code>stable</code> (TRUE when H0 not rejected at alpha = 0.05). Requires at least 2 environments. <code>blues_list</code> is a named list of named numeric vectors (one element per environment).</p>
+<p><strong><code>export_candidate_regions(qtl_regions, format, out_file, chr_prefix, ...)</code></strong> Converts <code><a href="reference/define_qtl_regions.html">define_qtl_regions()</a></code> output to annotation-ready formats. Three formats: <code>"bed"</code> (0-based coordinates, UCSC/BEDtools-compatible; columns chrom, start, end, name, score, strand), <code>"csv"</code> (the input data frame as-is), <code>"biomart"</code> (named list with <code>chromosome_name</code>, <code>start</code>, <code>end</code> vectors for direct use with <code>biomaRt::getBM(filters = c("chromosome_name","start","end"), ...)</code>). When <code>use_lead_snp = TRUE</code> (default) and LD decay was supplied to <code><a href="reference/define_qtl_regions.html">define_qtl_regions()</a></code>, LD-extended candidate region coordinates are used instead of block boundaries. <code>padding_bp</code> adds extra base pairs on each side.</p>
+<p><strong><code>decompose_block_effects(haplotypes, snp_info, blocks, snp_effects, ...)</code></strong> Aggregates per-SNP additive effects (from <code><a href="reference/backsolve_snp_effects.html">backsolve_snp_effects()</a></code>) into a per-haplotype-allele effect table: for each allele of each block, the effect equals the sum of SNP effects weighted by allele dosage at each SNP position (effect = sum(SNP_effect × allele_dosage_at_position)). Returns one row per allele per block with columns <code>allele</code>, <code>frequency</code>, <code>allele_effect</code>, <code>effect_rank</code> (1 = most positive within block), and <code>n_snps_block</code>. Directly bridges prediction model output to selection index construction and interpretable breeding decisions.</p>
+<p><strong><code>scan_diversity_windows(geno_matrix, snp_info, window_bp, step_bp, ...)</code></strong> Sliding-window diversity scan across the genome, independent of LD block boundaries. For each window, diploid allele strings are built per individual, and diversity metrics are computed from their frequency distribution: He (Nei 1973, sample-size corrected), Shannon entropy, n_eff_alleles, and freq_dominant. <code>sweep_flag</code> is set when freq_dominant &gt;= 0.90. Returns a data frame with one row per window per chromosome, sorted by CHR and win_start. Key parameters: <code>window_bp</code> (default 1 Mb), <code>step_bp</code> (default 500 kb, giving 50% overlap), <code>min_snps_win</code> (minimum SNPs per window, default 5).</p>
+</div>
+<div class="section level3">
+<h3 id="id_147-true-haplotype-inference-and-harmonisation">14.7. True haplotype inference and harmonisation<a class="anchor" aria-label="anchor" href="#id_147-true-haplotype-inference-and-harmonisation"></a>
+</h3>
+<p><strong><code>infer_block_haplotypes(haplotypes, resolve_unphased, missing_string)</code></strong> Converts raw haplotype strings from <code><a href="reference/extract_haplotypes.html">extract_haplotypes()</a></code> into a structured per-individual, per-block diplotype table. For <strong>phased input</strong> (strings containing <code>|</code> separators, produced when <code><a href="reference/extract_haplotypes.html">extract_haplotypes()</a></code> receives a phased list from <code><a href="reference/read_phased_vcf.html">read_phased_vcf()</a></code> or <code><a href="reference/phase_with_pedigree.html">phase_with_pedigree()</a></code>), hap1 and hap2 are the true gametic strings and <code>phase_ambiguous</code> is always FALSE. For <strong>unphased input</strong> (plain diploid dosage strings like <code>"012201"</code>), homozygous individuals have hap1 = hap2 (each gamete gets half the dosage: 2 → 1, 0 → 0), while heterozygous individuals (any position with dosage 1) have <code>phase_ambiguous = TRUE</code> and hap1/hap2 set to NA unless <code>resolve_unphased = TRUE</code>. The <code>diplotype</code> column contains the canonical form: both gamete strings sorted alphabetically and joined with <code>/</code> (e.g. <code>"010/110"</code>), making diplotypes comparable across individuals regardless of which gamete was labelled hap1. Returns a data frame with one row per individual × block.</p>
+<p><strong><code>collapse_haplotypes(haplotypes, min_freq, collapse, keep_labels)</code></strong> Merges rare alleles (frequency &lt;= <code>min_freq</code>) into existing common alleles rather than dropping them. Three strategies: <code>"nearest"</code> (default) — each rare allele is merged with the most similar common allele by Hamming distance, preserving biological relatedness; <code>"rare_to_other"</code> — all rare alleles are pooled into a single <code>&lt;other&gt;</code> category, lossless for total frequency but biologically uninformative; <code>"tree_based"</code> — UPGMA dendrogram of all alleles is built from pairwise Hamming distances, then cut at the coarsest level that avoids merging any two common alleles, assigning each rare allele to the most frequent common allele in its cluster. When <code>keep_labels = TRUE</code> (default), a <code>label_map</code> attribute is attached to the output recording every original → collapsed mapping per block; this map is used internally by <code><a href="reference/harmonize_haplotypes.html">harmonize_haplotypes()</a></code>. Returns a list with the same structure as the input, with the <code>block_info</code> attribute preserved.</p>
+<p><strong><code>harmonize_haplotypes(haplotypes_target, haplotypes_ref, min_freq_ref, max_hamming)</code></strong> Makes haplotype allele labels transferable across panels, analysis runs, or training/validation splits. Builds a reference dictionary from alleles above <code>min_freq_ref</code> in the reference panel, then matches each allele in the target panel against it: exact string match → same label; nearest Hamming neighbour within <code>max_hamming</code> → reference allele label (with match quality recorded); distance &gt; <code>max_hamming</code> → <code>"&lt;novel&gt;"</code>. The <code>harmonization_report</code> attribute of the output is a data frame with one row per block reporting <code>n_exact</code>, <code>n_nearest</code>, <code>n_novel</code>, and <code>mean_hamming_dist</code>, giving a quantitative measure of how well the reference panel covers the target panel’s diversity. Blocks not present in the reference panel pass through unchanged. This function is the correct way to prepare a validation or new-season panel for genomic prediction when the prediction model was trained on a different (or overlapping) set of individuals — without harmonisation, allele strings are run-specific and have no guaranteed cross-run identity.</p>
+</div>
+<div class="section level3">
+<h3 id="id_148-haplotype-association-testing">14.8. Haplotype association testing<a class="anchor" aria-label="anchor" href="#id_148-haplotype-association-testing"></a>
+</h3>
+<p><strong><code>test_block_haplotypes(haplotypes, blues, blocks, n_pcs, top_n, min_freq, id_col, blue_col, blue_cols, alpha, verbose)</code></strong></p>
+<p>Block-level haplotype association tests using a unified mixed linear model (Q+K / EMMAX formulation) that accounts simultaneously for population structure and kinship.</p>
+<p><em>Statistical model</em> — y = μ + α·x_hap + Σβ_k·PC_k + g + ε, where x_hap is the tested haplotype allele dosage, PC_k are fixed-effect GRM eigenvectors (population structure), and g ~ MVN(0, σ²G) is the polygenic random effect (kinship). The GRM is inverted once per trait via <code><a href="https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html" class="external-link">rrBLUP::mixed.solve()</a></code> (O(n³), dominant cost). The per-allele scan is then fully vectorised across all blocks in a single <code><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">crossprod()</a></code> call — O(n × p) regardless of block count.</p>
+<p><em>Key parameters:</em></p>
+<p><code>n_pcs</code> controls the model: <code>0L</code> (default) = pure GRM correction (EMMAX/P3D — GRM handles all structure and kinship as a random effect); <code>k &gt; 0</code> = Q+K model (top k GRM eigenvectors as fixed effects + GRM random effect, analogous to GAPIT3/TASSEL); <code>NULL</code> = auto-select via scree plot elbow, capped at 10. PCs are derived from <code>eigen(G_hap)</code> — the same GRM that enters as the random effect — guaranteeing mathematical consistency between fixed and random structure terms. Use <code>n_pcs = 0</code> for populations with diffuse continuous kinship (livestock, inbred lines); use <code>n_pcs = 3–5</code> when strong discrete subpopulation clusters are present (diverse panels, multi-breed datasets).</p>
+<p><code>blues</code> accepts four formats: (1) named numeric vector <code>c(id1=val, ...)</code>, (2) single-trait data frame with <code>id_col</code> and <code>blue_col</code> columns, (3) multi-trait wide data frame with <code>id_col</code> and <code>blue_cols</code> columns, (4) named list of named numeric vectors. All traits share the same GRM and PC covariates.</p>
+<p><code>alpha = NULL</code> applies Bonferroni correction: 0.05 / total allele tests across all blocks and traits.</p>
+<p><em>Returns</em> — <code>LDxBlocks_haplotype_assoc</code> object (named list): - <code>$allele_tests</code> — data frame, one row per allele per block per trait. Columns: <code>block_id</code> (character, e.g. <code>"block_1_1000_103000"</code>), <code>CHR</code>, <code>start_bp</code> (integer), <code>end_bp</code> (integer), <code>trait</code> (character), <code>allele</code> (haplotype allele string identifier), <code>frequency</code> (allele frequency in the panel, numeric [0, 1]), <code>effect</code> (additive effect estimate — mean phenotype difference per unit dosage on the de-regressed scale), <code>SE</code> (standard error of effect), <code>t_stat</code> (t-statistic), <code>p_wald</code> (two-sided Wald p-value, raw), <code>p_wald_adj</code> (Bonferroni-adjusted), <code>significant</code> (logical, TRUE when p_wald ≤ alpha). Sorted ascending by CHR, start_bp, p_wald within each trait. - <code>$block_tests</code> — data frame, one row per block per trait. Columns: <code>block_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>, <code>trait</code>, <code>n_alleles_tested</code> (integer — number of alleles above min_freq in this block), <code>F_stat</code> (omnibus F-statistic testing all alleles jointly), <code>df_LRT</code> (numerator degrees of freedom = n_alleles_tested), <code>p_omnibus</code> (omnibus p-value from F-distribution), <code>p_omnibus_adj</code> (Bonferroni-adjusted across all blocks per trait), <code>var_explained</code> (proportion of de-regressed phenotypic variance explained by block alleles, numeric [0, 1]), <code>significant_omnibus</code> (logical). Sorted ascending by CHR, start_bp, p_omnibus. - <code>$traits</code> — character vector of trait names tested. - <code>$n_pcs_used</code> — integer, number of GRM PCs included as fixed effects. - <code>$alpha</code> — numeric, significance threshold used. - <code>$n_tests</code> — integer, total allele-level tests (denominator for Bonferroni).</p>
+<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">assoc</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, blues <span class="op">=</span> <span class="va">my_blues</span>, blocks <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>                                n_pcs <span class="op">=</span> <span class="fl">3L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="co"># Top blocks by omnibus significance</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">assoc</span><span class="op">$</span><span class="va">block_tests</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">assoc</span><span class="op">$</span><span class="va">block_tests</span><span class="op">$</span><span class="va">p_omnibus</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span>
+<span><span class="co"># Significant per-allele associations</span></span>
+<span><span class="va">assoc</span><span class="op">$</span><span class="va">allele_tests</span><span class="op">[</span><span class="va">assoc</span><span class="op">$</span><span class="va">allele_tests</span><span class="op">$</span><span class="va">significant</span>, <span class="op">]</span></span></code></pre></div>
+<hr>
+<p><strong><code>estimate_diplotype_effects(haplotypes, blues, blocks, min_freq, min_n_diplotype, id_col, blue_col, blue_cols, verbose)</code></strong></p>
+<p>Estimates additive and dominance effects per LD block from diplotype (AA/AB/BB) phenotypic means after GRM-based kinship correction. For each pair of common alleles A and B at each block: additive effect a = (mean(BB) − mean(AA)) / 2; dominance deviation d = mean(AB) − (mean(AA) + mean(BB)) / 2; dominance ratio d/a (0 = additive, ±1 = complete dominance, |d/a| &gt; 1 = overdominance/heterosis).</p>
+<p><code>min_n_diplotype</code> (default 3) sets the minimum number of individuals that must carry each diplotype for it to be included in comparisons — lower values allow rarer diplotypes but increase estimation uncertainty.</p>
+<p><em>Returns</em> — <code>LDxBlocks_diplotype</code> object (named list): - <code>$diplotype_means</code> — data frame, one row per diplotype per block per trait. Columns: <code>block_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>, <code>trait</code>, <code>diplotype</code> (canonical sorted string, e.g. <code>"010/110"</code> — always lexicographically ordered so allele comparisons are consistent), <code>n</code> (number of individuals with this diplotype after GRM correction), <code>mean_blue</code> (mean de-regressed phenotype value for this diplotype class), <code>se_mean</code> (standard error of the mean). - <code>$dominance_table</code> — data frame, one row per allele pair per block per trait. Columns: <code>block_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>, <code>trait</code>, <code>allele_A</code>, <code>allele_B</code> (the two alleles being compared), <code>mean_AA</code> (mean de-regressed phenotype for AA homozygotes), <code>mean_AB</code> (mean for AB heterozygotes), <code>mean_BB</code> (mean for BB homozygotes), <code>a</code> (additive effect = (mean_BB − mean_AA) / 2), <code>d</code> (dominance deviation = mean_AB − midpoint), <code>d_over_a</code> (dominance ratio; NA when |a| &lt; 1e-10), <code>overdominance</code> (logical, TRUE when |d/a| &gt; 1). - <code>$omnibus_tests</code> — data frame, one row per block per trait. Columns: <code>block_id</code>, <code>trait</code>, <code>n_diplotypes</code> (number of diplotype classes with ≥ min_n_diplotype individuals), <code>F_stat</code>, <code>df1</code> (numerator df = n_diplotypes − 1), <code>df2</code> (denominator df), <code>p_omnibus</code> (raw), <code>p_omnibus_adj</code> (Bonferroni), <code>significant</code> (logical, adj p &lt; 0.05). Sorted ascending by p_omnibus.</p>
+</div>
+<div class="section level3">
+<h3 id="id_149-breeding-decision-tools">14.9. Breeding decision tools<a class="anchor" aria-label="anchor" href="#id_149-breeding-decision-tools"></a>
+</h3>
+<p><strong><code>score_favorable_haplotypes(haplotypes, allele_effects, min_freq, missing_string, normalize)</code></strong></p>
+<p>Scores each individual’s genome-wide haplotype portfolio against a table of known per-allele effects, producing a stacking index for selection decisions. For each block, the score = sum(allele_effect × dosage) across alleles carried. The genome-wide stacking index is the sum across all scored blocks, normalised to [0, 1] when <code>normalize = TRUE</code>.</p>
+<p><code>allele_effects</code> must be a data frame with at minimum columns <code>block_id</code> (character, matching <code>names(haplotypes)</code>), <code>allele</code> (character, matching the haplotype allele strings), and <code>allele_effect</code> (numeric). The output of <code><a href="reference/decompose_block_effects.html">decompose_block_effects()</a></code> or <code>test_block_haplotypes()$allele_tests</code> (after filtering to one trait) are both accepted directly.</p>
+<p><em>Returns</em> — data frame, one row per individual, sorted ascending by <code>rank</code>: - <code>id</code> (character) — individual identifier, matching <code>rownames(geno_matrix)</code>. - <code>stacking_index</code> (numeric [0, 1] when normalize = TRUE, or raw sum otherwise) — genome-wide sum of block-level haplotype scores. Higher values indicate individuals carrying more favourable allele combinations. - <code>n_blocks_scored</code> (integer) — number of blocks for which at least one allele effect was available in <code>allele_effects</code>. - <code>mean_block_score</code> (numeric) — mean per-block score (raw, unnormalised), useful for comparing across panels with different numbers of scored blocks. - <code>rank</code> (integer, 1 = highest stacking index) — rank by stacking_index with ties broken by <code>min</code> method. - One numeric column per scored block named <code>score_&lt;block_id&gt;</code> — per-block score for detailed inspection of which genomic regions drive an individual’s index. Zero when the individual carries no scored alleles at that block.</p>
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">scores</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/score_favorable_haplotypes.html">score_favorable_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, allele_effects <span class="op">=</span> <span class="va">ae</span><span class="op">)</span></span>
+<span><span class="co"># Top 10 candidates for selection</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">scores</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">scores</span><span class="op">$</span><span class="va">rank</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>,<span class="st">"stacking_index"</span>,<span class="st">"rank"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="co"># Which blocks drive the top candidate's index?</span></span>
+<span><span class="va">top1</span> <span class="op">&lt;-</span> <span class="va">scores</span><span class="op">[</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"^score_"</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">scores</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">top1</span><span class="op">)</span>, decreasing <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span></code></pre></div>
+<hr>
+<p><strong><code>summarize_parent_haplotypes(haplotypes, candidate_ids, allele_effects, blocks, min_freq, missing_string)</code></strong></p>
+<p>Produces a complete allele inventory for each candidate parent individual — which haplotype alleles they carry at each LD block, their dosage (0/1/2 copies for phased data, 0/1 for unphased), population frequency, and optionally the effect of each allele. This is the primary tool for identifying which parents carry complementary rare alleles at important blocks and which parents are redundant.</p>
+<p><code>candidate_ids</code> filters to a subset of individuals (e.g. top candidates from <code><a href="reference/score_favorable_haplotypes.html">score_favorable_haplotypes()</a></code>). <code>NULL</code> includes all individuals.</p>
+<p><em>Returns</em> — data frame, one row per individual × block × allele combination (including alleles with dosage = 0 so that all parents can be compared on the same rows), sorted by <code>id</code>, <code>CHR</code>, <code>start_bp</code>, then descending <code>dosage</code>: - <code>id</code> (character) — individual identifier. - <code>block_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code> — block coordinates. - <code>allele</code> (character) — haplotype allele string (e.g. <code>"010110"</code>). - <code>dosage</code> (integer) — 0 = absent, 1 = present (unphased) or heterozygous (phased), 2 = homozygous (phased only). Phased input (strings with <code>|</code>) counts copies across both gametes; unphased input gives 0 or 1 only. - <code>allele_freq</code> (numeric [0, 1]) — frequency of this allele in the full panel (all individuals, not just candidates). - <code>allele_effect</code> (numeric or NA) — effect value from <code>allele_effects</code> when supplied, NA otherwise. - <code>is_rare</code> (logical) — TRUE when allele_freq &lt; 0.10. Useful for identifying parents carrying favourable rare alleles absent from the general population.</p>
+<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">top5</span> <span class="op">&lt;-</span> <span class="va">scores</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span>
+<span><span class="va">inv</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/summarize_parent_haplotypes.html">summarize_parent_haplotypes</a></span><span class="op">(</span><span class="va">haps</span>, candidate_ids <span class="op">=</span> <span class="va">top5</span>,</span>
+<span>                                      allele_effects <span class="op">=</span> <span class="va">ae</span><span class="op">)</span></span>
+<span><span class="co"># Blocks where at least one candidate carries a rare allele</span></span>
+<span><span class="va">inv</span><span class="op">[</span><span class="va">inv</span><span class="op">$</span><span class="va">dosage</span> <span class="op">&gt;</span> <span class="fl">0</span> <span class="op">&amp;</span> <span class="va">inv</span><span class="op">$</span><span class="va">is_rare</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>,<span class="st">"block_id"</span>,<span class="st">"allele"</span>,<span class="st">"dosage"</span>,<span class="st">"allele_effect"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="id_1410-utilities">14.10. Utilities<a class="anchor" aria-label="anchor" href="#id_1410-utilities"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -2087,8 +2444,6 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 </tr>
 </tbody>
 </table>
-<hr>
-<hr>
 </div>
 </div>
 <div class="section level2">
@@ -2332,6 +2687,402 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 </tbody>
 </table>
 <hr>
+</div>
+<div class="section level3">
+<h3 id="id_156-test_block_haplotypes--ldxblocks_haplotype_assoc">15.6. <code>test_block_haplotypes()</code> — LDxBlocks_haplotype_assoc<a class="anchor" aria-label="anchor" href="#id_156-test_block_haplotypes--ldxblocks_haplotype_assoc"></a>
+</h3>
+<p>Named list with class <code>c("LDxBlocks_haplotype_assoc", "list")</code>.</p>
+<p><strong><code>$allele_tests</code></strong> — data frame, one row per allele per block per trait, sorted by CHR, start_bp, p_wald:</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>block_id</code></td>
+<td>character</td>
+<td>Block identifier matching <code>names(haplotypes)</code>
+</td>
+</tr>
+<tr>
+<td><code>CHR</code></td>
+<td>character</td>
+<td>Chromosome label</td>
+</tr>
+<tr>
+<td><code>start_bp</code></td>
+<td>integer</td>
+<td>Block start coordinate (bp)</td>
+</tr>
+<tr>
+<td><code>end_bp</code></td>
+<td>integer</td>
+<td>Block end coordinate (bp)</td>
+</tr>
+<tr>
+<td><code>trait</code></td>
+<td>character</td>
+<td>Trait name</td>
+</tr>
+<tr>
+<td><code>allele</code></td>
+<td>character</td>
+<td>Haplotype allele string identifier</td>
+</tr>
+<tr>
+<td><code>frequency</code></td>
+<td>numeric [0,1]</td>
+<td>Allele frequency in the panel</td>
+</tr>
+<tr>
+<td><code>effect</code></td>
+<td>numeric</td>
+<td>Additive effect estimate on de-regressed phenotype scale</td>
+</tr>
+<tr>
+<td><code>SE</code></td>
+<td>numeric</td>
+<td>Standard error of the effect</td>
+</tr>
+<tr>
+<td><code>t_stat</code></td>
+<td>numeric</td>
+<td>t-statistic (effect / SE)</td>
+</tr>
+<tr>
+<td><code>p_wald</code></td>
+<td>numeric (0,1]</td>
+<td>Two-sided Wald p-value (raw, uncorrected)</td>
+</tr>
+<tr>
+<td><code>p_wald_adj</code></td>
+<td>numeric (0,1]</td>
+<td>Bonferroni-adjusted: min(p_wald × n_tests, 1)</td>
+</tr>
+<tr>
+<td><code>significant</code></td>
+<td>logical</td>
+<td>TRUE when p_wald ≤ alpha</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>$block_tests</code></strong> — data frame, one row per block per trait, sorted by CHR, start_bp, p_omnibus:</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code>block_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>, <code>trait</code>
+</td>
+<td>—</td>
+<td>Identifiers</td>
+</tr>
+<tr>
+<td><code>n_alleles_tested</code></td>
+<td>integer</td>
+<td>Alleles above min_freq tested jointly</td>
+</tr>
+<tr>
+<td><code>F_stat</code></td>
+<td>numeric</td>
+<td>Omnibus F-statistic (all alleles jointly)</td>
+</tr>
+<tr>
+<td><code>df_LRT</code></td>
+<td>integer</td>
+<td>Numerator df = n_alleles_tested</td>
+</tr>
+<tr>
+<td><code>p_omnibus</code></td>
+<td>numeric (0,1]</td>
+<td>Raw omnibus p-value</td>
+</tr>
+<tr>
+<td><code>p_omnibus_adj</code></td>
+<td>numeric (0,1]</td>
+<td>Bonferroni-adjusted across all blocks per trait</td>
+</tr>
+<tr>
+<td><code>var_explained</code></td>
+<td>numeric [0,1]</td>
+<td>Proportion of de-regressed variance explained by block alleles</td>
+</tr>
+<tr>
+<td><code>significant_omnibus</code></td>
+<td>logical</td>
+<td>TRUE when p_omnibus_adj &lt; 0.05</td>
+</tr>
+</tbody>
+</table>
+<p>Additional scalar elements: <code>$traits</code>, <code>$n_pcs_used</code>, <code>$alpha</code>, <code>$n_tests</code>.</p>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_157-estimate_diplotype_effects--ldxblocks_diplotype">15.7. <code>estimate_diplotype_effects()</code> — LDxBlocks_diplotype<a class="anchor" aria-label="anchor" href="#id_157-estimate_diplotype_effects--ldxblocks_diplotype"></a>
+</h3>
+<p>Named list with class <code>c("LDxBlocks_diplotype", "list")</code>.</p>
+<p><strong><code>$diplotype_means</code></strong> — data frame, one row per diplotype class per block per trait (for classes with &gt;= min_n_diplotype individuals):</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code>block_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>, <code>trait</code>
+</td>
+<td>—</td>
+<td>Block and trait identifiers</td>
+</tr>
+<tr>
+<td><code>diplotype</code></td>
+<td>character</td>
+<td>Canonical sorted string, e.g. <code>"010/110"</code>. Always A &lt;= B alphabetically.</td>
+</tr>
+<tr>
+<td><code>n</code></td>
+<td>integer</td>
+<td>Number of individuals in this class</td>
+</tr>
+<tr>
+<td><code>mean_blue</code></td>
+<td>numeric</td>
+<td>Mean de-regressed phenotype value</td>
+</tr>
+<tr>
+<td><code>se_mean</code></td>
+<td>numeric</td>
+<td>Standard error of the mean</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>$dominance_table</code></strong> — data frame, one row per allele pair per block per trait:</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code>allele_A</code>, <code>allele_B</code>
+</td>
+<td>character</td>
+<td>The two alleles (A &lt;= B alphabetically)</td>
+</tr>
+<tr>
+<td>
+<code>mean_AA</code>, <code>mean_AB</code>, <code>mean_BB</code>
+</td>
+<td>numeric</td>
+<td>Diplotype class means on de-regressed scale</td>
+</tr>
+<tr>
+<td><code>a</code></td>
+<td>numeric</td>
+<td>Additive effect: (mean_BB - mean_AA) / 2</td>
+</tr>
+<tr>
+<td><code>d</code></td>
+<td>numeric</td>
+<td>Dominance deviation: mean_AB - (mean_AA + mean_BB) / 2</td>
+</tr>
+<tr>
+<td><code>d_over_a</code></td>
+<td>numeric or NA</td>
+<td>Dominance ratio. Interpretation: 0 = additive; +/-1 = complete dominance; absolute value &gt; 1 = overdominance. NA when absolute value of a &lt; 1e-10.</td>
+</tr>
+<tr>
+<td><code>overdominance</code></td>
+<td>logical</td>
+<td>TRUE when absolute value of d/a &gt; 1</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>$omnibus_tests</code></strong> — data frame, one row per block per trait, sorted by p_omnibus:</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>n_diplotypes</code></td>
+<td>integer</td>
+<td>Diplotype classes with &gt;= min_n_diplotype individuals</td>
+</tr>
+<tr>
+<td><code>F_stat</code></td>
+<td>numeric</td>
+<td>F-statistic from one-way ANOVA</td>
+</tr>
+<tr>
+<td>
+<code>df1</code>, <code>df2</code>
+</td>
+<td>integer</td>
+<td>Numerator and denominator degrees of freedom</td>
+</tr>
+<tr>
+<td><code>p_omnibus</code></td>
+<td>numeric (0,1]</td>
+<td>Raw p-value</td>
+</tr>
+<tr>
+<td><code>p_omnibus_adj</code></td>
+<td>numeric (0,1]</td>
+<td>Bonferroni-adjusted across all tested blocks</td>
+</tr>
+<tr>
+<td><code>significant</code></td>
+<td>logical</td>
+<td>TRUE when p_omnibus_adj &lt; 0.05</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_158-score_favorable_haplotypes--data-frame">15.8. <code>score_favorable_haplotypes()</code> — data frame<a class="anchor" aria-label="anchor" href="#id_158-score_favorable_haplotypes--data-frame"></a>
+</h3>
+<p>One row per individual, sorted ascending by <code>rank</code>:</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>character</td>
+<td>Individual identifier</td>
+</tr>
+<tr>
+<td><code>stacking_index</code></td>
+<td>numeric [0,1]</td>
+<td>Normalised genome-wide score (normalize=TRUE) or raw score sum (normalize=FALSE). Higher = more favourable allele combinations.</td>
+</tr>
+<tr>
+<td><code>n_blocks_scored</code></td>
+<td>integer</td>
+<td>Blocks with at least one matched allele effect</td>
+</tr>
+<tr>
+<td><code>mean_block_score</code></td>
+<td>numeric</td>
+<td>Raw mean per-block score (independent of n_blocks_scored)</td>
+</tr>
+<tr>
+<td><code>rank</code></td>
+<td>integer</td>
+<td>Rank (1 = highest). Ties use min method.</td>
+</tr>
+<tr>
+<td><code>score_&lt;block_id&gt;</code></td>
+<td>numeric</td>
+<td>Per-block score columns (one per scored block). Zero when no scored allele is carried. Named <code>score_</code> + block_id.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="section level3">
+<h3 id="id_159-summarize_parent_haplotypes--data-frame">15.9. <code>summarize_parent_haplotypes()</code> — data frame<a class="anchor" aria-label="anchor" href="#id_159-summarize_parent_haplotypes--data-frame"></a>
+</h3>
+<p>Long format, one row per individual x block x allele (including dosage = 0 rows). Sorted by id, CHR, start_bp, then descending dosage:</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>character</td>
+<td>Individual identifier</td>
+</tr>
+<tr>
+<td>
+<code>block_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>
+</td>
+<td>—</td>
+<td>Block coordinates</td>
+</tr>
+<tr>
+<td><code>allele</code></td>
+<td>character</td>
+<td>Haplotype allele string</td>
+</tr>
+<tr>
+<td><code>dosage</code></td>
+<td>integer {0,1,2}</td>
+<td>Copies carried. Unphased: 0 or 1. Phased: 0, 1 (heterozygous), or 2 (homozygous).</td>
+</tr>
+<tr>
+<td><code>allele_freq</code></td>
+<td>numeric [0,1]</td>
+<td>Population frequency in full panel (not just candidates)</td>
+</tr>
+<tr>
+<td><code>allele_effect</code></td>
+<td>numeric or NA</td>
+<td>Effect from allele_effects argument if supplied</td>
+</tr>
+<tr>
+<td><code>is_rare</code></td>
+<td>logical</td>
+<td>TRUE when allele_freq &lt; 0.10</td>
+</tr>
+</tbody>
+</table>
+<hr>
 <hr>
 </div>
 </div>
@@ -2360,7 +3111,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <h3 id="id_163-openmp-thread-count">16.3. OpenMP thread count<a class="anchor" aria-label="anchor" href="#id_163-openmp-thread-count"></a>
 </h3>
 <p>The <code>n_threads</code> parameter controls the number of OpenMP threads in <code>compute_r2_cpp()</code>. Thread scaling is efficient up to approximately 8–16 threads for typical window sizes (1,500 SNPs). For very large windows (<code>subSegmSize = 5000+</code>), higher thread counts remain beneficial:</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Auto-detect physical cores</span></span>
 <span><span class="va">n_thr</span>  <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span>logical <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, n_threads <span class="op">=</span> <span class="va">n_thr</span><span class="op">)</span></span></code></pre></div>
@@ -2374,7 +3125,7 @@ r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm
 <p>Full documentation, function reference, and tutorials are available at:</p>
 <p><a href="https://FAkohoue.github.io/LDxBlocks/" class="uri">https://FAkohoue.github.io/LDxBlocks/</a></p>
 <p>To read the vignette after installation:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/vignette.html" class="external-link">vignette</a></span><span class="op">(</span><span class="st">"LDxBlocks-workflow"</span>, package <span class="op">=</span> <span class="st">"LDxBlocks"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 <hr>

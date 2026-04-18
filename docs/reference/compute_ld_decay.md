@@ -343,14 +343,14 @@ decay <- compute_ld_decay(
 )
 decay$critical_r2_param    # background kinship-induced LD
 #>        95% 
-#> 0.02851638 
+#> 0.03718883 
 decay$critical_r2_fixed    # standard 0.1 threshold
 #> [1] 0.1
 decay$decay_dist           # per-chromosome decay distances
 #>   CHR decay_dist_bp decay_dist_kb threshold_used r2_col_used censored
-#> 1   1         47945         47.94     0.02851638    r2_loess    FALSE
-#> 2   2         53619         53.62     0.02851638    r2_loess    FALSE
-#> 3   3         44062         44.06     0.02851638    r2_loess    FALSE
+#> 1   1         39181         39.18     0.03718883    r2_loess    FALSE
+#> 2   2         50902         50.90     0.03718883    r2_loess    FALSE
+#> 3   3         29560         29.56     0.03718883    r2_loess    FALSE
 
 # Sliding window (TASSEL approach) + Hill-Weir model
 decay_hw <- compute_ld_decay(
@@ -362,10 +362,6 @@ decay_hw <- compute_ld_decay(
   fit_model    = "nonlinear",
   verbose      = FALSE
 )
-#> Warning: [ld_decay] chr 1: LD does not decay below threshold 0.1 within max_dist=5,000,000 bp. decay_dist is censored (lower bound).
-#> Warning: number of iterations exceeded maximum of 100
-#> Warning: [ld_decay] chr 2: LD does not decay below threshold 0.1 within max_dist=5,000,000 bp. decay_dist is censored (lower bound).
-#> Warning: [ld_decay] chr 3: LD does not decay below threshold 0.1 within max_dist=5,000,000 bp. decay_dist is censored (lower bound).
 
 # WGS backend -- only sampled columns are loaded per chromosome
 if (FALSE) { # \dontrun{
@@ -392,18 +388,18 @@ qtl <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
 qtl[, c("block_id", "lead_snp", "candidate_region_start",
          "candidate_region_end", "candidate_region_size_kb")]
 #>                block_id lead_snp candidate_region_start candidate_region_end
-#> 1    block_1_1000_25535   rs1005                      0                53191
-#> 2  block_1_81986_100878   rs1048                  50861               146751
-#> 3 block_1_156776_181114   rs1070                 123225               219115
-#> 4    block_2_1000_29445   rs2004                      0                57597
-#> 5  block_2_85463_104532   rs2050                  45880               153118
-#> 6    block_3_1000_19994   rs3004                      0                48055
+#> 1    block_1_1000_25027   rs1005                      0                44369
+#> 2   block_1_81064_99022   rs1048                  58031               136393
+#> 3 block_1_155368_179371   rs1070                 129829               208191
+#> 4    block_2_1000_30023   rs2004                      0                55303
+#> 5  block_2_86236_105290   rs2050                  49548               151352
+#> 6    block_3_1000_19068   rs3004                      0                33383
 #>   candidate_region_size_kb
-#> 1                     95.9
-#> 2                     95.9
-#> 3                     95.9
-#> 4                    107.2
-#> 5                    107.2
-#> 6                     88.1
+#> 1                     78.4
+#> 2                     78.4
+#> 3                     78.4
+#> 4                    101.8
+#> 5                    101.8
+#> 6                     59.1
 # }
 ```

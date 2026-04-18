@@ -111,12 +111,12 @@ standardised to zero mean and unit variance.</p>
 <span class="r-in"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">blues_file</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">blues</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       id     YLD     RES</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 ind001  0.8909 -0.8208</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 ind002 -0.8711  0.9927</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 ind003 -0.9154 -0.9956</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 ind004 -1.5776 -0.9134</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 ind005  0.8288  0.7546</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 ind006  0.1126  1.0192</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 ind001 -0.5175  0.6771</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 ind002  0.7635  1.3764</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 ind003 -1.3093 -0.9946</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 ind004 -1.1162 -1.4089</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 ind005  1.1343 -0.5120</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 ind006  0.9307 -0.4573</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span><span class="co"># Single-trait prediction (YLD)</span></span></span>
@@ -145,6 +145,27 @@ standardised to zero mean and unit variance.</p>
 <span class="r-in"><span><span class="va">res_mt</span><span class="op">$</span><span class="va">block_importance</span><span class="op">[</span><span class="va">res_mt</span><span class="op">$</span><span class="va">block_importance</span><span class="op">$</span><span class="va">important_any</span>,</span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>, <span class="st">"var_scaled_YLD"</span>, <span class="st">"var_scaled_RES"</span>, <span class="st">"n_traits_important"</span><span class="op">)</span><span class="op">]</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="co"># Cross-validate genomic prediction accuracy</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">ldx_geno</span>, <span class="va">ldx_snp_info</span>, <span class="va">ldx_blocks</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">blues_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"example_blues.csv"</span>,</span></span>
+<span class="r-in"><span>                          package <span class="op">=</span> <span class="st">"LDxBlocks"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">blues</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">blues_file</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="cv_haplotype_prediction.html">cv_haplotype_prediction</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  geno_matrix <span class="op">=</span> <span class="va">ldx_geno</span>,</span></span>
+<span class="r-in"><span>  snp_info    <span class="op">=</span> <span class="va">ldx_snp_info</span>,</span></span>
+<span class="r-in"><span>  blocks      <span class="op">=</span> <span class="va">ldx_blocks</span>,</span></span>
+<span class="r-in"><span>  blues       <span class="op">=</span> <span class="va">blues</span>,</span></span>
+<span class="r-in"><span>  k           <span class="op">=</span> <span class="fl">3L</span>,</span></span>
+<span class="r-in"><span>  id_col      <span class="op">=</span> <span class="st">"id"</span>,</span></span>
+<span class="r-in"><span>  blue_col    <span class="op">=</span> <span class="st">"YLD"</span>,</span></span>
+<span class="r-in"><span>  verbose     <span class="op">=</span> <span class="cn">FALSE</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">cv</span><span class="op">$</span><span class="va">pa_mean</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   trait         PA    RMSE     PA_sd    RMSE_sd</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1   YLD 0.08409989 1.07328 0.1879065 0.03967924</span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

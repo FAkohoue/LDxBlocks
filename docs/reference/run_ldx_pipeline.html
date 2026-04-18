@@ -491,29 +491,29 @@ columns, preceded by metadata columns: <code>hap_id</code>, <code>CHR</code>,
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">blocks</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   start end start.rsID end.rsID start.bp end.bp CHR length_bp</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1     1  25     rs1001   rs1025     1000  25535   1     24536</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2    31  50     rs1031   rs1050    81986 100878   1     18893</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3    56  80     rs1056   rs1080   156776 181114   1     24339</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4     1  30     rs2001   rs2030     1000  29445   2     28446</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5    36  55     rs2036   rs2055    85463 104532   2     19070</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6    61  80     rs2061   rs2080   160237 178996   2     18760</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     1  25     rs1001   rs1025     1000  25027   1     24028</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2    31  50     rs1031   rs1050    81064  99022   1     17959</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3    56  80     rs1056   rs1080   155368 179371   1     24004</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4     1  30     rs2001   rs2030     1000  30023   2     29024</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5    36  55     rs2036   rs2055    86236 105290   2     19055</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6    61  80     rs2061   rs2080   161515 180473   2     18959</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">diversity</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                block_id CHR start_bp end_bp n_snps n_ind n_haplotypes        He</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8488796</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8460784</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8826331</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8866947</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8535014</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8484594</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    block_1_1000_25027   1     1000  25027     25   120           30 0.9163866</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   block_1_81064_99022   1    81064  99022     20   120           21 0.8988796</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 block_1_155368_179371   1   155368 179371     25   120           26 0.9159664</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4    block_2_1000_30023   2     1000  30023     30   120           31 0.9161064</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  block_2_86236_105290   2    86236 105290     20   120           22 0.8955182</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 block_2_161515_180473   2   161515 180473     20   120           25 0.9155462</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    Shannon n_eff_alleles freq_dominant sweep_flag phased</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 2.768290         6.321     0.3583333      FALSE  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 2.654193         6.212     0.3000000      FALSE  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 2.966925         8.018     0.2916667      FALSE  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 3.108972         8.285     0.2833333      FALSE  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 2.649231         6.510     0.2833333      FALSE  FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 2.604423         6.305     0.3083333      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 2.745726        10.959     0.1833333      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 2.476482         9.207     0.1833333      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 2.667890        10.909     0.1666667      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 2.772723        10.926     0.2000000      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 2.485949         8.933     0.2166667      FALSE  FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 2.642908        10.860     0.1500000      FALSE  FALSE</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">hap_matrix</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 120  85</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 120  90</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Path B: supply a pre-built bigmemory backend</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"bigmemory"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
@@ -540,35 +540,35 @@ columns, preceded by metadata columns: <code>hap_id</code>, <code>CHR</code>,
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory]   chr 1 loaded (80/230 SNPs)</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory]   chr 2 loaded (160/230 SNPs)</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory]   chr 3 loaded (230/230 SNPs)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t/ldxbm2dc029403aec.bin</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:07] Using pre-built backend: bigmemory | 120 ind | 230 SNPs</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:07] MAF filtering (&gt;= 0.05) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n/ldxbm293869e4baa.bin</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:56] Using pre-built backend: bigmemory | 120 ind | 230 SNPs</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:56] MAF filtering (&gt;= 0.05) ...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [MAF filter] Computing MAF for 230 SNPs ...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [MAF filter] 230 / 230 SNPs pass MAF &gt;= 0.05</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:08] Loading filtered genotype matrix ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:08] Genotype matrix: 120 x 230</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:08] Running genome-wide LD block detection ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:56] Loading filtered genotype matrix ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:56] Genotype matrix: 120 x 230</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:56] Running genome-wide LD block detection ...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [run_Big_LD_all_chr] Processing 1 ...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Subsegmenting via C++ boundary scan...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 25</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 30</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 24</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 29</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 50</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 55</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 25 SNPs...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 24 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 6 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 1/5 done.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 5 SNPs...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 0 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 2/5 done.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 20 SNPs...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 21 SNPs...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 6 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 3/5 done.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 5 SNPs...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 0 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 4/5 done.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 25 SNPs...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 6 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 5/5 done.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [run_Big_LD_all_chr] Processing 2 ...</span>
@@ -578,41 +578,41 @@ columns, preceded by metadata columns: <code>hap_id</code>, <code>CHR</code>,
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 55</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD]   Cut at SNP 60</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 30 SNPs...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 6 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 1/5 done.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 5 SNPs...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 0 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 2/5 done.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 20 SNPs...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 5 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 3/5 done.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 5 SNPs...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 0 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 4/5 done.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 20 SNPs...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 1 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 5 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 5/5 done.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [run_Big_LD_all_chr] Processing 3 ...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 70 SNPs...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 3 maximal cliques.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 16 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 1/1 done.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Detected 9 LD blocks</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Block table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t\file2dc03e444fb6.csv</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Extracting haplotypes (min_snps = 3) ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Haplotypes extracted for 9 blocks</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Computing haplotype diversity ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t\file2dc017e515f7.csv</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Haplotype matrix: 120 individuals x 85 haplotype allele columns</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Writing haplotype matrix (format = numeric) ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t\file2dc07352241.csv (85 haplotypes x 120 individuals)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t\file2dc07352241.csv</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09] Pipeline complete.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09]   Blocks:              9</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09]   Haplotype blocks:    9</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09]   Haplotype columns:   85</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:01:09]   Individuals:         120</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Detected 9 LD blocks</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Block table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n\file29386a00284d.csv</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Extracting haplotypes (min_snps = 3) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Haplotypes extracted for 9 blocks</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Computing haplotype diversity ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n\file293837bd293.csv</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Haplotype matrix: 120 individuals x 90 haplotype allele columns</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Writing haplotype matrix (format = numeric) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n\file29386e0d615f.csv (90 haplotypes x 120 individuals)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n\file29386e0d615f.csv</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57] Pipeline complete.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57]   Blocks:              9</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57]   Haplotype blocks:    9</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57]   Haplotype columns:   90</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [12:15:57]   Individuals:         120</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

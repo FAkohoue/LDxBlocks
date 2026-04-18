@@ -64,6 +64,25 @@ res_mt$solver_used   # 'sommer' or 'rrBLUP'
 res_mt$block_importance[res_mt$block_importance$important_any,
   c("block_id", "var_scaled_YLD", "var_scaled_RES", "n_traits_important")]
 }
+
+\donttest{
+# Cross-validate genomic prediction accuracy
+data(ldx_geno, ldx_snp_info, ldx_blocks)
+blues_file <- system.file("extdata", "example_blues.csv",
+                          package = "LDxBlocks")
+blues <- read.csv(blues_file)
+cv <- cv_haplotype_prediction(
+  geno_matrix = ldx_geno,
+  snp_info    = ldx_snp_info,
+  blocks      = ldx_blocks,
+  blues       = blues,
+  k           = 3L,
+  id_col      = "id",
+  blue_col    = "YLD",
+  verbose     = FALSE
+)
+cv$pa_mean
+}
 }
 \seealso{
 \code{\link{run_haplotype_prediction}},

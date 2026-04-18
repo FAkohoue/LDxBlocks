@@ -209,11 +209,11 @@ standard r² path.</p>
 <span><span class="va">prep_r2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_geno.html">prepare_geno</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"r2"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">prep_r2</span><span class="op">)</span>   <span class="co"># adj_geno = centred matrix; V_inv_sqrt = NULL</span></span>
 <span><span class="co">#&gt; List of 2</span></span>
-<span><span class="co">#&gt;  $ adj_geno  : num [1:120, 1:30] -0.542 0.458 0.458 0.458 -0.542 ...</span></span>
+<span><span class="co">#&gt;  $ adj_geno  : num [1:120, 1:30] 1.4 -0.6 0.4 -0.6 1.4 1.4 1.4 1.4 -0.6 -0.6 ...</span></span>
 <span><span class="co">#&gt;   ..- attr(*, "dimnames")=List of 2</span></span>
 <span><span class="co">#&gt;   .. ..$ : chr [1:120] "ind001" "ind002" "ind003" "ind004" ...</span></span>
 <span><span class="co">#&gt;   .. ..$ : chr [1:30] "rs1001" "rs1002" "rs1003" "rs1004" ...</span></span>
-<span><span class="co">#&gt;   ..- attr(*, "scaled:center")= Named num [1:30] 0.542 0.558 0.525 0.542 0.533 ...</span></span>
+<span><span class="co">#&gt;   ..- attr(*, "scaled:center")= Named num [1:30] 0.6 0.417 1.317 1.025 0.583 ...</span></span>
 <span><span class="co">#&gt;   .. ..- attr(*, "names")= chr [1:30] "rs1001" "rs1002" "rs1003" "rs1004" ...</span></span>
 <span><span class="co">#&gt;  $ V_inv_sqrt: NULL</span></span>
 <span></span>
@@ -292,9 +292,9 @@ is near-singular.</p>
 <span></span>
 <span><span class="co"># Verify: A V A' ≈ I</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">A_chol</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">V_demo</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">A_chol</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">120</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 131.4961</span></span>
+<span><span class="co">#&gt; [1] 80.21798</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">A_eig</span>  <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">V_demo</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">A_eig</span><span class="op">)</span>  <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">120</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1.064704e-13</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 4.574119e-14</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -312,9 +312,9 @@ is near-singular.</p>
 <span><span class="va">rv2_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_rV2.html">compute_rV2</a></span><span class="op">(</span><span class="va">X_whit</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Mean r² :"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">r2_mat</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">upper.tri</a></span><span class="op">(</span><span class="va">r2_mat</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>,  <span class="fl">4</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Mean r² : 0.8892</span></span>
+<span><span class="co">#&gt; Mean r² : 0.3302</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Mean rV²:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">rv2_mat</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">upper.tri</a></span><span class="op">(</span><span class="va">rv2_mat</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Mean rV²: 0.9398</span></span></code></pre></div>
+<span><span class="co">#&gt; Mean rV²: 0.3388</span></span></code></pre></div>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">3</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/image.html" class="external-link">image</a></span><span class="op">(</span><span class="va">r2_mat</span>,   main <span class="op">=</span> <span class="st">"Standard r²"</span>,</span>

@@ -1,7 +1,7 @@
 # LDxBlocks — Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic Prediction Features
 
 <p align="center">
-  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="100%">
+  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="150%">
 </p>
 
 <!-- badges: start -->
@@ -28,10 +28,10 @@
 6. [Input formats](#6-input-formats)
    - 6.1. [Genotype input format](#61-genotype-input-format)
    - 6.2. [Phenotype input format](#62-phenotype-input-format)
-     - 6.2.1. [Format 1 — Named numeric vector](#621-format-1--named-numeric-vector-single-trait-simplest)
-     - 6.2.2. [Format 2 — Data frame, single trait](#622-format-2--data-frame-single-trait)
-     - 6.2.3. [Format 3 — Data frame, multiple traits](#623-format-3--data-frame-multiple-traits)
-     - 6.2.4. [Format 4 — Named list](#624-format-4--named-list-different-individuals-per-trait)
+     - 6.2.1. [Format 1 — Named numeric vector](#621-format-1-named-numeric-vector-single-trait-simplest)
+     - 6.2.2. [Format 2 — Data frame, single trait](#622-format-2-data-frame-single-trait)
+     - 6.2.3. [Format 3 — Data frame, multiple traits](#623-format-3-data-frame-multiple-traits)
+     - 6.2.4. [Format 4 — Named list](#624-format-4-named-list-different-individuals-per-trait)
    - 6.3. [ID matching rules](#63-id-matching-rules)
    - 6.4. [Preparing BLUEs from raw phenotype data](#64-preparing-blues-from-raw-phenotype-data)
 7. [Statistical background](#7-statistical-background)
@@ -42,10 +42,10 @@
    - 7.5. [Block construction](#75-block-construction)
 8. [LD metrics: r² versus rV²](#8-ld-metrics-r-versus-rv)
 9. [Clique detection mode (CLQmode)](#9-clique-detection-mode-clqmode)
-   - 9.1. [Mode 1 — Density](#91-mode-1--density-clqmode--density-default)
-   - 9.2. [Mode 2 — Maximal](#92-mode-2--maximal-clqmode--maximal)
-   - 9.3. [Mode 3 — Louvain](#93-mode-3--louvain-clqmode--louvain)
-   - 9.4. [Mode 4 — Leiden](#94-mode-4--leiden-clqmode--leiden)
+   - 9.1. [Mode 1 — Density](#91-mode-1-density-clqmode-density-default)
+   - 9.2. [Mode 2 — Maximal](#92-mode-2-maximal-clqmode-maximal)
+   - 9.3. [Mode 3 — Louvain](#93-mode-3-louvain-clqmode-louvain)
+   - 9.4. [Mode 4 — Leiden](#94-mode-4-leiden-clqmode-leiden)
    - 9.5. [Summary comparison](#95-summary-comparison)
    - 9.6. [Recommended configurations](#96-recommended-configurations)
 10. [Haplotype analysis](#10-haplotype-analysis)
@@ -53,9 +53,21 @@
     - 10.2. [Haplotype diversity metrics](#102-haplotype-diversity-metrics)
     - 10.3. [Haplotype feature matrix for genomic prediction](#103-haplotype-feature-matrix-for-genomic-prediction)
     - 10.4. [Haplotype-based genomic prediction pipeline](#104-haplotype-based-genomic-prediction-pipeline)
+    - 10.5. [Cross-validation and prediction accuracy](#105-cross-validation-and-prediction-accuracy)
+    - 10.6. [Between-population comparison](#106-between-population-comparison)
+    - 10.7. [Haplotype network visualisation](#107-haplotype-network-visualisation)
+    - 10.8. [Multi-environment stability](#108-multi-environment-stability)
+    - 10.9. [Candidate region export](#109-candidate-region-export)
+    - 10.10. [Per-allele effect decomposition](#1010-per-allele-effect-decomposition)
+    - 10.11. [Sliding-window diversity scan](#1011-sliding-window-diversity-scan)
+    - 10.12. [True diplotype inference](#1012-true-diplotype-inference)
+    - 10.13. [Rare-allele collapsing](#1013-rare-allele-collapsing)
+    - 10.14. [Cross-panel harmonisation](#1014-cross-panel-harmonisation)
+    - 10.15. [Haplotype association testing](#1015-haplotype-association-testing)
+    - 10.16. [Breeding decision tools](#1016-breeding-decision-tools)
 11. [Parameter auto-tuning](#11-parameter-auto-tuning)
 12. [Scale strategies and backends](#12-scale-strategies-and-backends)
-    - 12.1. [The LDxBlocks_backend interface](#121-the-ldxblocks_backend-interface)
+    - 12.1. [The LDxBlocks_backend interface](#121-the-ldxblocksbackend-interface)
     - 12.2. [Memory requirements by configuration](#122-memory-requirements-by-configuration)
     - 12.3. [Recommended configurations by dataset size](#123-recommended-configurations-by-dataset-size)
 13. [Full pipeline walkthrough](#13-full-pipeline-walkthrough)
@@ -65,13 +77,21 @@
     - 14.3. [LD computation](#143-ld-computation)
     - 14.4. [C++ kernels (direct access)](#144-c-kernels-direct-access)
     - 14.5. [Haplotype analysis](#145-haplotype-analysis)
-    - 14.6. [Utilities](#146-utilities)
+    - 14.6. [Analysis extensions](#146-analysis-extensions)
+    - 14.7. [True haplotype inference and harmonisation](#147-true-haplotype-inference-and-harmonisation)
+    - 14.8. [Haplotype association testing](#148-haplotype-association-testing)
+    - 14.9. [Breeding decision tools](#149-breeding-decision-tools)
+    - 14.10. [Utilities](#1410-utilities)
 15. [Output objects](#15-output-objects)
-    - 15.1. [`run_Big_LD_all_chr()` — block table](#151-run_big_ld_all_chr--block-table)
-    - 15.2. [`tune_LD_params()` — named list](#152-tune_ld_params--named-list)
-    - 15.3. [`extract_haplotypes()` — named list](#153-extract_haplotypes--named-list)
-    - 15.4. [`compute_haplotype_diversity()` — data.frame](#154-compute_haplotype_diversity--dataframe)
-    - 15.5. [`read_geno()` — LDxBlocks_backend](#155-read_geno--ldxblocks_backend)
+    - 15.1. [`run_Big_LD_all_chr()` — block table](#151-runbigldallchr-block-table)
+    - 15.2. [`tune_LD_params()` — named list](#152-tuneldparams-named-list)
+    - 15.3. [`extract_haplotypes()` — named list](#153-extracthaplotypes-named-list)
+    - 15.4. [`compute_haplotype_diversity()` — data.frame](#154-computehaplotypediversity-dataframe)
+    - 15.5. [`read_geno()` — LDxBlocks_backend](#155-readgeno-ldxblocksbackend)
+   - 15.6. [`test_block_haplotypes()` — LDxBlocks_haplotype_assoc](#156-test_block_haplotypes--ldxblocks_haplotype_assoc)
+   - 15.7. [`estimate_diplotype_effects()` — LDxBlocks_diplotype](#157-estimate_diplotype_effects--ldxblocks_diplotype)
+   - 15.8. [`score_favorable_haplotypes()` — data frame](#158-score_favorable_haplotypes--data-frame)
+   - 15.9. [`summarize_parent_haplotypes()` — data frame](#159-summarize_parent_haplotypes--data-frame)
 16. [Memory and performance notes](#16-memory-and-performance-notes)
     - 16.1. [C++ core](#161-c-core)
     - 16.2. [Never-full-genome memory model](#162-never-full-genome-memory-model)
@@ -102,24 +122,25 @@ rV² (Mangin et al. 2012, *Heredity* 108:285-291) corrects for this by
 whitening the genotype matrix with the inverse square root of the genomic
 relationship matrix (GRM):
 
-$$rV^2_{ij} = \frac{\mathrm{Cov}(X^v_i,\, X^v_j)^2}{\mathrm{Var}(X^v_i)\,\mathrm{Var}(X^v_j)}$$
+    rV²ᵢⱼ = Cov(Xᵛᵢ, Xᵛⱼ)² / [Var(Xᵛᵢ) · Var(Xᵛⱼ)]
 
-where $X^v = V^{-1/2}\tilde{G}$ is the kinship-whitened, mean-centred
-genotype matrix; $V = ZZ^\top / (2\sum_j p_j q_j)$ is the VanRaden
-(2008) GRM ($Z_{ij} = G_{ij} - 2p_j$ = frequency-centred raw dosage,
-$q_j = 1-p_j$); and $V^{-1/2}$ is its inverse square root
-(Mangin et al. 2012, eq. 1--2). Subscripts $i$ and $j$ index SNPs.
-This is equivalent to $[\mathrm{Cor}(X^v_i, X^v_j)]^2$.
+where **X**ᵛ = **V**⁻¹⁄² **G̃** is the kinship-whitened, mean-centred
+genotype matrix; **V** = **ZZ**ᵀ / (2 Σⱼ pⱼqⱼ) is the VanRaden
+(2008) GRM (Z_ij = G_ij − 2p_j = frequency-centred raw dosage,
+q_j = 1 − p_j); and **V**⁻¹⁄² is its inverse square root
+(Mangin et al. 2012, eq. 1–2). Subscripts i and j index SNPs.
+This is equivalent to [Cor(X_i^v, X_j^v)]².
 
-> **Notation.** $G$ denotes the raw $n\times m$ dosage matrix
-> ($G_{ij} \in \{0,1,2\}$); $\tilde{G}$ its mean-centred form
-> (G̃_ij = G_ij − Ḡ_j, used for LD computation;
-> $Z$ its frequency-centred form (Z_ij = G_ij − 2p_j, used for
-> the GRM). $V$ denotes the GRM to avoid collision with $G$ the
-> dosage matrix. In the Mangin (2012) paper the GRM is called $K$
-> and is equivalent to $V$ here; VanRaden (2008) calls it $G$. Every pairwise correlation in the Big-LD algorithm is replaced with
-rV², giving block boundaries that reflect true recombination structure rather
-than population-structure artefacts.
+> **Notation.** **G** denotes the raw n × m dosage matrix
+> (G_ij ∈ {0, 1, 2}); **G̃** its mean-centred form
+> (G̃_ij = G_ij − Ḡ_j, used for LD computation);
+> **Z** its frequency-centred form (Z_ij = G_ij − 2p_j, used for
+> the GRM). **V** denotes the GRM to avoid collision with **G** the
+> dosage matrix. In the Mangin (2012) paper the GRM is called K
+> and is equivalent to V here; VanRaden (2008) calls it G.
+> Every pairwise correlation in the Big-LD algorithm is replaced with
+> rV², giving block boundaries that reflect true recombination structure
+> rather than population-structure artefacts.
 
 **The scale problem.** The original Big-LD implementation (Kim et al. 2018) contains
 no compiled code -- every matrix operation runs through the R interpreter. For modern whole-genome sequencing panels with 2-10 million markers the
@@ -166,7 +187,8 @@ pipeline that the original implementation does not provide.
 `LDxBlocks` is a complete pipeline for genome-wide LD block detection in
 related or structured populations, with downstream haplotype analysis and
 genomic prediction utilities. It extends the Big-LD clique-based segmentation
-algorithm of Kim et al. (2018) with 15 concrete improvements:
+algorithm of Kim et al. (2018) with 15 core improvements and 10 additional
+analysis extension functions:
 
 1. **Dual LD metric** — standard r² (default, fast, no kinship correction,
    suitable for 10 M+ markers) and kinship-adjusted rV² (for structured or
@@ -725,15 +747,15 @@ system.file("extdata", "example_blues.csv", package = "LDxBlocks")
 
 The ALT allele frequency is estimated from the dosage matrix as:
 
-$$\mathrm{AF}_i = \frac{\sum_j g_{ij}}{2\, n_i}$$
+    AF_i = (Σⱼ g_ij) / (2 n_i)
 
-where $g_{ij} \in \{0, 1, 2, \mathrm{NA}\}$ is the dosage for SNP $i$ in
-sample $j$ and $n_i$ is the number of non-missing observations for SNP $i$. The minor
+where g_ij ∈ {0, 1, 2, NA} is the dosage for SNP i in
+sample j and n_i is the number of non-missing observations for SNP i. The minor
 allele frequency is:
 
-$$\mathrm{MAF}_i = \min\!\left(\mathrm{AF}_i,\; 1 - \mathrm{AF}_i\right)$$
+    MAF_i = min(AF_i, 1 − AF_i)
 
-SNPs with $\mathrm{MAF}_i < \tau_{\mathrm{maf}}$ (default 0.05) are removed
+SNPs with MAF_i < τ_maf (default 0.05) are removed
 before any LD computation. Monomorphic SNPs (all observations identical) are
 removed unconditionally regardless of the MAF threshold. Both operations run in
 a single O(np) C++ pass by `maf_filter_cpp()`, handling NA imputation in the
@@ -741,25 +763,26 @@ same loop.
 
 ### 7.2. Genotype preparation
 
-Before computing LD, the genotype matrix $G$ (individuals × SNPs) is centred
+Before computing LD, the genotype matrix **G** (individuals × SNPs) is centred
 and optionally whitened depending on the chosen LD metric. This step is
 performed by `prepare_geno()`.
 
 **Standard r² path (`method = "r2"`):**
 
-For two SNPs $j$ and $k$, where individual $i$ has dosage values
-$g_{ij}, g_{ik} \in \{0, 1, 2, \mathrm{NA}\}$, the squared Pearson
+For two SNPs j and k, where individual i has dosage values
+g_ij, g_ik ∈ {0, 1, 2, NA}, the squared Pearson
 correlation is:
 
-$$r^2_{jk} = \frac{\mathrm{Cov}(g_j,\, g_k)^2}{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}$$
+    r²_jk = Cov(gⱼ, g_k)² / [Var(gⱼ) · Var(g_k)]
 
-Estimated from $n_{jk}$ non-missing individuals as:
+Estimated from n_jk non-missing individuals as:
 
-$$r^2_{jk} = \frac{\left(n_{jk}\sum_i g_{ij}g_{ik} - \sum_i g_{ij}\sum_i g_{ik}\right)^2}{\left(n_{jk}\sum_i g_{ij}^2 - \left(\sum_i g_{ij}\right)^2\right)\left(n_{jk}\sum_i g_{ik}^2 - \left(\sum_i g_{ik}\right)^2\right)}$$
+    r²_jk = [n_jk·Σᵢ g_ij g_ik − (Σᵢ g_ij)(Σᵢ g_ik)]²
+           / {[n_jk·Σᵢ g_ij² − (Σᵢ g_ij)²] · [n_jk·Σᵢ g_ik² − (Σᵢ g_ik)²]}
 
 In `compute_r2_cpp()` this is computed equivalently via column
 standardisation (mean-impute NA, subtract column mean, divide by
-standard deviation) followed by $r^2_{jk} = [\tilde{\mathbf{g}}_j^\top\tilde{\mathbf{g}}_k\,/\,(n-1)]^2$, which is numerically identical and
+standard deviation) followed by r²_jk = [g̃ⱼᵀ g̃_k / (n−1)]², which is numerically identical and
 benefits from BLAS-level matrix multiplication with OpenMP parallelism.
 No kinship matrix is required.
 
@@ -767,32 +790,32 @@ No kinship matrix is required.
 
 1. Compute the VanRaden (2008) GRM via `AGHmatrix::Gmatrix()`:
 
-   $$V = \frac{ZZ^\top}{2\sum_j p_j q_j}$$
+       **V** = **ZZ**ᵀ / (2 Σⱼ pⱼ qⱼ)
 
-   where $Z$ is the $n \times m$ frequency-centred genotype matrix with
-   elements $z_{ij} = g_{ij} - 2p_j$ ($p_j$ = frequency of allele $A_2$
-   at SNP $j$, $q_j = 1 - p_j$), and the denominator $2\sum_j p_j q_j$
-   scales $V$ to resemble the numerator relationship matrix. Note that $Z$
-   is frequency-centred (by $2p_j$) and distinct from the mean-centred
-   $\tilde{G}$ used in LD computation above.
+   where **Z** is the n × m frequency-centred genotype matrix with
+   elements z_ij = g_ij − 2p_j (p_j = frequency of allele A2
+   at SNP j, q_j = 1 − p_j), and the denominator 2 Σⱼ pⱼqⱼ
+   scales **V** to resemble the numerator relationship matrix. Note that **Z**
+   is frequency-centred (by 2p_j) and distinct from the mean-centred
+   **G̃** used in LD computation above.
 
-2. Bend and condition-number tune $V$ via `ASRgenomics::G.tuneup(bend = TRUE, rcn = TRUE)` to ensure positive-definiteness.
+2. Bend and condition-number tune **V** via `ASRgenomics::G.tuneup(bend = TRUE, rcn = TRUE)` to ensure positive-definiteness.
 3. Compute the whitening factor:
-   - `kin_method = "chol"` (default): $A = R^{-1}$ where $V = R^\top R$ via Cholesky. Fast and numerically stable.
-   - `kin_method = "eigen"`: $A = Q\Lambda^{-1/2}Q^\top$. Symmetric; eigenvalues floored at $10^{-6}$ for stability. Preferred for near-singular matrices.
+   - `kin_method = "chol"` (default): **A** = **R**⁻¹ where **V** = **R**ᵀ**R** via Cholesky. Fast and numerically stable.
+   - `kin_method = "eigen"`: **A** = **Q** Λ⁻¹⁄² **Q**ᵀ. Symmetric; eigenvalues floored at 1e-6 for stability. Preferred for near-singular matrices.
 4. Apply whitening to the **mean-centred** genotype matrix:
-   $X^v = V^{-1/2}\tilde{G}$ (code: `V_inv_sqrt %*% geno_centered`).
-   Note: Mangin et al. (2012) write $X^v = K^{-1/2}G$ using the raw
+   **X**ᵛ = **V**⁻¹⁄² **G̃** (code: `V_inv_sqrt %*% geno_centered`).
+   Note: Mangin et al. (2012) write **X**ᵛ = **K**⁻¹⁄² **G** using the raw
    matrix; in LDxBlocks the mean-centering is applied first, which is
    equivalent because centering commutes with the whitening transform
-   ($V^{-1/2}\bar{G}_j\mathbf{1}^\top$ is a constant column shift,
+   (**V**⁻¹⁄² Ḡⱼ **1**ᵀ is a constant column shift,
    removed by the subsequent correlation computation).
 
-The rV² between SNPs $i$ and $j$ is then (Mangin et al. 2012, eq. 1):
+The rV² between SNPs i and j is then (Mangin et al. 2012, eq. 1):
 
-$$rV^2_{ij} = \frac{\mathrm{Cov}(X^v_i,\, X^v_j)^2}{\mathrm{Var}(X^v_i)\,\mathrm{Var}(X^v_j)}$$
+    rV²ᵢⱼ = Cov(Xᵛᵢ, Xᵛⱼ)² / [Var(Xᵛᵢ) · Var(Xᵛⱼ)]
 
-which is computed by passing $X^v$ to the same `compute_r2_cpp()` kernel
+which is computed by passing **X**ᵛ to the same `compute_r2_cpp()` kernel
 as the standard r² path. Both paths expose the same `compute_r2_cpp()` C++ kernel; the distinction is
 only in the preparation step.
 
@@ -803,11 +826,11 @@ algorithm first identifies weak-LD boundary positions to divide the chromosome
 into manageable sub-segments, avoiding the O(p²) cost of computing the full
 chromosome LD matrix.
 
-For each candidate cut position $i$, the maximum cross-boundary squared
-correlation between a left window $L$ and right window $R$ of half-width
+For each candidate cut position i, the maximum cross-boundary squared
+correlation between a left window L and right window R of half-width
 `leng` (default 200 SNPs) is evaluated:
 
-$$\text{cut}(i) = 1 \iff \max_{j \in L,\; k \in R} r^2(j, k) < \tau_{\mathrm{CLQ}}$$
+    cut(i) = 1  iff  max_{j∈L, k∈R} r²(j,k) < τ_CLQ
 
 This scan is implemented by `boundary_scan_cpp()`: a C++ function that
 pre-standardises all columns once, then iterates over every candidate cut
@@ -820,7 +843,7 @@ position in order of increasing cost. The first window size that shows
 cross-boundary LD moves on immediately; only if all three show no LD is a
 cut-point declared.
 
-If no weak-LD boundaries are found within $5 \times$ `subSegmSize` SNPs, the
+If no weak-LD boundaries are found within 5 × `subSegmSize` SNPs, the
 algorithm switches to forced equal-size splits placed at the minimum-LD
 positions within each oversized segment, identified by a secondary scan with
 a narrow tick window of `leng / 5` SNPs each side.
@@ -828,7 +851,7 @@ a narrow tick window of `leng / 5` SNPs each side.
 ### 7.4. Clique detection (CLQD)
 
 Within each sub-segment, an undirected graph is constructed where SNPs are
-nodes and edges connect pairs with $r^2 \geq \tau_{\mathrm{CLQ}}$ (`CLQcut`,
+nodes and edges connect pairs with r² ≥ τ_CLQ (`CLQcut`,
 default 0.5). The adjacency matrix is built by `build_adj_matrix_cpp()` in a
 single O(p²) compiled pass.
 
@@ -836,7 +859,8 @@ Maximal cliques in this graph are enumerated by `igraph::max_cliques()`, which
 wraps the Bron-Kerbosch algorithm. Each maximal clique represents a set of SNPs
 in mutual high LD. The cliques are prioritised by a score:
 
-$$\text{score}(\mathcal{K}) = \begin{cases} |\mathcal{K}| / (\mathrm{span_{kb}}(\mathcal{K}) + 1) & \text{Density mode (default)} \\ |\mathcal{K}| & \text{Maximal mode} \end{cases}$$
+    score(K) = |K| / (span_kb(K) + 1)   [Density mode, default]
+    score(K) = |K|                           [Maximal mode]
 
 **Density mode** (`CLQmode = "Density"`) prefers compact, high-density cliques
 that correspond to biologically meaningful LD blocks. **Maximal mode**
@@ -920,78 +944,79 @@ appropriate.
 
 **When r² produces wrong blocks: the kinship inflation problem.**
 
-Consider any individual $i$ in a structured population. Their dosage $g_{ij}$
-at SNP $j$ can be decomposed as:
+Consider any individual i in a structured population. Their dosage g_ij
+at SNP j can be decomposed as:
 
-$$g_{ij} = \mu_j + a_{f(i),j} + e_{ij}$$
+    g_ij = μⱼ + a_{f(i),j} + e_ij
 
-where $\mu_j$ is the population mean, $a_{f(i),j}$ is a family-specific
+where μⱼ is the population mean, a_{f(i),j} is a family-specific
 allele contribution (the allele inherited from the shared ancestor, e.g. a
-common sire in livestock or a common founder in an inbred line), and $e_{ij}$
+common sire in livestock or a common founder in an inbred line), and e_ij
 is the individual-specific Mendelian sampling deviation. The key point is that
-$a_{f(i),j}$ is **correlated across all SNPs** for individuals in the same
+a_{f(i),j} is **correlated across all SNPs** for individuals in the same
 family, regardless of whether those SNPs are in LD.
 
-The sample covariance between SNPs $j$ and $k$ is therefore:
+The sample covariance between SNPs j and k is therefore:
 
-$$\mathrm{Cov}(g_j, g_k) = \underbrace{\mathrm{Cov}(a_{f,j},\, a_{f,k})}_{\text{kinship term}} + \underbrace{\mathrm{Cov}(e_j,\, e_k)}_{\text{true LD term}}$$
+    Cov(gⱼ, g_k) = Cov(a_{f,j}, a_{f,k})  +  Cov(eⱼ, e_k)
+                    [kinship term]           [true LD term]
 
-The **kinship term** $\mathrm{Cov}(a_{f,j}, a_{f,k})$ is non-zero whenever
+The **kinship term** Cov(a_{f,j}, a_{f,k}) is non-zero whenever
 individuals from the same family tend to carry similar alleles at both SNPs
 simultaneously — which happens for **any** two SNPs in the genome, not just
-those in the same LD block. Inserting into the $r^2$ formula:
+those in the same LD block. Inserting into the r² formula:
 
-$$r^2_{\text{measured}} = \frac{(\mathrm{Cov}_{\text{LD}} + \mathrm{Cov}_{\text{kinship}})^2}{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}
-\quad \geq \quad
-r^2_{\text{true}} = \frac{\mathrm{Cov}_{\text{LD}}^2}{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}$$
+    r²_measured = (Cov_LD + Cov_kinship)² / [Var(gⱼ)·Var(g_k)]
+               ≥
+    r²_true     = Cov_LD² / [Var(gⱼ)·Var(g_k)]
 
 **Numerical worked example.** Consider a livestock panel with two half-sib
-families, each with $n$ offspring from a common sire:
+families, each with n offspring from a common sire:
 
-| | SNP $j$ (chr 1) | SNP $k$ (chr 3, unlinked) |
+| | SNP j (chr 1) | SNP k (chr 3, unlinked) |
 |---|---|---|
 | Sire 1 allele contribution | 0 (homozygous major) | 0 (homozygous major) |
 | Sire 2 allele contribution | 1 (heterozygous minor) | 1 (heterozygous minor) |
 | Dam allele (both families) | Bernoulli(0.5), independent | Bernoulli(0.5), independent |
 
 Because dams contribute randomly and independently, there is **zero gametic LD**
-between SNP $j$ and SNP $k$ — they are on different chromosomes.
+between SNP j and SNP k — they are on different chromosomes.
 Yet the family-level means are:
 
-| Family | $\bar{g}_j$ | $\bar{g}_k$ |
+| Family | ḡⱼ | ḡ_k |
 |---|---|---|
-| Family 1 (sire allele = 0) | $0 + 0.5 = 0.5$ | $0 + 0.5 = 0.5$ |
-| Family 2 (sire allele = 1) | $1 + 0.5 = 1.5$ | $1 + 0.5 = 1.5$ |
+| Family 1 (sire allele = 0) | 0 + 0.5 = 0.5 | 0 + 0.5 = 0.5 |
+| Family 2 (sire allele = 1) | 1 + 0.5 = 1.5 | 1 + 0.5 = 1.5 |
 
-Computing analytically (equal family sizes, large $n$):
+Computing analytically (equal family sizes, large n):
 
-$$\mathrm{Cov}(g_j, g_k) = \tfrac{1}{2}\cdot(0.5\times 0.5) + \tfrac{1}{2}\cdot(1.5\times 1.5) - 1.0\times 1.0 = 1.25 - 1.00 = 0.25$$
+    Cov(gⱼ, g_k) = ½·(0.5×0.5) + ½·(1.5×1.5) − 1.0×1.0 = 1.25 − 1.00 = 0.25
 
-$$\mathrm{Var}(g_j) = \mathrm{Var}(g_k) = 0.50$$
+    Var(gⱼ) = Var(g_k) = 0.50
 
-$$r^2_{\text{measured}} = \frac{0.25^2}{0.50 \times 0.50} = \mathbf{0.25}$$
+    r²_measured = 0.25² / (0.50 × 0.50) = **0.25**
 
-A measured $r^2 = 0.25$ for two SNPs on **different chromosomes** with
+A measured r² = 0.25 for two SNPs on **different chromosomes** with
 **zero true LD** — purely an artefact of the half-sib family structure.
 In a panel where sires appear through hundreds of progeny, this inflation
 scales with the proportion of variance explained by family membership.
-Blocks drawn using $r^2$ in such a panel will be too broad and will merge
+Blocks drawn using r² in such a panel will be too broad and will merge
 SNPs from different recombination intervals that happen to co-segregate
 with the same sire.
 
-**How rV² corrects this.** Pre-multiplying by $V^{-1/2}$ (the inverse
+**How rV² corrects this.** Pre-multiplying by **V**⁻¹⁄² (the inverse
 square root of the GRM) decorrelates the individuals: after whitening,
 the effective covariance between individuals is identity, so
-$\mathrm{Cov}(a_{f(i),j}, a_{f(i),k}) = 0$ in the transformed space
+Cov(a_{f(i),j}, a_{f(i),k}) = 0 in the transformed space
 and only the true Mendelian-sampling LD term survives. The block
 boundaries then reflect actual recombination structure rather than
 co-ancestry artefacts. In practice, rV² blocks are typically 10–30%
 smaller and more precisely delimited in related populations.
 
 **When r² is preferable.** For large human biobank panels
-($n > 10{,}000$, $p > 1{,}000{,}000$) computing and inverting the
-$n \times n$ GRM is computationally infeasible. In approximately
-random-mating populations the kinship term is small, $r^2$ inflates
+(n > 10,000, p > 1,000,000) computing and inverting the
+n × n GRM is computationally infeasible. In approximately
+random-mating populations the kinship term is small, r² inflates
 LD modestly, and the 50× speed advantage of the pure C++ path dominates.
 
 ```r
@@ -1018,10 +1043,9 @@ and biological interpretation.
 **Algorithm.** Enumerates all maximal cliques in the LD graph via the
 Bron-Kerbosch algorithm (`igraph::max_cliques()`). Each clique is scored as:
 
-$$\text{score}(\mathcal{K}) = \frac{|\mathcal{K}|}{\mathrm{span_{kb}}(\mathcal{K}) + 1}$$
+    score(K) = |K| / (span_kb(K) + 1)
 
-where $|\mathcal{K}|$ is the number of SNPs and
-$\mathrm{span_{kb}}$ is the physical span in kilobases. A greedy
+where |K| is the number of SNPs and span_kb is the physical span in kilobases. A greedy
 assignment iteratively selects the highest-scoring clique, removes its SNPs,
 and repeats until all SNPs are assigned or no cliques remain.
 
@@ -1056,7 +1080,7 @@ is not a constraint.
 **Algorithm.** Same Bron-Kerbosch enumeration as Density, but the scoring
 function is simply:
 
-$$\text{score}(\mathcal{K}) = |\mathcal{K}|$$
+    score(K) = |K|
 
 The greedy assignment prefers the largest cliques regardless of their
 physical span.
@@ -1225,27 +1249,27 @@ frequency calculations in `compute_haplotype_diversity()`.
 `compute_haplotype_diversity()` returns four metrics per block from the
 haplotype string frequency distribution:
 
-**Richness ($k$):** number of unique haplotype strings. A highly recombined
+**Richness (k):** number of unique haplotype strings. A highly recombined
 region will show many distinct haplotypes; a selective sweep will have one
 dominant haplotype with very high frequency.
 
-**Expected heterozygosity ($H_e$):** Nei's (1973) gene diversity, corrected
+**Expected heterozygosity (Hₑ):** Nei's (1973) gene diversity, corrected
 for sample size:
 
-$$H_e = \frac{n}{n-1}\left(1 - \sum_i p_i^2\right)$$
+    Hₑ = n/(n−1) · (1 − Σᵢ pᵢ²)
 
-where $p_i$ is the frequency of haplotype $i$ and $n$ is the number of
-individuals with non-missing haplotypes. $H_e = 0$ for a monomorphic block;
-$H_e \to 1$ for many equally frequent haplotypes.
+where pᵢ is the frequency of haplotype i and n is the number of
+individuals with non-missing haplotypes. Hₑ = 0 for a monomorphic block;
+Hₑ → 1 for many equally frequent haplotypes.
 
-**Shannon entropy ($H'$):**
+**Shannon entropy (H'):**
 
-$$H' = -\sum_i p_i \log_2 p_i$$
+    H' = −Σᵢ pᵢ log₂(pᵢ)
 
-Sensitive to both richness and evenness. Measured in bits; equals $\log_2 k$
+Sensitive to both richness and evenness. Measured in bits; equals log₂(k)
 for equal-frequency haplotypes.
 
-**Dominant haplotype frequency ($f_{\max}$):** frequency of the most common
+**Dominant haplotype frequency (f_max):** frequency of the most common
 haplotype string. Values near 1.0 indicate a selective sweep or a strong
 founder effect in the region.
 
@@ -1343,6 +1367,326 @@ priority[priority$priority_score == 3, ]  # top candidates
 ---
 
 ---
+
+### 10.5. Cross-validation and prediction accuracy
+
+`cv_haplotype_prediction()` estimates prediction accuracy via k-fold
+cross-validation. In each fold, a subset of individuals is masked from the
+phenotype and their GEBVs are predicted from the shared haplotype GRM. Pearson
+correlation between predicted and observed values is the predictive ability
+(PA). Multiple traits and multiple replications are supported. Returns a
+`LDxBlocks_cv` object with `pa_summary` (PA and RMSE per fold), `pa_mean`
+(mean ± SD across folds), and metadata.
+
+```r
+cv <- cv_haplotype_prediction(
+  geno_matrix = geno, snp_info = snp_info, blocks = blocks,
+  blues = my_blues, k = 5L, n_rep = 3L,
+  id_col = "id", blue_col = "YLD"
+)
+cv$pa_mean   # mean PA and RMSE per trait
+```
+
+### 10.6. Between-population comparison
+
+`compare_haplotype_populations()` computes per-block allele frequency
+differences and Weir-Cockerham FST between two named sample groups. Returns
+`FST`, `max_freq_diff`, dominant allele per group, a chi-squared test p-value
+(Monte Carlo, B = 2000), and a `divergent` flag (FST > 0.1 AND p < 0.05).
+Useful for monitoring diversity changes between breeding cycles or comparing
+wild versus elite germplasm.
+
+```r
+ids <- rownames(geno)
+cmp <- compare_haplotype_populations(
+  haplotypes  = haps,
+  group1      = ids[wild_idx],
+  group2      = ids[elite_idx],
+  group1_name = "wild", group2_name = "elite"
+)
+cmp[cmp$divergent, c("block_id","FST","max_freq_diff","chisq_p")]
+```
+
+### 10.7. Haplotype network visualisation
+
+`plot_haplotype_network()` draws a minimum-spanning network of haplotype
+alleles within one LD block using `igraph::mst()`. Nodes represent alleles,
+sized proportionally to frequency; edge weights are Hamming distances (number
+of differing SNP positions). Optional group colouring via a named vector maps
+individual IDs to group labels. Returns the `igraph` MST object invisibly.
+
+```r
+plot_haplotype_network(haps, block_id = "block_1_1000_80000",
+                        groups = setNames(rep(c("cycle1","cycle2"), each=60), ids))
+```
+
+### 10.8. Multi-environment stability
+
+`run_haplotype_stability()` runs Finlay-Wilkinson (1963) regression of
+per-block local GEBV contributions against the environmental index across
+environments. For each block, the slope b indicates adaptability: b = 1 means
+average stability (same response as the trial mean across environments),
+b > 1 means above-average response to good environments, b < 1 means
+broadly adapted across environments. Returns `b`, `b_se`, `R²`, deviation
+mean square `s²d`, and a `stable` flag (H0: b = 1 not rejected at α = 0.05).
+
+```r
+stab <- run_haplotype_stability(
+  geno_matrix = geno, snp_info = snp_info, blocks = blocks,
+  blues_list  = list(env1 = blues_env1, env2 = blues_env2,
+                     env3 = blues_env3)
+)
+stab[stab$stable, c("block_id","b","b_se","r2_fw")]   # broadly adapted blocks
+```
+
+### 10.9. Candidate region export
+
+`export_candidate_regions()` converts `define_qtl_regions()` output to
+standard formats for downstream annotation:
+
+- `format = "bed"` — standard BED (0-based, 6 columns), compatible with BEDtools, UCSC Genome Browser, and Ensembl Plants
+- `format = "csv"` — plain CSV copy of the QTL regions table
+- `format = "biomart"` — named list with `chromosome_name`, `start`, `end` ready for direct use in `biomaRt::getBM(filters = ...)`
+
+Supports `chr_prefix` for UCSC-style chromosome names, LD-extended windows
+via `use_lead_snp`, and `padding_bp` for extra flanking sequence.
+
+```r
+# BED file for BEDtools intersection with gene annotation
+export_candidate_regions(qtl, format = "bed", chr_prefix = "chr",
+                          out_file = "candidate_regions.bed")
+
+# biomaRt query
+bm <- export_candidate_regions(qtl, format = "biomart")
+# biomaRt::getBM(attributes = c("ensembl_gene_id","external_gene_name"),
+#                filters = c("chromosome_name","start","end"),
+#                values  = bm, mart = my_mart)
+```
+
+### 10.10. Per-allele effect decomposition
+
+`decompose_block_effects()` aggregates per-SNP additive effects (from
+`backsolve_snp_effects()`) into a per-haplotype-allele effect table. For each
+allele string the effect is the sum of SNP effects weighted by the allele's
+dosage at each SNP position. Returns `allele_effect`, `effect_rank` (1 =
+most positive within block), and `frequency`. This directly links the
+prediction model to selection index construction: "allele A of block 7
+on chromosome 2B increases yield by X units."
+
+```r
+snp_fx    <- res$snp_effects[["YLD"]]   # from run_haplotype_prediction()
+allele_tb <- decompose_block_effects(haps, snp_info, blocks,
+                                      snp_effects = snp_fx, min_freq = 0.05)
+# Top-5 most positive alleles genome-wide
+head(allele_tb[order(-allele_tb$allele_effect), ], 5)
+```
+
+### 10.11. Sliding-window diversity scan
+
+`scan_diversity_windows()` computes He, Shannon entropy, n_eff_alleles, and
+dominant haplotype frequency in sliding windows across the genome,
+independently of LD block boundaries. Useful for identifying diversity valleys
+(bottlenecks, selective sweeps) or comparing wild and elite panels genome-wide
+without pre-defined blocks.
+
+```r
+scan <- scan_diversity_windows(
+  geno_matrix  = geno,
+  snp_info     = snp_info,
+  window_bp    = 1e6L,   # 1 Mb windows
+  step_bp      = 5e5L,   # 50% overlap
+  min_snps_win = 5L
+)
+# Plot He across chromosome 1
+chr1 <- scan[scan$CHR == "1", ]
+plot(chr1$win_mid / 1e3, chr1$He, type = "l",
+     xlab = "Position (kb)", ylab = "He",
+     main = "Sliding-window haplotype diversity — chr 1")
+```
+
+### 10.12. True diplotype inference
+
+`infer_block_haplotypes()` converts raw haplotype strings from
+`extract_haplotypes()` into a structured per-individual, per-block diplotype
+table. For **phased input** (`read_phased_vcf()` / `phase_with_pedigree()`),
+`hap1` and `hap2` are the true gametic strings and `phase_ambiguous` is always
+`FALSE`. For **unphased input**, heterozygous individuals have `phase_ambiguous
+= TRUE` unless `resolve_unphased = TRUE` triggers a maximum-parsimony heuristic
+(not statistically rigorous — use `phase_with_beagle()` for rigorous phasing).
+The `diplotype` column is the canonical sorted form `"alleleA/alleleB"` for
+direct comparison across individuals and datasets.
+
+```r
+dip <- infer_block_haplotypes(haps, resolve_unphased = FALSE)
+# Proportion of heterozygous diplotypes per block
+tapply(dip$heterozygous, dip$block_id, mean, na.rm = TRUE)
+```
+
+### 10.13. Rare-allele collapsing
+
+`collapse_haplotypes()` merges rare alleles (below `min_freq`) into
+biologically meaningful groups rather than dropping them, preventing
+information loss and stabilising association or prediction models with
+large numbers of rare alleles. Three strategies:
+
+- `"rare_to_other"` — pool all rare alleles into a single `<other>` category
+- `"nearest"` — merge each rare allele with the most similar common allele
+  by Hamming distance; preserves biological similarity
+- `"tree_based"` — UPGMA dendrogram on Hamming distances; merges rare alleles
+  at the coarsest cut that avoids merging any two common alleles
+
+A `label_map` attribute records every original → collapsed mapping for
+downstream use by `harmonize_haplotypes()`.
+
+```r
+haps_col <- collapse_haplotypes(haps, min_freq = 0.05, collapse = "nearest")
+# Then build features on collapsed alleles
+feat_col <- build_haplotype_feature_matrix(haps_col, min_freq = 0.05)
+```
+
+### 10.14. Cross-panel harmonisation
+
+`harmonize_haplotypes()` ensures haplotype allele labels are biologically
+comparable across training/validation splits, environments, or populations.
+Anchors allele identity to a **reference dictionary** built from alleles above
+`min_freq_ref` in the reference panel, then matches each target allele by:
+
+1. **Exact match** → keep the reference label unchanged
+2. **Nearest-Hamming match** → assign the closest reference allele label
+3. **Novel** → label `"<novel>"` when distance exceeds `max_hamming`
+
+A `harmonization_report` attribute reports `n_exact`, `n_nearest`, `n_novel`,
+and `mean_hamming_dist` per block, giving full transparency on transfer quality.
+
+```r
+haps_ref  <- extract_haplotypes(geno_train, snp_info, blocks)
+haps_ref  <- collapse_haplotypes(haps_ref, min_freq = 0.05)
+haps_val  <- extract_haplotypes(geno_val,  snp_info, blocks)
+haps_harm <- harmonize_haplotypes(haps_val, haps_ref, max_hamming = 3L)
+attr(haps_harm, "harmonization_report")  # inspect transfer quality per block
+```
+
+### 10.15. Haplotype association testing
+
+`test_block_haplotypes()` tests every LD block for association with one or more
+quantitative traits using a unified Q+K mixed linear model. The GRM is always
+used as a random effect; `n_pcs` additionally includes GRM eigenvectors as
+fixed-effect covariates to capture discrete population structure.
+
+**When to use `n_pcs = 0` vs `n_pcs > 0`:**
+
+- `n_pcs = 0L` (default, EMMAX): the GRM random effect absorbs all structure
+  and kinship. Use for populations with diffuse continuous kinship and no sharp
+  subpopulation boundaries — livestock half-sib families, advanced inbred lines,
+  or diverse panels without clear breed clusters.
+- `n_pcs = 3` to `10` (Q+K model, Yu et al. 2006): top-k GRM eigenvectors as
+  fixed effects capture discrete subpopulation membership; the GRM random effect
+  captures residual within-subpopulation kinship. Use when the Q-Q plot shows
+  genomic inflation under `n_pcs = 0`, which signals strong discrete structure.
+- `n_pcs = NULL`: auto-selects via scree plot elbow, capped at 10.
+
+**Scaling:** The GRM is inverted once per trait (O(n³), ~30 s for n = 5,000)
+via `rrBLUP::mixed.solve()`. Per-allele tests across all blocks are then
+vectorised in a single `crossprod()` call — the same BLAS trick as marginal SNP
+screening — making the scan O(n × p) and completing in seconds for 17,000 blocks.
+
+```r
+haps <- extract_haplotypes(geno_matrix, snp_info, blocks, min_snps = 5L)
+blues_vec <- setNames(ldx_blues$YLD, ldx_blues$id)
+
+# EMMAX (pure GRM, default)
+assoc <- test_block_haplotypes(haps, blues = blues_vec, blocks = blocks,
+                               n_pcs = 0L, verbose = FALSE)
+
+# Q+K model (3 GRM-derived PCs + GRM)
+assoc_qk <- test_block_haplotypes(haps, blues = blues_vec, blocks = blocks,
+                                   n_pcs = 3L, verbose = FALSE)
+
+# Multi-trait: both traits tested in one call, sharing the same GRM
+assoc_mt <- test_block_haplotypes(haps, blues = ldx_blues, blocks = blocks,
+                                   id_col = "id", blue_cols = c("YLD", "RES"),
+                                   n_pcs = 3L, verbose = FALSE)
+
+# Results
+head(assoc$block_tests[order(assoc$block_tests$p_omnibus), ])
+assoc$allele_tests[assoc$allele_tests$significant, ]
+```
+
+**Output structure:** `assoc$allele_tests` has one row per allele per block per
+trait with columns `effect` (additive effect on de-regressed scale), `SE`,
+`t_stat`, `p_wald`, `p_wald_adj` (Bonferroni), and `significant`.
+`assoc$block_tests` has one row per block per trait with `F_stat`, `p_omnibus`,
+`p_omnibus_adj`, `var_explained`, and `significant_omnibus`.
+
+`estimate_diplotype_effects()` decomposes phenotypic variation at each block
+into additive (a) and dominance (d) components from diplotype class means. The
+dominance ratio d/a classifies gene action: 0 = additive, ±1 = complete
+dominance, |d/a| > 1 = overdominance (heterosis).
+
+```r
+dip <- estimate_diplotype_effects(haps, blues = blues_vec, blocks = blocks,
+                                   min_n_diplotype = 3L, verbose = FALSE)
+
+# Blocks with overdominance (|d/a| > 1) — candidates for heterosis exploitation
+dip$dominance_table[dip$dominance_table$overdominance, ]
+
+# Statistically significant diplotype effects after Bonferroni correction
+dip$omnibus_tests[dip$omnibus_tests$significant, ]
+```
+
+### 10.16. Breeding decision tools
+
+Once per-allele effects are known (from genomic prediction or association), two
+functions translate those effects into actionable breeding decisions.
+
+`score_favorable_haplotypes()` produces a genome-wide stacking index for each
+individual. The block score = sum(allele_effect × dosage) across alleles at each
+block; the stacking index is the sum across all scored blocks, normalised to
+[0, 1] when `normalize = TRUE`.
+
+```r
+# Get allele effects from prediction pipeline
+pred <- run_haplotype_prediction(geno_matrix, snp_info, blocks,
+                                  blues = blues_vec, verbose = FALSE)
+ae   <- decompose_block_effects(haps, snp_info, blocks,
+                                 snp_effects = pred$snp_effects[[1]])
+
+# Score every individual
+scores <- score_favorable_haplotypes(haps, allele_effects = ae)
+head(scores[, c("id","stacking_index","n_blocks_scored","rank")], 10)
+
+# Per-block breakdown for the top candidate
+top1_block_scores <- scores[1, grepl("^score_", names(scores))]
+sort(as.numeric(top1_block_scores), decreasing = TRUE)[1:5]
+```
+
+`summarize_parent_haplotypes()` produces a tidy long-format allele inventory
+for a set of candidate parents — which alleles they carry at each block, in what
+dosage, and with what population frequency. Includes `is_rare = TRUE` for
+alleles with frequency < 10%, highlighting parents that carry rare alleles
+absent from the general population.
+
+```r
+# Inventory for the top 10 selection candidates
+top10 <- scores$id[scores$rank <= 10]
+inv   <- summarize_parent_haplotypes(haps, candidate_ids = top10,
+                                      allele_effects = ae)
+
+# Blocks where candidates carry rare alleles (potential for introgression)
+inv[inv$dosage > 0 & inv$is_rare,
+    c("id","block_id","CHR","start_bp","allele","dosage","allele_freq","allele_effect")]
+
+# Identify blocks where candidates are complementary (different alleles)
+# — candidates for targeted crosses to stack both alleles
+library(dplyr)
+inv |>
+  filter(dosage > 0) |>
+  group_by(block_id) |>
+  summarise(n_unique_alleles = n_distinct(allele),
+            candidates       = paste(id, collapse=",")) |>
+  filter(n_unique_alleles > 1) |>
+  arrange(desc(n_unique_alleles))
+```
 
 ## 11. Parameter auto-tuning
 
@@ -1580,23 +1924,331 @@ blocks <- run_Big_LD_all_chr(
 | `define_qtl_regions()` | Map GWAS hits to LD blocks; detect pleiotropic blocks. |
 | `backsolve_snp_effects()` | Derive per-SNP effects from GEBV (Tong et al. 2025). |
 | `compute_local_gebv()` | Local haplotype GEBV per block per individual. |
-| `prepare_gblup_inputs()` | Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, BGLR, ASReml-R). See [Phenotype input format](#phenotype-input-format) for accepted column layouts. |
-| `run_haplotype_prediction()` | Single or multi-trait Tong et al. (2025) haplotype stacking pipeline.
-    `blues` accepts any of four formats (named vector, single-trait or multi-trait data frame, named list).
-    See [Phenotype input format](#phenotype-input-format). Uses rrBLUP::kin.blup() per trait with a shared GRM. |
+| `prepare_gblup_inputs()` | Align phenotype data frame and haplotype GRM for external GBLUP solvers (rrBLUP, BGLR, ASReml-R). |
+| `run_haplotype_prediction()` | Single or multi-trait Tong et al. (2025) haplotype stacking pipeline. |
 | `integrate_gwas_haplotypes()` | Combine GWAS, variance, and diversity evidence per block. |
 | `rank_haplotype_blocks()` | Unified block ranking across 3 use cases (diversity/GWAS/phenotype). |
 
-### 14.6. Utilities
+### 14.6. Analysis extensions
+
+Seven functions that extend the pipeline without modifying any existing function.
+
+**`cv_haplotype_prediction(geno_matrix, snp_info, blocks, blues, k, n_rep, ...)`**
+K-fold cross-validation for the haplotype GBLUP model. Masks phenotype values
+fold-by-fold, predicts via `rrBLUP::kin.blup()` using the shared haplotype GRM,
+and returns predictive ability (PA, Pearson r) and RMSE per trait per fold.
+Key parameters: `k` (folds, default 5), `n_rep` (replications, default 1),
+`seed` (default 42). Accepts the same four `blues` formats as
+`run_haplotype_prediction()`. Returns a `LDxBlocks_cv` object with elements
+`pa_summary` (one row per trait × rep × fold), `pa_mean` (mean PA ± SD per
+trait), `k`, and `n_rep`.
+
+**`compare_haplotype_populations(haplotypes, group1, group2, ...)`**
+Per-block allele frequency comparison between two named sample groups.
+Computes Weir-Cockerham (1984) FST, maximum absolute frequency difference
+across alleles, dominant allele per group, and a chi-squared test of
+independence (Monte Carlo, B = 2000). Returns one row per block with columns
+`FST` (clamped to [0, 1]), `max_freq_diff`, `dominant_g1`, `dominant_g2`,
+`chisq_p`, and `divergent` (TRUE when FST > 0.1 AND p < 0.05).
+Rare alleles below `min_freq` (default 0.02) in both groups are pooled into
+an `<other>` category before testing.
+
+**`plot_haplotype_network(haplotypes, block_id, groups, min_freq, ...)`**
+Draws a minimum-spanning network (MSN) of haplotype alleles for one LD block.
+Edge weights are Hamming distances (number of differing SNP positions between
+allele strings). Node size is proportional to allele frequency. When `groups`
+is supplied (named character vector mapping individual IDs to group labels),
+nodes are coloured by the most common group among carriers of each allele.
+Edge labels show the Hamming distance when > 1. Returns the `igraph` MST
+object invisibly; the plot is produced as a side effect.
+
+**`run_haplotype_stability(geno_matrix, snp_info, blocks, blues_list, ...)`**
+Finlay-Wilkinson (1963) regression of per-block local GEBV contributions
+against the environmental index. For each block, the mean GEBV contribution
+across individuals is computed per environment, then regressed on the
+environment mean (the environmental index). Returns: `b` (regression slope —
+the stability coefficient; b = 1 = average stability, b > 1 = exploits good
+environments, b < 1 = robust across environments), `b_se`, `r2_fw`, `s2d`
+(deviation mean square), `p_b1` (p-value for H0: b = 1), and `stable` (TRUE
+when H0 not rejected at alpha = 0.05). Requires at least 2 environments.
+`blues_list` is a named list of named numeric vectors (one element per
+environment).
+
+**`export_candidate_regions(qtl_regions, format, out_file, chr_prefix, ...)`**
+Converts `define_qtl_regions()` output to annotation-ready formats.
+Three formats: `"bed"` (0-based coordinates, UCSC/BEDtools-compatible; columns
+chrom, start, end, name, score, strand), `"csv"` (the input data frame as-is),
+`"biomart"` (named list with `chromosome_name`, `start`, `end` vectors for
+direct use with `biomaRt::getBM(filters = c("chromosome_name","start","end"), ...)`).
+When `use_lead_snp = TRUE` (default) and LD decay was supplied to
+`define_qtl_regions()`, LD-extended candidate region coordinates are used
+instead of block boundaries. `padding_bp` adds extra base pairs on each side.
+
+**`decompose_block_effects(haplotypes, snp_info, blocks, snp_effects, ...)`**
+Aggregates per-SNP additive effects (from `backsolve_snp_effects()`) into a
+per-haplotype-allele effect table: for each allele of each block, the effect
+equals the sum of SNP effects weighted by allele dosage at each SNP position
+(effect = sum(SNP_effect × allele_dosage_at_position)). Returns one row per
+allele per block with columns `allele`, `frequency`, `allele_effect`,
+`effect_rank` (1 = most positive within block), and `n_snps_block`. Directly
+bridges prediction model output to selection index construction and
+interpretable breeding decisions.
+
+**`scan_diversity_windows(geno_matrix, snp_info, window_bp, step_bp, ...)`**
+Sliding-window diversity scan across the genome, independent of LD block
+boundaries. For each window, diploid allele strings are built per individual,
+and diversity metrics are computed from their frequency distribution: He
+(Nei 1973, sample-size corrected), Shannon entropy, n_eff_alleles, and
+freq_dominant. `sweep_flag` is set when freq_dominant >= 0.90. Returns a
+data frame with one row per window per chromosome, sorted by CHR and win_start.
+Key parameters: `window_bp` (default 1 Mb), `step_bp` (default 500 kb,
+giving 50% overlap), `min_snps_win` (minimum SNPs per window, default 5).
+
+### 14.7. True haplotype inference and harmonisation
+
+**`infer_block_haplotypes(haplotypes, resolve_unphased, missing_string)`**
+Converts raw haplotype strings from `extract_haplotypes()` into a structured
+per-individual, per-block diplotype table. For **phased input** (strings
+containing `|` separators, produced when `extract_haplotypes()` receives a
+phased list from `read_phased_vcf()` or `phase_with_pedigree()`), hap1 and
+hap2 are the true gametic strings and `phase_ambiguous` is always FALSE.
+For **unphased input** (plain diploid dosage strings like `"012201"`),
+homozygous individuals have hap1 = hap2 (each gamete gets half the dosage:
+2 → 1, 0 → 0), while heterozygous individuals (any position with dosage 1)
+have `phase_ambiguous = TRUE` and hap1/hap2 set to NA unless
+`resolve_unphased = TRUE`. The `diplotype` column contains the canonical form:
+both gamete strings sorted alphabetically and joined with `/` (e.g.
+`"010/110"`), making diplotypes comparable across individuals regardless of
+which gamete was labelled hap1. Returns a data frame with one row per
+individual × block.
+
+**`collapse_haplotypes(haplotypes, min_freq, collapse, keep_labels)`**
+Merges rare alleles (frequency <= `min_freq`) into existing common alleles
+rather than dropping them. Three strategies: `"nearest"` (default) — each
+rare allele is merged with the most similar common allele by Hamming distance,
+preserving biological relatedness; `"rare_to_other"` — all rare alleles are
+pooled into a single `<other>` category, lossless for total frequency but
+biologically uninformative; `"tree_based"` — UPGMA dendrogram of all alleles
+is built from pairwise Hamming distances, then cut at the coarsest level that
+avoids merging any two common alleles, assigning each rare allele to the most
+frequent common allele in its cluster. When `keep_labels = TRUE` (default), a
+`label_map` attribute is attached to the output recording every
+original → collapsed mapping per block; this map is used internally by
+`harmonize_haplotypes()`. Returns a list with the same structure as the input,
+with the `block_info` attribute preserved.
+
+**`harmonize_haplotypes(haplotypes_target, haplotypes_ref, min_freq_ref, max_hamming)`**
+Makes haplotype allele labels transferable across panels, analysis runs, or
+training/validation splits. Builds a reference dictionary from alleles above
+`min_freq_ref` in the reference panel, then matches each allele in the target
+panel against it: exact string match → same label; nearest Hamming neighbour
+within `max_hamming` → reference allele label (with match quality recorded);
+distance > `max_hamming` → `"<novel>"`. The `harmonization_report` attribute
+of the output is a data frame with one row per block reporting `n_exact`,
+`n_nearest`, `n_novel`, and `mean_hamming_dist`, giving a quantitative measure
+of how well the reference panel covers the target panel's diversity. Blocks
+not present in the reference panel pass through unchanged. This function is the
+correct way to prepare a validation or new-season panel for genomic prediction
+when the prediction model was trained on a different (or overlapping) set of
+individuals — without harmonisation, allele strings are run-specific and have
+no guaranteed cross-run identity.
+
+### 14.8. Haplotype association testing
+
+**`test_block_haplotypes(haplotypes, blues, blocks, n_pcs, top_n, min_freq, id_col, blue_col, blue_cols, alpha, verbose)`**
+
+Block-level haplotype association tests using a unified mixed linear model
+(Q+K / EMMAX formulation) that accounts simultaneously for population structure
+and kinship.
+
+*Statistical model* — y = μ + α·x_hap + Σβ_k·PC_k + g + ε, where x_hap is
+the tested haplotype allele dosage, PC_k are fixed-effect GRM eigenvectors
+(population structure), and g ~ MVN(0, σ²G) is the polygenic random effect
+(kinship). The GRM is inverted once per trait via `rrBLUP::mixed.solve()` (O(n³),
+dominant cost). The per-allele scan is then fully vectorised across all blocks
+in a single `crossprod()` call — O(n × p) regardless of block count.
+
+*Key parameters:*
+
+`n_pcs` controls the model: `0L` (default) = pure GRM correction (EMMAX/P3D —
+GRM handles all structure and kinship as a random effect); `k > 0` = Q+K model
+(top k GRM eigenvectors as fixed effects + GRM random effect, analogous to
+GAPIT3/TASSEL); `NULL` = auto-select via scree plot elbow, capped at 10. PCs
+are derived from `eigen(G_hap)` — the same GRM that enters as the random
+effect — guaranteeing mathematical consistency between fixed and random
+structure terms. Use `n_pcs = 0` for populations with diffuse continuous
+kinship (livestock, inbred lines); use `n_pcs = 3–5` when strong discrete
+subpopulation clusters are present (diverse panels, multi-breed datasets).
+
+`blues` accepts four formats: (1) named numeric vector `c(id1=val, ...)`,
+(2) single-trait data frame with `id_col` and `blue_col` columns,
+(3) multi-trait wide data frame with `id_col` and `blue_cols` columns,
+(4) named list of named numeric vectors. All traits share the same GRM
+and PC covariates.
+
+`alpha = NULL` applies Bonferroni correction: 0.05 / total allele tests
+across all blocks and traits.
+
+*Returns* — `LDxBlocks_haplotype_assoc` object (named list):
+- `$allele_tests` — data frame, one row per allele per block per trait.
+  Columns: `block_id` (character, e.g. `"block_1_1000_103000"`), `CHR`,
+  `start_bp` (integer), `end_bp` (integer), `trait` (character), `allele`
+  (haplotype allele string identifier), `frequency` (allele frequency in
+  the panel, numeric [0, 1]), `effect` (additive effect estimate — mean
+  phenotype difference per unit dosage on the de-regressed scale),
+  `SE` (standard error of effect), `t_stat` (t-statistic),
+  `p_wald` (two-sided Wald p-value, raw), `p_wald_adj` (Bonferroni-adjusted),
+  `significant` (logical, TRUE when p_wald ≤ alpha).
+  Sorted ascending by CHR, start_bp, p_wald within each trait.
+- `$block_tests` — data frame, one row per block per trait.
+  Columns: `block_id`, `CHR`, `start_bp`, `end_bp`, `trait`,
+  `n_alleles_tested` (integer — number of alleles above min_freq in this
+  block), `F_stat` (omnibus F-statistic testing all alleles jointly),
+  `df_LRT` (numerator degrees of freedom = n_alleles_tested),
+  `p_omnibus` (omnibus p-value from F-distribution), `p_omnibus_adj`
+  (Bonferroni-adjusted across all blocks per trait), `var_explained`
+  (proportion of de-regressed phenotypic variance explained by block
+  alleles, numeric [0, 1]), `significant_omnibus` (logical).
+  Sorted ascending by CHR, start_bp, p_omnibus.
+- `$traits` — character vector of trait names tested.
+- `$n_pcs_used` — integer, number of GRM PCs included as fixed effects.
+- `$alpha` — numeric, significance threshold used.
+- `$n_tests` — integer, total allele-level tests (denominator for Bonferroni).
+
+```r
+assoc <- test_block_haplotypes(haps, blues = my_blues, blocks = blocks,
+                                n_pcs = 3L, verbose = FALSE)
+# Top blocks by omnibus significance
+head(assoc$block_tests[order(assoc$block_tests$p_omnibus), ])
+# Significant per-allele associations
+assoc$allele_tests[assoc$allele_tests$significant, ]
+```
+
+---
+
+**`estimate_diplotype_effects(haplotypes, blues, blocks, min_freq, min_n_diplotype, id_col, blue_col, blue_cols, verbose)`**
+
+Estimates additive and dominance effects per LD block from diplotype
+(AA/AB/BB) phenotypic means after GRM-based kinship correction. For each
+pair of common alleles A and B at each block: additive effect
+a = (mean(BB) − mean(AA)) / 2; dominance deviation
+d = mean(AB) − (mean(AA) + mean(BB)) / 2; dominance ratio d/a
+(0 = additive, ±1 = complete dominance, |d/a| > 1 = overdominance/heterosis).
+
+`min_n_diplotype` (default 3) sets the minimum number of individuals that
+must carry each diplotype for it to be included in comparisons — lower values
+allow rarer diplotypes but increase estimation uncertainty.
+
+*Returns* — `LDxBlocks_diplotype` object (named list):
+- `$diplotype_means` — data frame, one row per diplotype per block per trait.
+  Columns: `block_id`, `CHR`, `start_bp`, `end_bp`, `trait`,
+  `diplotype` (canonical sorted string, e.g. `"010/110"` — always
+  lexicographically ordered so allele comparisons are consistent),
+  `n` (number of individuals with this diplotype after GRM correction),
+  `mean_blue` (mean de-regressed phenotype value for this diplotype class),
+  `se_mean` (standard error of the mean).
+- `$dominance_table` — data frame, one row per allele pair per block per trait.
+  Columns: `block_id`, `CHR`, `start_bp`, `end_bp`, `trait`,
+  `allele_A`, `allele_B` (the two alleles being compared),
+  `mean_AA` (mean de-regressed phenotype for AA homozygotes),
+  `mean_AB` (mean for AB heterozygotes),
+  `mean_BB` (mean for BB homozygotes),
+  `a` (additive effect = (mean_BB − mean_AA) / 2),
+  `d` (dominance deviation = mean_AB − midpoint),
+  `d_over_a` (dominance ratio; NA when |a| < 1e-10),
+  `overdominance` (logical, TRUE when |d/a| > 1).
+- `$omnibus_tests` — data frame, one row per block per trait.
+  Columns: `block_id`, `trait`, `n_diplotypes` (number of diplotype classes
+  with ≥ min_n_diplotype individuals), `F_stat`, `df1` (numerator df =
+  n_diplotypes − 1), `df2` (denominator df), `p_omnibus` (raw),
+  `p_omnibus_adj` (Bonferroni), `significant` (logical, adj p < 0.05).
+  Sorted ascending by p_omnibus.
+
+### 14.9. Breeding decision tools
+
+**`score_favorable_haplotypes(haplotypes, allele_effects, min_freq, missing_string, normalize)`**
+
+Scores each individual's genome-wide haplotype portfolio against a table of
+known per-allele effects, producing a stacking index for selection decisions.
+For each block, the score = sum(allele_effect × dosage) across alleles carried.
+The genome-wide stacking index is the sum across all scored blocks, normalised
+to [0, 1] when `normalize = TRUE`.
+
+`allele_effects` must be a data frame with at minimum columns `block_id`
+(character, matching `names(haplotypes)`), `allele` (character, matching the
+haplotype allele strings), and `allele_effect` (numeric). The output of
+`decompose_block_effects()` or `test_block_haplotypes()$allele_tests` (after
+filtering to one trait) are both accepted directly.
+
+*Returns* — data frame, one row per individual, sorted ascending by `rank`:
+- `id` (character) — individual identifier, matching `rownames(geno_matrix)`.
+- `stacking_index` (numeric [0, 1] when normalize = TRUE, or raw sum otherwise)
+  — genome-wide sum of block-level haplotype scores. Higher values indicate
+  individuals carrying more favourable allele combinations.
+- `n_blocks_scored` (integer) — number of blocks for which at least one allele
+  effect was available in `allele_effects`.
+- `mean_block_score` (numeric) — mean per-block score (raw, unnormalised),
+  useful for comparing across panels with different numbers of scored blocks.
+- `rank` (integer, 1 = highest stacking index) — rank by stacking_index with
+  ties broken by `min` method.
+- One numeric column per scored block named `score_<block_id>` — per-block
+  score for detailed inspection of which genomic regions drive an individual's
+  index. Zero when the individual carries no scored alleles at that block.
+
+```r
+scores <- score_favorable_haplotypes(haps, allele_effects = ae)
+# Top 10 candidates for selection
+head(scores[order(scores$rank), c("id","stacking_index","rank")], 10)
+# Which blocks drive the top candidate's index?
+top1 <- scores[1, grepl("^score_", names(scores))]
+sort(as.numeric(top1), decreasing = TRUE)[1:5]
+```
+
+---
+
+**`summarize_parent_haplotypes(haplotypes, candidate_ids, allele_effects, blocks, min_freq, missing_string)`**
+
+Produces a complete allele inventory for each candidate parent individual —
+which haplotype alleles they carry at each LD block, their dosage (0/1/2 copies
+for phased data, 0/1 for unphased), population frequency, and optionally the
+effect of each allele. This is the primary tool for identifying which parents
+carry complementary rare alleles at important blocks and which parents are
+redundant.
+
+`candidate_ids` filters to a subset of individuals (e.g. top candidates from
+`score_favorable_haplotypes()`). `NULL` includes all individuals.
+
+*Returns* — data frame, one row per individual × block × allele combination
+(including alleles with dosage = 0 so that all parents can be compared on the
+same rows), sorted by `id`, `CHR`, `start_bp`, then descending `dosage`:
+- `id` (character) — individual identifier.
+- `block_id`, `CHR`, `start_bp`, `end_bp` — block coordinates.
+- `allele` (character) — haplotype allele string (e.g. `"010110"`).
+- `dosage` (integer) — 0 = absent, 1 = present (unphased) or heterozygous
+  (phased), 2 = homozygous (phased only). Phased input (strings with `|`)
+  counts copies across both gametes; unphased input gives 0 or 1 only.
+- `allele_freq` (numeric [0, 1]) — frequency of this allele in the full panel
+  (all individuals, not just candidates).
+- `allele_effect` (numeric or NA) — effect value from `allele_effects` when
+  supplied, NA otherwise.
+- `is_rare` (logical) — TRUE when allele_freq < 0.10. Useful for identifying
+  parents carrying favourable rare alleles absent from the general population.
+
+```r
+top5 <- scores$id[1:5]
+inv   <- summarize_parent_haplotypes(haps, candidate_ids = top5,
+                                      allele_effects = ae)
+# Blocks where at least one candidate carries a rare allele
+inv[inv$dosage > 0 & inv$is_rare, c("id","block_id","allele","dosage","allele_effect")]
+```
+
+### 14.10. Utilities
 
 | Function | Description |
 |----------|-------------|
 | `summarise_blocks()` | Per-chromosome and genome-wide block size summary statistics. |
 | `plot_ld_blocks()` | ggplot2 block diagram coloured by block size or chromosome. |
 
----
-
----
 
 ## 15. Output objects
 
@@ -1662,7 +2314,116 @@ A `data.frame` with one row per detected LD block:
 
 ---
 
+### 15.6. `test_block_haplotypes()` — LDxBlocks_haplotype_assoc
+
+Named list with class `c("LDxBlocks_haplotype_assoc", "list")`.
+
+**`$allele_tests`** — data frame, one row per allele per block per trait, sorted by CHR, start_bp, p_wald:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `block_id` | character | Block identifier matching `names(haplotypes)` |
+| `CHR` | character | Chromosome label |
+| `start_bp` | integer | Block start coordinate (bp) |
+| `end_bp` | integer | Block end coordinate (bp) |
+| `trait` | character | Trait name |
+| `allele` | character | Haplotype allele string identifier |
+| `frequency` | numeric [0,1] | Allele frequency in the panel |
+| `effect` | numeric | Additive effect estimate on de-regressed phenotype scale |
+| `SE` | numeric | Standard error of the effect |
+| `t_stat` | numeric | t-statistic (effect / SE) |
+| `p_wald` | numeric (0,1] | Two-sided Wald p-value (raw, uncorrected) |
+| `p_wald_adj` | numeric (0,1] | Bonferroni-adjusted: min(p_wald × n_tests, 1) |
+| `significant` | logical | TRUE when p_wald ≤ alpha |
+
+**`$block_tests`** — data frame, one row per block per trait, sorted by CHR, start_bp, p_omnibus:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `block_id`, `CHR`, `start_bp`, `end_bp`, `trait` | — | Identifiers |
+| `n_alleles_tested` | integer | Alleles above min_freq tested jointly |
+| `F_stat` | numeric | Omnibus F-statistic (all alleles jointly) |
+| `df_LRT` | integer | Numerator df = n_alleles_tested |
+| `p_omnibus` | numeric (0,1] | Raw omnibus p-value |
+| `p_omnibus_adj` | numeric (0,1] | Bonferroni-adjusted across all blocks per trait |
+| `var_explained` | numeric [0,1] | Proportion of de-regressed variance explained by block alleles |
+| `significant_omnibus` | logical | TRUE when p_omnibus_adj < 0.05 |
+
+Additional scalar elements: `$traits`, `$n_pcs_used`, `$alpha`, `$n_tests`.
+
 ---
+
+### 15.7. `estimate_diplotype_effects()` — LDxBlocks_diplotype
+
+Named list with class `c("LDxBlocks_diplotype", "list")`.
+
+**`$diplotype_means`** — data frame, one row per diplotype class per block per trait (for classes with >= min_n_diplotype individuals):
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `block_id`, `CHR`, `start_bp`, `end_bp`, `trait` | — | Block and trait identifiers |
+| `diplotype` | character | Canonical sorted string, e.g. `"010/110"`. Always A <= B alphabetically. |
+| `n` | integer | Number of individuals in this class |
+| `mean_blue` | numeric | Mean de-regressed phenotype value |
+| `se_mean` | numeric | Standard error of the mean |
+
+**`$dominance_table`** — data frame, one row per allele pair per block per trait:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `allele_A`, `allele_B` | character | The two alleles (A <= B alphabetically) |
+| `mean_AA`, `mean_AB`, `mean_BB` | numeric | Diplotype class means on de-regressed scale |
+| `a` | numeric | Additive effect: (mean_BB - mean_AA) / 2 |
+| `d` | numeric | Dominance deviation: mean_AB - (mean_AA + mean_BB) / 2 |
+| `d_over_a` | numeric or NA | Dominance ratio. Interpretation: 0 = additive; +/-1 = complete dominance; absolute value > 1 = overdominance. NA when absolute value of a < 1e-10. |
+| `overdominance` | logical | TRUE when absolute value of d/a > 1 |
+
+**`$omnibus_tests`** — data frame, one row per block per trait, sorted by p_omnibus:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `n_diplotypes` | integer | Diplotype classes with >= min_n_diplotype individuals |
+| `F_stat` | numeric | F-statistic from one-way ANOVA |
+| `df1`, `df2` | integer | Numerator and denominator degrees of freedom |
+| `p_omnibus` | numeric (0,1] | Raw p-value |
+| `p_omnibus_adj` | numeric (0,1] | Bonferroni-adjusted across all tested blocks |
+| `significant` | logical | TRUE when p_omnibus_adj < 0.05 |
+
+---
+
+### 15.8. `score_favorable_haplotypes()` — data frame
+
+One row per individual, sorted ascending by `rank`:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | character | Individual identifier |
+| `stacking_index` | numeric [0,1] | Normalised genome-wide score (normalize=TRUE) or raw score sum (normalize=FALSE). Higher = more favourable allele combinations. |
+| `n_blocks_scored` | integer | Blocks with at least one matched allele effect |
+| `mean_block_score` | numeric | Raw mean per-block score (independent of n_blocks_scored) |
+| `rank` | integer | Rank (1 = highest). Ties use min method. |
+| `score_<block_id>` | numeric | Per-block score columns (one per scored block). Zero when no scored allele is carried. Named `score_` + block_id. |
+
+---
+
+### 15.9. `summarize_parent_haplotypes()` — data frame
+
+Long format, one row per individual x block x allele (including dosage = 0 rows). Sorted by id, CHR, start_bp, then descending dosage:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | character | Individual identifier |
+| `block_id`, `CHR`, `start_bp`, `end_bp` | — | Block coordinates |
+| `allele` | character | Haplotype allele string |
+| `dosage` | integer {0,1,2} | Copies carried. Unphased: 0 or 1. Phased: 0, 1 (heterozygous), or 2 (homozygous). |
+| `allele_freq` | numeric [0,1] | Population frequency in full panel (not just candidates) |
+| `allele_effect` | numeric or NA | Effect from allele_effects argument if supplied |
+| `is_rare` | logical | TRUE when allele_freq < 0.10 |
+
+---
+
+---
+
 
 ## 16. Memory and performance notes
 

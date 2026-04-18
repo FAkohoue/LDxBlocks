@@ -53,12 +53,12 @@ blues_file <- system.file("extdata", "example_blues.csv",
 blues <- read.csv(blues_file)
 head(blues)
 #>       id     YLD     RES
-#> 1 ind001  0.8909 -0.8208
-#> 2 ind002 -0.8711  0.9927
-#> 3 ind003 -0.9154 -0.9956
-#> 4 ind004 -1.5776 -0.9134
-#> 5 ind005  0.8288  0.7546
-#> 6 ind006  0.1126  1.0192
+#> 1 ind001 -0.5175  0.6771
+#> 2 ind002  0.7635  1.3764
+#> 3 ind003 -1.3093 -0.9946
+#> 4 ind004 -1.1162 -1.4089
+#> 5 ind005  1.1343 -0.5120
+#> 6 ind006  0.9307 -0.4573
 
 if (FALSE) { # \dontrun{
 # Single-trait prediction (YLD)
@@ -87,4 +87,25 @@ res_mt$solver_used   # 'sommer' or 'rrBLUP'
 res_mt$block_importance[res_mt$block_importance$important_any,
   c("block_id", "var_scaled_YLD", "var_scaled_RES", "n_traits_important")]
 } # }
+
+# \donttest{
+# Cross-validate genomic prediction accuracy
+data(ldx_geno, ldx_snp_info, ldx_blocks)
+blues_file <- system.file("extdata", "example_blues.csv",
+                          package = "LDxBlocks")
+blues <- read.csv(blues_file)
+cv <- cv_haplotype_prediction(
+  geno_matrix = ldx_geno,
+  snp_info    = ldx_snp_info,
+  blocks      = ldx_blocks,
+  blues       = blues,
+  k           = 3L,
+  id_col      = "id",
+  blue_col    = "YLD",
+  verbose     = FALSE
+)
+cv$pa_mean
+#>   trait         PA    RMSE     PA_sd    RMSE_sd
+#> 1   YLD 0.08409989 1.07328 0.1879065 0.03967924
+# }
 ```

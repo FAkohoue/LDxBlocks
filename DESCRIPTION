@@ -39,14 +39,39 @@ Description: Fast, scalable linkage disequilibrium (LD) block detection for
     Block importance is aggregated across traits (mean scaled variance,
     n_traits_important, important_any, important_all) for robust haplotype
     stacking candidate identification.
+    Ten additional analysis functions extend the pipeline: k-fold
+    cross-validation for genomic prediction accuracy estimation
+    (cv_haplotype_prediction); between-population allele frequency and FST
+    comparison per block (compare_haplotype_populations); minimum-spanning
+    haplotype network visualisation via igraph (plot_haplotype_network);
+    Finlay-Wilkinson stability analysis across environments
+    (run_haplotype_stability); candidate region export to BED, CSV, or
+    biomaRt format (export_candidate_regions); per-allele effect
+    decomposition from SNP effects (decompose_block_effects); sliding-window
+    genome-wide diversity scan (scan_diversity_windows); true gametic
+    diplotype inference from phased or unphased input
+    (infer_block_haplotypes); rare-allele collapsing with three strategies
+    (collapse_haplotypes); and cross-panel haplotype label harmonisation
+    via reference-dictionary matching (harmonize_haplotypes).
+    Four haplotype association and breeding decision functions complete the
+    inference layer: block-level haplotype association testing via a unified
+    Q+K mixed linear model with vectorised per-allele scan (test_block_haplotypes,
+    analogous to EMMAX/GAPIT3, O(n^3) GRM inversion once per trait then
+    O(n*p) BLAS scan across all blocks); diplotype effect estimation with
+    additive/dominance decomposition and overdominance detection
+    (estimate_diplotype_effects); genome-wide haplotype portfolio scoring
+    against known allele effects with a normalised stacking index
+    (score_favorable_haplotypes); and a per-parent allele inventory for
+    haplotype stacking cross decisions (summarize_parent_haplotypes).
     LD decay analysis (compute_ld_decay) estimates the distance at which r2
     or rV2 drops below a critical threshold per chromosome, using a
     memory-efficient position-first random sampling strategy and optional
     Hill-Weir (1988) nonlinear or LOESS curve fitting. Chromosome-specific
     decay distances can be passed to define_qtl_regions() to replace fixed
     block boundaries with LD-aware candidate gene windows around GWAS hits.
-    Five example datasets are shipped in data/: ldx_geno, ldx_snp_info,
-    ldx_blocks, ldx_gwas, and ldx_blues (pre-adjusted BLUEs for two traits).
+    Six example datasets are shipped in data/: ldx_geno, ldx_snp_info,
+    ldx_blocks, ldx_gwas, ldx_blues (pre-adjusted BLUEs for two traits), and
+    ldx_blues_list (per-environment BLUEs for stability analysis examples).
     The pipeline also includes: VanRaden GRM from haplotype features
     (compute_haplotype_grm); backsolved per-SNP effects
     (backsolve_snp_effects, Tong et al. 2025); local haplotype GEBV per
@@ -72,7 +97,8 @@ Imports:
     dplyr (>= 1.0.0),
     rrBLUP,
     stats,
-    utils
+    utils,
+    grDevices
 Suggests:
     AGHmatrix (>= 2.0.0),
     ASRgenomics (>= 1.1.0),
@@ -81,9 +107,7 @@ Suggests:
     BEDMatrix,
     bigmemory,
     future.apply,
-    sommer,
     ggplot2,
-    parallel,
     usethis,
     knitr,
     rmarkdown,
@@ -92,6 +116,7 @@ LinkingTo:
     Rcpp,
     RcppArmadillo
 Encoding: UTF-8
+Roxygen: list(markdown = FALSE)
 RoxygenNote: 7.3.3
 Config/testthat/edition: 3
 LazyData: true

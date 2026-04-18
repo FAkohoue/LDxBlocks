@@ -65,11 +65,11 @@ data(ldx_gwas)
 head(ldx_gwas)
 #>   Marker CHR   POS            P  trait
 #> 1 rs1001   1  1000 8.151737e-07 TraitB
-#> 2 rs1005   1  5246 4.023280e-07 TraitB
-#> 3 rs1017   1 17510 7.524202e-07 TraitB
-#> 4 rs1034   1 84716 6.638623e-07 TraitA
-#> 5 rs1040   1 90503 7.299685e-07 TraitA
-#> 6 rs1048   1 98806 3.493586e-07 TraitA
+#> 2 rs1005   1  5188 4.023280e-07 TraitB
+#> 3 rs1017   1 16833 7.524202e-07 TraitB
+#> 4 rs1034   1 83635 6.638623e-07 TraitA
+#> 5 rs1040   1 89846 7.299685e-07 TraitA
+#> 6 rs1048   1 97212 3.493586e-07 TraitA
 # All markers should fall within ldx_blocks:
 data(ldx_blocks)
 data(ldx_snp_info)

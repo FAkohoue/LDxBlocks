@@ -137,11 +137,11 @@ dim(ldx_geno)             # 120 individuals x 230 SNPs
 head(ldx_snp_info)        # SNP, CHR, POS, REF, ALT
 #>      SNP CHR  POS REF ALT
 #> 1 rs1001   1 1000   G   C
-#> 2 rs1002   1 2134   C   G
-#> 3 rs1003   1 3089   T   A
-#> 4 rs1004   1 4067   A   G
-#> 5 rs1005   1 5246   G   A
-#> 6 rs1006   1 6312   C   T
+#> 2 rs1002   1 2192   C   G
+#> 3 rs1003   1 3253   T   A
+#> 4 rs1004   1 4132   A   G
+#> 5 rs1005   1 5188   G   A
+#> 6 rs1006   1 6314   C   T
 table(ldx_snp_info$CHR)   # chr1, chr2, chr3
 #> 
 #>  1  2  3 
@@ -198,11 +198,11 @@ be$sample_ids[1:4]
 head(be$snp_info)
 #>      SNP CHR  POS REF ALT
 #> 1 rs1001   1 1000   G   C
-#> 2 rs1002   1 2134   C   G
-#> 3 rs1003   1 3089   T   A
-#> 4 rs1004   1 4067   A   G
-#> 5 rs1005   1 5246   G   A
-#> 6 rs1006   1 6312   C   T
+#> 2 rs1002   1 2192   C   G
+#> 3 rs1003   1 3253   T   A
+#> 4 rs1004   1 4132   A   G
+#> 5 rs1005   1 5188   G   A
+#> 6 rs1006   1 6314   C   T
 chunk <- read_chunk(be, 1:30)
 dim(chunk)
 #> [1] 120  30
@@ -277,9 +277,9 @@ blues_file <- system.file("extdata", "example_blues.csv", package = "LDxBlocks")
 blues      <- read.csv(blues_file)
 head(blues, 3)
 #>       id     YLD     RES
-#> 1 ind001  0.8909 -0.8208
-#> 2 ind002 -0.8711  0.9927
-#> 3 ind003 -0.9154 -0.9956
+#> 1 ind001 -0.5175  0.6771
+#> 2 ind002  0.7635  1.3764
+#> 3 ind003 -1.3093 -0.9946
 ```
 
 The most common source of errors is an ID mismatch between the phenotype
@@ -311,12 +311,12 @@ nrow(blocks)
 #> [1] 9
 head(blocks)
 #>   start end start.rsID end.rsID start.bp end.bp CHR length_bp
-#> 1     1  25     rs1001   rs1025     1000  25535   1     24536
-#> 2    31  50     rs1031   rs1050    81986 100878   1     18893
-#> 3    56  80     rs1056   rs1080   156776 181114   1     24339
-#> 4     1  30     rs2001   rs2030     1000  29445   2     28446
-#> 5    36  55     rs2036   rs2055    85463 104532   2     19070
-#> 6    61  80     rs2061   rs2080   160237 178996   2     18760
+#> 1     1  25     rs1001   rs1025     1000  25027   1     24028
+#> 2    31  50     rs1031   rs1050    81064  99022   1     17959
+#> 3    56  80     rs1056   rs1080   155368 179371   1     24004
+#> 4     1  30     rs2001   rs2030     1000  30023   2     29024
+#> 5    36  55     rs2036   rs2055    86236 105290   2     19055
+#> 6    61  80     rs2061   rs2080   161515 180473   2     18959
 ```
 
 ### 6.2 Single chromosome
@@ -373,10 +373,10 @@ blocks_wgs <- run_Big_LD_all_chr(
 ``` r
 summarise_blocks(blocks)
 #>      CHR n_blocks min_bp median_bp  mean_bp max_bp total_bp_covered
-#> 1      1        3  18893     24339 22589.33  24536            67768
-#> 2      2        3  18760     19070 22092.00  28446            66276
-#> 3      3        3  18995     19653 19481.33  19796            58444
-#> 4 GENOME        9  18760     19653 21387.56  28446           192488
+#> 1      1        3  17959     24004 21997.00  24028            65991
+#> 2      2        3  18959     19055 22346.00  29024            67038
+#> 3      3        3  18069     18356 18385.00  18730            55155
+#> 4 GENOME        9  17959     18959 20909.33  29024           188184
 ```
 
 ``` r
@@ -424,22 +424,22 @@ length(haps)
 #> [1] 9
 attr(haps, "block_info")
 #>                block_id CHR start_bp end_bp n_snps phased
-#> 1    block_1_1000_25535   1     1000  25535     25  FALSE
-#> 2  block_1_81986_100878   1    81986 100878     20  FALSE
-#> 3 block_1_156776_181114   1   156776 181114     25  FALSE
-#> 4    block_2_1000_29445   2     1000  29445     30  FALSE
-#> 5  block_2_85463_104532   2    85463 104532     20  FALSE
-#> 6 block_2_160237_178996   2   160237 178996     20  FALSE
-#> 7    block_3_1000_19994   3     1000  19994     20  FALSE
-#> 8   block_3_76186_95838   3    76186  95838     20  FALSE
-#> 9 block_3_151654_171449   3   151654 171449     20  FALSE
+#> 1    block_1_1000_25027   1     1000  25027     25  FALSE
+#> 2   block_1_81064_99022   1    81064  99022     20  FALSE
+#> 3 block_1_155368_179371   1   155368 179371     25  FALSE
+#> 4    block_2_1000_30023   2     1000  30023     30  FALSE
+#> 5  block_2_86236_105290   2    86236 105290     20  FALSE
+#> 6 block_2_161515_180473   2   161515 180473     20  FALSE
+#> 7    block_3_1000_19068   3     1000  19068     20  FALSE
+#> 8   block_3_74532_92887   3    74532  92887     19  FALSE
+#> 9 block_3_149647_168376   3   149647 168376     20  FALSE
 head(haps[[1]])
 #>                      ind001                      ind002 
-#> "0000000000000000000000000" "1111111111111111111111111" 
+#> "2022222002222002220020220" "0121011210110111102212101" 
 #>                      ind003                      ind004 
-#> "1111111111111111111111111" "1111111111111111111111111" 
+#> "1011121012111011210020110" "0020000000000000002202000" 
 #>                      ind005                      ind006 
-#> "0000000000000000000000000" "1111101111211111111111111"
+#> "2022222002222002220020220" "2022222002222002220020220"
 ```
 
 ### 8.2 Phased mode
@@ -479,19 +479,19 @@ sample size for frequency estimates:
 div <- compute_haplotype_diversity(haps)
 head(div)
 #>                block_id CHR start_bp end_bp n_snps n_ind n_haplotypes        He
-#> 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8488796
-#> 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8460784
-#> 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8826331
-#> 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8866947
-#> 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8535014
-#> 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8484594
+#> 1    block_1_1000_25027   1     1000  25027     25   120           30 0.9163866
+#> 2   block_1_81064_99022   1    81064  99022     20   120           21 0.8988796
+#> 3 block_1_155368_179371   1   155368 179371     25   120           26 0.9159664
+#> 4    block_2_1000_30023   2     1000  30023     30   120           31 0.9161064
+#> 5  block_2_86236_105290   2    86236 105290     20   120           22 0.8955182
+#> 6 block_2_161515_180473   2   161515 180473     20   120           25 0.9155462
 #>    Shannon n_eff_alleles freq_dominant sweep_flag phased
-#> 1 2.768290         6.321     0.3583333      FALSE  FALSE
-#> 2 2.654193         6.212     0.3000000      FALSE  FALSE
-#> 3 2.966925         8.018     0.2916667      FALSE  FALSE
-#> 4 3.108972         8.285     0.2833333      FALSE  FALSE
-#> 5 2.649231         6.510     0.2833333      FALSE  FALSE
-#> 6 2.604423         6.305     0.3083333      FALSE  FALSE
+#> 1 2.745726        10.959     0.1833333      FALSE  FALSE
+#> 2 2.476482         9.207     0.1833333      FALSE  FALSE
+#> 3 2.667890        10.909     0.1666667      FALSE  FALSE
+#> 4 2.772723        10.926     0.2000000      FALSE  FALSE
+#> 5 2.485949         8.933     0.2166667      FALSE  FALSE
+#> 6 2.642908        10.860     0.1500000      FALSE  FALSE
 ```
 
 | Metric             | Formula                | Interpretation              |
@@ -545,7 +545,7 @@ qtl <- define_qtl_regions(
 head(qtl[, c("block_id","CHR","n_snps_block","n_sig_markers",
              "lead_snp","traits","pleiotropic")])
 #>                block_id CHR n_snps_block n_sig_markers lead_snp traits
-#> 1 block_1_156776_181114   1           25             1   rs1070 TraitA
+#> 1 block_1_155368_179371   1           25             1   rs1070 TraitA
 #>   pleiotropic
 #> 1       FALSE
 subset(qtl, pleiotropic)      # blocks with hits from both TraitA and TraitB
@@ -666,7 +666,7 @@ G_hap <- tcrossprod(feat_add) / ncol(feat_add)
 dim(G_hap)
 #> [1] 120 120
 round(range(diag(G_hap)), 3)
-#> [1] 0.300 2.969
+#> [1] 0.357 1.698
 ```
 
 ------------------------------------------------------------------------
@@ -736,7 +736,7 @@ result <- tune_LD_params(
 )
 result$best_params
 #> $CLQcut
-#> [1] 0.45
+#> [1] 0.55
 #> 
 #> $min_freq
 #> [1] 0.01
@@ -772,7 +772,7 @@ result$best_params
 #> [1] FALSE
 result$score_table[, c("CLQcut","n_unassigned","n_forced","n_blocks")]
 #>   CLQcut n_unassigned n_forced n_blocks
-#> 1   0.45            0        0        9
+#> 1   0.45            0        1        9
 #> 2   0.55            0        0        9
 #> 3   0.65            0        0        9
 ```
@@ -834,6 +834,286 @@ close_backend(be)
 ```
 
 ------------------------------------------------------------------------
+
+## 13. Step 10 — Advanced analysis: CV, population comparison, harmonisation
+
+The ten new analysis extension functions slot naturally after the main
+prediction pipeline.
+
+### 13.1 Cross-validation
+
+``` r
+cv <- cv_haplotype_prediction(
+  geno_matrix = ldx_geno,
+  snp_info    = ldx_snp_info,
+  blocks      = blocks,
+  blues       = blues,
+  k           = 5L,
+  n_rep       = 3L,
+  id_col      = "id",
+  blue_col    = "YLD",
+  verbose     = FALSE
+)
+cv$pa_mean   # mean PA and RMSE per trait across folds and replications
+```
+
+### 13.2 Population comparison
+
+``` r
+ids <- rownames(ldx_geno)
+cmp <- compare_haplotype_populations(
+  haplotypes  = haps,
+  group1      = ids[1:60],
+  group2      = ids[61:120],
+  group1_name = "cycle1",
+  group2_name = "cycle2"
+)
+cmp[cmp$divergent, c("block_id", "FST", "max_freq_diff", "chisq_p")]
+```
+
+### 13.3 Haplotype network for one block
+
+``` r
+if (requireNamespace("igraph", quietly = TRUE))
+  plot_haplotype_network(haps, block_id = names(haps)[1])
+```
+
+### 13.4 Diplotype inference, rare-allele collapsing, and label harmonisation
+
+For training/validation workflows, collapse rare alleles then harmonise
+labels before building feature matrices to ensure allele identity
+transfers correctly:
+
+``` r
+# Build reference panel haplotypes and collapse rare alleles
+haps_ref  <- extract_haplotypes(ref_geno, ldx_snp_info, blocks)
+haps_ref  <- collapse_haplotypes(haps_ref, min_freq = 0.05, collapse = "nearest")
+
+# Match validation panel alleles to the reference dictionary
+haps_tgt  <- extract_haplotypes(val_geno,  ldx_snp_info, blocks)
+haps_harm <- harmonize_haplotypes(haps_tgt, haps_ref, max_hamming = 3L)
+attr(haps_harm, "harmonization_report")  # per-block matching quality
+
+# Structured diplotype table
+dip <- infer_block_haplotypes(haps_harm)
+head(dip[, c("block_id","id","diplotype","heterozygous","phase_ambiguous")])
+```
+
+### 13.5 Candidate region export and allele effect decomposition
+
+``` r
+# Export QTL windows as BED file
+export_candidate_regions(qtl, format = "bed", chr_prefix = "chr",
+                          out_file = "candidate_regions.bed")
+
+# Decompose per-SNP effects into per-allele effects
+allele_tbl <- decompose_block_effects(haps, ldx_snp_info, blocks,
+                                       snp_effects = pred$snp_effects[[1]])
+head(allele_tbl[order(-allele_tbl$allele_effect), ])
+
+# Sliding-window diversity scan (independent of block boundaries)
+scan <- scan_diversity_windows(ldx_geno, ldx_snp_info,
+                                window_bp = 50000L, step_bp = 25000L)
+```
+
+### 13.6 Haplotype association testing
+
+[`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md)
+tests every LD block for association using a unified Q+K mixed linear
+model: y = μ + α·x_hap + Σβ_k·PC_k + g + ε. The GRM is built once from
+the haplotype feature matrix and inverted once per trait
+([`rrBLUP::mixed.solve()`](https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html)).
+Per-allele Wald tests across all blocks are then fully vectorised in a
+single BLAS call. An omnibus F-test per block identifies which blocks
+drive overall association.
+
+``` r
+blues_vec <- setNames(ldx_blues$YLD, ldx_blues$id)
+
+# EMMAX (pure GRM correction, n_pcs = 0 — default)
+assoc <- test_block_haplotypes(
+  haplotypes = haps,
+  blues      = blues_vec,
+  blocks     = blocks,
+  n_pcs      = 0L,       # 0 = EMMAX; >0 = Q+K model
+  min_freq   = 0.05,
+  verbose    = FALSE
+)
+
+# Access results
+cat("Total allele tests:", assoc$n_tests, "\n")
+cat("Significant alleles (Bonferroni):", sum(assoc$allele_tests$significant), "\n")
+cat("Significant blocks (omnibus):", sum(assoc$block_tests$significant_omnibus), "\n")
+
+# Top blocks by omnibus p-value
+head(assoc$block_tests[order(assoc$block_tests$p_omnibus),
+                        c("block_id","CHR","start_bp","n_alleles_tested",
+                          "F_stat","p_omnibus","var_explained")], 5)
+
+# Significant per-allele associations with their effects
+assoc$allele_tests[assoc$allele_tests$significant,
+                   c("block_id","trait","allele","frequency","effect","SE","p_wald")]
+```
+
+When strong discrete population structure is present (e.g. multiple
+breeds or ecotypes), use the Q+K model by setting `n_pcs > 0`. The PCs
+are derived from the GRM itself, ensuring mathematical consistency
+between the fixed-effect population structure correction and the kinship
+random effect:
+
+``` r
+# Q+K model — 3 GRM-derived PCs as fixed effects + GRM kinship random effect
+assoc_qk <- test_block_haplotypes(
+  haplotypes = haps,
+  blues      = blues_vec,
+  blocks     = blocks,
+  n_pcs      = 3L,
+  verbose    = FALSE
+)
+cat("PCs used:", assoc_qk$n_pcs_used, "\n")
+
+# Multi-trait: all traits share the same GRM — one call tests all
+assoc_mt <- test_block_haplotypes(
+  haplotypes = haps,
+  blues      = ldx_blues,
+  blocks     = blocks,
+  id_col     = "id",
+  blue_cols  = c("YLD", "RES"),
+  n_pcs      = 3L,
+  verbose    = FALSE
+)
+# Compare block significance across traits
+library(dplyr)
+assoc_mt$block_tests |>
+  filter(significant_omnibus) |>
+  select(block_id, CHR, trait, p_omnibus, var_explained)
+```
+
+[`estimate_diplotype_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/estimate_diplotype_effects.md)
+decomposes phenotypic variation into additive and dominance components
+at each block. The dominance ratio d/a classifies gene action: 0 =
+purely additive; ±1 = complete dominance; \|d/a\| \> 1 = overdominance
+(heterozygote advantage, evidence for heterosis at this block).
+
+``` r
+dip <- estimate_diplotype_effects(
+  haplotypes      = haps,
+  blues           = blues_vec,
+  blocks          = blocks,
+  min_n_diplotype = 3L,   # minimum individuals per diplotype class
+  verbose         = FALSE
+)
+
+# Diplotype class means (de-regressed phenotype scale)
+head(dip$diplotype_means[order(dip$diplotype_means$mean_blue, decreasing=TRUE),
+                          c("block_id","diplotype","n","mean_blue","se_mean")], 8)
+
+# Dominance decomposition: a and d for each allele pair
+head(dip$dominance_table[, c("block_id","allele_A","allele_B",
+                               "a","d","d_over_a","overdominance")], 8)
+
+# Blocks showing overdominance — potential heterosis targets
+od <- dip$dominance_table[!is.na(dip$dominance_table$overdominance) &
+                           dip$dominance_table$overdominance, ]
+cat("Overdominant allele pairs:", nrow(od), "\n")
+
+# Statistically significant diplotype effects
+dip$omnibus_tests[dip$omnibus_tests$significant,
+                  c("block_id","n_diplotypes","F_stat","p_omnibus_adj")]
+```
+
+### 13.7 Breeding decision tools: haplotype stacking
+
+Once per-allele effects are known,
+[`score_favorable_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/score_favorable_haplotypes.md)
+and
+[`summarize_parent_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/summarize_parent_haplotypes.md)
+translate genomic prediction results into actionable selection and
+crossing decisions.
+
+``` r
+# Step 1: Get per-allele effects from the prediction pipeline
+pred <- run_haplotype_prediction(
+  geno_matrix = ldx_geno,
+  snp_info    = ldx_snp_info,
+  blocks      = blocks,
+  blues       = blues_vec,
+  verbose     = FALSE
+)
+
+ae <- decompose_block_effects(
+  haplotypes  = haps,
+  snp_info    = ldx_snp_info,
+  blocks      = blocks,
+  snp_effects = pred$snp_effects[[1]]   # first trait
+)
+cat("Allele effect table:", nrow(ae), "alleles across",
+    length(unique(ae$block_id)), "blocks\n")
+head(ae[order(-ae$allele_effect), c("block_id","allele","frequency","allele_effect")], 5)
+```
+
+``` r
+# Step 2: Score every individual's genome-wide haplotype portfolio
+scores <- score_favorable_haplotypes(
+  haplotypes     = haps,
+  allele_effects = ae,
+  min_freq       = 0.02,   # exclude private alleles
+  normalize      = TRUE    # [0,1] scale within this panel
+)
+
+# Top 10 selection candidates
+head(scores[, c("id","stacking_index","n_blocks_scored","rank")], 10)
+
+# Which blocks drive the top candidate's genome-wide score?
+top_candidate <- scores$id[1]
+block_scores  <- scores[scores$id == top_candidate,
+                         grepl("^score_", names(scores))]
+top5_blocks   <- names(sort(as.numeric(block_scores), decreasing=TRUE))[1:5]
+cat("Top 5 contributing blocks for", top_candidate, ":\n")
+print(top5_blocks)
+```
+
+``` r
+# Step 3: Allele inventory for candidate parents
+# — who carries what, at which blocks, in what dosage?
+top10 <- scores$id[scores$rank <= 10]
+
+inv <- summarize_parent_haplotypes(
+  haplotypes     = haps,
+  candidate_ids  = top10,
+  allele_effects = ae,
+  min_freq       = 0.02
+)
+
+# Candidates carrying rare favourable alleles (freq < 10%)
+inv_rare <- inv[inv$dosage > 0 & inv$is_rare & !is.na(inv$allele_effect) &
+                inv$allele_effect > 0, ]
+cat("Rare favourable allele carriers:\n")
+print(inv_rare[order(-inv_rare$allele_effect),
+               c("id","block_id","CHR","allele","dosage","allele_freq","allele_effect")])
+```
+
+``` r
+# Step 4: Identify blocks where top candidates carry different alleles
+# — these are the most promising crossing targets for allele stacking
+library(dplyr)
+inv |>
+  filter(dosage > 0) |>
+  group_by(block_id, CHR, start_bp) |>
+  summarise(
+    n_unique_alleles = n_distinct(allele),
+    carriers         = paste(unique(id), collapse=","),
+    max_effect       = max(allele_effect, na.rm = TRUE),
+    .groups          = "drop"
+  ) |>
+  filter(n_unique_alleles > 1) |>            # complementary alleles present
+  arrange(desc(max_effect)) |>               # rank by largest effect available
+  head(10)
+```
+
+This workflow — prediction → effect decomposition → portfolio scoring →
+parent inventory → crossing design — forms the complete haplotype-based
+breeding decision layer implemented in LDxBlocks.
 
 ## 14. References
 

@@ -53,11 +53,11 @@ data(ldx_snp_info)
 head(ldx_snp_info)
 #>      SNP CHR  POS REF ALT
 #> 1 rs1001   1 1000   G   C
-#> 2 rs1002   1 2134   C   G
-#> 3 rs1003   1 3089   T   A
-#> 4 rs1004   1 4067   A   G
-#> 5 rs1005   1 5246   G   A
-#> 6 rs1006   1 6312   C   T
+#> 2 rs1002   1 2192   C   G
+#> 3 rs1003   1 3253   T   A
+#> 4 rs1004   1 4132   A   G
+#> 5 rs1005   1 5188   G   A
+#> 6 rs1006   1 6314   C   T
 table(ldx_snp_info$CHR)   # 80 80 70
 #> 
 #>  1  2  3 
@@ -76,11 +76,11 @@ decay <- compute_ld_decay(
 )
 decay$critical_r2_param   # background LD level
 #>        95% 
-#> 0.02851638 
+#> 0.03718883 
 decay$decay_dist          # per-chromosome decay distances (kb)
 #>   CHR decay_dist_bp decay_dist_kb threshold_used r2_col_used censored
-#> 1   1         47921         47.92     0.02851638    r2_loess    FALSE
-#> 2   2         53601         53.60     0.02851638    r2_loess    FALSE
-#> 3   3         44062         44.06     0.02851638    r2_loess    FALSE
+#> 1   1         39475         39.48     0.03718883    r2_loess    FALSE
+#> 2   2         50920         50.92     0.03718883    r2_loess    FALSE
+#> 3   3         29560         29.56     0.03718883    r2_loess    FALSE
 # }
 ```

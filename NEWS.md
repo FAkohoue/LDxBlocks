@@ -1,5 +1,153 @@
 ## LDxBlocks 0.3.1 (development)
 
+### Haplotype association testing and breeding decision functions
+
+Four new exported functions complete the statistical inference and breeding
+decision layer.
+
+**Haplotype association testing**
+
+- **`test_block_haplotypes(haplotypes, blues, blocks, n_pcs, top_n, min_freq,
+  id_col, blue_col, blue_cols, alpha, verbose)`** — Block-level haplotype
+  association tests via a unified Q+K mixed linear model (EMMAX/GAPIT3
+  formulation): y = mu + alpha·x_hap + sum(beta_k·PC_k) + g + e, where PC_k
+  are GRM-derived eigenvectors (fixed effects for population structure) and g
+  ~ MVN(0, sigma_g^2 G) is the polygenic kinship random effect. GRM is inverted
+  once per trait via `rrBLUP::mixed.solve()` (O(n^3)); per-allele scan across
+  all blocks is fully vectorised in a single `crossprod()` call (O(n*p), same
+  BLAS trick as marginal SNP screening). Returns a `LDxBlocks_haplotype_assoc`
+  object with `$allele_tests` (per-allele Wald tests: effect, SE, t, p_wald,
+  p_wald_adj, significant) and `$block_tests` (omnibus F-test per block:
+  F_stat, p_omnibus, p_omnibus_adj, var_explained, significant_omnibus).
+  `n_pcs = 0L` (default): EMMAX pure GRM; `n_pcs > 0`: Q+K model;
+  `n_pcs = NULL`: auto-select via scree elbow.
+
+- **`estimate_diplotype_effects(haplotypes, blues, blocks, min_freq,
+  min_n_diplotype, id_col, blue_col, blue_cols, verbose)`** — Estimates
+  additive and dominance effects from diplotype class means at each LD block,
+  after GRM kinship correction. For each allele pair (A, B): additive effect
+  a = (mean_BB - mean_AA) / 2; dominance deviation d = mean_AB - midpoint;
+  dominance ratio d/a (0 = additive, +/-1 = complete dominance, |d/a| > 1 =
+  overdominance). Returns a `LDxBlocks_diplotype` object with
+  `$diplotype_means`, `$dominance_table` (a, d, d_over_a, overdominance per
+  allele pair per block per trait), and `$omnibus_tests` (F-test per block).
+
+**Breeding decision tools**
+
+- **`score_favorable_haplotypes(haplotypes, allele_effects, min_freq,
+  missing_string, normalize)`** — Scores each individual's genome-wide
+  haplotype portfolio against a table of known per-allele effects. Block score
+  = sum(allele_effect × dosage) per block. Genome-wide stacking index = sum
+  across all scored blocks, normalised to [0,1] when `normalize = TRUE`.
+  Returns a ranked data frame (one row per individual) with `stacking_index`,
+  `n_blocks_scored`, `mean_block_score`, `rank`, and one `score_<block_id>`
+  column per scored block for detailed inspection.
+
+- **`summarize_parent_haplotypes(haplotypes, candidate_ids, allele_effects,
+  blocks, min_freq, missing_string)`** — Produces a tidy long-format allele
+  inventory (one row per individual × block × allele) for candidate parents.
+  Reports allele dosage (0/1 unphased; 0/1/2 phased), population allele
+  frequency, optional allele effect, and a `is_rare` flag (freq < 0.10).
+  Includes rows with dosage = 0 so all candidates can be compared on the same
+  rows. Primary tool for identifying complementary rare alleles across
+  candidates and designing haplotype stacking crosses.
+
+### New example dataset
+
+
+- **`ldx_blues_list`** — named list of two environments (`env1`, `env2`) of
+  named numeric BLUEs (120 individuals each), generated from the same
+  polygenic architecture as `ldx_blues` with environment-specific offsets.
+  Used in examples for `run_haplotype_stability()` and
+  `cv_haplotype_prediction()`. Flat-file copy at
+  `inst/extdata/example_blues_env.csv`.
+
+### Analysis extension functions (v0.3.1 additions)
+
+Ten new exported functions extend the pipeline without modifying any existing
+function. All are in two new files: `R/analysis_extensions.R` and
+`R/haplotype_inference.R`.
+
+**Cross-validation and model evaluation**
+
+- **`cv_haplotype_prediction()`** — k-fold cross-validation for the haplotype
+  GBLUP model. Masks phenotypes fold-by-fold, predicts via `rrBLUP::kin.blup()`
+  using the shared haplotype GRM, and returns predictive ability (Pearson r) and
+  RMSE per trait per fold. Supports multiple replications and multiple traits.
+  Returns an `LDxBlocks_cv` object with `pa_summary`, `pa_mean`, `k`, `n_rep`.
+
+**Population comparison**
+
+- **`compare_haplotype_populations()`** — computes Weir-Cockerham (1984) FST
+  and allele frequency differences per block between two named sample groups.
+  Returns `FST`, `max_freq_diff`, dominant allele per group, chi-squared
+  p-value (Monte Carlo, B=2000), and a `divergent` flag (FST > 0.1 AND p < 0.05).
+  Suitable for breeding cycle monitoring and wild/elite panel comparisons.
+
+**Visualisation**
+
+- **`plot_haplotype_network()`** — draws a minimum-spanning network of haplotype
+  alleles within one LD block using `igraph::mst()` with Hamming-distance
+  edge weights. Node size proportional to frequency. Optional group colouring
+  via a `groups` named vector. Returns the `igraph` MST object invisibly.
+
+**Multi-environment stability**
+
+- **`run_haplotype_stability()`** — Finlay-Wilkinson (1963) regression of
+  per-block local GEBV contributions against the environmental index across
+  environments. Returns slope b (stability coefficient), SE, R², deviation
+  mean square s²d, and a `stable` flag (H0: b=1 not rejected at alpha=0.05).
+  Requires at least 2 environments.
+
+**Annotation export**
+
+- **`export_candidate_regions()`** — converts `define_qtl_regions()` output to
+  BED (0-based, UCSC/BEDtools-compatible), CSV, or a named list ready for
+  `biomaRt::getBM()`. Supports `chr_prefix`, LD-extended windows via
+  `use_lead_snp`, and `padding_bp`.
+
+**Effect decomposition**
+
+- **`decompose_block_effects()`** — aggregates per-SNP additive effects (from
+  `backsolve_snp_effects()`) into a per-haplotype-allele effect table.
+  Effect = sum(SNP_effect × allele_dosage) per allele position. Returns
+  `allele_effect`, `effect_rank`, and `frequency` per allele per block.
+  Directly links prediction model output to selection index construction.
+
+**Genome-wide diversity scanning**
+
+- **`scan_diversity_windows()`** — sliding-window He / Shannon / n_eff_alleles
+  scan across the genome independent of LD block boundaries. Window size and
+  step controlled by `window_bp` and `step_bp`. Returns a data frame with one
+  row per window including `sweep_flag` (freq_dominant >= 0.90).
+
+**True haplotype inference and harmonisation**
+
+- **`infer_block_haplotypes()`** — converts raw haplotype strings to a
+  structured per-individual, per-block diplotype table with explicit `hap1`,
+  `hap2`, `diplotype` (canonical sorted string), `heterozygous`,
+  `phase_ambiguous`, and `missing` columns. Handles both phased input
+  (from `read_phased_vcf()` / `phase_with_pedigree()`, where `phase_ambiguous`
+  is always `FALSE`) and unphased input (where heterozygous genotypes set
+  `phase_ambiguous = TRUE` unless `resolve_unphased = TRUE` triggers a
+  maximum-parsimony heuristic).
+
+- **`collapse_haplotypes()`** — merges rare haplotype alleles (below
+  `min_freq`) into biologically meaningful groups rather than dropping them.
+  Three strategies: `"rare_to_other"` (pool into `<other>`), `"nearest"`
+  (merge with most similar common allele by Hamming distance), `"tree_based"`
+  (UPGMA dendrogram; merges rare alleles at the coarsest cut that avoids
+  merging common alleles with each other). Preserves a `label_map` attribute
+  recording every original→collapsed mapping for use by `harmonize_haplotypes()`.
+
+- **`harmonize_haplotypes()`** — makes haplotype allele labels transferable
+  across training/validation splits, populations, or environments. Builds a
+  reference dictionary from alleles above `min_freq_ref` in the reference
+  panel; matches target alleles by exact string first, then nearest Hamming
+  neighbour (up to `max_hamming`), then labels unmatched alleles `"<novel>"`.
+  Attaches a `harmonization_report` attribute reporting `n_exact`, `n_nearest`,
+  `n_novel`, and `mean_hamming_dist` per block.
+
 ### New functions
 
 - **`compute_ld_decay()`** -- LD decay analysis per chromosome. Estimates the

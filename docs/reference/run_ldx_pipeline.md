@@ -448,29 +448,29 @@ res <- run_ldx_pipeline(
 
 head(res$blocks)
 #>   start end start.rsID end.rsID start.bp end.bp CHR length_bp
-#> 1     1  25     rs1001   rs1025     1000  25535   1     24536
-#> 2    31  50     rs1031   rs1050    81986 100878   1     18893
-#> 3    56  80     rs1056   rs1080   156776 181114   1     24339
-#> 4     1  30     rs2001   rs2030     1000  29445   2     28446
-#> 5    36  55     rs2036   rs2055    85463 104532   2     19070
-#> 6    61  80     rs2061   rs2080   160237 178996   2     18760
+#> 1     1  25     rs1001   rs1025     1000  25027   1     24028
+#> 2    31  50     rs1031   rs1050    81064  99022   1     17959
+#> 3    56  80     rs1056   rs1080   155368 179371   1     24004
+#> 4     1  30     rs2001   rs2030     1000  30023   2     29024
+#> 5    36  55     rs2036   rs2055    86236 105290   2     19055
+#> 6    61  80     rs2061   rs2080   161515 180473   2     18959
 head(res$diversity)
 #>                block_id CHR start_bp end_bp n_snps n_ind n_haplotypes        He
-#> 1    block_1_1000_25535   1     1000  25535     25   120           44 0.8488796
-#> 2  block_1_81986_100878   1    81986 100878     20   120           43 0.8460784
-#> 3 block_1_156776_181114   1   156776 181114     25   120           50 0.8826331
-#> 4    block_2_1000_29445   2     1000  29445     30   120           59 0.8866947
-#> 5  block_2_85463_104532   2    85463 104532     20   120           44 0.8535014
-#> 6 block_2_160237_178996   2   160237 178996     20   120           39 0.8484594
+#> 1    block_1_1000_25027   1     1000  25027     25   120           30 0.9163866
+#> 2   block_1_81064_99022   1    81064  99022     20   120           21 0.8988796
+#> 3 block_1_155368_179371   1   155368 179371     25   120           26 0.9159664
+#> 4    block_2_1000_30023   2     1000  30023     30   120           31 0.9161064
+#> 5  block_2_86236_105290   2    86236 105290     20   120           22 0.8955182
+#> 6 block_2_161515_180473   2   161515 180473     20   120           25 0.9155462
 #>    Shannon n_eff_alleles freq_dominant sweep_flag phased
-#> 1 2.768290         6.321     0.3583333      FALSE  FALSE
-#> 2 2.654193         6.212     0.3000000      FALSE  FALSE
-#> 3 2.966925         8.018     0.2916667      FALSE  FALSE
-#> 4 3.108972         8.285     0.2833333      FALSE  FALSE
-#> 5 2.649231         6.510     0.2833333      FALSE  FALSE
-#> 6 2.604423         6.305     0.3083333      FALSE  FALSE
+#> 1 2.745726        10.959     0.1833333      FALSE  FALSE
+#> 2 2.476482         9.207     0.1833333      FALSE  FALSE
+#> 3 2.667890        10.909     0.1666667      FALSE  FALSE
+#> 4 2.772723        10.926     0.2000000      FALSE  FALSE
+#> 5 2.485949         8.933     0.2166667      FALSE  FALSE
+#> 6 2.642908        10.860     0.1500000      FALSE  FALSE
 dim(res$hap_matrix)
-#> [1] 120  85
+#> [1] 120  90
 
 # Path B: supply a pre-built bigmemory backend
 if (requireNamespace("bigmemory", quietly = TRUE)) {
@@ -497,35 +497,35 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [bigmemory]   chr 1 loaded (80/230 SNPs)
 #> [bigmemory]   chr 2 loaded (160/230 SNPs)
 #> [bigmemory]   chr 3 loaded (230/230 SNPs)
-#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t/ldxbm2dc029403aec.bin
-#> [12:01:07] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
-#> [12:01:07] MAF filtering (>= 0.05) ...
+#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n/ldxbm293869e4baa.bin
+#> [12:15:56] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
+#> [12:15:56] MAF filtering (>= 0.05) ...
 #> [MAF filter] Computing MAF for 230 SNPs ...
 #> [MAF filter] 230 / 230 SNPs pass MAF >= 0.05
-#> [12:01:08] Loading filtered genotype matrix ...
-#> [12:01:08] Genotype matrix: 120 x 230
-#> [12:01:08] Running genome-wide LD block detection ...
+#> [12:15:56] Loading filtered genotype matrix ...
+#> [12:15:56] Genotype matrix: 120 x 230
+#> [12:15:56] Running genome-wide LD block detection ...
 #> 
 #> [run_Big_LD_all_chr] Processing 1 ...
 #> [Big_LD] Subsegmenting via C++ boundary scan...
-#> [Big_LD]   Cut at SNP 25
-#> [Big_LD]   Cut at SNP 30
+#> [Big_LD]   Cut at SNP 24
+#> [Big_LD]   Cut at SNP 29
 #> [Big_LD]   Cut at SNP 50
 #> [Big_LD]   Cut at SNP 55
-#> [CLQD] Building graph on 25 SNPs...
-#> [CLQD] Found 1 maximal cliques.
+#> [CLQD] Building graph on 24 SNPs...
+#> [CLQD] Found 6 maximal cliques.
 #> [Big_LD] Segment 1/5 done.
 #> [CLQD] Building graph on 5 SNPs...
 #> [CLQD] Found 0 maximal cliques.
 #> [Big_LD] Segment 2/5 done.
-#> [CLQD] Building graph on 20 SNPs...
-#> [CLQD] Found 1 maximal cliques.
+#> [CLQD] Building graph on 21 SNPs...
+#> [CLQD] Found 6 maximal cliques.
 #> [Big_LD] Segment 3/5 done.
 #> [CLQD] Building graph on 5 SNPs...
 #> [CLQD] Found 0 maximal cliques.
 #> [Big_LD] Segment 4/5 done.
 #> [CLQD] Building graph on 25 SNPs...
-#> [CLQD] Found 1 maximal cliques.
+#> [CLQD] Found 6 maximal cliques.
 #> [Big_LD] Segment 5/5 done.
 #> 
 #> [run_Big_LD_all_chr] Processing 2 ...
@@ -535,40 +535,40 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [Big_LD]   Cut at SNP 55
 #> [Big_LD]   Cut at SNP 60
 #> [CLQD] Building graph on 30 SNPs...
-#> [CLQD] Found 1 maximal cliques.
+#> [CLQD] Found 6 maximal cliques.
 #> [Big_LD] Segment 1/5 done.
 #> [CLQD] Building graph on 5 SNPs...
 #> [CLQD] Found 0 maximal cliques.
 #> [Big_LD] Segment 2/5 done.
 #> [CLQD] Building graph on 20 SNPs...
-#> [CLQD] Found 1 maximal cliques.
+#> [CLQD] Found 5 maximal cliques.
 #> [Big_LD] Segment 3/5 done.
 #> [CLQD] Building graph on 5 SNPs...
 #> [CLQD] Found 0 maximal cliques.
 #> [Big_LD] Segment 4/5 done.
 #> [CLQD] Building graph on 20 SNPs...
-#> [CLQD] Found 1 maximal cliques.
+#> [CLQD] Found 5 maximal cliques.
 #> [Big_LD] Segment 5/5 done.
 #> 
 #> [run_Big_LD_all_chr] Processing 3 ...
 #> [CLQD] Building graph on 70 SNPs...
-#> [CLQD] Found 3 maximal cliques.
+#> [CLQD] Found 16 maximal cliques.
 #> [Big_LD] Segment 1/1 done.
-#> [12:01:09] Detected 9 LD blocks
-#> [12:01:09] Block table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t\file2dc03e444fb6.csv
-#> [12:01:09] Extracting haplotypes (min_snps = 3) ...
-#> [12:01:09] Haplotypes extracted for 9 blocks
-#> [12:01:09] Computing haplotype diversity ...
-#> [12:01:09] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t\file2dc017e515f7.csv
-#> [12:01:09] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
-#> [12:01:09] Haplotype matrix: 120 individuals x 85 haplotype allele columns
-#> [12:01:09] Writing haplotype matrix (format = numeric) ...
-#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t\file2dc07352241.csv (85 haplotypes x 120 individuals)
-#> [12:01:09] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\RtmpKMi70t\file2dc07352241.csv
-#> [12:01:09] Pipeline complete.
-#> [12:01:09]   Blocks:              9
-#> [12:01:09]   Haplotype blocks:    9
-#> [12:01:09]   Haplotype columns:   85
-#> [12:01:09]   Individuals:         120
+#> [12:15:57] Detected 9 LD blocks
+#> [12:15:57] Block table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n\file29386a00284d.csv
+#> [12:15:57] Extracting haplotypes (min_snps = 3) ...
+#> [12:15:57] Haplotypes extracted for 9 blocks
+#> [12:15:57] Computing haplotype diversity ...
+#> [12:15:57] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n\file293837bd293.csv
+#> [12:15:57] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
+#> [12:15:57] Haplotype matrix: 120 individuals x 90 haplotype allele columns
+#> [12:15:57] Writing haplotype matrix (format = numeric) ...
+#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n\file29386e0d615f.csv (90 haplotypes x 120 individuals)
+#> [12:15:57] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\RtmpAXQx7n\file29386e0d615f.csv
+#> [12:15:57] Pipeline complete.
+#> [12:15:57]   Blocks:              9
+#> [12:15:57]   Haplotype blocks:    9
+#> [12:15:57]   Haplotype columns:   90
+#> [12:15:57]   Individuals:         120
 # }
 ```

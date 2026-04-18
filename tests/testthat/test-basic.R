@@ -344,6 +344,41 @@ test_that("example_blues.csv extdata file exists and is readable", {
   expect_type(blues$YLD, "double")
 })
 
+# ── ldx_blues_list dataset ────────────────────────────────────────────────────
+
+test_that("ldx_blues_list loads and has correct structure", {
+  data(ldx_blues_list, package = "LDxBlocks")
+  expect_type(ldx_blues_list, "list")
+  expect_equal(names(ldx_blues_list), c("env1", "env2"))
+  expect_equal(length(ldx_blues_list$env1), 120L)
+  expect_equal(length(ldx_blues_list$env2), 120L)
+  expect_type(ldx_blues_list$env1, "double")
+  expect_type(ldx_blues_list$env2, "double")
+})
+
+test_that("ldx_blues_list IDs match ldx_geno rownames", {
+  data(ldx_blues_list, package = "LDxBlocks")
+  data(ldx_geno,       package = "LDxBlocks")
+  expect_equal(names(ldx_blues_list$env1), rownames(ldx_geno))
+  expect_equal(names(ldx_blues_list$env2), rownames(ldx_geno))
+})
+
+test_that("ldx_blues_list: env2 has higher mean than env1 (simulated offset)", {
+  data(ldx_blues_list, package = "LDxBlocks")
+  # env2 was generated with +0.4 mean shift above env1
+  diff_means <- mean(ldx_blues_list$env2) - mean(ldx_blues_list$env1)
+  expect_true(diff_means > 0.1,
+              label = paste("mean(env2) - mean(env1) =", round(diff_means, 3)))
+})
+
+test_that("example_blues_env.csv extdata file exists and is readable", {
+  f <- system.file("extdata", "example_blues_env.csv", package = "LDxBlocks")
+  skip_if(!file.exists(f), "example_blues_env.csv not found in extdata")
+  blues_env <- read.csv(f, stringsAsFactors = FALSE)
+  expect_true(all(c("id", "YLD_env1", "YLD_env2") %in% names(blues_env)))
+  expect_equal(nrow(blues_env), 120L)
+})
+
 # ── run_ldx_pipeline ──────────────────────────────────────────────────────────
 test_that("run_ldx_pipeline: Path A (file path) returns correct result list", {
   f <- system.file("extdata", "example_genotypes_numeric.csv",
