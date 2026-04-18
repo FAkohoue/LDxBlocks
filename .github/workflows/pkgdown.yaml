@@ -54,21 +54,11 @@ jobs:
           if (length(to_install))
             BiocManager::install(to_install, ask = FALSE, update = FALSE)
 
-      - name: Install CRAN dependencies
-        shell: Rscript {0}
-        run: |
-          pkgs <- c(
-            "pkgdown", "knitr", "rmarkdown",
-            "data.table", "igraph", "dplyr", "testthat",
-            "Rcpp", "RcppArmadillo",
-            "AGHmatrix", "ASRgenomics", "BEDMatrix",
-            "ggplot2", "future.apply", "rrBLUP",
-            "bigmemory"
-          )
-          to_install <- pkgs[!vapply(pkgs, requireNamespace,
-                                     logical(1L), quietly = TRUE)]
-          if (length(to_install))
-            install.packages(to_install, repos = "https://cloud.r-project.org")
+      - name: Install R package dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::pkgdown
+          needs: website
 
       - name: Remove compiled artifacts
         run: |
