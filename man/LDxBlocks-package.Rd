@@ -131,6 +131,7 @@ Useful links:
 \itemize{
   \item \url{https://github.com/FAkohoue/LDxBlocks}
   \item \url{https://FAkohoue.github.io/LDxBlocks/}
+  \item \url{https://github.com/FAkohoue}
   \item Report bugs at \url{https://github.com/FAkohoue/LDxBlocks/issues}
 }
 

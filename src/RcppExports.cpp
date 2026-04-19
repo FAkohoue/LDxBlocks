@@ -128,6 +128,37 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// block_snp_ranges_cpp
+Rcpp::List block_snp_ranges_cpp(const Rcpp::IntegerVector& snp_pos, const Rcpp::IntegerVector& block_sb, const Rcpp::IntegerVector& block_eb);
+RcppExport SEXP _LDxBlocks_block_snp_ranges_cpp(SEXP snp_posSEXP, SEXP block_sbSEXP, SEXP block_ebSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type snp_pos(snp_posSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type block_sb(block_sbSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type block_eb(block_ebSEXP);
+    rcpp_result_gen = Rcpp::wrap(block_snp_ranges_cpp(snp_pos, block_sb, block_eb));
+    return rcpp_result_gen;
+END_RCPP
+}
+// extract_chr_haplotypes_cpp
+Rcpp::List extract_chr_haplotypes_cpp(const Rcpp::IntegerMatrix& geno_chr, const Rcpp::IntegerVector& snp_pos, const Rcpp::IntegerVector& block_sb, const Rcpp::IntegerVector& block_eb, int min_snps, double min_freq, int top_n, std::string na_char);
+RcppExport SEXP _LDxBlocks_extract_chr_haplotypes_cpp(SEXP geno_chrSEXP, SEXP snp_posSEXP, SEXP block_sbSEXP, SEXP block_ebSEXP, SEXP min_snpsSEXP, SEXP min_freqSEXP, SEXP top_nSEXP, SEXP na_charSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::IntegerMatrix& >::type geno_chr(geno_chrSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type snp_pos(snp_posSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type block_sb(block_sbSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector& >::type block_eb(block_ebSEXP);
+    Rcpp::traits::input_parameter< int >::type min_snps(min_snpsSEXP);
+    Rcpp::traits::input_parameter< double >::type min_freq(min_freqSEXP);
+    Rcpp::traits::input_parameter< int >::type top_n(top_nSEXP);
+    Rcpp::traits::input_parameter< std::string >::type na_char(na_charSEXP);
+    rcpp_result_gen = Rcpp::wrap(extract_chr_haplotypes_cpp(geno_chr, snp_pos, block_sb, block_eb, min_snps, min_freq, top_n, na_char));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_LDxBlocks_compute_r2_cpp", (DL_FUNC) &_LDxBlocks_compute_r2_cpp, 3},
@@ -139,6 +170,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_LDxBlocks_boundary_scan_cpp", (DL_FUNC) &_LDxBlocks_boundary_scan_cpp, 5},
     {"_LDxBlocks_build_hap_strings_cpp", (DL_FUNC) &_LDxBlocks_build_hap_strings_cpp, 2},
     {"_LDxBlocks_resolve_overlap_cpp", (DL_FUNC) &_LDxBlocks_resolve_overlap_cpp, 3},
+    {"_LDxBlocks_block_snp_ranges_cpp", (DL_FUNC) &_LDxBlocks_block_snp_ranges_cpp, 3},
+    {"_LDxBlocks_extract_chr_haplotypes_cpp", (DL_FUNC) &_LDxBlocks_extract_chr_haplotypes_cpp, 8},
     {NULL, NULL, 0}
 };
 

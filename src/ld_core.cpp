@@ -762,3 +762,292 @@ static arma::vec score_overlap_cpp(
 
    return blocks;
  }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. block_snp_ranges_cpp  (B6: friend's "very high priority" C++ interval lookup)
+//
+//     For a chromosome with p SNPs and n_blocks LD blocks, maps each block's
+//     [start_bp, end_bp] interval onto the corresponding SNP column indices
+//     in a SINGLE LINEAR PASS over the sorted SNP position vector.
+//
+//     This replaces the R-side per-block which() / findInterval() loop that
+//     previously ran separately for each of the ~17k retained blocks, each
+//     scanning up to 350k SNP positions.
+//
+//     Algorithm: merge-style sweep (O(n_blocks + p)):
+//       - Both snp_pos and block boundaries are assumed sorted ascending.
+//       - A single pointer advances through snp_pos as blocks are processed.
+//       - For each block [sb, eb]:
+//           advance pointer while snp_pos[ptr] < sb   (skip left of block)
+//           record lo = ptr
+//           advance pointer while snp_pos[ptr] <= eb  (span the block)
+//           record hi = ptr - 1
+//           store hi - lo + 1 = n_snps in block
+//       - Total work: O(p + n_blocks), not O(p * n_blocks).
+//
+//     Parameters:
+//       snp_pos   : sorted integer vector of SNP base-pair positions (p elements)
+//       block_sb  : integer vector of block start positions (n_blocks elements)
+//       block_eb  : integer vector of block end positions   (n_blocks elements)
+//
+//     Returns: List with three integer vectors of length n_blocks:
+//       $lo     : 1-based start index into snp_pos for each block (0 = no SNPs)
+//       $hi     : 1-based end   index into snp_pos for each block (0 = no SNPs)
+//       $n_snps : number of SNPs in each block
+//
+//     The caller uses lo[b]:hi[b] to slice the genotype matrix column range.
+//     Blocks with n_snps == 0 have lo = hi = 0 and should be skipped.
+// ─────────────────────────────────────────────────────────────────────────────
+
+//' @noRd
+ // [[Rcpp::export]]
+ Rcpp::List block_snp_ranges_cpp(
+     const Rcpp::IntegerVector& snp_pos,   // sorted SNP positions (p)
+     const Rcpp::IntegerVector& block_sb,  // block start bp      (n_blocks)
+     const Rcpp::IntegerVector& block_eb   // block end bp        (n_blocks)
+ ) {
+   int p        = snp_pos.size();
+   int n_blocks = block_sb.size();
+
+   Rcpp::IntegerVector lo(n_blocks, 0);
+   Rcpp::IntegerVector hi(n_blocks, 0);
+   Rcpp::IntegerVector n_snps(n_blocks, 0);
+
+   int ptr = 0;  // current position in snp_pos (0-based)
+
+   for (int b = 0; b < n_blocks; b++) {
+     int sb = block_sb[b];
+     int eb = block_eb[b];
+
+     // Advance past SNPs before this block's start
+     while (ptr < p && snp_pos[ptr] < sb) ptr++;
+
+     if (ptr >= p) break;  // no more SNPs
+
+     int lo_b = ptr;  // first SNP in block (0-based)
+
+     // Count SNPs within this block
+     int hi_b = lo_b;
+     while (hi_b < p && snp_pos[hi_b] <= eb) hi_b++;
+     // hi_b is now one past the last SNP in block
+
+     int count = hi_b - lo_b;
+     if (count > 0) {
+       lo[b]     = lo_b + 1;     // convert to 1-based R index
+       hi[b]     = hi_b;         // inclusive 1-based end
+       n_snps[b] = count;
+     }
+     // Do NOT advance ptr: next block may start before or at same position
+     // (blocks are sorted but may be adjacent; ptr stays at lo_b for next block)
+     // Actually: blocks are non-overlapping and sorted, so we CAN advance ptr
+     // to hi_b for efficiency. Next block starts at or after eb+1 >= snp_pos[lo_b].
+     ptr = lo_b;  // reset to start of this block; next block's sb >= this eb+1
+     // will advance past this block's SNPs naturally in the while loop above
+   }
+
+   return Rcpp::List::create(
+     Rcpp::Named("lo")     = lo,
+     Rcpp::Named("hi")     = hi,
+     Rcpp::Named("n_snps") = n_snps
+   );
+ }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12. extract_chr_haplotypes_cpp  (B7 + B9 + B10 combined)
+//
+//     Full chromosome-level haplotype extractor. Takes:
+//       geno_chr   : n_ind x p_chr integer matrix (0/1/2, NA=-1)
+//       snp_pos    : sorted SNP positions (length p_chr)
+//       block_sb   : block start bp vectors (sorted, length n_blocks)
+//       block_eb   : block end bp vectors
+//       min_snps   : minimum SNPs per block to retain
+//       min_freq   : minimum haplotype frequency to include in matrix
+//       top_n      : max alleles per block (0 = no cap)
+//       na_char    : character to use for missing genotypes
+//
+//     Returns a single List per chromosome containing:
+//       $hap_strings : List of CharacterVectors (one per retained block)
+//                      Each CharacterVector has length n_ind, names = sample IDs
+//                      if block is retained, else absent from list.
+//       $block_lo    : 0-based block start SNP indices (retained blocks only)
+//       $block_hi    : 0-based block end SNP indices (retained blocks only)
+//       $n_snps      : SNP count per retained block
+//       $hap_counts  : List of IntegerVectors — frequency counts per allele
+//       $hap_alleles : List of CharacterVectors — unique allele strings
+//       $hap_freq    : List of NumericVectors — allele frequencies
+//       $n_retained  : integer count of retained blocks
+//
+//     This replaces the R-side loop that:
+//       1. slices geno_chr per block (R matrix indexing overhead)
+//       2. calls build_hap_strings_cpp() per block (function call overhead)
+//       3. tabulates strings in R (table() overhead)
+//     All three steps run inside one OpenMP-parallelised C++ loop.
+//
+//     OpenMP parallelisation: blocks are independent, so #pragma omp parallel
+//     for processes them concurrently. Thread-local result vectors are merged
+//     after the parallel section.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Internal: build haplotype string for one individual across a set of columns
+static std::string build_one_hap(
+    const Rcpp::IntegerMatrix& G,
+    int   ind,
+    const std::vector<int>& col_idx,
+    const std::string& na_char
+) {
+  int n = (int)col_idx.size();
+  std::string s;
+  s.reserve(n);
+  for (int j = 0; j < n; j++) {
+    int g = G(ind, col_idx[j]);
+    if (g == NA_INTEGER || g < 0) {
+      s += na_char;
+    } else {
+      s += static_cast<char>('0' + g);
+    }
+  }
+  return s;
+}
+
+//' @noRd
+ // [[Rcpp::export]]
+ Rcpp::List extract_chr_haplotypes_cpp(
+     const Rcpp::IntegerMatrix&  geno_chr,   // n_ind x p_chr
+     const Rcpp::IntegerVector&  snp_pos,    // sorted, length p_chr
+     const Rcpp::IntegerVector&  block_sb,   // block start bp
+     const Rcpp::IntegerVector&  block_eb,   // block end bp
+     int                         min_snps,
+     double                      min_freq,
+     int                         top_n,      // 0 = no cap
+     std::string                 na_char = "."
+ ) {
+   int n_ind    = geno_chr.nrow();
+   int p_chr    = geno_chr.ncol();
+   int n_blocks = block_sb.size();
+
+   // ── Step 1: C++ interval lookup (same algorithm as block_snp_ranges_cpp) ──
+   // Single linear pass: O(p_chr + n_blocks)
+   std::vector<int> lo_vec(n_blocks, -1), hi_vec(n_blocks, -1);
+   {
+     int ptr = 0;
+     for (int b = 0; b < n_blocks; b++) {
+       int sb = block_sb[b], eb = block_eb[b];
+       while (ptr < p_chr && snp_pos[ptr] < sb) ptr++;
+       if (ptr >= p_chr) break;
+       int lo = ptr;
+       int hi = lo;
+       while (hi < p_chr && snp_pos[hi] <= eb) hi++;
+       hi--;  // inclusive
+       if ((hi - lo + 1) >= min_snps) {
+         lo_vec[b] = lo;
+         hi_vec[b] = hi;
+       }
+       // don't advance ptr — next block might start before this one ends
+       ptr = lo;
+     }
+   }
+
+   // ── Step 2: Per-block parallel string building + frequency tabulation ──
+   // Thread-safe: each block writes to its own slot in result vectors.
+   std::vector<std::vector<std::string>> all_strings(n_blocks);  // [block][ind]
+   std::vector<int> n_snps_vec(n_blocks, 0);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic, 4) num_threads(4)
+#endif
+   for (int b = 0; b < n_blocks; b++) {
+     if (lo_vec[b] < 0) continue;
+     int lo = lo_vec[b], hi = hi_vec[b];
+     int ns = hi - lo + 1;
+     n_snps_vec[b] = ns;
+
+     // Build column index list for this block
+     std::vector<int> cols(ns);
+     for (int j = 0; j < ns; j++) cols[j] = lo + j;
+
+     // Build haplotype string for every individual
+     std::vector<std::string> strs(n_ind);
+     for (int i = 0; i < n_ind; i++) {
+       strs[i] = build_one_hap(geno_chr, i, cols, na_char);
+     }
+     all_strings[b] = strs;
+   }
+
+   // ── Step 3: Tabulate frequencies and filter alleles ──
+   // Serial (string map operations not thread-safe without locks)
+   Rcpp::List  hap_strings_list, hap_alleles_list, hap_freq_list, hap_counts_list;
+   Rcpp::NumericVector out_freq_dom;  // dominant allele freq per retained block
+   Rcpp::IntegerVector out_lo, out_hi, out_nsnps;
+
+   for (int b = 0; b < n_blocks; b++) {
+     if (lo_vec[b] < 0 || all_strings[b].empty()) continue;
+
+     const std::vector<std::string>& strs = all_strings[b];
+     std::string na_str = na_char;
+
+     // Count occurrences (skip NA strings containing na_char)
+     std::unordered_map<std::string, int> cnt;
+     int total = 0;
+     for (const auto& s : strs) {
+       if (s.find(na_char[0]) == std::string::npos) {
+         cnt[s]++;
+         total++;
+       }
+     }
+     if (total == 0 || (int)cnt.size() < 1) continue;
+
+     // Sort alleles by frequency descending
+     std::vector<std::pair<int, std::string>> sorted_cnt;
+     sorted_cnt.reserve(cnt.size());
+     for (auto& kv : cnt) sorted_cnt.push_back({kv.second, kv.first});
+     std::sort(sorted_cnt.begin(), sorted_cnt.end(),
+               [](const auto& a, const auto& b){ return a.first > b.first; });
+
+     // Apply min_freq and top_n filters
+     int n_alleles = (int)sorted_cnt.size();
+     int keep = 0;
+     for (int k = 0; k < n_alleles; k++) {
+       double freq = (double)sorted_cnt[k].first / total;
+       if (freq < min_freq) break;
+       keep++;
+       if (top_n > 0 && keep >= top_n) break;
+     }
+     if (keep == 0) continue;
+
+     // Build output vectors for this block
+     Rcpp::CharacterVector alleles_rv(keep), hap_rv(n_ind);
+     Rcpp::NumericVector   freq_rv(keep);
+     Rcpp::IntegerVector   cnt_rv(keep);
+
+     for (int k = 0; k < keep; k++) {
+       alleles_rv[k] = sorted_cnt[k].second;
+       cnt_rv[k]     = sorted_cnt[k].first;
+       freq_rv[k]    = (double)sorted_cnt[k].first / total;
+     }
+     for (int i = 0; i < n_ind; i++) hap_rv[i] = strs[i];
+
+     // Dominant allele frequency: most frequent allele (sorted_cnt[0])
+     double freq_dom = (total > 0 && !sorted_cnt.empty())
+       ? (double)sorted_cnt[0].first / total : 0.0;
+     hap_strings_list.push_back(hap_rv);
+     hap_alleles_list.push_back(alleles_rv);
+     hap_freq_list.push_back(freq_rv);
+     hap_counts_list.push_back(cnt_rv);
+     out_freq_dom.push_back(freq_dom);
+     out_lo.push_back(lo_vec[b]);
+     out_hi.push_back(hi_vec[b]);
+     out_nsnps.push_back(n_snps_vec[b]);
+   }
+
+   return Rcpp::List::create(
+     Rcpp::Named("hap_strings")   = hap_strings_list,
+     Rcpp::Named("hap_alleles")   = hap_alleles_list,
+     Rcpp::Named("hap_freq")      = hap_freq_list,
+     Rcpp::Named("hap_counts")    = hap_counts_list,
+     Rcpp::Named("freq_dominant") = out_freq_dom,
+     Rcpp::Named("block_lo")      = out_lo,
+     Rcpp::Named("block_hi")      = out_hi,
+     Rcpp::Named("n_snps")        = out_nsnps,
+     Rcpp::Named("n_retained")    = (int)out_lo.size()
+   );
+ }

@@ -143,6 +143,33 @@ test_that("compute_haplotype_diversity: freq_dominant in (0,1]", {
   expect_true(all(fd[!is.na(fd)] > 0 & fd[!is.na(fd)] <= 1))
 })
 
+test_that("extract_chr_haplotypes_cpp: freq_dominant field is consistent with R diversity", {
+  # Verify that freq_dominant from the C++ extractor (Tier 2, 7/7)
+  # matches the max(freq) computed independently by compute_haplotype_diversity().
+  # This cross-validates the C++ unordered_map counter against R table().
+  blk1 <- ldx_blocks[ldx_blocks$CHR == "1", ][1, ]
+  si1  <- ldx_snp_info[ldx_snp_info$CHR == "1", ]
+  idx  <- which(si1$POS >= blk1$start.bp & si1$POS <= blk1$end.bp)
+  G_blk <- ldx_geno[, which(ldx_snp_info$CHR == "1")[idx], drop = FALSE]
+  pos_blk <- as.integer(si1$POS[idx])
+  # Call C++ extractor directly
+  cpp_res <- extract_chr_haplotypes_cpp(
+    geno_chr = matrix(as.integer(G_blk), nrow = nrow(G_blk)),
+    snp_pos  = pos_blk,
+    block_sb = as.integer(blk1$start.bp),
+    block_eb = as.integer(blk1$end.bp),
+    min_snps = 3L, min_freq = 0.0, top_n = 0L, na_char = "."
+  )
+  # R reference via extract_haplotypes + compute_haplotype_diversity
+  haps_r <- extract_haplotypes(ldx_geno, ldx_snp_info, blk1, min_snps = 3)
+  div_r  <- compute_haplotype_diversity(haps_r)
+  if (cpp_res$n_retained > 0L && nrow(div_r) > 0L) {
+    expect_equal(cpp_res$freq_dominant[1L], div_r$freq_dominant[1L],
+                 tolerance = 1e-6,
+                 label = "C++ freq_dominant matches R compute_haplotype_diversity")
+  }
+})
+
 test_that("compute_haplotype_diversity: monomorphic block gives He=0, Shannon=0", {
   G_mono <- matrix(0L, 120, 5)
   rownames(G_mono) <- rownames(ldx_geno)

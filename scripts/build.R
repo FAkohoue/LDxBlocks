@@ -181,7 +181,7 @@ txt <- gsub("…", "...", txt, fixed = TRUE)
 
 writeLines(txt, file, useBytes = TRUE)
 
-tools::showNonASCIIfile("R/haplotype_analysis.R")
+tools::showNonASCIIfile("R/haplotypes.R")
 
 
 file <- "R/haplotype_analysis.R"

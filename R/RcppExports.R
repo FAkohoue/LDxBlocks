@@ -46,3 +46,13 @@ resolve_overlap_cpp <- function(blocks, adj_mat, k_rep = 10L) {
     .Call(`_LDxBlocks_resolve_overlap_cpp`, blocks, adj_mat, k_rep)
 }
 
+#' @noRd
+block_snp_ranges_cpp <- function(snp_pos, block_sb, block_eb) {
+    .Call(`_LDxBlocks_block_snp_ranges_cpp`, snp_pos, block_sb, block_eb)
+}
+
+#' @noRd
+extract_chr_haplotypes_cpp <- function(geno_chr, snp_pos, block_sb, block_eb, min_snps, min_freq, top_n, na_char = ".") {
+    .Call(`_LDxBlocks_extract_chr_haplotypes_cpp`, geno_chr, snp_pos, block_sb, block_eb, min_snps, min_freq, top_n, na_char)
+}
+

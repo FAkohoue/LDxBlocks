@@ -35,7 +35,7 @@ Notes:
 - LAPACK and BLAS are linked via `$(LAPACK_LIBS)` and `$(BLAS_LIBS)`,
   which resolve to whatever BLAS/LAPACK R itself was built against.
 
-**Exported C++ functions (8 total, all in `src/ld_core.cpp`):**
+**Exported C++ functions (10 total, all in `src/ld_core.cpp`, 1,053 lines):**
 - `compute_r2_cpp()` — standard r² matrix, OpenMP outer loop
 - `compute_rV2_cpp()` — kinship-adjusted rV² (same kernel as compute_r2_cpp)
 - `maf_filter_cpp()` — MAF + monomorphic filter, single O(np) pass
@@ -46,6 +46,13 @@ Notes:
 - `build_hap_strings_cpp()` — C++ haplotype string builder (replaces R vapply loop)
 - `resolve_overlap_cpp()` — LD-informed block overlap resolution,
     BLAS DGEMM scoring + lazy column cache + OpenMP over pairs
+- `block_snp_ranges_cpp()` — O(p + n_blocks) single linear sweep mapping
+    all chromosome blocks to SNP index ranges; replaces per-block findInterval()
+- `extract_chr_haplotypes_cpp()` — full chromosome haplotype extractor
+    combining B7 (interval lookup + string building with OpenMP parallel for),
+    B9 (C++ unordered_map frequency tabulation with min_freq/top_n filtering
+    and freq_dominant = sorted_cnt[0].first / total), and B10 (allele strings,
+    frequencies, and counts returned directly without R-side table() calls)
 
 Two additional `static` (non-exported) helpers:
 - `score_overlap_cpp()` — BLAS DGEMM overlap scoring kernel

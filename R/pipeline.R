@@ -595,8 +595,11 @@ run_ldx_pipeline <- function(
   # extract_haplotypes() uses build_hap_strings_cpp() (C++) internally,
   # replacing an R vapply() loop. ~20-50x faster for large panels.
   .ldx_log("Extracting haplotypes (min_snps = ", min_snps_block, ") ...")
+  # Pass the backend (be) not geno_mat so extract_haplotypes() uses
+  # the chromosome-wise streaming path. This avoids repeated O(n_snps)
+  # scans of the full 2.96M SNP metadata for each of the 291k blocks.
   haplotypes <- extract_haplotypes(
-    geno     = geno_mat,
+    geno     = be,
     snp_info = be$snp_info,
     blocks   = blocks,
     chr      = NULL,

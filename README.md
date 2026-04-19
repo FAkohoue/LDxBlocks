@@ -272,9 +272,11 @@ these with seven compiled functions:
 | `cor()` inside boundary-scan loop | `boundary_scan_cpp()` compiled | ~20x per chromosome |
 | `r2Mat[r2Mat >= CLQcut^2] <- 1` | `build_adj_matrix_cpp()` | eliminates intermediate allocation |
 | Single-column correlation | `col_r2_cpp()` | used in boundary scan helper |
-| Sparse within-window r² | `compute_r2_sparse_cpp()` | avoids O(p^2) for large segments |
-| LD-informed overlap resolution | `resolve_overlap_cpp()` | BLAS DGEMM scoring + OpenMP; 15,700× faster than R version on chr1 |
-| Sparse within-window r² | `compute_r2_sparse_cpp()` | avoids O(p^2) for large segments |
+| Sparse within-window r² | `compute_r2_sparse_cpp()` | avoids O(p²) for large segments |
+| LD-informed overlap resolution | `resolve_overlap_cpp()` | BLAS DGEMM scoring + OpenMP; 15,700× per-SNP reduction on chr1 |
+| Haplotype string building | `build_hap_strings_cpp()` | replaces R vapply loop; ~20-50× per block |
+| Block-to-SNP interval lookup | `block_snp_ranges_cpp()` | O(p + n_blocks) single sweep vs O(p × n_blocks) |
+| Chromosome haplotype extraction | `extract_chr_haplotypes_cpp()` | B7+B9+B10: strings + freq tabulation in one OpenMP pass |
 
 The outer loop of `compute_r2_cpp()` is parallelised with OpenMP, controlled
 by `n_threads =`. Thread scaling is efficient up to 8-16 threads for typical
@@ -2431,7 +2433,7 @@ Long format, one row per individual x block x allele (including dosage = 0 rows)
 
 ### 16.1. C++ core
 
-The eight compiled functions in `src/ld_core.cpp` (763 lines,
+The ten compiled functions in `src/ld_core.cpp` (1,053 lines,
 RcppArmadillo + OpenMP) replace the most expensive R operations:
 
 **`compute_r2_cpp()`** replaces `stats::cov()` + R arithmetic for the full r²

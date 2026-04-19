@@ -10,7 +10,7 @@ Authors@R:
       email   = "akohoue.f@gmail.com",
       role    = c("aut", "cre"),
       comment = c(ORCID = "0000-0002-2160-0182")
-    )
+      )
 Description: Fast, scalable linkage disequilibrium (LD) block detection for
     genome-wide SNP data. Supports two LD metrics: standard r^2 (fast,
     suitable for 10M+ markers) and the kinship-adjusted rV^2 (Mangin et al.
@@ -122,6 +122,7 @@ Config/testthat/edition: 3
 LazyData: true
 SystemRequirements: C++17, OpenMP (optional but recommended)
 URL: https://github.com/FAkohoue/LDxBlocks,
-    https://FAkohoue.github.io/LDxBlocks/
+    https://FAkohoue.github.io/LDxBlocks/,
+    https://github.com/FAkohoue
 BugReports: https://github.com/FAkohoue/LDxBlocks/issues
 VignetteBuilder: knitr

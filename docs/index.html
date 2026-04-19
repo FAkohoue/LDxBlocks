@@ -406,17 +406,27 @@
 <tr>
 <td>Sparse within-window r²</td>
 <td><code>compute_r2_sparse_cpp()</code></td>
-<td>avoids O(p^2) for large segments</td>
+<td>avoids O(p²) for large segments</td>
 </tr>
 <tr>
 <td>LD-informed overlap resolution</td>
 <td><code>resolve_overlap_cpp()</code></td>
-<td>BLAS DGEMM scoring + OpenMP; 15,700× faster than R version on chr1</td>
+<td>BLAS DGEMM scoring + OpenMP; 15,700× per-SNP reduction on chr1</td>
 </tr>
 <tr>
-<td>Sparse within-window r²</td>
-<td><code>compute_r2_sparse_cpp()</code></td>
-<td>avoids O(p^2) for large segments</td>
+<td>Haplotype string building</td>
+<td><code>build_hap_strings_cpp()</code></td>
+<td>replaces R vapply loop; ~20-50× per block</td>
+</tr>
+<tr>
+<td>Block-to-SNP interval lookup</td>
+<td><code>block_snp_ranges_cpp()</code></td>
+<td>O(p + n_blocks) single sweep vs O(p × n_blocks)</td>
+</tr>
+<tr>
+<td>Chromosome haplotype extraction</td>
+<td><code>extract_chr_haplotypes_cpp()</code></td>
+<td>B7+B9+B10: strings + freq tabulation in one OpenMP pass</td>
 </tr>
 </tbody>
 </table>
@@ -3102,7 +3112,7 @@
 <div class="section level3">
 <h3 id="id_161-c-core">16.1. C++ core<a class="anchor" aria-label="anchor" href="#id_161-c-core"></a>
 </h3>
-<p>The eight compiled functions in <code>src/ld_core.cpp</code> (763 lines, RcppArmadillo + OpenMP) replace the most expensive R operations:</p>
+<p>The ten compiled functions in <code>src/ld_core.cpp</code> (1,053 lines, RcppArmadillo + OpenMP) replace the most expensive R operations:</p>
 <p><strong><code>compute_r2_cpp()</code></strong> replaces <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">stats::cov()</a></code> + R arithmetic for the full r² matrix. Speedup over pure R is approximately 40× for a 1,500 × 1,500 window with 500 individuals. The outer loop is OpenMP-parallelised; all threads share the pre-standardised matrix Z (zero-mean, unit-variance columns) and write to disjoint (j, k) element pairs.</p>
 <p><strong><code>boundary_scan_cpp()</code></strong> replaces the triple-nested R loop in <code>cutsequence.modi()</code>. For a chromosome with 50,000 SNPs and <code>leng = 200</code>, this eliminates approximately 150,000 small R-level matrix operations that the subsegmentation step would otherwise perform.</p>
 <p><strong><code>maf_filter_cpp()</code></strong> replaces <code>apply(G, 2, ...)</code> with a single compiled pass. Approximately 10× faster for panels with &gt; 100,000 SNPs; handles NA mean imputation and monomorphic detection in the same loop.</p>

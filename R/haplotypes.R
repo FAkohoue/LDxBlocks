@@ -199,26 +199,46 @@ extract_haplotypes <- function(geno, snp_info, blocks,
       chr_geno  <- read_chunk(geno, chr_idx)   # individuals x chr_SNPs
       chr_si    <- si[chr_idx, ]
 
-      for (b in seq_len(nrow(chr_blocks))) {
-        blk <- chr_blocks[b,]
-        sb  <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
-        blk_idx <- which(chr_si$POS >= sb & chr_si$POS <= eb)
-        if (length(blk_idx) < min_snps) next
-        bid <- paste0("block_",cb,"_",sb,"_",eb)
-        # Build haplotype strings via C++ -- replaces vapply() R loop
-        # (17,078 blocks x 204 ind = 3.5M R calls -> 1 C++ call per block)
-        blk_mat <- chr_geno[, blk_idx, drop = FALSE]
-        blk_int <- matrix(as.integer(blk_mat), nrow = nrow(blk_mat))
-        hs      <- build_hap_strings_cpp(blk_int, na_char)
-        names(hs) <- iids
-        res[[bid]] <- hs
-        bi <- rbind(bi, data.frame(block_id=bid, CHR=cb,
-                                   start_bp=as.integer(sb),
-                                   end_bp=as.integer(eb),
-                                   n_snps=length(blk_idx), phased=FALSE,
-                                   stringsAsFactors=FALSE))
+      # B7+B9+B10: single C++ call handles the entire chromosome:
+      #   - interval lookup (no per-block R scanning)
+      #   - string building with OpenMP parallel for
+      #   - frequency tabulation and min_freq/top_n filtering
+      # All returned in one List; no R loop over blocks needed.
+      chr_pos_ord <- order(chr_si$POS)
+      chr_si_srt  <- chr_si[chr_pos_ord, , drop=FALSE]
+      blk_ord     <- order(chr_blocks$start.bp)
+      chr_blk_srt <- chr_blocks[blk_ord, , drop=FALSE]
+      # Pass sorted genotype matrix (columns in position order)
+      geno_sorted <- chr_geno[, chr_pos_ord, drop=FALSE]
+      cpp_res <- extract_chr_haplotypes_cpp(
+        geno_chr  = matrix(as.integer(geno_sorted), nrow=nrow(geno_sorted)),
+        snp_pos   = as.integer(chr_si_srt$POS),
+        block_sb  = as.integer(chr_blk_srt$start.bp),
+        block_eb  = as.integer(chr_blk_srt$end.bp),
+        min_snps  = as.integer(min_snps),
+        min_freq  = 0,        # apply min_freq later at feature matrix stage
+        top_n     = 0L,       # no cap at extraction; cap at feature matrix
+        na_char   = na_char
+      )
+      n_ret <- cpp_res$n_retained
+      if (n_ret > 0L) {
+        for (b in seq_len(n_ret)) {
+          blk  <- chr_blk_srt[b, , drop=FALSE]
+          sb   <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
+          bid  <- paste0("block_",cb,"_",sb,"_",eb)
+          hs   <- cpp_res$hap_strings[[b]]
+          names(hs) <- iids
+          res[[bid]] <- hs
+          bi <- rbind(bi, data.frame(block_id=bid, CHR=cb,
+                                     start_bp=as.integer(sb),
+                                     end_bp=as.integer(eb),
+                                     n_snps=cpp_res$n_snps[b], phased=FALSE,
+                                     stringsAsFactors=FALSE))
+        }
+        if (length(res) %% 1000L == 0L && length(res) > 0L)
+          message("[extract_haplotypes] ", length(res), " blocks extracted...")
       }
-      rm(chr_geno, chr_si); gc(FALSE)  # free chromosome before next
+      rm(chr_geno, chr_si, geno_sorted, cpp_res); gc(FALSE)
     }
     attr(res,"block_info") <- bi
     return(res)
@@ -231,38 +251,106 @@ extract_haplotypes <- function(geno, snp_info, blocks,
     if (!is.matrix(geno)) geno <- as.matrix(geno)
     gm <- geno; h1m <- h2m <- NULL; iids <- rownames(geno); sg <- colnames(geno)
   }
+  # Pre-build SNP name -> column index hash (O(n) once, O(1) per lookup).
+  # Replaces match(snp_info$SNP[idx], sg) which rebuilds the hash every block.
+  sg_idx <- stats::setNames(seq_along(sg), sg)
   snp_info$CHR <- .norm_chr_hap(snp_info$CHR)
   blocks$CHR   <- .norm_chr_hap(blocks$CHR)
   if (!is.null(chr)) { chr <- .norm_chr_hap(chr); blocks <- blocks[blocks$CHR%in%chr,] }
   res <- list()
-  bi  <- data.frame(block_id=character(),CHR=character(),start_bp=integer(),
-                    end_bp=integer(),n_snps=integer(),phased=logical(),
-                    stringsAsFactors=FALSE)
-  for (b in seq_len(nrow(blocks))) {
-    blk <- blocks[b,]; cb <- as.character(blk$CHR)
-    sb <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
-    idx <- which(snp_info$CHR==cb&snp_info$POS>=sb&snp_info$POS<=eb)
-    if (length(idx)<min_snps) next
-    ci <- match(snp_info$SNP[idx],sg); ci <- ci[!is.na(ci)]
-    if (length(ci)<min_snps) next
-    bid <- paste0("block_",cb,"_",sb,"_",eb)
-    if (isp) {
-      h1_int <- matrix(as.integer(h1m[, ci, drop = FALSE]), nrow = nrow(h1m))
-      h2_int <- matrix(as.integer(h2m[, ci, drop = FALSE]), nrow = nrow(h2m))
-      s1 <- build_hap_strings_cpp(h1_int, na_char)
-      s2 <- build_hap_strings_cpp(h2_int, na_char)
-      hs <- paste0(s1, "|", s2)
-    } else {
-      blk_int <- matrix(as.integer(gm[, ci, drop = FALSE]),
-                        nrow = nrow(gm))
-      hs <- build_hap_strings_cpp(blk_int, na_char)
-    }
-    names(hs) <- iids; res[[bid]] <- hs
-    bi <- rbind(bi, data.frame(block_id=bid,CHR=cb,start_bp=as.integer(sb),
-                               end_bp=as.integer(eb),n_snps=length(ci),
-                               phased=isp,stringsAsFactors=FALSE))
+  # Pre-filter: drop blocks smaller than min_snps using the index columns.
+  # This is a vectorized O(n_blocks) operation that eliminates the expensive
+  # per-block which() scan for singletons (which make up >90% of WGS blocks).
+  if ("end" %in% names(blocks) && "start" %in% names(blocks)) {
+    blocks <- blocks[(blocks$end - blocks$start + 1L) >= min_snps, , drop = FALSE]
   }
-  attr(res,"block_info") <- bi; res
+  if (!nrow(blocks)) return(structure(list(), block_info = data.frame(
+    block_id=character(), CHR=character(), start_bp=integer(),
+    end_bp=integer(), n_snps=integer(), phased=logical(),
+    stringsAsFactors=FALSE)))
+
+  # Pre-index snp_info by chromosome for O(log n) position lookup.
+  # Without this, each block does which(snp_info$CHR==cb & ...) scanning all
+  # 2.96M SNPs -- 291k blocks * 2.96M SNPs = 861 billion comparisons.
+  snp_info$CHR <- .norm_chr_hap(snp_info$CHR)
+  # B6: C++ single-pass interval lookup per chromosome.
+  # block_snp_ranges_cpp() does O(p + n_blocks) work per chromosome
+  # vs the previous O(p * n_blocks) repeated scanning.
+  si_by_chr  <- split(seq_len(nrow(snp_info)), snp_info$CHR)
+  blk_by_chr <- split(seq_len(nrow(blocks)),   blocks$CHR)
+
+  bi_rows  <- vector("list", nrow(blocks))
+  bi_count <- 0L
+  for (cb in intersect(names(blk_by_chr), names(si_by_chr))) {
+    chr_si_idx  <- si_by_chr[[cb]]
+    chr_blk_idx <- blk_by_chr[[cb]]
+    chr_si      <- snp_info[chr_si_idx, , drop=FALSE]
+    chr_blks    <- blocks[chr_blk_idx, , drop=FALSE]
+    # Index-span pre-filter (vectorized)
+    if ("end" %in% names(chr_blks) && "start" %in% names(chr_blks))
+      chr_blks <- chr_blks[(chr_blks$end - chr_blks$start + 1L) >= min_snps, , drop=FALSE]
+    if (!nrow(chr_blks)) next
+    # Sort SNP positions and block starts once per chromosome
+    si_ord      <- order(chr_si$POS)
+    chr_si_srt  <- chr_si[si_ord, , drop=FALSE]
+    si_orig_idx <- chr_si_idx[si_ord]   # original snp_info row indices
+    blk_ord     <- order(chr_blks$start.bp)
+    chr_blk_srt <- chr_blks[blk_ord, , drop=FALSE]
+    # B7+B9+B10: full C++ chromosome extractor.
+    # Replaces block_snp_ranges_cpp + per-block R slicing + build_hap_strings_cpp.
+    # One call handles interval lookup, string building (OpenMP), and tabulation.
+    gm_chr_srt <- t(gm)[si_orig_idx, , drop=FALSE]  # p_chr x n_ind -> transpose
+    gm_chr_srt <- t(gm_chr_srt)                      # n_ind x p_chr (pos-sorted)
+    cpp_res <- extract_chr_haplotypes_cpp(
+      geno_chr  = matrix(as.integer(gm_chr_srt), nrow=nrow(gm_chr_srt)),
+      snp_pos   = as.integer(chr_si_srt$POS),
+      block_sb  = as.integer(chr_blk_srt$start.bp),
+      block_eb  = as.integer(chr_blk_srt$end.bp),
+      min_snps  = as.integer(min_snps),
+      min_freq  = 0, top_n = 0L, na_char = na_char
+    )
+    n_ret <- cpp_res$n_retained
+    for (b in seq_len(n_ret)) {
+      blk <- chr_blk_srt[b, , drop=FALSE]
+      sb  <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
+      if (cpp_res$n_snps[b] < min_snps) next
+      if (TRUE) {  # scope guard
+        bid <- paste0("block_",cb,"_",sb,"_",eb)
+        if (isp) {
+          # Phased path: compute geno column indices (ci) via findInterval.
+          # chr_si_srt$POS is already sorted; si_orig_idx maps back to snp_info rows.
+          lo_b <- findInterval(sb - 1, chr_si_srt$POS) + 1L
+          hi_b <- findInterval(eb,     chr_si_srt$POS)
+          if (hi_b < lo_b) next
+          idx_b <- si_orig_idx[lo_b:hi_b]
+          ci <- sg_idx[snp_info$SNP[idx_b]]; ci <- ci[!is.na(ci)]
+          if (length(ci) < min_snps) next
+          h1_int <- matrix(as.integer(h1m[, ci, drop = FALSE]), nrow = nrow(h1m))
+          h2_int <- matrix(as.integer(h2m[, ci, drop = FALSE]), nrow = nrow(h2m))
+          s1 <- build_hap_strings_cpp(h1_int, na_char)
+          s2 <- build_hap_strings_cpp(h2_int, na_char)
+          hs <- paste0(s1, "|", s2)
+        } else {
+          hs <- cpp_res$hap_strings[[b]]  # from extract_chr_haplotypes_cpp (B7)
+        }
+        names(hs) <- iids; res[[bid]] <- hs
+        bi_count <- bi_count + 1L
+        if (bi_count %% 1000L == 0L)
+          message("[extract_haplotypes] ", bi_count, " blocks extracted...")
+        bi_rows[[bi_count]] <- data.frame(block_id=bid,CHR=cb,start_bp=as.integer(sb),
+                                          end_bp=as.integer(eb),
+                                          n_snps=if(isp) length(ci) else cpp_res$n_snps[b],
+                                          phased=isp,stringsAsFactors=FALSE)
+      }  # end if(TRUE) scope guard
+    }  # end for(b)
+    rm(gm_chr_srt, cpp_res)
+  }  # end for(cb)
+  bi <- if (bi_count > 0L) data.table::rbindlist(bi_rows[seq_len(bi_count)],
+                                                 use.names=TRUE) else data.frame(
+                                                   block_id=character(),CHR=character(),start_bp=integer(),
+                                                   end_bp=integer(),n_snps=integer(),phased=logical(),
+                                                   stringsAsFactors=FALSE)
+  attr(res,"block_info") <- as.data.frame(bi); res
 }
 
 #' Compute Haplotype Diversity Per Block

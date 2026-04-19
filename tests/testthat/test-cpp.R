@@ -286,3 +286,282 @@ test_that("resolve_overlap_cpp: matches .resolve_overlap on random overlapping i
   expect_equal(cpp_res[1L, 2L], r_res[1L, 2L], label = "block A end matches")
   expect_equal(cpp_res[2L, 1L], r_res[2L, 1L], label = "block B start matches")
 })
+
+
+# ── block_snp_ranges_cpp ──────────────────────────────────────────────────────
+
+test_that("block_snp_ranges_cpp: returns list with lo, hi, n_snps", {
+  pos      <- as.integer(seq(1000L, by = 1000L, length.out = 30L))
+  block_sb <- as.integer(c(1000L, 10000L, 20000L))
+  block_eb <- as.integer(c(5000L, 15000L, 25000L))
+  res <- block_snp_ranges_cpp(pos, block_sb, block_eb)
+  expect_type(res, "list")
+  expect_true(all(c("lo", "hi", "n_snps") %in% names(res)))
+  expect_equal(length(res$lo),     3L)
+  expect_equal(length(res$hi),     3L)
+  expect_equal(length(res$n_snps), 3L)
+})
+
+test_that("block_snp_ranges_cpp: n_snps equals hi - lo + 1 for retained blocks", {
+  pos      <- as.integer(seq(1000L, by = 1000L, length.out = 30L))
+  block_sb <- as.integer(c(1000L, 10000L, 20000L))
+  block_eb <- as.integer(c(5000L, 15000L, 25000L))
+  res <- block_snp_ranges_cpp(pos, block_sb, block_eb)
+  for (b in seq_along(res$lo)) {
+    if (res$n_snps[b] > 0L)
+      expect_equal(res$hi[b] - res$lo[b] + 1L, res$n_snps[b],
+                   label = paste("block", b))
+  }
+})
+
+test_that("block_snp_ranges_cpp: SNPs within each block are correct", {
+  pos      <- as.integer(seq(1000L, by = 1000L, length.out = 30L))
+  block_sb <- as.integer(c(1000L, 10000L))
+  block_eb <- as.integer(c(5000L, 15000L))
+  res <- block_snp_ranges_cpp(pos, block_sb, block_eb)
+  # Block 1: pos[1:5] = 1000..5000 -> lo=1, hi=5, n_snps=5
+  expect_equal(res$lo[1],     1L)
+  expect_equal(res$hi[1],     5L)
+  expect_equal(res$n_snps[1], 5L)
+  # Block 2: pos[10:15] = 10000..15000 -> lo=10, hi=15, n_snps=6
+  expect_equal(res$lo[2],     10L)
+  expect_equal(res$hi[2],     15L)
+  expect_equal(res$n_snps[2], 6L)
+})
+
+test_that("block_snp_ranges_cpp: block with no SNPs gives lo=hi=n_snps=0", {
+  pos      <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  # Block placed entirely between SNPs
+  block_sb <- as.integer(c(500L))
+  block_eb <- as.integer(c(999L))
+  res <- block_snp_ranges_cpp(pos, block_sb, block_eb)
+  expect_equal(res$lo[1],     0L)
+  expect_equal(res$hi[1],     0L)
+  expect_equal(res$n_snps[1], 0L)
+})
+
+test_that("block_snp_ranges_cpp: adjacent blocks partition SNPs without overlap", {
+  pos      <- as.integer(seq(1000L, by = 1000L, length.out = 20L))
+  block_sb <- as.integer(c(1000L, 6000L, 11000L, 16000L))
+  block_eb <- as.integer(c(5000L, 10000L, 15000L, 20000L))
+  res <- block_snp_ranges_cpp(pos, block_sb, block_eb)
+  # Total SNPs across all blocks should equal 20
+  expect_equal(sum(res$n_snps), 20L)
+  # No overlap: each block's lo > previous block's hi
+  for (b in 2:length(res$lo)) {
+    if (res$n_snps[b] > 0L && res$n_snps[b-1] > 0L)
+      expect_true(res$lo[b] > res$hi[b-1])
+  }
+})
+
+test_that("block_snp_ranges_cpp: single-SNP block", {
+  pos      <- as.integer(c(1000L, 2000L, 3000L, 4000L, 5000L))
+  block_sb <- as.integer(c(3000L))
+  block_eb <- as.integer(c(3000L))
+  res <- block_snp_ranges_cpp(pos, block_sb, block_eb)
+  expect_equal(res$n_snps[1], 1L)
+  expect_equal(res$lo[1], res$hi[1])
+  expect_equal(pos[res$lo[1]], 3000L)
+})
+
+test_that("block_snp_ranges_cpp: matches R findInterval reference", {
+  set.seed(7)
+  pos      <- sort(as.integer(sample(1:100000, 200)))
+  block_sb <- as.integer(c(5000L, 30000L, 60000L, 80000L))
+  block_eb <- as.integer(c(25000L, 55000L, 75000L, 95000L))
+  res <- block_snp_ranges_cpp(pos, block_sb, block_eb)
+  for (b in seq_along(block_sb)) {
+    # R reference: which() for each block
+    ref_idx <- which(pos >= block_sb[b] & pos <= block_eb[b])
+    if (length(ref_idx) == 0L) {
+      expect_equal(res$n_snps[b], 0L, label = paste("block", b, "empty"))
+    } else {
+      expect_equal(res$n_snps[b], length(ref_idx),
+                   label = paste("block", b, "count"))
+      expect_equal(res$lo[b], min(ref_idx),
+                   label = paste("block", b, "lo"))
+      expect_equal(res$hi[b], max(ref_idx),
+                   label = paste("block", b, "hi"))
+    }
+  }
+})
+
+# ── extract_chr_haplotypes_cpp ────────────────────────────────────────────────
+
+test_that("extract_chr_haplotypes_cpp: returns list with required fields", {
+  G   <- matrix(as.integer(G_small[, 1:15]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 15L))
+  sb  <- as.integer(c(1000L, 8000L))
+  eb  <- as.integer(c(6000L, 13000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  expect_type(res, "list")
+  expected_fields <- c("hap_strings","hap_alleles","hap_freq",
+                       "hap_counts","freq_dominant",
+                       "block_lo","block_hi","n_snps","n_retained")
+  expect_true(all(expected_fields %in% names(res)))
+})
+
+test_that("extract_chr_haplotypes_cpp: n_retained <= n_blocks", {
+  G   <- matrix(as.integer(G_small[, 1:20]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 20L))
+  sb  <- as.integer(c(1000L, 6000L, 11000L, 16000L))
+  eb  <- as.integer(c(5000L, 10000L, 15000L, 20000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  expect_true(res$n_retained <= length(sb))
+})
+
+test_that("extract_chr_haplotypes_cpp: hap_strings length equals n_ind per block", {
+  n   <- nrow(G_small)
+  G   <- matrix(as.integer(G_small[, 1:10]), nrow = n)
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  sb  <- as.integer(c(1000L))
+  eb  <- as.integer(c(10000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    expect_equal(length(res$hap_strings[[1L]]), n)
+  }
+})
+
+test_that("extract_chr_haplotypes_cpp: string width equals n_snps in block", {
+  G   <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  sb  <- as.integer(c(1000L))
+  eb  <- as.integer(c(10000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    w <- unique(nchar(res$hap_strings[[1L]]))
+    expect_equal(w, res$n_snps[1L])
+  }
+})
+
+test_that("extract_chr_haplotypes_cpp: hap string characters are in {0,1,2,.}", {
+  G   <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  sb  <- as.integer(c(1000L))
+  eb  <- as.integer(c(10000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    chars <- unique(unlist(strsplit(paste(res$hap_strings[[1L]], collapse=""), "")))
+    expect_true(all(chars %in% c("0","1","2",".")))
+  }
+})
+
+test_that("extract_chr_haplotypes_cpp: freq_dominant is in (0,1] for each block", {
+  G   <- matrix(as.integer(G_small[, 1:20]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 20L))
+  sb  <- as.integer(c(1000L, 11000L))
+  eb  <- as.integer(c(10000L, 20000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    fd <- res$freq_dominant
+    expect_true(all(fd > 0 & fd <= 1 + 1e-8))
+  }
+})
+
+test_that("extract_chr_haplotypes_cpp: freq_dominant equals max(hap_freq) per block", {
+  G   <- matrix(as.integer(G_small[, 1:15]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 15L))
+  sb  <- as.integer(c(1000L, 8000L))
+  eb  <- as.integer(c(7000L, 15000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  for (b in seq_len(res$n_retained)) {
+    freqs <- res$hap_freq[[b]]
+    # freq_dominant should equal the first (highest) frequency since alleles
+    # are sorted descending — and should equal max(freqs)
+    expect_equal(res$freq_dominant[b], max(freqs), tolerance = 1e-10,
+                 label = paste("block", b, "freq_dominant == max(hap_freq)"))
+  }
+})
+
+test_that("extract_chr_haplotypes_cpp: hap_freq sums to 1.0 per block", {
+  G   <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  sb  <- as.integer(c(1000L))
+  eb  <- as.integer(c(10000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    # Frequencies should sum to 1 (ignoring min_freq filtering, which is 0 here)
+    expect_equal(sum(res$hap_freq[[1L]]), 1.0, tolerance = 1e-8)
+  }
+})
+
+test_that("extract_chr_haplotypes_cpp: top_n limits alleles returned per block", {
+  G   <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  sb  <- as.integer(c(1000L))
+  eb  <- as.integer(c(10000L))
+  res_all <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                        min_snps = 2L, min_freq = 0.0,
+                                        top_n = 0L, na_char = ".")
+  res_top <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                        min_snps = 2L, min_freq = 0.0,
+                                        top_n = 3L, na_char = ".")
+  if (res_top$n_retained > 0L && res_all$n_retained > 0L) {
+    expect_true(length(res_top$hap_alleles[[1L]]) <= 3L)
+    expect_true(length(res_top$hap_alleles[[1L]]) <=
+                  length(res_all$hap_alleles[[1L]]))
+  }
+})
+
+test_that("extract_chr_haplotypes_cpp: blocks below min_snps are excluded", {
+  G   <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  # One block with 1 SNP (below min_snps=2) and one with 5 SNPs
+  sb  <- as.integer(c(1000L, 3000L))
+  eb  <- as.integer(c(1000L, 7000L))   # block 1: 1 SNP, block 2: 5 SNPs
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  # Only block 2 (5 SNPs) should be retained
+  expect_equal(res$n_retained, 1L)
+  expect_equal(res$n_snps[1L], 5L)
+})
+
+test_that("extract_chr_haplotypes_cpp: NA genotypes encoded as na_char in strings", {
+  G      <- matrix(as.integer(G_small[, 1:8]), nrow = nrow(G_small))
+  G[1, 3] <- NA_integer_   # inject NA for individual 1 at SNP 3
+  pos    <- as.integer(seq(1000L, by = 1000L, length.out = 8L))
+  sb     <- as.integer(c(1000L))
+  eb     <- as.integer(c(8000L))
+  res    <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                       min_snps = 2L, min_freq = 0.0,
+                                       top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    # Individual 1 string should contain "." at position 3
+    ind1_str <- res$hap_strings[[1L]][1L]
+    expect_equal(substr(ind1_str, 3L, 3L), ".")
+  }
+})
+
+test_that("extract_chr_haplotypes_cpp: matches build_hap_strings_cpp for a single block", {
+  G    <- matrix(as.integer(G_small[, 1:8]), nrow = nrow(G_small))
+  pos  <- as.integer(seq(1000L, by = 1000L, length.out = 8L))
+  sb   <- as.integer(c(1000L))
+  eb   <- as.integer(c(8000L))
+  # C++ chromosome extractor
+  res  <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                     min_snps = 2L, min_freq = 0.0,
+                                     top_n = 0L, na_char = ".")
+  # Reference: build_hap_strings_cpp on the full block
+  ref  <- build_hap_strings_cpp(G, ".")
+  if (res$n_retained > 0L) {
+    # Both should produce the same set of strings (possibly different order)
+    expect_equal(sort(res$hap_strings[[1L]]), sort(ref))
+  }
+})

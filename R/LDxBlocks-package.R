@@ -140,5 +140,6 @@ utils::globalVariables(c(
   "n_unassigned", "n_forced", "n_blocks", "penalty_bp",
   "REF", "ALT", "SNP", "POS", "..samp_cols", ".",
   "start_x", "end_x", "chr_int",
-  "dist_kb", "r2_plot", "r2"
+  "dist_kb", "r2_plot", "r2",
+  "ci"  # phased-path loop variable in extract_haplotypes()
 ))

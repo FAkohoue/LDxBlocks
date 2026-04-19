@@ -166,6 +166,8 @@ Useful links:
 
 - <https://FAkohoue.github.io/LDxBlocks/>
 
+- <https://github.com/FAkohoue>
+
 - Report bugs at <https://github.com/FAkohoue/LDxBlocks/issues>
 
 ## Author
