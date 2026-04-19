@@ -431,6 +431,35 @@ test_that("impute_and_filter_cpp: mode imputation fills all NAs", {
   expect_equal(sum(is.na(res$geno_imputed)), 0L)
 })
 
+test_that("impute_and_filter_cpp: mode tie falls back to mean_rounded", {
+  # Construct a column with exactly equal counts of 0 and 2 (ambiguous mode).
+  # n=80: rows 1-40 = 0, rows 41-80 = 2.
+  # Inject NAs at rows 1-5 (from the 0-group) AND rows 41-45 (from the 2-group)
+  # -> cnt[0]=35, cnt[1]=0, cnt[2]=35 -- a true tie.
+  # Fallback: mean = (35*0 + 35*2) / 70 = 1.0 -> mean_rounded = 1.
+  n <- nrow(G_small)
+  G_tie <- matrix(as.integer(G_small), nrow = n)
+  G_tie[, 1] <- c(rep(0L, 40), rep(2L, 40))   # rows 1-40 = 0, rows 41-80 = 2
+  G_tie[1:5,   1] <- NA_integer_               # 5 NAs from the 0-group
+  G_tie[41:45, 1] <- NA_integer_               # 5 NAs from the 2-group
+  # Now: cnt[0]=35, cnt[1]=0, cnt[2]=35 -> ambiguous mode -> mean_rounded
+  res <- impute_and_filter_cpp(G_tie, min_callrate = 0.0, method = 1L)
+  expect_equal(res$imp_values[1], 1L,
+               label = "tied mode (cnt[0]==cnt[2]==35) falls back to mean_rounded=1")
+  expect_equal(sum(is.na(res$geno_imputed)), 0L)
+})
+
+test_that("impute_and_filter_cpp: unique mode used when no tie", {
+  n <- nrow(G_small)
+  G_mode <- matrix(as.integer(G_small), nrow = n)
+  # Make column 2 mostly 0s with a few 1s and NAs -> clear mode = 0
+  G_mode[, 2] <- c(rep(0L, 70), rep(1L, 10))
+  G_mode[1:5, 2] <- NA_integer_
+  res <- impute_and_filter_cpp(G_mode, min_callrate = 0.0, method = 1L)
+  expect_equal(res$imp_values[2], 0L,
+               label = "unique mode 0 used (no tie)")
+})
+
 test_that("impute_and_filter_cpp: imputed values are in {0,1,2}", {
   G_na <- matrix(as.integer(G_small), nrow = nrow(G_small))
   G_na[sample(length(G_na), 50)] <- NA_integer_

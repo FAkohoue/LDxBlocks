@@ -1131,10 +1131,26 @@ Rcpp::List impute_and_filter_cpp(
 
     int fill_val;
     if (method == 1) {
-      // mode: most common of {0, 1, 2}
-      fill_val = 0;
-      if (cnt[1] > cnt[fill_val]) fill_val = 1;
-      if (cnt[2] > cnt[fill_val]) fill_val = 2;
+      // mode: most common of {0, 1, 2}.
+      // Tie-breaking: if two or more dosages share the maximum count,
+      // the mode is ambiguous -- fall back to mean_rounded for this SNP.
+      // This avoids silently biasing toward the lower dosage and is
+      // consistent with what the user would get from "mean_rounded".
+      int max_cnt = cnt[0];
+      if (cnt[1] > max_cnt) max_cnt = cnt[1];
+      if (cnt[2] > max_cnt) max_cnt = cnt[2];
+      int n_modes = (cnt[0] == max_cnt) + (cnt[1] == max_cnt) +
+        (cnt[2] == max_cnt);
+      if (n_modes == 1) {
+        // Unique mode: use it.
+        fill_val = (cnt[0] == max_cnt) ? 0 : (cnt[1] == max_cnt) ? 1 : 2;
+      } else {
+        // Ambiguous mode: fall back to mean_rounded.
+        double mn = (double)sum_g / n_obs;
+        fill_val = (int)(mn + 0.5);
+        if (fill_val < 0) fill_val = 0;
+        if (fill_val > 2) fill_val = 2;
+      }
     } else {
       // mean_rounded: round(mean) clamped to [0, 2]
       double mn = (double)sum_g / n_obs;

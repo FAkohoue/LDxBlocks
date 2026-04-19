@@ -223,7 +223,14 @@
 #'       contribute 0/1 values to the feature matrix.}
 #'     \item{\code{"mode"}}{Per-SNP mode imputation. Imputes each missing
 #'       value with the most common observed dosage (0, 1, or 2) at that
-#'       SNP.}
+#'       SNP. \strong{Tie-breaking}: when two or more dosage values share
+#'       the maximum count (ambiguous mode), the SNP automatically falls
+#'       back to \code{"mean_rounded"} imputation for that SNP only
+#'       (\code{round(column_mean)}, clamped to \{0, 1, 2\}). This
+#'       ensures no silent bias toward the lower dosage and is consistent
+#'       with what \code{"mean_rounded"} would produce. Ties are
+#'       biologically rare at MAF >= 0.05 but can occur in blocks with
+#'       very high heterozygosity.}
 #'     \item{\code{"none"}}{No imputation. If any missing values remain
 #'       after MAF filtering the function stops with an informative error.
 #'       Use only when the input data are already fully imputed.}

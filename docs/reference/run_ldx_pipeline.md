@@ -275,7 +275,14 @@ run_ldx_pipeline(
   `"mode"`
 
   :   Per-SNP mode imputation. Imputes each missing value with the most
-      common observed dosage (0, 1, or 2) at that SNP.
+      common observed dosage (0, 1, or 2) at that SNP. **Tie-breaking**:
+      when two or more dosage values share the maximum count (ambiguous
+      mode), the SNP automatically falls back to `"mean_rounded"`
+      imputation for that SNP only (`round(column_mean)`, clamped to {0,
+      1, 2}). This ensures no silent bias toward the lower dosage and is
+      consistent with what `"mean_rounded"` would produce. Ties are
+      biologically rare at MAF \>= 0.05 but can occur in blocks with
+      very high heterozygosity.
 
   `"none"`
 
@@ -536,16 +543,16 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [bigmemory]   chr 1 loaded (80/230 SNPs)
 #> [bigmemory]   chr 2 loaded (160/230 SNPs)
 #> [bigmemory]   chr 3 loaded (230/230 SNPs)
-#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U/ldxbm3fcc5d9435d1.bin
-#> [17:02:41] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
-#> [17:02:41] MAF filtering (>= 0.05) ...
+#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U/ldxbm23cc1b8f7d01.bin
+#> [18:21:18] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
+#> [18:21:18] MAF filtering (>= 0.05) ...
 #> [MAF filter] Computing MAF for 230 SNPs ...
 #> [MAF filter] 230 / 230 SNPs pass MAF >= 0.05
-#> [17:02:42] Loading filtered genotype matrix ...
-#> [17:02:42] Genotype matrix: 120 x 230
-#> [17:02:42] Call-rate filter: disabled (min_callrate = 0).
-#> [17:02:42] Imputation: skipped | matrix 120 ind x 230 SNPs | 0 missing values.
-#> [17:02:42] Running genome-wide LD block detection ...
+#> [18:21:18] Loading filtered genotype matrix ...
+#> [18:21:18] Genotype matrix: 120 x 230
+#> [18:21:18] Call-rate filter: disabled (min_callrate = 0).
+#> [18:21:18] Imputation: skipped | matrix 120 ind x 230 SNPs | 0 missing values.
+#> [18:21:18] Running genome-wide LD block detection ...
 #> 
 #> [run_Big_LD_all_chr] Processing 1 ...
 #> [Big_LD] Subsegmenting via C++ boundary scan...
@@ -595,21 +602,21 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [CLQD] Building graph on 70 SNPs...
 #> [CLQD] Found 16 maximal cliques.
 #> [Big_LD] Segment 1/1 done.
-#> [17:02:42] Detected 9 LD blocks
-#> [17:02:42] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U\file3fccb11455.csv
-#> [17:02:42] Extracting haplotypes (min_snps = 3) ...
-#> [17:02:43] Haplotypes extracted for 9 blocks
-#> [17:02:43] Computing haplotype diversity ...
-#> [17:02:43] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U\file3fcc3e711495.csv
-#> [17:02:43] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
-#> [17:02:43] Haplotype matrix: 120 individuals x 90 haplotype allele columns
-#> [17:02:43] Writing haplotype matrix (format = numeric) ...
-#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U\file3fcc622f30ff.csv (90 haplotypes x 120 individuals)
-#> [17:02:43] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U\file3fcc622f30ff.csv
-#> [17:02:43] Pipeline complete.
-#> [17:02:43]   Blocks:              9
-#> [17:02:43]   Haplotype blocks:    9
-#> [17:02:43]   Haplotype columns:   90
-#> [17:02:43]   Individuals:         120
+#> [18:21:19] Detected 9 LD blocks
+#> [18:21:19] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U\file23cc48701db.csv
+#> [18:21:19] Extracting haplotypes (min_snps = 3) ...
+#> [18:21:20] Haplotypes extracted for 9 blocks
+#> [18:21:20] Computing haplotype diversity ...
+#> [18:21:20] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U\file23cc20116fbc.csv
+#> [18:21:20] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
+#> [18:21:20] Haplotype matrix: 120 individuals x 90 haplotype allele columns
+#> [18:21:20] Writing haplotype matrix (format = numeric) ...
+#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U\file23cc24c870af.csv (90 haplotypes x 120 individuals)
+#> [18:21:20] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U\file23cc24c870af.csv
+#> [18:21:20] Pipeline complete.
+#> [18:21:20]   Blocks:              9
+#> [18:21:20]   Haplotype blocks:    9
+#> [18:21:20]   Haplotype columns:   90
+#> [18:21:20]   Individuals:         120
 # }
 ```
