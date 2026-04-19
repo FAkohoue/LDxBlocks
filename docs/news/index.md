@@ -2,6 +2,93 @@
 
 ## LDxBlocks 0.3.1 (development)
 
+### Performance: C++ overlap resolution and WGS stall fixes
+
+The `Big_LD()` post-segment pipeline now routes through C++ for all
+overlap resolution, eliminating several O(n²)–O(n·p) bottlenecks that
+caused chromosome processing to stall after segment detection completed.
+
+**`resolve_overlap_cpp()` — new exported C++ function**
+
+Replaces the two sequential R `.resolve_overlap()` calls with a single
+C++ pass implementing the identical cumulative-score split rule. Four
+improvements over the R version:
+
+- **BLAS DGEMM scoring** — for each overlapping block pair, disputed SNP
+  scores are computed as `rowMeans(C_L²) − rowMeans(C_R²)` where
+  `C_L = (Z_overlap.t() × Z_left_reps) / (n−1)` via Armadillo matrix
+  multiply. This replaces a
+  [`vapply()`](https://rdrr.io/r/base/lapply.html) loop calling
+  `col_r2_cpp()` per SNP against all p columns (314k for chr1). Cost per
+  disputed SNP drops from O(n × p) to O(n × 2k_rep) — a 15,700×
+  reduction for chr1.
+- **Lazy column cache** — each column of `adj_mat` is standardised at
+  most once. Columns never accessed as representatives or overlap SNPs
+  are never touched. For ~1,000 overlapping pairs using 20 reps each,
+  fewer than 1% of chr1’s 314k columns are ever standardised.
+- **Single pass** — one call replaces two. The second R call was needed
+  because the first pass could create new adjacent overlaps; the C++
+  while loop handles this naturally within the same pass.
+- **OpenMP over pairs** — overlapping pairs are collected first in an
+  O(n_blocks) scan, then resolved in `#pragma omp parallel for` (scores
+  computed in parallel; boundaries applied serially in reverse to
+  preserve index stability).
+
+**R-level running counters**
+
+Four additional O(n) scan operations replaced with O(1) running
+counters:
+
+- `sum(!is.na(LDblocks[,1L]))` called 419 times per chromosome →
+  `ld_count`
+- `max(which(!is.na(newLDblocks[,1L])))` in re-merge loop →
+  `remerge_count`
+- `min(which(is.na(newLDblocks[,1L])))` in re-merge loop →
+  `remerge_count`
+- `done <- LDblocks[!is.na(LDblocks[,1L]),]` →
+  `LDblocks[seq_len(ld_count),]`
+
+**Re-merge skip when modeNum=2**
+
+The optional re-merge loop across forced cut-points is now skipped when
+all cut-points are forced (`length(atfcut) >= length(cutpoints) - 2`),
+which occurs when `cutsequence.modi` switches to `modeNum=2`. In this
+mode every cut is forced by definition, so re-running CLQD across all
+boundaries produces no benefit. With 419 forced segments on chr1 this
+eliminated potentially hundreds of CLQD calls in a serial R loop.
+
+**[`intersect()`](https://generics.r-lib.org/reference/setops.html) →
+[`findInterval()`](https://rdrr.io/r/base/findInterval.html) in re-merge
+check**
+
+The per-pair forced-cut check
+`length(intersect(eb[2L]:nb[1L], atfcut)) > 0L` — O(n_blocks × n_atfcut)
+total — replaced with `findInterval(eb[2L], atfcut)` binary search:
+O(log n_atfcut) per call.
+
+**`score_overlap_cpp()` and `resolve_seam_cpp()` (internal static
+helpers)**
+
+Two additional C++ helpers in `src/ld_core.cpp` implement the BLAS
+scoring kernel and a seam-local resolver for future use at truly massive
+scale (pangenome panels where the global O(n_blocks) scan itself becomes
+a bottleneck). These are `static` functions not exported to R.
+
+### Tests
+
+- `test-resolve-overlap.R` (307 lines, new file): parallel property
+  tests for both `.resolve_overlap()` (R reference) and
+  `resolve_overlap_cpp()` (C++), plus cross-validation tests verifying
+  identical boundaries on all six biological cases: non-overlapping
+  passthrough, union merge (B inside A), all-left path, all-right path,
+  tie-breaking (zero-variance overlap), mixed cumulative-score split.
+  Output invariant tests: no new blocks created, output is
+  non-overlapping, global span preserved.
+- `test-cpp.R`: five additional tests for `resolve_overlap_cpp()`
+  covering dimensionality, non-overlapping passthrough, no remaining
+  overlaps, start ≤ end invariant, and R vs C++ agreement on random
+  overlapping input.
+
 ### Haplotype association testing and breeding decision functions
 
 Four new exported functions complete the statistical inference and
@@ -603,40 +690,3 @@ blocks <- run_Big_LD_all_chr(
   `sig_betas`), feature matrix encoding (`additive_012` /
   `presence_01`), output writers, `rank_haplotype_blocks`, and
   `integrate_gwas_haplotypes`.
-
-------------------------------------------------------------------------
-
-## LDxBlocks 0.2.0 (2025-04-07)
-
-### New features
-
-- C++/Armadillo core: `compute_r2_cpp()`, `compute_rV2_cpp()`,
-  `maf_filter_cpp()`, `build_adj_matrix_cpp()`, `col_r2_cpp()`,
-  `compute_r2_sparse_cpp()`, `boundary_scan_cpp()`.
-- OpenMP parallelism via `n_threads` parameter.
-- Dual LD metric: `method = "r2"` or `"rV2"`.
-- [`prepare_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/prepare_geno.md),
-  [`compute_ld()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld.md).
-
-### Bug fixes
-
-- [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md):
-  fixed `re_idx` tracking after dense-core pre-pass.
-- `Big_LD()`: [`vapply()`](https://rdrr.io/r/base/lapply.html) used
-  throughout for type-stability.
-
-------------------------------------------------------------------------
-
-## LDxBlocks 0.1.0 (2025-04-07)
-
-Initial release.
-
-- `Big_LD()`,
-  [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md),
-  [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md),
-  [`tune_LD_params()`](https://FAkohoue.github.io/LDxBlocks/reference/tune_LD_params.md).
-- [`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md),
-  [`compute_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.md),
-  [`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md).
-- [`summarise_blocks()`](https://FAkohoue.github.io/LDxBlocks/reference/summarise_blocks.md),
-  [`plot_ld_blocks()`](https://FAkohoue.github.io/LDxBlocks/reference/plot_ld_blocks.md).

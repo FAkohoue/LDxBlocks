@@ -35,6 +35,22 @@ Notes:
 - LAPACK and BLAS are linked via `$(LAPACK_LIBS)` and `$(BLAS_LIBS)`,
   which resolve to whatever BLAS/LAPACK R itself was built against.
 
+**Exported C++ functions (8 total, all in `src/ld_core.cpp`):**
+- `compute_r2_cpp()` — standard r² matrix, OpenMP outer loop
+- `compute_rV2_cpp()` — kinship-adjusted rV² (same kernel as compute_r2_cpp)
+- `maf_filter_cpp()` — MAF + monomorphic filter, single O(np) pass
+- `build_adj_matrix_cpp()` — threshold LD matrix to 0/1 adjacency
+- `col_r2_cpp()` — r² of one query column against all others
+- `compute_r2_sparse_cpp()` — sparse r² within bp distance window, OpenMP
+- `boundary_scan_cpp()` — weak-LD cut position scan for subsegmentation
+- `build_hap_strings_cpp()` — C++ haplotype string builder (replaces R vapply loop)
+- `resolve_overlap_cpp()` — LD-informed block overlap resolution,
+    BLAS DGEMM scoring + lazy column cache + OpenMP over pairs
+
+Two additional `static` (non-exported) helpers:
+- `score_overlap_cpp()` — BLAS DGEMM overlap scoring kernel
+- `resolve_seam_cpp()` — seam-local resolver for future pangenome-scale use
+
 ---
 ## Notes on optional dependencies
 The following `Suggests` packages are used conditionally at runtime:
@@ -131,4 +147,4 @@ crossprod() call, analogous to marginal SNP screening. Setting `n_pcs = 0`
 
 ---
 ## Downstream dependencies
-None. This is a new package.
+None. This is a new submission.

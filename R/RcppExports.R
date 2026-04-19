@@ -41,3 +41,8 @@ build_hap_strings_cpp <- function(geno_block, na_char = ".") {
     .Call(`_LDxBlocks_build_hap_strings_cpp`, geno_block, na_char)
 }
 
+#' @noRd
+resolve_overlap_cpp <- function(blocks, adj_mat, k_rep = 10L) {
+    .Call(`_LDxBlocks_resolve_overlap_cpp`, blocks, adj_mat, k_rep)
+}
+

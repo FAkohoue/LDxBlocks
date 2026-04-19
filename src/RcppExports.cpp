@@ -115,6 +115,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// resolve_overlap_cpp
+arma::imat resolve_overlap_cpp(arma::imat blocks, const arma::mat& adj_mat, int k_rep);
+RcppExport SEXP _LDxBlocks_resolve_overlap_cpp(SEXP blocksSEXP, SEXP adj_matSEXP, SEXP k_repSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::imat >::type blocks(blocksSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type adj_mat(adj_matSEXP);
+    Rcpp::traits::input_parameter< int >::type k_rep(k_repSEXP);
+    rcpp_result_gen = Rcpp::wrap(resolve_overlap_cpp(blocks, adj_mat, k_rep));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_LDxBlocks_compute_r2_cpp", (DL_FUNC) &_LDxBlocks_compute_r2_cpp, 3},
@@ -125,6 +138,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_LDxBlocks_compute_r2_sparse_cpp", (DL_FUNC) &_LDxBlocks_compute_r2_sparse_cpp, 5},
     {"_LDxBlocks_boundary_scan_cpp", (DL_FUNC) &_LDxBlocks_boundary_scan_cpp, 5},
     {"_LDxBlocks_build_hap_strings_cpp", (DL_FUNC) &_LDxBlocks_build_hap_strings_cpp, 2},
+    {"_LDxBlocks_resolve_overlap_cpp", (DL_FUNC) &_LDxBlocks_resolve_overlap_cpp, 3},
     {NULL, NULL, 0}
 };
 

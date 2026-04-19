@@ -51,6 +51,47 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.1" id="ldxblocks-031-development">LDxBlocks 0.3.1 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-031-development"></a></h2>
 <div class="section level3">
+<h3 id="performance-c-overlap-resolution-and-wgs-stall-fixes-0-3-1">Performance: C++ overlap resolution and WGS stall fixes<a class="anchor" aria-label="anchor" href="#performance-c-overlap-resolution-and-wgs-stall-fixes-0-3-1"></a></h3>
+<p>The <code>Big_LD()</code> post-segment pipeline now routes through C++ for all overlap resolution, eliminating several O(n²)–O(n·p) bottlenecks that caused chromosome processing to stall after segment detection completed.</p>
+<p><strong><code>resolve_overlap_cpp()</code> — new exported C++ function</strong></p>
+<p>Replaces the two sequential R <code>.resolve_overlap()</code> calls with a single C++ pass implementing the identical cumulative-score split rule. Four improvements over the R version:</p>
+<ul><li>
+<strong>BLAS DGEMM scoring</strong> — for each overlapping block pair, disputed SNP scores are computed as <code>rowMeans(C_L²) − rowMeans(C_R²)</code> where <code>C_L = (Z_overlap.t() × Z_left_reps) / (n−1)</code> via Armadillo matrix multiply. This replaces a <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code> loop calling <code>col_r2_cpp()</code> per SNP against all p columns (314k for chr1). Cost per disputed SNP drops from O(n × p) to O(n × 2k_rep) — a 15,700× reduction for chr1.</li>
+<li>
+<strong>Lazy column cache</strong> — each column of <code>adj_mat</code> is standardised at most once. Columns never accessed as representatives or overlap SNPs are never touched. For ~1,000 overlapping pairs using 20 reps each, fewer than 1% of chr1’s 314k columns are ever standardised.</li>
+<li>
+<strong>Single pass</strong> — one call replaces two. The second R call was needed because the first pass could create new adjacent overlaps; the C++ while loop handles this naturally within the same pass.</li>
+<li>
+<strong>OpenMP over pairs</strong> — overlapping pairs are collected first in an O(n_blocks) scan, then resolved in <code>#pragma omp parallel for</code> (scores computed in parallel; boundaries applied serially in reverse to preserve index stability).</li>
+</ul><p><strong>R-level running counters</strong></p>
+<p>Four additional O(n) scan operations replaced with O(1) running counters:</p>
+<ul><li>
+<code>sum(!is.na(LDblocks[,1L]))</code> called 419 times per chromosome → <code>ld_count</code>
+</li>
+<li>
+<code>max(which(!is.na(newLDblocks[,1L])))</code> in re-merge loop → <code>remerge_count</code>
+</li>
+<li>
+<code>min(which(is.na(newLDblocks[,1L])))</code> in re-merge loop → <code>remerge_count</code>
+</li>
+<li>
+<code>done &lt;- LDblocks[!is.na(LDblocks[,1L]),]</code> → <code>LDblocks[seq_len(ld_count),]</code>
+</li>
+</ul><p><strong>Re-merge skip when modeNum=2</strong></p>
+<p>The optional re-merge loop across forced cut-points is now skipped when all cut-points are forced (<code>length(atfcut) &gt;= length(cutpoints) - 2</code>), which occurs when <code>cutsequence.modi</code> switches to <code>modeNum=2</code>. In this mode every cut is forced by definition, so re-running CLQD across all boundaries produces no benefit. With 419 forced segments on chr1 this eliminated potentially hundreds of CLQD calls in a serial R loop.</p>
+<p><strong><code><a href="https://generics.r-lib.org/reference/setops.html" class="external-link">intersect()</a></code> → <code><a href="https://rdrr.io/r/base/findInterval.html" class="external-link">findInterval()</a></code> in re-merge check</strong></p>
+<p>The per-pair forced-cut check <code>length(intersect(eb[2L]:nb[1L], atfcut)) &gt; 0L</code> — O(n_blocks × n_atfcut) total — replaced with <code>findInterval(eb[2L], atfcut)</code> binary search: O(log n_atfcut) per call.</p>
+<p><strong><code>score_overlap_cpp()</code> and <code>resolve_seam_cpp()</code> (internal static helpers)</strong></p>
+<p>Two additional C++ helpers in <code>src/ld_core.cpp</code> implement the BLAS scoring kernel and a seam-local resolver for future use at truly massive scale (pangenome panels where the global O(n_blocks) scan itself becomes a bottleneck). These are <code>static</code> functions not exported to R.</p>
+</div>
+<div class="section level3">
+<h3 id="tests-0-3-1">Tests<a class="anchor" aria-label="anchor" href="#tests-0-3-1"></a></h3>
+<ul><li>
+<code>test-resolve-overlap.R</code> (307 lines, new file): parallel property tests for both <code>.resolve_overlap()</code> (R reference) and <code>resolve_overlap_cpp()</code> (C++), plus cross-validation tests verifying identical boundaries on all six biological cases: non-overlapping passthrough, union merge (B inside A), all-left path, all-right path, tie-breaking (zero-variance overlap), mixed cumulative-score split. Output invariant tests: no new blocks created, output is non-overlapping, global span preserved.</li>
+<li>
+<code>test-cpp.R</code>: five additional tests for <code>resolve_overlap_cpp()</code> covering dimensionality, non-overlapping passthrough, no remaining overlaps, start ≤ end invariant, and R vs C++ agreement on random overlapping input.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="haplotype-association-testing-and-breeding-decision-functions-0-3-1">Haplotype association testing and breeding decision functions<a class="anchor" aria-label="anchor" href="#haplotype-association-testing-and-breeding-decision-functions-0-3-1"></a></h3>
 <p>Four new exported functions complete the statistical inference and breeding decision layer.</p>
 <p><strong>Haplotype association testing</strong></p>
@@ -329,36 +370,8 @@
 <code>test-algorithm.R</code>: property-based tests for the Big-LD segmentation algorithm: <code>CLQD</code>, <code>Big_LD</code>, <code>run_Big_LD_all_chr</code>, <code>summarise_blocks</code>, <code>plot_ld_blocks</code>.</li>
 <li>
 <code>test-haplotypes.R</code>: comprehensive tests for haplotype extraction (phased and unphased), diversity metrics (<code>n_eff_alleles</code>, <code>sweep_flag</code>), QTL region definition (<code>lead_beta</code>, <code>sig_snps</code>, <code>sig_betas</code>), feature matrix encoding (<code>additive_012</code> / <code>presence_01</code>), output writers, <code>rank_haplotype_blocks</code>, and <code>integrate_gwas_haplotypes</code>.</li>
-</ul><hr></div>
-</div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0" id="ldxblocks-020-2025-04-07">LDxBlocks 0.2.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-020-2025-04-07"></a></h2>
-<div class="section level3">
-<h3 id="new-features-0-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-2-0"></a></h3>
-<ul><li>C++/Armadillo core: <code>compute_r2_cpp()</code>, <code>compute_rV2_cpp()</code>, <code>maf_filter_cpp()</code>, <code>build_adj_matrix_cpp()</code>, <code>col_r2_cpp()</code>, <code>compute_r2_sparse_cpp()</code>, <code>boundary_scan_cpp()</code>.</li>
-<li>OpenMP parallelism via <code>n_threads</code> parameter.</li>
-<li>Dual LD metric: <code>method = "r2"</code> or <code>"rV2"</code>.</li>
-<li>
-<code><a href="../reference/prepare_geno.html">prepare_geno()</a></code>, <code><a href="../reference/compute_ld.html">compute_ld()</a></code>.</li>
 </ul></div>
-<div class="section level3">
-<h3 id="bug-fixes-0-2-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
-<ul><li>
-<code><a href="../reference/CLQD.html">CLQD()</a></code>: fixed <code>re_idx</code> tracking after dense-core pre-pass.</li>
-<li>
-<code>Big_LD()</code>: <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code> used throughout for type-stability.</li>
-</ul><hr></div>
 </div>
-    <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.0" id="ldxblocks-010-2025-04-07">LDxBlocks 0.1.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-010-2025-04-07"></a></h2>
-<p>Initial release.</p>
-<ul><li>
-<code>Big_LD()</code>, <code><a href="../reference/CLQD.html">CLQD()</a></code>, <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>, <code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>.</li>
-<li>
-<code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>, <code><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>, <code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>.</li>
-<li>
-<code><a href="../reference/summarise_blocks.html">summarise_blocks()</a></code>, <code><a href="../reference/plot_ld_blocks.html">plot_ld_blocks()</a></code>.</li>
-</ul></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

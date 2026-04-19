@@ -240,3 +240,49 @@ test_that("build_hap_strings_cpp: matches R vapply reference implementation", {
   out <- build_hap_strings_cpp(blk, ".")
   expect_equal(out, ref)
 })
+
+# ── resolve_overlap_cpp ───────────────────────────────────────────────────────
+# Note: Comprehensive cross-validation against .resolve_overlap() R reference
+# is in test-resolve-overlap.R. These tests verify the C++ kernel properties.
+
+test_that("resolve_overlap_cpp: returns matrix with <= input rows", {
+  adj <- scale(G_small, center = TRUE, scale = FALSE)
+  blocks_in <- matrix(as.integer(c(1, 12, 10, 20, 18, 28)), nrow = 3L, byrow = TRUE)
+  result    <- resolve_overlap_cpp(blocks_in, adj, k_rep = 5L)
+  expect_true(nrow(result) <= nrow(blocks_in))
+  expect_equal(ncol(result), 2L)
+})
+
+test_that("resolve_overlap_cpp: non-overlapping input is unchanged", {
+  adj <- scale(G_small, center = TRUE, scale = FALSE)
+  blocks_in <- matrix(as.integer(c(1, 8, 10, 18, 20, 28)), nrow = 3L, byrow = TRUE)
+  result    <- resolve_overlap_cpp(blocks_in, adj, k_rep = 5L)
+  expect_equal(result, blocks_in)
+})
+
+test_that("resolve_overlap_cpp: output blocks are non-overlapping", {
+  adj <- scale(G_small, center = TRUE, scale = FALSE)
+  blocks_in <- matrix(as.integer(c(1, 12, 10, 20, 18, 28)), nrow = 3L, byrow = TRUE)
+  result    <- resolve_overlap_cpp(blocks_in, adj, k_rep = 5L)
+  if (nrow(result) > 1L)
+    expect_true(all(result[-1L, 1L] > result[-nrow(result), 2L]))
+})
+
+test_that("resolve_overlap_cpp: start <= end for all output blocks", {
+  adj <- scale(G_small, center = TRUE, scale = FALSE)
+  blocks_in <- matrix(as.integer(c(1, 15, 12, 25)), nrow = 2L, byrow = TRUE)
+  result    <- resolve_overlap_cpp(blocks_in, adj, k_rep = 5L)
+  expect_true(all(result[, 1L] <= result[, 2L]))
+})
+
+test_that("resolve_overlap_cpp: matches .resolve_overlap on random overlapping input", {
+  set.seed(77)
+  adj <- scale(G_small, center = TRUE, scale = FALSE)
+  # Two overlapping blocks with genuine overlap zone
+  blocks_in <- matrix(as.integer(c(1, 18, 15, 28)), nrow = 2L, byrow = TRUE)
+  r_res   <- LDxBlocks:::.resolve_overlap(blocks_in, adj, k_rep = 5L)
+  cpp_res <- resolve_overlap_cpp(blocks_in, adj, k_rep = 5L)
+  expect_equal(nrow(cpp_res), nrow(r_res))
+  expect_equal(cpp_res[1L, 2L], r_res[1L, 2L], label = "block A end matches")
+  expect_equal(cpp_res[2L, 1L], r_res[2L, 1L], label = "block B start matches")
+})

@@ -461,6 +461,14 @@ scan window.
 chromosome, set `subSegmSize = 500` and `leng = 30`. The algorithm will make
 more GDS reads but use far less RAM per step.
 
+**Processing stalls after "Segment N/N done" message.** After all Leiden/Louvain
+segments complete, `Big_LD()` runs post-segmentation steps including LD-informed
+overlap resolution. In v0.3.1+, this uses `resolve_overlap_cpp()` — a C++ function
+with BLAS DGEMM scoring that is thousands of times faster than the original R
+`.resolve_overlap()`. If you are using an older version and see the job hang after
+the last segment message, update to v0.3.1+ which routes this step through C++
+with a 15,000× reduction in per-SNP LD computation cost.
+
 **CLQD hangs or takes hours on a single chromosome.** This is Bron-Kerbosch
 clique enumeration blowup. The `[CLQD] Found N maximal cliques` message will
 show N in the millions. Switch to `CLQmode = "Leiden"` — it runs in

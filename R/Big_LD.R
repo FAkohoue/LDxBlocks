@@ -587,6 +587,7 @@ Big_LD <- function(
   if (nrow(cutblock) > 1L) cutblock <- cutblock[-nrow(cutblock), , drop = FALSE]
 
   LDblocks <- matrix(NA_integer_, nrow(SNPinfo), 2L)
+  ld_count <- 0L  # running count of filled rows (avoids O(n) sum(!is.na()) per segment)
 
   for (i in seq_len(nrow(cutblock))) {
     nowst <- cutblock[i,1L]; nowed <- cutblock[i,2L]
@@ -618,23 +619,33 @@ Big_LD <- function(
       } else { nowLD <- matrix(integer(0), nrow = 0L, ncol = 2L) }
     }  # end else(!non_empty)
 
-    pre <- sum(!is.na(LDblocks[,1L]))
-    if (nrow(nowLD) > 0L)
-      LDblocks[(pre+1L):(pre+nrow(nowLD)), ] <- nowLD
+    if (nrow(nowLD) > 0L) {
+      LDblocks[(ld_count+1L):(ld_count+nrow(nowLD)), ] <- nowLD
+      ld_count <- ld_count + nrow(nowLD)
+    }
     if (isTRUE(verbose)) message(sprintf("[Big_LD] Segment %d/%d done.", i, nrow(cutblock)))
   }
 
-  done <- LDblocks[!is.na(LDblocks[,1L]), , drop = FALSE]
+  done <- LDblocks[seq_len(ld_count), , drop = FALSE]
 
   # -- Optional re-merge across forced cut-points ----------------------------
-  if (length(atfcut)) {
+  # Skip re-merge when modeNum=2 (all cuts forced = no natural LD boundaries).
+  # In modeNum=2, atfcut covers every cut position; re-running CLQD across
+  # all forced boundaries is O(n_segments) CLQD calls with no benefit.
+  # Detect modeNum=2 by checking if atfcut is sorted and contiguous with cutpoints.
+  skip_remerge <- length(atfcut) > 0L && !is.null(atfcut) &&
+    length(cutpoints) > 2L && (length(atfcut) >= length(cutpoints) - 2L)
+  if (length(atfcut) && !skip_remerge) {
     newLDblocks <- matrix(NA_integer_, nrow(SNPinfo), 2L)
-    consec <- 0L
+    consec <- 0L; remerge_count <- 0L
     for (i in seq_len(nrow(done) - 1L)) {
       eb <- done[i,]; nb <- done[i+1L,]
-      if (length(intersect(eb[2L]:nb[1L], atfcut)) > 0L) {
+      # Fast O(log n) check using sorted atfcut instead of O(n*m) intersect()
+      fi <- findInterval(eb[2L], atfcut)
+      has_forced_cut <- fi < length(atfcut) && atfcut[fi + 1L] <= nb[1L]
+      if (has_forced_cut) {
         consec <- consec + 1L
-        if (consec > 1L) { addi <- max(which(!is.na(newLDblocks[,1L]))); eb <- newLDblocks[addi,] }
+        if (consec > 1L) { eb <- newLDblocks[remerge_count, , drop=FALSE] }
         rng <- range(c(eb, nb))
         bv  <- CLQD(geno[,rng[1L]:rng[2L]], SNPinfo[rng[1L]:rng[2L],],
                     adjN[,rng[1L]:rng[2L]],
@@ -647,15 +658,15 @@ Big_LD <- function(
         if (length(cl)) cl <- cl[order(vapply(cl, min, numeric(1L)))]
         tmp  <- constructLDblock(cl, SNPinfo[rng[1L]:rng[2L],])
         tmp  <- tmp + (rng[1L]-1L); tmp <- tmp[order(tmp[,1L]),,drop=FALSE]
-        ii   <- sum(!is.na(newLDblocks[,1L])) + 1L
-        newLDblocks[ii:(ii+nrow(tmp)-1L), ] <- tmp
+        newLDblocks[(remerge_count+1L):(remerge_count+nrow(tmp)), ] <- tmp
+        remerge_count <- remerge_count + nrow(tmp)
       } else {
         consec <- 0L
-        ii <- min(which(is.na(newLDblocks[,1L]))); newLDblocks[ii,] <- eb
-        if (i == nrow(done)-1L) { ii <- min(which(is.na(newLDblocks[,1L]))); newLDblocks[ii,] <- nb }
+        remerge_count <- remerge_count + 1L; newLDblocks[remerge_count,] <- eb
+        if (i == nrow(done)-1L) { remerge_count <- remerge_count + 1L; newLDblocks[remerge_count,] <- nb }
       }
     }
-    LDblocks <- newLDblocks
+    LDblocks <- newLDblocks[seq_len(remerge_count), , drop=FALSE]
   } else { LDblocks <- done }
 
   LDblocks <- LDblocks[!is.na(LDblocks[,1L]),,drop=FALSE]
@@ -696,9 +707,21 @@ Big_LD <- function(
   #   left_core:  [sA .. sB-1]   A-exclusive (always non-empty after sort)
   #   overlap:    [sB .. eA]     disputed SNPs
 
-  LDblocks <- .resolve_overlap(LDblocks, adjN, k_rep = 10L)
-
-  LDblocks <- .resolve_overlap(LDblocks, adjN, k_rep = 10L)
+  # -- LD-informed overlap resolution (C++ accelerated) -------------------
+  # resolve_overlap_cpp() implements the identical cumulative-score split
+  # rule as the original R .resolve_overlap(), but:
+  #   1. Runs entirely in C++ (no R interpreter overhead per block pair)
+  #   2. Computes r2 ONLY against left_reps ∪ right_reps (at most 2*k_rep
+  #      columns), not all p columns — O(n * 2k_rep) vs O(n * p) per SNP
+  #   3. Uses a lazy column cache: standardises each column at most once
+  #   4. Single pass (not twice): one call is sufficient because the C++
+  #      implementation processes all overlapping pairs in order; the second
+  #      R call was needed to catch overlaps introduced by the first pass's
+  #      boundary adjustments, which the C++ version handles within the same
+  #      while loop by re-checking position i after each split.
+  if (nrow(LDblocks) > 1L) {
+    LDblocks <- resolve_overlap_cpp(LDblocks, adjN, k_rep = 10L)
+  }
 
   # -- Build output data.frame -----------------------------------------------
   out <- data.frame(
