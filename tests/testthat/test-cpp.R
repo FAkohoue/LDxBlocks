@@ -386,6 +386,87 @@ test_that("block_snp_ranges_cpp: matches R findInterval reference", {
   }
 })
 
+# ── impute_and_filter_cpp ─────────────────────────────────────────────────────
+
+test_that("impute_and_filter_cpp: no missing, no callrate filter -> unchanged", {
+  G   <- matrix(as.integer(G_small), nrow = nrow(G_small))
+  res <- impute_and_filter_cpp(G, min_callrate = 0.0, method = 0L)
+  expect_equal(dim(res$geno_imputed), dim(G))
+  expect_equal(res$n_filtered, 0L)
+  expect_equal(res$n_imputed,  0L)
+  expect_true(all(as.logical(res$keep)))
+})
+
+test_that("impute_and_filter_cpp: all SNPs pass when callrate threshold = 0", {
+  G_na <- matrix(as.integer(G_small), nrow = nrow(G_small))
+  G_na[1:5, 3] <- NA_integer_
+  res <- impute_and_filter_cpp(G_na, min_callrate = 0.0, method = 0L)
+  expect_true(all(as.logical(res$keep)))
+  expect_equal(res$n_filtered, 0L)
+})
+
+test_that("impute_and_filter_cpp: low-callrate SNP is filtered", {
+  n   <- nrow(G_small)
+  G_lc <- matrix(as.integer(G_small), nrow = n)
+  # Make column 5 have 60% missing -> callrate 40% < 80% threshold
+  G_lc[seq_len(round(0.6 * n)), 5] <- NA_integer_
+  res <- impute_and_filter_cpp(G_lc, min_callrate = 0.8, method = 0L)
+  expect_false(res$keep[5])
+  expect_true(res$n_filtered >= 1L)
+})
+
+test_that("impute_and_filter_cpp: mean_rounded imputation fills all NAs", {
+  G_na <- matrix(as.integer(G_small), nrow = nrow(G_small))
+  G_na[1:3, c(2, 7, 15)] <- NA_integer_
+  res <- impute_and_filter_cpp(G_na, min_callrate = 0.0, method = 0L)
+  expect_equal(res$n_imputed, 9L)
+  expect_equal(sum(is.na(res$geno_imputed)), 0L)
+})
+
+test_that("impute_and_filter_cpp: mode imputation fills all NAs", {
+  G_na <- matrix(as.integer(G_small), nrow = nrow(G_small))
+  G_na[1:4, 10] <- NA_integer_
+  res <- impute_and_filter_cpp(G_na, min_callrate = 0.0, method = 1L)
+  expect_equal(res$n_imputed, 4L)
+  expect_equal(sum(is.na(res$geno_imputed)), 0L)
+})
+
+test_that("impute_and_filter_cpp: imputed values are in {0,1,2}", {
+  G_na <- matrix(as.integer(G_small), nrow = nrow(G_small))
+  G_na[sample(length(G_na), 50)] <- NA_integer_
+  res <- impute_and_filter_cpp(G_na, min_callrate = 0.0, method = 0L)
+  vals <- as.integer(res$geno_imputed)
+  expect_true(all(vals %in% 0:2))
+})
+
+test_that("impute_and_filter_cpp: call_rates length equals ncol(geno)", {
+  G   <- matrix(as.integer(G_small), nrow = nrow(G_small))
+  res <- impute_and_filter_cpp(G, min_callrate = 0.0, method = 0L)
+  expect_equal(length(res$call_rates), ncol(G))
+})
+
+test_that("impute_and_filter_cpp: call_rates in [0,1]", {
+  G_na <- matrix(as.integer(G_small), nrow = nrow(G_small))
+  G_na[1:10, 1] <- NA_integer_
+  res <- impute_and_filter_cpp(G_na, min_callrate = 0.0, method = 0L)
+  cr <- as.numeric(res$call_rates)
+  expect_true(all(cr >= 0 & cr <= 1 + 1e-8))
+})
+
+test_that("impute_and_filter_cpp: keep vector length equals ncol(geno)", {
+  G   <- matrix(as.integer(G_small), nrow = nrow(G_small))
+  res <- impute_and_filter_cpp(G, min_callrate = 0.5, method = 0L)
+  expect_equal(length(res$keep), ncol(G))
+})
+
+test_that("impute_and_filter_cpp: n_filtered + n_kept = ncol(geno)", {
+  G_na <- matrix(as.integer(G_small), nrow = nrow(G_small))
+  # Give 20 SNPs very low call rate
+  G_na[1:70, 1:20] <- NA_integer_
+  res <- impute_and_filter_cpp(G_na, min_callrate = 0.8, method = 0L)
+  expect_equal(res$n_filtered + sum(as.logical(res$keep)), ncol(G_na))
+})
+
 # ── extract_chr_haplotypes_cpp ────────────────────────────────────────────────
 
 test_that("extract_chr_haplotypes_cpp: returns list with required fields", {

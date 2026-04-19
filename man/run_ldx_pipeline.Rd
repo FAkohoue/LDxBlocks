@@ -35,7 +35,9 @@ run_ldx_pipeline(
   clean_malformed = FALSE,
   use_bigmemory = FALSE,
   bigmemory_path = tempdir(),
-  bigmemory_type = "char"
+  bigmemory_type = "char",
+  impute = c("mean_rounded", "mode", "none"),
+  min_callrate = 0
 )
 }
 \arguments{
@@ -186,6 +188,33 @@ want to reattach the backing file on a restart without re-reading the VCF.}
 (1 byte per cell, 8x smaller than double, sufficient for 0/1/2 dosage),
 \code{"short"} (2 bytes), or \code{"double"} (8 bytes). Default
 \code{"char"}.}
+
+\item{impute}{Character. Missing genotype imputation strategy
+applied to the genotype matrix after MAF filtering and before LD block
+detection and haplotype extraction. One of:
+\describe{
+  \item{\code{"mean_rounded"} (default)}{Per-SNP mean imputation rounded
+    to the nearest valid dosage (0, 1, or 2). For each SNP, compute the
+    mean dosage over non-missing samples and round: mean 0.08 -> 0,
+    mean 0.94 -> 1, mean 1.82 -> 2. Recommended for WGS data with
+    partial missingness (e.g. \code{miss20} VCF filter). Ensures
+    haplotype strings never contain \code{"."}  so all individuals
+    contribute 0/1 values to the feature matrix.}
+  \item{\code{"mode"}}{Per-SNP mode imputation. Imputes each missing
+    value with the most common observed dosage (0, 1, or 2) at that
+    SNP.}
+  \item{\code{"none"}}{No imputation. If any missing values remain
+    after MAF filtering the function stops with an informative error.
+    Use only when the input data are already fully imputed.}
+}}
+
+\item{min_callrate}{Numeric in \code{[0, 1]}. Minimum per-SNP call
+rate (proportion of non-missing samples) required to retain a SNP.
+Applied as the first filtering step (before MAF re-filter and imputation).
+SNPs with call rate below this threshold are removed. Default \code{0.0}
+(disabled). The three-step order is: (1) call-rate filter, (2) MAF
+re-filter on the remaining SNPs, (3) imputation. Example: set
+\code{min_callrate = 0.8} to require calls in at least 80\% of samples.}
 }
 \value{
 A named list (invisibly) with elements:

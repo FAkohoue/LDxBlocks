@@ -210,6 +210,31 @@
 #'   }
 #' @param maf_cut           Minimum minor allele frequency. SNPs below this
 #'   threshold are removed before block detection. Default `0.05`.
+#' @param impute            Character. Missing genotype imputation strategy
+#'   applied to the genotype matrix after MAF filtering and before LD block
+#'   detection and haplotype extraction. One of:
+#'   \describe{
+#'     \item{\code{"mean_rounded"} (default)}{Per-SNP mean imputation rounded
+#'       to the nearest valid dosage (0, 1, or 2). For each SNP, compute the
+#'       mean dosage over non-missing samples and round: mean 0.08 -> 0,
+#'       mean 0.94 -> 1, mean 1.82 -> 2. Recommended for WGS data with
+#'       partial missingness (e.g. \code{miss20} VCF filter). Ensures
+#'       haplotype strings never contain \code{"."}  so all individuals
+#'       contribute 0/1 values to the feature matrix.}
+#'     \item{\code{"mode"}}{Per-SNP mode imputation. Imputes each missing
+#'       value with the most common observed dosage (0, 1, or 2) at that
+#'       SNP.}
+#'     \item{\code{"none"}}{No imputation. If any missing values remain
+#'       after MAF filtering the function stops with an informative error.
+#'       Use only when the input data are already fully imputed.}
+#'   }
+#' @param min_callrate      Numeric in \code{[0, 1]}. Minimum per-SNP call
+#'   rate (proportion of non-missing samples) required to retain a SNP.
+#'   Applied as the first filtering step (before MAF re-filter and imputation).
+#'   SNPs with call rate below this threshold are removed. Default \code{0.0}
+#'   (disabled). The three-step order is: (1) call-rate filter, (2) MAF
+#'   re-filter on the remaining SNPs, (3) imputation. Example: set
+#'   \code{min_callrate = 0.8} to require calls in at least 80\% of samples.
 #' @param CLQcut            r^2 threshold for clique edges in CLQD. Higher
 #'   values produce tighter, smaller blocks. Default `0.5`.
 #' @param method            LD metric: \code{"r2"} (default) or \code{"rV2"}
@@ -389,11 +414,14 @@ run_ldx_pipeline <- function(
     clean_malformed  = FALSE,
     use_bigmemory    = FALSE,
     bigmemory_path   = tempdir(),
-    bigmemory_type   = "char"
+    bigmemory_type   = "char",
+    impute           = c("mean_rounded", "mode", "none"),
+    min_callrate     = 0.0
 ) {
   hap_format    <- match.arg(hap_format)
   method        <- match.arg(method)
   CLQmode       <- match.arg(CLQmode)
+  impute        <- match.arg(impute)
   bigmemory_type <- match.arg(bigmemory_type,
                               choices = c("char", "short", "double"))
 
@@ -496,6 +524,10 @@ run_ldx_pipeline <- function(
         close_backend(be_tmp)  # release temporary GDS/BED handle
         saveRDS(be$snp_info, bm_si_file)
         .ldx_log("[bigmemory] SNP info cached: ", basename(bm_si_file))
+        # Save sample IDs separately (bigmemory rownames unreliable on file-backed)
+        bm_sid_file <- paste0(bm_stem, "_sampleids.rds")
+        saveRDS(be$sample_ids, bm_sid_file)
+        .ldx_log("[bigmemory] Sample IDs cached: ", basename(bm_sid_file))
         .ldx_log("[bigmemory] Rerun with same bigmemory_path to reattach ",
                  "without re-reading the source file.")
       }
@@ -556,6 +588,116 @@ run_ldx_pipeline <- function(
   rownames(geno_mat) <- be$sample_ids
   colnames(geno_mat) <- be$snp_info$SNP
   .ldx_log("Genotype matrix: ", nrow(geno_mat), " x ", ncol(geno_mat))
+
+  # -- Step 2.5: Call-rate filter -> MAF re-filter -> Impute (C++) -----------
+  # Correct biological order:
+  #   1. Call-rate filter : drop SNPs with too much missing data.
+  #      Computed on the actual loaded matrix (not the streaming approximation).
+  #   2. MAF re-filter    : recompute MAF after call-rate filter.
+  #      A SNP with 40% missing that passes the backend MAF threshold may fail
+  #      once low-callrate samples are excluded from the denominator.
+  #      Uses maf_filter_cpp() on the subset matrix.
+  #   3. Impute           : fill remaining NAs in passing SNPs.
+  #      Uses impute_and_filter_cpp() with min_callrate = 0 (filter already done).
+  # All three steps use C++; applied to geno_mat only (disk data unchanged).
+
+  # -- 2.5a: Call-rate filter ------------------------------------------------
+  n_ind  <- nrow(geno_mat)
+  n_snps_before_cr <- ncol(geno_mat)
+  if (min_callrate > 0) {
+    cr_res <- impute_and_filter_cpp(
+      geno         = matrix(as.integer(geno_mat), nrow = n_ind),
+      min_callrate = min_callrate,
+      method       = 0L   # method irrelevant here; we only use $keep
+    )
+    n_cr_removed <- cr_res$n_filtered
+    # Call-rate distribution summary for the log
+    cr_vals   <- as.numeric(cr_res$call_rates)
+    cr_pct    <- round(cr_vals * 100, 1)
+    cr_below  <- sum(cr_vals < min_callrate, na.rm = TRUE)
+    cr_min    <- round(min(cr_vals, na.rm = TRUE) * 100, 1)
+    cr_median <- round(median(cr_vals, na.rm = TRUE) * 100, 1)
+    cr_mean   <- round(mean(cr_vals, na.rm = TRUE) * 100, 1)
+    .ldx_log(sprintf(
+      "Call-rate filter: threshold = %.0f%% | SNP call rates: min=%.1f%% mean=%.1f%% median=%.1f%%",
+      min_callrate * 100, cr_min, cr_mean, cr_median))
+    if (n_cr_removed > 0L) {
+      keep_cr           <- as.logical(cr_res$keep)
+      geno_mat          <- geno_mat[, keep_cr, drop = FALSE]
+      snp_info_filtered <- snp_info_filtered[keep_cr, , drop = FALSE]
+      be$snp_info       <- snp_info_filtered
+      be$n_snps         <- nrow(snp_info_filtered)
+      .ldx_log(sprintf(
+        "Call-rate filter: removed %d / %d SNPs (%.1f%%) with call rate < %.0f%% | Remaining: %d SNPs",
+        n_cr_removed, n_snps_before_cr,
+        100 * n_cr_removed / n_snps_before_cr,
+        min_callrate * 100, ncol(geno_mat)))
+    } else {
+      .ldx_log(sprintf(
+        "Call-rate filter: all %d SNPs passed (>= %.0f%% call rate).",
+        n_snps_before_cr, min_callrate * 100))
+    }
+  } else {
+    .ldx_log("Call-rate filter: disabled (min_callrate = 0).")
+  }
+
+  # -- 2.5b: MAF re-filter after call-rate filter ----------------------------
+  if (min_callrate > 0 && ncol(geno_mat) > 0L) {
+    n_before_maf2 <- ncol(geno_mat)
+    keep_maf <- maf_filter_cpp(geno_mat, maf_cut = maf_cut)
+    n_maf2_removed <- sum(!keep_maf)
+    if (n_maf2_removed > 0L) {
+      geno_mat          <- geno_mat[, keep_maf, drop = FALSE]
+      snp_info_filtered <- snp_info_filtered[keep_maf, , drop = FALSE]
+      be$snp_info       <- snp_info_filtered
+      be$n_snps         <- nrow(snp_info_filtered)
+      .ldx_log(sprintf(
+        "MAF re-filter (>= %.2f after call-rate filter): removed %d / %d SNPs (%.1f%%) | Remaining: %d SNPs",
+        maf_cut, n_maf2_removed, n_before_maf2,
+        100 * n_maf2_removed / n_before_maf2, ncol(geno_mat)))
+    } else {
+      .ldx_log(sprintf(
+        "MAF re-filter (>= %.2f): all %d SNPs passed.", maf_cut, n_before_maf2))
+    }
+    if (ncol(geno_mat) == 0L)
+      stop("No SNPs remain after call-rate and MAF filtering.")
+  }
+
+  # -- 2.5c: Imputation ------------------------------------------------------
+  n_na_before   <- sum(is.na(geno_mat))
+  n_cells_total <- as.numeric(nrow(geno_mat)) * ncol(geno_mat)
+  pct_missing   <- round(100 * n_na_before / n_cells_total, 3)
+  if (impute == "none") {
+    if (n_na_before > 0L)
+      stop("impute = 'none' but ", n_na_before, " missing genotypes remain (",
+           pct_missing, "% of ", nrow(geno_mat), " ind x ", ncol(geno_mat),
+           " SNPs). Supply fully imputed data or set impute = 'mean_rounded' or 'mode'.")
+    .ldx_log(sprintf(
+      "Imputation: none | matrix %d ind x %d SNPs | 0 missing values (data complete).",
+      nrow(geno_mat), ncol(geno_mat)))
+  } else if (n_na_before == 0L) {
+    .ldx_log(sprintf(
+      "Imputation: skipped | matrix %d ind x %d SNPs | 0 missing values.",
+      nrow(geno_mat), ncol(geno_mat)))
+  } else {
+    .ldx_log(sprintf(
+      "Imputation (%s): %d ind x %d SNPs | %d missing values (%.3f%% of matrix) -> filling ...",
+      impute, nrow(geno_mat), ncol(geno_mat), n_na_before, pct_missing))
+    method_int <- if (impute == "mode") 1L else 0L
+    imp_res <- impute_and_filter_cpp(
+      geno         = matrix(as.integer(geno_mat), nrow = nrow(geno_mat)),
+      min_callrate = 0.0,   # call-rate already handled in step 2.5a
+      method       = method_int
+    )
+    geno_mat <- imp_res$geno_imputed
+    storage.mode(geno_mat) <- "numeric"
+    rownames(geno_mat) <- be$sample_ids
+    colnames(geno_mat) <- snp_info_filtered$SNP
+    n_na_after <- sum(is.na(geno_mat))
+    .ldx_log(sprintf(
+      "Imputation (%s): filled %d / %d missing values (%.3f%%) | Remaining NA: %d",
+      impute, imp_res$n_imputed, n_na_before, pct_missing, n_na_after))
+  }
 
   # -- Step 5: Genome-wide LD block detection ---------------------------------
   .ldx_log("Running genome-wide LD block detection ...")

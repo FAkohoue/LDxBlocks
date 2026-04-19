@@ -159,6 +159,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// impute_and_filter_cpp
+Rcpp::List impute_and_filter_cpp(Rcpp::IntegerMatrix geno, double min_callrate, int method);
+RcppExport SEXP _LDxBlocks_impute_and_filter_cpp(SEXP genoSEXP, SEXP min_callrateSEXP, SEXP methodSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::IntegerMatrix >::type geno(genoSEXP);
+    Rcpp::traits::input_parameter< double >::type min_callrate(min_callrateSEXP);
+    Rcpp::traits::input_parameter< int >::type method(methodSEXP);
+    rcpp_result_gen = Rcpp::wrap(impute_and_filter_cpp(geno, min_callrate, method));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_LDxBlocks_compute_r2_cpp", (DL_FUNC) &_LDxBlocks_compute_r2_cpp, 3},
@@ -172,6 +185,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_LDxBlocks_resolve_overlap_cpp", (DL_FUNC) &_LDxBlocks_resolve_overlap_cpp, 3},
     {"_LDxBlocks_block_snp_ranges_cpp", (DL_FUNC) &_LDxBlocks_block_snp_ranges_cpp, 3},
     {"_LDxBlocks_extract_chr_haplotypes_cpp", (DL_FUNC) &_LDxBlocks_extract_chr_haplotypes_cpp, 8},
+    {"_LDxBlocks_impute_and_filter_cpp", (DL_FUNC) &_LDxBlocks_impute_and_filter_cpp, 3},
     {NULL, NULL, 0}
 };
 

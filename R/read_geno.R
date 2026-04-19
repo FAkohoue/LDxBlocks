@@ -1040,7 +1040,13 @@ read_geno_bigmemory <- function(source,
            call. = FALSE)
     if (verbose) message("[bigmemory] Reattached: ",
                          nrow(bm), " x ", ncol(bm), " matrix")
-    return(.make_bigmemory_backend(bm, si, backingfile, backingpath))
+    # Load companion sample IDs file if present (saved alongside snpinfo)
+    desc_dir   <- dirname(normalizePath(source, mustWork = FALSE))
+    desc_stem  <- sub("\\.desc$", "", basename(source))
+    si_file    <- file.path(desc_dir, paste0(desc_stem, "_sampleids.rds"))
+    reattach_ids <- if (file.exists(si_file)) readRDS(si_file) else NULL
+    return(.make_bigmemory_backend(bm, si, backingfile, backingpath,
+                                   sample_ids = reattach_ids))
   }
 
   # -- Build from backend ----------------------------------------------------
@@ -1079,9 +1085,9 @@ read_geno_bigmemory <- function(source,
         message("[bigmemory]   chr ", chr_i, " loaded (", col_done, "/", n_snps, " SNPs)")
     }
 
-    op <- options(bigmemory.allow.dimnames = TRUE)
-    on.exit(options(op), add = TRUE)
-    rownames(bm) <- be$sample_ids
+    # bigmemory filebacked matrices do not support rownames reliably.
+    # Store sample_ids in a local variable instead of relying on rownames(bm).
+    bm_sample_ids <- be$sample_ids
 
   } else if (is.matrix(source) || is.data.frame(source)) {
     # -- Build from plain matrix ---------------------------------------------
@@ -1103,9 +1109,8 @@ read_geno_bigmemory <- function(source,
     op_tc <- options(bigmemory.typecast.warning = FALSE)
     on.exit(options(op_tc), add = TRUE)
     bm[,] <- m
-    op2 <- options(bigmemory.allow.dimnames = TRUE)
-    on.exit(options(op2), add = TRUE)
-    rownames(bm) <- rownames(m)
+    # Store sample IDs separately (bigmemory rownames unreliable on file-backed).
+    bm_sample_ids <- rownames(m)
 
   } else if (is.character(source) && length(source) == 1L) {
     # -- Build from genotype file path ------------------------------------
@@ -1132,15 +1137,21 @@ read_geno_bigmemory <- function(source,
     message("[bigmemory] Done. Backing file: ",
             file.path(backingpath, paste0(basename(backingfile), ".bin")))
 
-  .make_bigmemory_backend(bm, si, backingfile, backingpath)
+  .make_bigmemory_backend(bm, si, backingfile, backingpath,
+                          sample_ids = bm_sample_ids)
 }
 
-.make_bigmemory_backend <- function(bm, snp_info, backingfile, backingpath) {
+
+.make_bigmemory_backend <- function(bm, snp_info, backingfile, backingpath,
+                                    sample_ids = NULL) {
+  # sample_ids passed explicitly because bigmemory filebacked rownames
+  # are not reliably preserved across attach/detach cycles.
+  if (is.null(sample_ids)) sample_ids <- paste0("ind", seq_len(nrow(bm)))
   be <- list(
     type        = "bigmemory",
     n_samples   = nrow(bm),
     n_snps      = ncol(bm),
-    sample_ids  = rownames(bm) %||% paste0("ind", seq_len(nrow(bm))),
+    sample_ids  = as.character(sample_ids),
     snp_info    = snp_info,
     .bm         = bm,          # bigmemory big.matrix object
     .backingfile = backingfile,

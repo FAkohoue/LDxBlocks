@@ -104,7 +104,9 @@ intermediate steps run transparently.</p>
 <span>  clean_malformed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  use_bigmemory <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  bigmemory_path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  bigmemory_type <span class="op">=</span> <span class="st">"char"</span></span>
+<span>  bigmemory_type <span class="op">=</span> <span class="st">"char"</span>,</span>
+<span>  impute <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mean_rounded"</span>, <span class="st">"mode"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
+<span>  min_callrate <span class="op">=</span> <span class="fl">0</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -318,6 +320,42 @@ want to reattach the backing file on a restart without re-reading the VCF.</p></
 (1 byte per cell, 8x smaller than double, sufficient for 0/1/2 dosage),
 <code>"short"</code> (2 bytes), or <code>"double"</code> (8 bytes). Default
 <code>"char"</code>.</p></dd>
+
+
+<dt id="arg-impute">impute<a class="anchor" aria-label="anchor" href="#arg-impute"></a></dt>
+<dd><p>Character. Missing genotype imputation strategy
+applied to the genotype matrix after MAF filtering and before LD block
+detection and haplotype extraction. One of:</p><dl><dt><code>"mean_rounded"</code> (default)</dt>
+<dd><p>Per-SNP mean imputation rounded
+    to the nearest valid dosage (0, 1, or 2). For each SNP, compute the
+    mean dosage over non-missing samples and round: mean 0.08 -&gt; 0,
+    mean 0.94 -&gt; 1, mean 1.82 -&gt; 2. Recommended for WGS data with
+    partial missingness (e.g. <code>miss20</code> VCF filter). Ensures
+    haplotype strings never contain <code>"."</code>  so all individuals
+    contribute 0/1 values to the feature matrix.</p></dd>
+
+  <dt><code>"mode"</code></dt>
+<dd><p>Per-SNP mode imputation. Imputes each missing
+    value with the most common observed dosage (0, 1, or 2) at that
+    SNP.</p></dd>
+
+  <dt><code>"none"</code></dt>
+<dd><p>No imputation. If any missing values remain
+    after MAF filtering the function stops with an informative error.
+    Use only when the input data are already fully imputed.</p></dd>
+
+
+</dl></dd>
+
+
+<dt id="arg-min-callrate">min_callrate<a class="anchor" aria-label="anchor" href="#arg-min-callrate"></a></dt>
+<dd><p>Numeric in <code>[0, 1]</code>. Minimum per-SNP call
+rate (proportion of non-missing samples) required to retain a SNP.
+Applied as the first filtering step (before MAF re-filter and imputation).
+SNPs with call rate below this threshold are removed. Default <code>0.0</code>
+(disabled). The three-step order is: (1) call-rate filter, (2) MAF
+re-filter on the remaining SNPs, (3) imputation. Example: set
+<code>min_callrate = 0.8</code> to require calls in at least 80% of samples.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -540,14 +578,16 @@ columns, preceded by metadata columns: <code>hap_id</code>, <code>CHR</code>,
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory]   chr 1 loaded (80/230 SNPs)</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory]   chr 2 loaded (160/230 SNPs)</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory]   chr 3 loaded (230/230 SNPs)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmpgde8uS/ldxbm19b012ad5f13.bin</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:35] Using pre-built backend: bigmemory | 120 ind | 230 SNPs</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:35] MAF filtering (&gt;= 0.05) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U/ldxbm3fcc5d9435d1.bin</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:41] Using pre-built backend: bigmemory | 120 ind | 230 SNPs</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:41] MAF filtering (&gt;= 0.05) ...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [MAF filter] Computing MAF for 230 SNPs ...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [MAF filter] 230 / 230 SNPs pass MAF &gt;= 0.05</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:36] Loading filtered genotype matrix ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:36] Genotype matrix: 120 x 230</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:36] Running genome-wide LD block detection ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:42] Loading filtered genotype matrix ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:42] Genotype matrix: 120 x 230</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:42] Call-rate filter: disabled (min_callrate = 0).</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:42] Imputation: skipped | matrix 120 ind x 230 SNPs | 0 missing values.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:42] Running genome-wide LD block detection ...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [run_Big_LD_all_chr] Processing 1 ...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Subsegmenting via C++ boundary scan...</span>
@@ -597,22 +637,22 @@ columns, preceded by metadata columns: <code>hap_id</code>, <code>CHR</code>,
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Building graph on 70 SNPs...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [CLQD] Found 16 maximal cliques.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [Big_LD] Segment 1/1 done.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:36] Detected 9 LD blocks</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:36] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpgde8uS\file19b045753c4.csv</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:36] Extracting haplotypes (min_snps = 3) ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37] Haplotypes extracted for 9 blocks</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37] Computing haplotype diversity ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpgde8uS\file19b058901036.csv</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37] Haplotype matrix: 120 individuals x 90 haplotype allele columns</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37] Writing haplotype matrix (format = numeric) ...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmpgde8uS\file19b057984525.csv (90 haplotypes x 120 individuals)</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpgde8uS\file19b057984525.csv</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37] Pipeline complete.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37]   Blocks:              9</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37]   Haplotype blocks:    9</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37]   Haplotype columns:   90</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> [03:45:37]   Individuals:         120</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:42] Detected 9 LD blocks</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:42] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U\file3fccb11455.csv</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:42] Extracting haplotypes (min_snps = 3) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43] Haplotypes extracted for 9 blocks</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43] Computing haplotype diversity ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U\file3fcc3e711495.csv</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43] Haplotype matrix: 120 individuals x 90 haplotype allele columns</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43] Writing haplotype matrix (format = numeric) ...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U\file3fcc622f30ff.csv (90 haplotypes x 120 individuals)</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpi4bu1U\file3fcc622f30ff.csv</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43] Pipeline complete.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43]   Blocks:              9</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43]   Haplotype blocks:    9</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43]   Haplotype columns:   90</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> [17:02:43]   Individuals:         120</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

@@ -1051,3 +1051,114 @@ static std::string build_one_hap(
      Rcpp::Named("n_retained")    = (int)out_lo.size()
    );
  }
+
+// =============================================================================
+// impute_and_filter_cpp()
+//
+// Single O(n x p) pass over the genotype matrix that:
+//   1. Computes per-SNP call rate (proportion of non-missing samples).
+//   2. Flags SNPs whose call rate < min_callrate for removal.
+//   3. Imputes missing values (NA = INT_MIN in integer matrices from R) using
+//      either mean_rounded or mode strategy — on the SNPs that pass the filter.
+//
+// Arguments
+// ---------
+// geno         : integer matrix, individuals (rows) x SNPs (cols), NA = NA_INTEGER
+// min_callrate : double in [0,1]. SNPs with call_rate < min_callrate are dropped.
+//                Set to 0.0 to disable call-rate filtering.
+// method       : 0 = mean_rounded  (round column mean to nearest 0/1/2)
+//                1 = mode          (most common observed dosage 0/1/2)
+//
+// Returns a named List:
+//   $geno_imputed  : integer matrix, same dimensions as input; NAs filled in
+//                    passing SNPs; columns of failing SNPs are unchanged
+//                    (caller uses $keep to subset columns).
+//   $keep          : logical vector, length p; TRUE if SNP passes call-rate filter
+//   $call_rates    : numeric vector, length p; per-SNP call rate
+//   $imp_values    : integer vector, length p; imputed value used per SNP
+//                    (NA for SNPs that had no missing or were filtered out)
+//   $n_imputed     : integer; total number of imputed values
+//   $n_filtered    : integer; number of SNPs removed by call-rate filter
+// =============================================================================
+
+// [[Rcpp::export]]
+Rcpp::List impute_and_filter_cpp(
+    Rcpp::IntegerMatrix geno,
+    double              min_callrate = 0.0,
+    int                 method       = 0      // 0=mean_rounded, 1=mode
+) {
+  const int n = geno.nrow();   // individuals
+  const int p = geno.ncol();   // SNPs
+
+  Rcpp::IntegerMatrix out    = Rcpp::clone(geno);   // will be modified in-place
+  Rcpp::LogicalVector keep   (p, true);
+  Rcpp::NumericVector cr     (p, NA_REAL);
+  Rcpp::IntegerVector imp_val(p, NA_INTEGER);
+
+  int n_imputed  = 0;
+  int n_filtered = 0;
+
+  for (int j = 0; j < p; ++j) {
+    // ── Pass 1: scan column, accumulate counts ──────────────────────────────
+    int    n_obs  = 0;
+    long   sum_g  = 0;
+    int    cnt[3] = {0, 0, 0};   // counts of dosage 0, 1, 2
+    bool   has_na = false;
+
+    for (int i = 0; i < n; ++i) {
+      int g = geno(i, j);
+      if (g == NA_INTEGER) {
+        has_na = true;
+        continue;
+      }
+      ++n_obs;
+      sum_g += g;
+      if (g >= 0 && g <= 2) cnt[g]++;
+    }
+
+    double call_rate = (n > 0) ? (double)n_obs / n : 0.0;
+    cr[j] = call_rate;
+
+    // ── Call-rate filter ─────────────────────────────────────────────────────
+    if (call_rate < min_callrate) {
+      keep[j] = false;
+      ++n_filtered;
+      continue;   // leave column untouched; caller will drop it
+    }
+
+    // ── Imputation (only if missing values present) ──────────────────────────
+    if (!has_na || n_obs == 0) continue;
+
+    int fill_val;
+    if (method == 1) {
+      // mode: most common of {0, 1, 2}
+      fill_val = 0;
+      if (cnt[1] > cnt[fill_val]) fill_val = 1;
+      if (cnt[2] > cnt[fill_val]) fill_val = 2;
+    } else {
+      // mean_rounded: round(mean) clamped to [0, 2]
+      double mn = (double)sum_g / n_obs;
+      fill_val = (int)(mn + 0.5);          // round to nearest integer
+      if (fill_val < 0) fill_val = 0;
+      if (fill_val > 2) fill_val = 2;
+    }
+    imp_val[j] = fill_val;
+
+    // ── Pass 2: fill NAs ─────────────────────────────────────────────────────
+    for (int i = 0; i < n; ++i) {
+      if (out(i, j) == NA_INTEGER) {
+        out(i, j) = fill_val;
+        ++n_imputed;
+      }
+    }
+  }
+
+  return Rcpp::List::create(
+    Rcpp::Named("geno_imputed") = out,
+    Rcpp::Named("keep")         = keep,
+    Rcpp::Named("call_rates")   = cr,
+    Rcpp::Named("imp_values")   = imp_val,
+    Rcpp::Named("n_imputed")    = n_imputed,
+    Rcpp::Named("n_filtered")   = n_filtered
+  );
+}

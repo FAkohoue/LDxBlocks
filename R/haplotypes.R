@@ -670,7 +670,9 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
       miss <- grepl(missing_string,g1,fixed=TRUE)|grepl(missing_string,g2,fixed=TRUE)
       gam  <- c(g1[!grepl(missing_string,g1,fixed=TRUE)],g2[!grepl(missing_string,g2,fixed=TRUE)])
     } else {
-      miss <- grepl(missing_string,hap,fixed=TRUE); gam <- hap[!miss]
+      # An individual is only NA if their entire string was missing.
+      miss <- !nzchar(gsub(missing_string, "", hap, fixed=TRUE))
+      gam <- hap[!miss]
     }
     tbl <- sort(table(gam),decreasing=TRUE); fv <- as.numeric(tbl)/sum(tbl)
     tbl  <- tbl[fv >= min_freq]
