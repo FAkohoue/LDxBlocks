@@ -601,8 +601,8 @@ Big_LD <- function(
     if (isTRUE(singleton_as_block)) {
       sing_local <- which(is.na(bv))           # local indices within segment
       sing_global <- sing_local + (nowst - 1L) # map back to full-chromosome index
-      if (!exists("singleton_idx")) singleton_idx <- integer(0L)
-      singleton_idx <- c(singleton_idx, sing_global)
+      if (!exists("singleton_idx_list")) singleton_idx_list <- vector("list", nrow(cutblock))
+      singleton_idx_list[[i]] <- sing_global
     }
     non_empty <- !all(is.na(bv))
     if (!non_empty) { nowLD <- matrix(integer(0), nrow=0L, ncol=2L) } else {
@@ -716,8 +716,12 @@ Big_LD <- function(
   out$end   <- match(out$end.bp,   all_bp)
   out <- out[order(out$start),]
   if (nrow(out) > 0L) {
-    out[,c("start","end")]       <- t(apply(out[,c("start","end")],       1L, sort))
-    out[,c("start.bp","end.bp")] <- t(apply(out[,c("start.bp","end.bp")], 1L, sort))
+    # Vectorised pmin/pmax replaces t(apply(..., sort)) which is O(n) R-loop
+    # and extremely slow at hundreds-of-thousands of blocks (WGS scale).
+    s_tmp        <- out[["start"]];    e_tmp        <- out[["end"]]
+    out[["start"]] <- pmin(s_tmp, e_tmp); out[["end"]] <- pmax(s_tmp, e_tmp)
+    s_tmp        <- out[["start.bp"]]; e_tmp        <- out[["end.bp"]]
+    out[["start.bp"]] <- pmin(s_tmp, e_tmp); out[["end.bp"]] <- pmax(s_tmp, e_tmp)
   }
 
   if (isTRUE(appendrare)) {
@@ -733,30 +737,34 @@ Big_LD <- function(
   # These are biologically meaningful: they mark low-LD regions, recombination
   # hotspots, or rapidly-evolving loci. They are excluded from haplotype
   # analysis by the default min_snps = 3 threshold in extract_haplotypes().
-  if (isTRUE(singleton_as_block) && exists("singleton_idx") &&
-      length(singleton_idx) > 0L) {
-    # Map singleton indices to OSNPinfo positions (already over full SNP set)
-    si_bp  <- as.numeric(SNPinfo[[2L]][singleton_idx])
-    si_id  <- as.character(SNPinfo[[1L]][singleton_idx])
-    # Re-index to full SNP set (including monomorphics) using bp position
-    all_bp  <- sort(c(as.numeric(monoSNPs[[2L]]), as.numeric(OSNPinfo[[2L]])))
-    si_full <- match(si_bp, all_bp)
-    sing_df <- data.frame(
-      start      = si_full,
-      end        = si_full,
-      start.rsID = si_id,
-      end.rsID   = si_id,
-      start.bp   = si_bp,
-      end.bp     = si_bp,
-      CHR        = if ("CHR" %in% names(out)) out$CHR[1L] else NA_character_,
-      length_bp  = 1L,
-      stringsAsFactors = FALSE
-    )
-    # Merge with multi-SNP blocks and re-sort by position
-    out <- rbind(out, sing_df[, names(out), drop = FALSE])
-    out <- out[order(out$start), ]
-    if (isTRUE(verbose))
-      message("[Big_LD] Added ", nrow(sing_df), " singleton SNP block(s).")
+  if (isTRUE(singleton_as_block) && exists("singleton_idx_list") &&
+      length(singleton_idx_list) > 0L) {
+    singleton_idx <- unlist(singleton_idx_list, use.names = FALSE)
+    singleton_idx <- singleton_idx[!is.na(singleton_idx)]
+    if (length(singleton_idx) > 0L) {
+      # Map singleton indices to OSNPinfo positions (already over full SNP set)
+      si_bp  <- as.numeric(SNPinfo[[2L]][singleton_idx])
+      si_id  <- as.character(SNPinfo[[1L]][singleton_idx])
+      # Re-index to full SNP set (including monomorphics) using bp position
+      all_bp  <- sort(c(as.numeric(monoSNPs[[2L]]), as.numeric(OSNPinfo[[2L]])))
+      si_full <- match(si_bp, all_bp)
+      sing_df <- data.frame(
+        start      = si_full,
+        end        = si_full,
+        start.rsID = si_id,
+        end.rsID   = si_id,
+        start.bp   = si_bp,
+        end.bp     = si_bp,
+        CHR        = if ("CHR" %in% names(out)) out$CHR[1L] else NA_character_,
+        length_bp  = 1L,
+        stringsAsFactors = FALSE
+      )
+      # Merge with multi-SNP blocks and re-sort by position
+      out <- rbind(out, sing_df[, names(out), drop = FALSE])
+      out <- out[order(out$start), ]
+      if (isTRUE(verbose))
+        message("[Big_LD] Added ", nrow(sing_df), " singleton SNP block(s).")
+    } # end if(length(singleton_idx) > 0L)
   }
   out
 }
