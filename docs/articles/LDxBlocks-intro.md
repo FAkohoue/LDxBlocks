@@ -92,7 +92,7 @@ prediction model? LDxBlocks provides a complete answer:
 haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5)
 div  <- compute_haplotype_diversity(haps)
 qtl  <- define_qtl_regions(gwas_results, blocks, be$snp_info)
-feat <- build_haplotype_feature_matrix(haps, top_n = 5, encoding = "additive_012")
+feat <- build_haplotype_feature_matrix(haps, top_n = 5, encoding = "additive_012")$matrix
 ```
 
 ### 2.4 What is preserved from the original
@@ -573,7 +573,7 @@ feat_add <- build_haplotype_feature_matrix(
   top_n      = 5L,
   encoding   = "additive_012",
   scale_features = TRUE
-)
+)$matrix
 dim(feat_add)
 #> [1] 120  45
 
@@ -582,7 +582,7 @@ feat_pa <- build_haplotype_feature_matrix(
   haplotypes = haps,
   top_n      = 5L,
   encoding   = "presence_01"
-)
+)$matrix
 dim(feat_pa)
 #> [1] 120  45
 ```
@@ -814,7 +814,7 @@ write_haplotype_diversity(div, "diversity.csv")
 
 feat <- build_haplotype_feature_matrix(haps,
                                         encoding = "additive_012",
-                                        scale_features = TRUE)
+                                        scale_features = TRUE)$matrix
 
 # Numeric dosage matrix: rows=haplotypes, cols=individuals
 # values: 0/1/2/NA for phased data; 0/1/NA for unphased data

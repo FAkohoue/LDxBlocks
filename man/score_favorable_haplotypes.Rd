@@ -22,11 +22,11 @@ not in \code{allele_effects} (they receive a score of 0 for missing blocks).}
 \item{allele_effects}{Data frame specifying known per-allele additive effects.
 \strong{Required columns:}
 \itemize{
-  \item \code{block_id} (character) — Block identifier matching
+  \item \code{block_id} (character) - Block identifier matching
     \code{names(haplotypes)}.
-  \item \code{allele} (character) — Haplotype allele string matching the
+  \item \code{allele} (character) - Haplotype allele string matching the
     strings in \code{haplotypes[[block_id]]}.
-  \item \code{allele_effect} (numeric) — Effect size. Positive = allele
+  \item \code{allele_effect} (numeric) - Effect size. Positive = allele
     increases trait value; negative = decreases it. Units are the same
     as the phenotype scale used to estimate effects.
 }
@@ -69,7 +69,7 @@ Data frame with one row per individual, sorted ascending by
     haplotype scores. When \code{normalize = TRUE}, scaled to [0, 1] where
     1.0 = the individual with the most favourable genome-wide haplotype
     combination in the panel and 0.0 = the least favourable. When
-    \code{normalize = FALSE}, units are phenotype units × allele dosage.}
+    \code{normalize = FALSE}, units are phenotype units x allele dosage.}
   \item{\code{n_blocks_scored}}{Integer. Number of LD blocks for which at
     least one allele effect was available in \code{allele_effects} and
     at least one allele passed \code{min_freq}. Maximum possible value
@@ -86,7 +86,7 @@ Data frame with one row per individual, sorted ascending by
   \item{\code{score_<block_id>}}{Numeric. One column per scored LD block,
     named \code{score_} followed by the block identifier (e.g.
     \code{score_block_1_1000_103000}). Contains the raw per-block score for
-    each individual (effect × dosage sum across alleles). Zero when the
+    each individual (effect x dosage sum across alleles). Zero when the
     individual carries no alleles with known effects at that block. Used to
     identify which genomic regions drive an individual's stacking index.}
 }
@@ -111,7 +111,7 @@ optionally normalised to [0, 1].
 \donttest{
 data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
 haps    <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks)
-hap_mat <- build_haplotype_feature_matrix(haps)
+hap_mat <- build_haplotype_feature_matrix(haps)$matrix
 G       <- compute_haplotype_grm(hap_mat)
 pred    <- run_haplotype_prediction(ldx_geno, ldx_snp_info, ldx_blocks,
                                      blues    = setNames(ldx_blues$YLD,

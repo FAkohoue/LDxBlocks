@@ -24,7 +24,7 @@ frequencies (parsimony heuristic). Default \code{FALSE} (leave as
 \item{missing_string}{Character. Missing data placeholder. Default \code{"."}.}
 }
 \value{
-Data frame with one row per individual × block combination:
+Data frame with one row per individual x block combination:
 \describe{
   \item{\code{block_id}}{Block identifier.}
   \item{\code{CHR}, \code{start_bp}, \code{end_bp}}{Block coordinates.}
@@ -35,7 +35,7 @@ Data frame with one row per individual × block combination:
     sorted alphabetically and joined with \code{"/"}, e.g.
     \code{"010/110"}.}
   \item{\code{heterozygous}}{Logical; \code{TRUE} when the individual is
-    biologically heterozygous. For phased input: \code{hap1 ≠ hap2}.
+    biologically heterozygous. For phased input: \code{hap1 != hap2}.
     For unphased input: any dosage position equals 1, regardless of
     whether phase was resolved.}
   \item{\code{phase_ambiguous}}{Logical; \code{TRUE} for unphased
@@ -61,7 +61,7 @@ individuals have two possible phase assignments. The function flags these
 with \code{phase_ambiguous = TRUE}; \code{hap1} / \code{hap2} are set to
 \code{NA} for those individuals unless \code{resolve_unphased = TRUE}, in
 which case the most-frequent gametic split consistent with observed allele
-frequencies is imputed (maximum-parsimony heuristic — not statistically
+frequencies is imputed (maximum-parsimony heuristic - not statistically
 rigorous, use \code{\link{phase_with_beagle}} for rigorous phasing).
 }
 \examples{

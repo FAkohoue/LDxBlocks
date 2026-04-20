@@ -14,6 +14,7 @@ write_haplotype_numeric(
   out_file,
   haplotypes = NULL,
   snp_info = NULL,
+  hap_info = NULL,
   sep = "\t",
   na_str = "NA",
   min_freq = 0.01,
@@ -44,6 +45,18 @@ write_haplotype_numeric(
 
   Data frame with `CHR`, `POS`, `REF`, `ALT`. Required for `alleles`
   column.
+
+- hap_info:
+
+  Data frame of exact per-column metadata from
+  [`build_haplotype_feature_matrix`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md)`()\$info`.
+  When supplied, the `alleles`, `frequency`, `n_snps`, `CHR`,
+  `start_bp`, and `end_bp` columns are written directly from this object
+  without any reconstruction. Recommended - pass
+  `hap_info = feat_out\$info` where `feat_out` is the return value of
+  [`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md).
+  Default `NULL` (falls back to legacy reconstruction from `haplotypes`
+  and `snp_info`).
 
 - sep:
 

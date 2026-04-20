@@ -43,13 +43,13 @@ score_favorable_haplotypes(
   Data frame specifying known per-allele additive effects. **Required
   columns:**
 
-  - `block_id` (character) — Block identifier matching
+  - `block_id` (character) - Block identifier matching
     `names(haplotypes)`.
 
-  - `allele` (character) — Haplotype allele string matching the strings
+  - `allele` (character) - Haplotype allele string matching the strings
     in `haplotypes[[block_id]]`.
 
-  - `allele_effect` (numeric) — Effect size. Positive = allele increases
+  - `allele_effect` (numeric) - Effect size. Positive = allele increases
     trait value; negative = decreases it. Units are the same as the
     phenotype scale used to estimate effects.
 
@@ -105,7 +105,7 @@ candidates first). Contains the following columns:
   `normalize = TRUE`, scaled to \[0, 1\] where 1.0 = the individual with
   the most favourable genome-wide haplotype combination in the panel and
   0.0 = the least favourable. When `normalize = FALSE`, units are
-  phenotype units × allele dosage.
+  phenotype units x allele dosage.
 
 - `n_blocks_scored`:
 
@@ -132,7 +132,7 @@ candidates first). Contains the following columns:
 
   Numeric. One column per scored LD block, named `score_` followed by
   the block identifier (e.g. `score_block_1_1000_103000`). Contains the
-  raw per-block score for each individual (effect × dosage sum across
+  raw per-block score for each individual (effect x dosage sum across
   alleles). Zero when the individual carries no alleles with known
   effects at that block. Used to identify which genomic regions drive an
   individual's stacking index.
@@ -149,7 +149,7 @@ candidates first). Contains the following columns:
 # \donttest{
 data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
 haps    <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks)
-hap_mat <- build_haplotype_feature_matrix(haps)
+hap_mat <- build_haplotype_feature_matrix(haps)$matrix
 G       <- compute_haplotype_grm(hap_mat)
 pred    <- run_haplotype_prediction(ldx_geno, ldx_snp_info, ldx_blocks,
                                      blues    = setNames(ldx_blues$YLD,

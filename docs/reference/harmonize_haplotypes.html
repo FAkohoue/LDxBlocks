@@ -8,12 +8,12 @@ The function anchors allele identity to a reference dictionary
 built from a training/reference panel. New (target) haplotypes are then
 matched against this dictionary:
 Exact match: the allele string exists verbatim in the
-    reference dictionary → labelled with the reference allele label.
-Nearest-Hamming match: no exact match → labelled with
+    reference dictionary -&amp;gt; labelled with the reference allele label.
+Nearest-Hamming match: no exact match -&amp;gt; labelled with
     the most similar reference allele (minimum Hamming distance). If the
     minimum Hamming distance exceeds max_hamming, the allele is
     labelled "&amp;lt;novel&amp;gt;".
-Novel: distance &amp;gt; max_hamming → "&amp;lt;novel&amp;gt;".
+Novel: distance &amp;gt; max_hamming -&amp;gt; "&amp;lt;novel&amp;gt;".
 
 '><meta property="og:description" content='Ensures that haplotype allele labels are biologically comparable across
 different datasets, analysis runs, or training/validation splits. Without
@@ -24,12 +24,12 @@ The function anchors allele identity to a reference dictionary
 built from a training/reference panel. New (target) haplotypes are then
 matched against this dictionary:
 Exact match: the allele string exists verbatim in the
-    reference dictionary → labelled with the reference allele label.
-Nearest-Hamming match: no exact match → labelled with
+    reference dictionary -&amp;gt; labelled with the reference allele label.
+Nearest-Hamming match: no exact match -&amp;gt; labelled with
     the most similar reference allele (minimum Hamming distance). If the
     minimum Hamming distance exceeds max_hamming, the allele is
     labelled "&amp;lt;novel&amp;gt;".
-Novel: distance &amp;gt; max_hamming → "&amp;lt;novel&amp;gt;".
+Novel: distance &amp;gt; max_hamming -&amp;gt; "&amp;lt;novel&amp;gt;".
 
 '><meta property="og:image" content="https://FAkohoue.github.io/LDxBlocks/logo.svg"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&amp;display=swap" rel="stylesheet"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -90,12 +90,12 @@ if block boundaries, SNP ordering, or allele encoding differ between runs.</p>
 <p>The function anchors allele identity to a <strong>reference dictionary</strong>
 built from a training/reference panel. New (target) haplotypes are then
 matched against this dictionary:</p><ol><li><p><strong>Exact match</strong>: the allele string exists verbatim in the
-    reference dictionary → labelled with the reference allele label.</p></li>
-<li><p><strong>Nearest-Hamming match</strong>: no exact match → labelled with
+    reference dictionary -&gt; labelled with the reference allele label.</p></li>
+<li><p><strong>Nearest-Hamming match</strong>: no exact match -&gt; labelled with
     the most similar reference allele (minimum Hamming distance). If the
     minimum Hamming distance exceeds <code>max_hamming</code>, the allele is
     labelled <code>"&lt;novel&gt;"</code>.</p></li>
-<li><p><strong>Novel</strong>: distance &gt; <code>max_hamming</code> → <code>"&lt;novel&gt;"</code>.</p></li>
+<li><p><strong>Novel</strong>: distance &gt; <code>max_hamming</code> -&gt; <code>"&lt;novel&gt;"</code>.</p></li>
 </ol></div>
 
     <div class="section level2">
@@ -115,12 +115,12 @@ matched against this dictionary:</p><ol><li><p><strong>Exact match</strong>: the
 
 <dl><dt id="arg-haplotypes-target">haplotypes_target<a class="anchor" aria-label="anchor" href="#arg-haplotypes-target"></a></dt>
 <dd><p>Named list from <code><a href="extract_haplotypes.html">extract_haplotypes</a></code>
-(the panel to harmonize — validation set, new environment, etc.).</p></dd>
+(the panel to harmonize - validation set, new environment, etc.).</p></dd>
 
 
 <dt id="arg-haplotypes-ref">haplotypes_ref<a class="anchor" aria-label="anchor" href="#arg-haplotypes-ref"></a></dt>
 <dd><p>Named list from <code><a href="extract_haplotypes.html">extract_haplotypes</a></code>
-(the reference panel — training set, base population, etc.).
+(the reference panel - training set, base population, etc.).
 Must cover the same blocks as <code>haplotypes_target</code> (extra blocks
 in either panel are silently skipped).</p></dd>
 
@@ -133,7 +133,7 @@ reference panel form the dictionary. Default <code>0.02</code>.</p></dd>
 <dt id="arg-max-hamming">max_hamming<a class="anchor" aria-label="anchor" href="#arg-max-hamming"></a></dt>
 <dd><p>Integer. Maximum Hamming distance for a
 nearest-neighbour match; alleles beyond this distance are labelled
-<code>"&lt;novel&gt;"</code>. Default <code>NULL</code> (no limit — always assigns to
+<code>"&lt;novel&gt;"</code>. Default <code>NULL</code> (no limit - always assigns to
 nearest reference allele).</p></dd>
 
 

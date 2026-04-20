@@ -712,7 +712,7 @@ Big_LD <- function(
   # rule as the original R .resolve_overlap(), but:
   #   1. Runs entirely in C++ (no R interpreter overhead per block pair)
   #   2. Computes r2 ONLY against left_reps ∪ right_reps (at most 2*k_rep
-  #      columns), not all p columns — O(n * 2k_rep) vs O(n * p) per SNP
+  #      columns), not all p columns - O(n * 2k_rep) vs O(n * p) per SNP
   #   3. Uses a lazy column cache: standardises each column at most once
   #   4. Single pass (not twice): one call is sufficient because the C++
   #      implementation processes all overlapping pairs in order; the second

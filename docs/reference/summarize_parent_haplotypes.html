@@ -6,7 +6,7 @@ haplotype stacking crosses: it reveals which parents carry complementary
 rare alleles at important blocks, which candidates are genomically
 redundant (same alleles at all blocks), and which blocks should be
 targeted in crossing schemes.
-The output includes one row per (individual × block × allele) combination,
+The output includes one row per (individual x block x allele) combination,
 including rows where the individual carries 0 copies of an allele. This
 ensures that all candidates can be compared on the same rows for any
 given block."><meta property="og:description" content="Produces a tidy long-format allele inventory for each candidate parent
@@ -16,7 +16,7 @@ haplotype stacking crosses: it reveals which parents carry complementary
 rare alleles at important blocks, which candidates are genomically
 redundant (same alleles at all blocks), and which blocks should be
 targeted in crossing schemes.
-The output includes one row per (individual × block × allele) combination,
+The output includes one row per (individual x block x allele) combination,
 including rows where the individual carries 0 copies of an allele. This
 ensures that all candidates can be compared on the same rows for any
 given block."><meta property="og:image" content="https://FAkohoue.github.io/LDxBlocks/logo.svg"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&amp;display=swap" rel="stylesheet"></head><body>
@@ -77,7 +77,7 @@ haplotype stacking crosses: it reveals which parents carry complementary
 rare alleles at important blocks, which candidates are genomically
 redundant (same alleles at all blocks), and which blocks should be
 targeted in crossing schemes.</p>
-<p>The output includes one row per (individual × block × allele) combination,
+<p>The output includes one row per (individual x block x allele) combination,
 including rows where the individual carries 0 copies of an allele. This
 ensures that all candidates can be compared on the same rows for any
 given block.</p>
@@ -120,9 +120,9 @@ focus the inventory on selection candidates.</p></dd>
 the inventory. When supplied, the <code>allele_effect</code> column is populated
 by matching on <code>block_id</code> and <code>allele</code>. <code>NULL</code> (default)
 leaves <code>allele_effect</code> as <code>NA</code> throughout.
-<strong>Required columns when not <code>NULL</code>:</strong></p><ul><li><p><code>block_id</code> (character) — matching <code>names(haplotypes)</code>.</p></li>
-<li><p><code>allele</code> (character) — matching haplotype allele strings.</p></li>
-<li><p><code>allele_effect</code> (numeric) — effect value per allele.</p></li>
+<strong>Required columns when not <code>NULL</code>:</strong></p><ul><li><p><code>block_id</code> (character) - matching <code>names(haplotypes)</code>.</p></li>
+<li><p><code>allele</code> (character) - matching haplotype allele strings.</p></li>
+<li><p><code>allele_effect</code> (numeric) - effect value per allele.</p></li>
 </ul><p>Accepts the output of <code><a href="decompose_block_effects.html">decompose_block_effects</a></code> directly.
 For <code><a href="test_block_haplotypes.html">test_block_haplotypes</a></code> output, filter to one trait
 and rename <code>effect</code> to <code>allele_effect</code> first.</p></dd>
@@ -151,11 +151,11 @@ are skipped for that block (no rows emitted). Default <code>"."</code>.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Data frame in long format. One row per individual × block × allele
+    <p>Data frame in long format. One row per individual x block x allele
   combination, including rows where <code>dosage = 0</code> (allele absent).
   Sorted ascending by <code>id</code>, <code>CHR</code>, <code>start_bp</code>, then
   descending by <code>dosage</code> (so carried alleles appear before absent ones
-  for each individual–block combination). Contains 10 columns:</p><dl><dt><code>id</code></dt>
+  for each individual-block combination). Contains 10 columns:</p><dl><dt><code>id</code></dt>
 <dd><p>Character. Individual identifier.</p></dd>
 
   <dt><code>block_id</code></dt>
@@ -180,7 +180,7 @@ are skipped for that block (no rows emitted). Default <code>"."</code>.</p></dd>
     the individual: 0 = absent; 1 = one copy (heterozygous for phased data,
     or present for unphased data); 2 = two copies (homozygous, phased data
     only). For unphased input (no <code>"|"</code> in strings), dosage is always
-    0 or 1 — the two chromosomes cannot be distinguished, so an individual
+    0 or 1 - the two chromosomes cannot be distinguished, so an individual
     matching this allele string exactly receives dosage 1 regardless of
     whether they are truly homozygous or heterozygous.</p></dd>
 
@@ -192,7 +192,7 @@ are skipped for that block (no rows emitted). Default <code>"."</code>.</p></dd>
 
   <dt><code>allele_effect</code></dt>
 <dd><p>Numeric or <code>NA</code>. Effect value from
-    <code>allele_effects</code> if supplied and the allele–block combination
+    <code>allele_effects</code> if supplied and the allele-block combination
     is matched; <code>NA</code> otherwise.</p></dd>
 
   <dt><code>is_rare</code></dt>

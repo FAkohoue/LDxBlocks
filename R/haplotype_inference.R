@@ -36,7 +36,7 @@
 #' with \code{phase_ambiguous = TRUE}; \code{hap1} / \code{hap2} are set to
 #' \code{NA} for those individuals unless \code{resolve_unphased = TRUE}, in
 #' which case the most-frequent gametic split consistent with observed allele
-#' frequencies is imputed (maximum-parsimony heuristic — not statistically
+#' frequencies is imputed (maximum-parsimony heuristic - not statistically
 #' rigorous, use \code{\link{phase_with_beagle}} for rigorous phasing).
 #'
 #' @param haplotypes    Named list from \code{\link{extract_haplotypes}}.
@@ -49,7 +49,7 @@
 #'   \code{NA}).
 #' @param missing_string Character. Missing data placeholder. Default \code{"."}.
 #'
-#' @return Data frame with one row per individual × block combination:
+#' @return Data frame with one row per individual x block combination:
 #' \describe{
 #'   \item{\code{block_id}}{Block identifier.}
 #'   \item{\code{CHR}, \code{start_bp}, \code{end_bp}}{Block coordinates.}
@@ -60,7 +60,7 @@
 #'     sorted alphabetically and joined with \code{"/"}, e.g.
 #'     \code{"010/110"}.}
 #'   \item{\code{heterozygous}}{Logical; \code{TRUE} when the individual is
-#'     biologically heterozygous. For phased input: \code{hap1 ≠ hap2}.
+#'     biologically heterozygous. For phased input: \code{hap1 != hap2}.
 #'     For unphased input: any dosage position equals 1, regardless of
 #'     whether phase was resolved.}
 #'   \item{\code{phase_ambiguous}}{Logical; \code{TRUE} for unphased
@@ -112,7 +112,7 @@ infer_block_haplotypes <- function(
       phase_amb <- rep(FALSE, length(hap))
 
     } else {
-      # Unphased: diploid allele string — phase is unknown for hets
+      # Unphased: diploid allele string - phase is unknown for hets
       missing <- grepl(missing_string, hap, fixed = TRUE)
 
       # For homozygous individuals: hap1 = hap2 = the allele string
@@ -267,7 +267,7 @@ infer_block_haplotypes <- function(
 #' @param missing_string Character. Missing data placeholder. Default \code{"."}.
 #' @param keep_labels   Logical. If \code{TRUE} (default), a \code{"label_map"}
 #'   attribute is attached to the output list: a named list per block giving
-#'   the original → collapsed allele mapping.
+#'   the original -> collapsed allele mapping.
 #'
 #' @return Named list of the same structure as the input \code{haplotypes},
 #'   with rare allele strings replaced by their collapsed equivalents.
@@ -419,25 +419,25 @@ collapse_haplotypes <- function(
 #' matched against this dictionary:
 #' \enumerate{
 #'   \item \strong{Exact match}: the allele string exists verbatim in the
-#'     reference dictionary → labelled with the reference allele label.
-#'   \item \strong{Nearest-Hamming match}: no exact match → labelled with
+#'     reference dictionary -> labelled with the reference allele label.
+#'   \item \strong{Nearest-Hamming match}: no exact match -> labelled with
 #'     the most similar reference allele (minimum Hamming distance). If the
 #'     minimum Hamming distance exceeds \code{max_hamming}, the allele is
 #'     labelled \code{"<novel>"}.
-#'   \item \strong{Novel}: distance > \code{max_hamming} → \code{"<novel>"}.
+#'   \item \strong{Novel}: distance > \code{max_hamming} -> \code{"<novel>"}.
 #' }
 #'
 #' @param haplotypes_target Named list from \code{\link{extract_haplotypes}}
-#'   (the panel to harmonize — validation set, new environment, etc.).
+#'   (the panel to harmonize - validation set, new environment, etc.).
 #' @param haplotypes_ref    Named list from \code{\link{extract_haplotypes}}
-#'   (the reference panel — training set, base population, etc.).
+#'   (the reference panel - training set, base population, etc.).
 #'   Must cover the same blocks as \code{haplotypes_target} (extra blocks
 #'   in either panel are silently skipped).
 #' @param min_freq_ref  Numeric. Only alleles above this frequency in the
 #'   reference panel form the dictionary. Default \code{0.02}.
 #' @param max_hamming   Integer. Maximum Hamming distance for a
 #'   nearest-neighbour match; alleles beyond this distance are labelled
-#'   \code{"<novel>"}. Default \code{NULL} (no limit — always assigns to
+#'   \code{"<novel>"}. Default \code{NULL} (no limit - always assigns to
 #'   nearest reference allele).
 #' @param missing_string Character. Missing data placeholder. Default \code{"."}.
 #'

@@ -35,7 +35,7 @@ and kinship are corrected jointly through a unified mixed linear model.
 
 **Implementation and scaling:** The GRM is inverted once per trait via
 [`rrBLUP::mixed.solve()`](https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html)
-(dominant cost, O(n³)). Per-allele tests on the de-regressed residuals
+(dominant cost, O(n^3)). Per-allele tests on the de-regressed residuals
 are then fully vectorised across all blocks simultaneously using a
 single
 [`crossprod()`](https://rdrr.io/pkg/Matrix/man/matmult-methods.html)

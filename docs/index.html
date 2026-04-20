@@ -83,7 +83,7 @@
 </h1>
 </div>
 <p align="center">
-<img src="reference/figures/logo.png" alt="LDxBlocks logo" width="180%"></p>
+<img src="reference/figures/logo.png" alt="LDxBlocks logo" width="190%"></p>
 <!-- badges: start -->
 
 <hr>
@@ -428,6 +428,11 @@
 <td><code>extract_chr_haplotypes_cpp()</code></td>
 <td>B7+B9+B10: strings + freq tabulation in one OpenMP pass</td>
 </tr>
+<tr>
+<td>Call-rate filter + imputation</td>
+<td><code>impute_and_filter_cpp()</code></td>
+<td>single O(n×p) pass: call rate, filter, mean_rounded/mode fill</td>
+</tr>
 </tbody>
 </table>
 <p>The outer loop of <code>compute_r2_cpp()</code> is parallelised with OpenMP, controlled by <code>n_threads =</code>. Thread scaling is efficient up to 8-16 threads for typical <code>subSegmSize = 1500</code> windows.</p>
@@ -666,7 +671,7 @@
 <span><span class="co">#   block_id  CHR start_bp  end_bp n_snps n_ind n_haplotypes    He Shannon n_eff_alleles freq_dominant sweep_flag</span></span>
 <span><span class="co"># block_1_1000_103000   1     1000  103000     25   500           12 0.891   3.142         6.12         0.182      FALSE</span></span>
 <span></span>
-<span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">matrix</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># 500 x (n_blocks * 5)</span></span></code></pre></div>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ── Parameter auto-tuning against GWAS markers ────────────────────────────────</span></span>
@@ -1483,7 +1488,7 @@
 <p>The resulting matrix has dimension n_individuals × (n_blocks × top_n):</p>
 <div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Build a haplotype-GRM for use in GBLUP</span></span>
-<span><span class="va">feat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">feat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">matrix</span></span>
 <span><span class="va">G_hap</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span>   <span class="co"># haplotype GRM</span></span>
 <span><span class="co"># ... feed G_hap to rrBLUP::kinship.BLUP or ASReml-R</span></span></code></pre></div>
 <p><strong>Why haplotype features outperform single-SNP models.</strong> Single-SNP additive models miss multi-locus epistatic effects and are sensitive to the choice of which tag SNP represents a block. Haplotype dosages implicitly encode the joint configuration of all SNPs in the block, capturing dominance and inter-SNP interactions without explicit interaction terms. Calus et al. (2008) and de Roos et al. (2009) demonstrated consistent accuracy improvements of 2–8% over SNP-based models in livestock panels; the advantage is greatest for traits with strong dominance or in populations where blocks are well-defined by long-range LD.</p>
@@ -3112,7 +3117,7 @@
 <div class="section level3">
 <h3 id="id_161-c-core">16.1. C++ core<a class="anchor" aria-label="anchor" href="#id_161-c-core"></a>
 </h3>
-<p>The ten compiled functions in <code>src/ld_core.cpp</code> (1,053 lines, RcppArmadillo + OpenMP) replace the most expensive R operations:</p>
+<p>The eleven compiled functions in <code>src/ld_core.cpp</code> (1,164 lines, RcppArmadillo + OpenMP) replace the most expensive R operations:</p>
 <p><strong><code>compute_r2_cpp()</code></strong> replaces <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">stats::cov()</a></code> + R arithmetic for the full r² matrix. Speedup over pure R is approximately 40× for a 1,500 × 1,500 window with 500 individuals. The outer loop is OpenMP-parallelised; all threads share the pre-standardised matrix Z (zero-mean, unit-variance columns) and write to disjoint (j, k) element pairs.</p>
 <p><strong><code>boundary_scan_cpp()</code></strong> replaces the triple-nested R loop in <code>cutsequence.modi()</code>. For a chromosome with 50,000 SNPs and <code>leng = 200</code>, this eliminates approximately 150,000 small R-level matrix operations that the subsegmentation step would otherwise perform.</p>
 <p><strong><code>maf_filter_cpp()</code></strong> replaces <code>apply(G, 2, ...)</code> with a single compiled pass. Approximately 10× faster for panels with &gt; 100,000 SNPs; handles NA mean imputation and monomorphic detection in the same loop.</p>

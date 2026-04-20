@@ -120,7 +120,7 @@ cv_haplotype_prediction <- function(
   haps <- extract_haplotypes(geno_matrix, snp_info, blocks,
                              min_snps = min_snps)
   hap_mat <- build_haplotype_feature_matrix(haps, top_n = top_n,
-                                            min_freq = min_freq)
+                                            min_freq = min_freq)$matrix
   G <- compute_haplotype_grm(hap_mat)
 
   inds_G <- rownames(G)
@@ -586,7 +586,7 @@ run_haplotype_stability <- function(
   haps    <- extract_haplotypes(geno_matrix, snp_info, blocks,
                                 min_snps = min_snps)
   hap_mat <- build_haplotype_feature_matrix(haps, top_n = top_n,
-                                            min_freq = min_freq)
+                                            min_freq = min_freq)$matrix
   G       <- compute_haplotype_grm(hap_mat)
 
   # Get per-environment local GEBVs per block

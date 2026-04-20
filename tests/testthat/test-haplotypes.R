@@ -262,21 +262,21 @@ test_that("define_qtl_regions: output sorted by CHR then start_bp", {
 
 test_that("build_haplotype_feature_matrix: correct dimensions for top_n=3", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=3)
+  feat <- build_haplotype_feature_matrix(haps, top_n=3)$matrix
   expect_equal(nrow(feat), nrow(ldx_geno))
   expect_equal(ncol(feat), length(haps) * 3L)
 })
 
 test_that("build_haplotype_feature_matrix: additive_012 unphased gives 0/1/NA", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="additive_012")
+  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="additive_012")$matrix
   vals <- as.vector(feat[!is.na(feat)])
   expect_true(all(vals %in% c(0, 1)))  # unphased: 0=absent, 1=present
 })
 
 test_that("build_haplotype_feature_matrix: presence_01 gives 0/1/NA", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="presence_01")
+  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="presence_01")$matrix
   vals <- as.vector(feat[!is.na(feat)])
   expect_true(all(vals %in% c(0, 1)))  # presence/absence: 0=absent, 1=present
 })
@@ -289,32 +289,32 @@ test_that("build_haplotype_feature_matrix: additive_012 phased gives 0/1/2", {
                  sample_ids=rownames(ldx_geno), phased=TRUE)
   haps_p <- extract_haplotypes(phased, ldx_snp_info, ldx_blocks, min_snps=5)
   feat_p <- build_haplotype_feature_matrix(haps_p, top_n=3,
-                                           encoding="additive_012")
+                                           encoding="additive_012")$matrix
   vals <- as.vector(feat_p[!is.na(feat_p)])
   expect_true(all(vals %in% c(0, 1, 2)))  # 1 now possible with phased data
 })
 
 test_that("build_haplotype_feature_matrix: scaled columns have mean ~0", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=3, scale_features=TRUE)
+  feat <- build_haplotype_feature_matrix(haps, top_n=3, scale_features=TRUE)$matrix
   expect_true(all(abs(colMeans(feat, na.rm=TRUE)) < 1e-10))
 })
 
 test_that("build_haplotype_feature_matrix: top_n=1 gives one col per block", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=1)
+  feat <- build_haplotype_feature_matrix(haps, top_n=1)$matrix
   expect_equal(ncol(feat), length(haps))
 })
 
 test_that("build_haplotype_feature_matrix: row names match individual IDs", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=3)
+  feat <- build_haplotype_feature_matrix(haps, top_n=3)$matrix
   expect_equal(rownames(feat), rownames(ldx_geno))
 })
 
 test_that("build_haplotype_feature_matrix: column names reference block IDs", {
   haps  <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat  <- build_haplotype_feature_matrix(haps, top_n=2)
+  feat  <- build_haplotype_feature_matrix(haps, top_n=2)$matrix
   block_names <- names(haps)
   expect_true(all(vapply(block_names, function(bn)
     any(startsWith(colnames(feat), bn)), logical(1L))))
@@ -324,7 +324,7 @@ test_that("build_haplotype_feature_matrix: column names reference block IDs", {
 
 test_that("write_haplotype_numeric: file exists and has correct orientation", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=2)
+  feat <- build_haplotype_feature_matrix(haps, top_n=2)$matrix
   tmp  <- tempfile(fileext=".csv")
   write_haplotype_numeric(feat, tmp,
                           haplotypes = haps, snp_info = ldx_snp_info,
@@ -347,7 +347,7 @@ test_that("write_haplotype_numeric: file exists and has correct orientation", {
 
 test_that("write_haplotype_numeric: dosage values are 0/1/NA (unphased)", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=2)
+  feat <- build_haplotype_feature_matrix(haps, top_n=2)$matrix
   tmp  <- tempfile(fileext=".csv")
   write_haplotype_numeric(feat, tmp, verbose=FALSE)
   df   <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE)

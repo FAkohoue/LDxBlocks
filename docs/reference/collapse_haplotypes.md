@@ -62,7 +62,7 @@ collapse_haplotypes(
 - keep_labels:
 
   Logical. If `TRUE` (default), a `"label_map"` attribute is attached to
-  the output list: a named list per block giving the original →
+  the output list: a named list per block giving the original -\>
   collapsed allele mapping.
 
 ## Value

@@ -18,7 +18,7 @@ individuals have two possible phase assignments. The function flags
 these with `phase_ambiguous = TRUE`; `hap1` / `hap2` are set to `NA` for
 those individuals unless `resolve_unphased = TRUE`, in which case the
 most-frequent gametic split consistent with observed allele frequencies
-is imputed (maximum-parsimony heuristic — not statistically rigorous,
+is imputed (maximum-parsimony heuristic - not statistically rigorous,
 use
 [`phase_with_beagle`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_beagle.md)
 for rigorous phasing).
@@ -55,7 +55,7 @@ infer_block_haplotypes(
 
 ## Value
 
-Data frame with one row per individual × block combination:
+Data frame with one row per individual x block combination:
 
 - `block_id`:
 
@@ -85,7 +85,7 @@ Data frame with one row per individual × block combination:
 - `heterozygous`:
 
   Logical; `TRUE` when the individual is biologically heterozygous. For
-  phased input: `hap1 ≠ hap2`. For unphased input: any dosage position
+  phased input: `hap1 != hap2`. For unphased input: any dosage position
   equals 1, regardless of whether phase was resolved.
 
 - `phase_ambiguous`:

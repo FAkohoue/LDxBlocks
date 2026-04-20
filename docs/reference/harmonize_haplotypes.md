@@ -12,14 +12,14 @@ from a training/reference panel. New (target) haplotypes are then
 matched against this dictionary:
 
 1.  **Exact match**: the allele string exists verbatim in the reference
-    dictionary → labelled with the reference allele label.
+    dictionary -\> labelled with the reference allele label.
 
-2.  **Nearest-Hamming match**: no exact match → labelled with the most
+2.  **Nearest-Hamming match**: no exact match -\> labelled with the most
     similar reference allele (minimum Hamming distance). If the minimum
     Hamming distance exceeds `max_hamming`, the allele is labelled
     `"<novel>"`.
 
-3.  **Novel**: distance \> `max_hamming` → `"<novel>"`.
+3.  **Novel**: distance \> `max_hamming` -\> `"<novel>"`.
 
 ## Usage
 
@@ -39,13 +39,13 @@ harmonize_haplotypes(
 
   Named list from
   [`extract_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
-  (the panel to harmonize — validation set, new environment, etc.).
+  (the panel to harmonize - validation set, new environment, etc.).
 
 - haplotypes_ref:
 
   Named list from
   [`extract_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
-  (the reference panel — training set, base population, etc.). Must
+  (the reference panel - training set, base population, etc.). Must
   cover the same blocks as `haplotypes_target` (extra blocks in either
   panel are silently skipped).
 
@@ -58,7 +58,7 @@ harmonize_haplotypes(
 
   Integer. Maximum Hamming distance for a nearest-neighbour match;
   alleles beyond this distance are labelled `"<novel>"`. Default `NULL`
-  (no limit — always assigns to nearest reference allele).
+  (no limit - always assigns to nearest reference allele).
 
 - missing_string:
 

@@ -8,7 +8,7 @@ rare alleles at important blocks, which candidates are genomically
 redundant (same alleles at all blocks), and which blocks should be
 targeted in crossing schemes.
 
-The output includes one row per (individual × block × allele)
+The output includes one row per (individual x block x allele)
 combination, including rows where the individual carries 0 copies of an
 allele. This ensures that all candidates can be compared on the same
 rows for any given block.
@@ -52,11 +52,11 @@ summarize_parent_haplotypes(
   `block_id` and `allele`. `NULL` (default) leaves `allele_effect` as
   `NA` throughout. **Required columns when not `NULL`:**
 
-  - `block_id` (character) — matching `names(haplotypes)`.
+  - `block_id` (character) - matching `names(haplotypes)`.
 
-  - `allele` (character) — matching haplotype allele strings.
+  - `allele` (character) - matching haplotype allele strings.
 
-  - `allele_effect` (numeric) — effect value per allele.
+  - `allele_effect` (numeric) - effect value per allele.
 
   Accepts the output of
   [`decompose_block_effects`](https://FAkohoue.github.io/LDxBlocks/reference/decompose_block_effects.md)
@@ -89,10 +89,10 @@ summarize_parent_haplotypes(
 
 ## Value
 
-Data frame in long format. One row per individual × block × allele
+Data frame in long format. One row per individual x block x allele
 combination, including rows where `dosage = 0` (allele absent). Sorted
 ascending by `id`, `CHR`, `start_bp`, then descending by `dosage` (so
-carried alleles appear before absent ones for each individual–block
+carried alleles appear before absent ones for each individual-block
 combination). Contains 10 columns:
 
 - `id`:
@@ -125,7 +125,7 @@ combination). Contains 10 columns:
   Integer. Number of copies of this allele carried by the individual: 0
   = absent; 1 = one copy (heterozygous for phased data, or present for
   unphased data); 2 = two copies (homozygous, phased data only). For
-  unphased input (no `"|"` in strings), dosage is always 0 or 1 — the
+  unphased input (no `"|"` in strings), dosage is always 0 or 1 - the
   two chromosomes cannot be distinguished, so an individual matching
   this allele string exactly receives dosage 1 regardless of whether
   they are truly homozygous or heterozygous.
@@ -140,7 +140,7 @@ combination). Contains 10 columns:
 - `allele_effect`:
 
   Numeric or `NA`. Effect value from `allele_effects` if supplied and
-  the allele–block combination is matched; `NA` otherwise.
+  the allele-block combination is matched; `NA` otherwise.
 
 - `is_rare`:
 

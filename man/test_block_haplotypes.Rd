@@ -210,7 +210,7 @@ kinship are corrected jointly through a unified mixed linear model.
 
 \strong{Implementation and scaling:}
 The GRM is inverted once per trait via \code{rrBLUP::mixed.solve()} (dominant
-cost, O(n³)). Per-allele tests on the de-regressed residuals are then fully
+cost, O(n^3)). Per-allele tests on the de-regressed residuals are then fully
 vectorised across all blocks simultaneously using a single
 \code{crossprod()} call (O(n x p), analogous to the BLAS DGEMV trick in
 marginal SNP screening). For 5,000 individuals and 51,000 haplotype allele

@@ -9,6 +9,7 @@ write_haplotype_numeric(
   out_file,
   haplotypes = NULL,
   snp_info = NULL,
+  hap_info = NULL,
   sep = "\\t",
   na_str = "NA",
   min_freq = 0.01,
@@ -28,6 +29,16 @@ metadata columns are populated.}
 
 \item{snp_info}{Data frame with \code{CHR}, \code{POS}, \code{REF},
 \code{ALT}. Required for \code{alleles} column.}
+
+\item{hap_info}{Data frame of exact per-column metadata from
+\code{\link{build_haplotype_feature_matrix}()\$info}. When supplied,
+the \code{alleles}, \code{frequency}, \code{n_snps}, \code{CHR},
+\code{start_bp}, and \code{end_bp} columns are written directly from
+this object without any reconstruction. Recommended - pass
+\code{hap_info = feat_out\$info} where \code{feat_out} is the return
+value of \code{build_haplotype_feature_matrix()}. Default \code{NULL}
+(falls back to legacy reconstruction from \code{haplotypes} and
+\code{snp_info}).}
 
 \item{sep}{Field separator. Default \code{","}.}
 

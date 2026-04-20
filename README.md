@@ -1,7 +1,7 @@
 # LDxBlocks — Genome-Wide LD Block Detection, Haplotype Analysis, and Genomic Prediction Features
 
 <p align="center">
-  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="180%">
+  <img src="man/figures/logo.png" alt="LDxBlocks logo" width="190%">
 </p>
 
 <!-- badges: start -->
@@ -277,6 +277,7 @@ these with seven compiled functions:
 | Haplotype string building | `build_hap_strings_cpp()` | replaces R vapply loop; ~20-50× per block |
 | Block-to-SNP interval lookup | `block_snp_ranges_cpp()` | O(p + n_blocks) single sweep vs O(p × n_blocks) |
 | Chromosome haplotype extraction | `extract_chr_haplotypes_cpp()` | B7+B9+B10: strings + freq tabulation in one OpenMP pass |
+| Call-rate filter + imputation | `impute_and_filter_cpp()` | single O(n×p) pass: call rate, filter, mean_rounded/mode fill |
 
 The outer loop of `compute_r2_cpp()` is parallelised with OpenMP, controlled
 by `n_threads =`. Thread scaling is efficient up to 8-16 threads for typical
@@ -498,7 +499,7 @@ head(div)
 #   block_id  CHR start_bp  end_bp n_snps n_ind n_haplotypes    He Shannon n_eff_alleles freq_dominant sweep_flag
 # block_1_1000_103000   1     1000  103000     25   500           12 0.891   3.142         6.12         0.182      FALSE
 
-feat <- build_haplotype_feature_matrix(haps, top_n = 5, scale_features = TRUE)
+feat <- build_haplotype_feature_matrix(haps, top_n = 5, scale_features = TRUE)$matrix
 dim(feat)   # 500 x (n_blocks * 5)
 ```
 
@@ -1293,7 +1294,7 @@ The resulting matrix has dimension n_individuals × (n_blocks × top_n):
 
 ```r
 # Build a haplotype-GRM for use in GBLUP
-feat  <- build_haplotype_feature_matrix(haps, scale_features = TRUE)
+feat  <- build_haplotype_feature_matrix(haps, scale_features = TRUE)$matrix
 G_hap <- tcrossprod(feat) / ncol(feat)   # haplotype GRM
 # ... feed G_hap to rrBLUP::kinship.BLUP or ASReml-R
 ```
@@ -2433,7 +2434,7 @@ Long format, one row per individual x block x allele (including dosage = 0 rows)
 
 ### 16.1. C++ core
 
-The ten compiled functions in `src/ld_core.cpp` (1,053 lines,
+The eleven compiled functions in `src/ld_core.cpp` (1,164 lines,
 RcppArmadillo + OpenMP) replace the most expensive R operations:
 
 **`compute_r2_cpp()`** replaces `stats::cov()` + R arithmetic for the full r²

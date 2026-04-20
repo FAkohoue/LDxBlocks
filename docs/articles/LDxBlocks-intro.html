@@ -173,7 +173,7 @@ prediction model? LDxBlocks provides a complete answer:</p>
 <span><span class="va">haps</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">be</span>, <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span>, <span class="va">blocks</span>, min_snps <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">div</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity</a></span><span class="op">(</span><span class="va">haps</span><span class="op">)</span></span>
 <span><span class="va">qtl</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/define_qtl_regions.html">define_qtl_regions</a></span><span class="op">(</span><span class="va">gwas_results</span>, <span class="va">blocks</span>, <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span><span class="op">)</span></span>
-<span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>, encoding <span class="op">=</span> <span class="st">"additive_012"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, top_n <span class="op">=</span> <span class="fl">5</span>, encoding <span class="op">=</span> <span class="st">"additive_012"</span><span class="op">)</span><span class="op">$</span><span class="va">matrix</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="what-is-preserved-from-the-original">2.4 What is preserved from the original<a class="anchor" aria-label="anchor" href="#what-is-preserved-from-the-original"></a>
@@ -785,7 +785,7 @@ schemes and both phased and unphased input:</p>
 <span>  top_n      <span class="op">=</span> <span class="fl">5L</span>,</span>
 <span>  encoding   <span class="op">=</span> <span class="st">"additive_012"</span>,</span>
 <span>  scale_features <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">$</span><span class="va">matrix</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat_add</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120  45</span></span>
 <span></span>
@@ -794,7 +794,7 @@ schemes and both phased and unphased input:</p>
 <span>  haplotypes <span class="op">=</span> <span class="va">haps</span>,</span>
 <span>  top_n      <span class="op">=</span> <span class="fl">5L</span>,</span>
 <span>  encoding   <span class="op">=</span> <span class="st">"presence_01"</span></span>
-<span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">$</span><span class="va">matrix</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">feat_pa</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 120  45</span></span></code></pre></div>
 <p>Write the feature matrix:</p>
@@ -1013,7 +1013,7 @@ gene windows.</p>
 <span></span>
 <span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>,</span>
 <span>                                        encoding <span class="op">=</span> <span class="st">"additive_012"</span>,</span>
-<span>                                        scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>                                        scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">matrix</span></span>
 <span></span>
 <span><span class="co"># Numeric dosage matrix: rows=haplotypes, cols=individuals</span></span>
 <span><span class="co"># values: 0/1/2/NA for phased data; 0/1/NA for unphased data</span></span>

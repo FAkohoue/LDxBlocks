@@ -144,7 +144,7 @@ VanRaden PM (2008). Efficient methods to compute genomic predictions.
 ``` r
 if (FALSE) { # \dontrun{
 # After building haplotype feature matrix:
-feat  <- build_haplotype_feature_matrix(haps, top_n = 5)
+feat  <- build_haplotype_feature_matrix(haps, top_n = 5)$matrix
 pheno <- read.csv("phenotypes.csv")   # columns: id, YLD, PHT, ...
 
 inp <- prepare_gblup_inputs(feat, pheno, id_col = "id",

@@ -11,7 +11,7 @@ individuals have two possible phase assignments. The function flags these
 with phase_ambiguous = TRUE; hap1 / hap2 are set to
 NA for those individuals unless resolve_unphased = TRUE, in
 which case the most-frequent gametic split consistent with observed allele
-frequencies is imputed (maximum-parsimony heuristic — not statistically
+frequencies is imputed (maximum-parsimony heuristic - not statistically
 rigorous, use phase_with_beagle for rigorous phasing)."><meta property="og:description" content="Converts the raw haplotype strings produced by extract_haplotypes
 into a structured per-individual, per-block diplotype table with explicit
 hap1 / hap2 gamete alleles, a diplotype code, a heterozygosity
@@ -24,7 +24,7 @@ individuals have two possible phase assignments. The function flags these
 with phase_ambiguous = TRUE; hap1 / hap2 are set to
 NA for those individuals unless resolve_unphased = TRUE, in
 which case the most-frequent gametic split consistent with observed allele
-frequencies is imputed (maximum-parsimony heuristic — not statistically
+frequencies is imputed (maximum-parsimony heuristic - not statistically
 rigorous, use phase_with_beagle for rigorous phasing)."><meta property="og:image" content="https://FAkohoue.github.io/LDxBlocks/logo.svg"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&amp;display=swap" rel="stylesheet"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -88,7 +88,7 @@ individuals have two possible phase assignments. The function flags these
 with <code>phase_ambiguous = TRUE</code>; <code>hap1</code> / <code>hap2</code> are set to
 <code>NA</code> for those individuals unless <code>resolve_unphased = TRUE</code>, in
 which case the most-frequent gametic split consistent with observed allele
-frequencies is imputed (maximum-parsimony heuristic — not statistically
+frequencies is imputed (maximum-parsimony heuristic - not statistically
 rigorous, use <code><a href="phase_with_beagle.html">phase_with_beagle</a></code> for rigorous phasing).</p>
     </div>
 
@@ -125,7 +125,7 @@ frequencies (parsimony heuristic). Default <code>FALSE</code> (leave as
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Data frame with one row per individual × block combination:</p><dl><dt><code>block_id</code></dt>
+    <p>Data frame with one row per individual x block combination:</p><dl><dt><code>block_id</code></dt>
 <dd><p>Block identifier.</p></dd>
 
   <dt><code>CHR</code>, <code>start_bp</code>, <code>end_bp</code></dt>
@@ -147,7 +147,7 @@ frequencies (parsimony heuristic). Default <code>FALSE</code> (leave as
 
   <dt><code>heterozygous</code></dt>
 <dd><p>Logical; <code>TRUE</code> when the individual is
-    biologically heterozygous. For phased input: <code>hap1 ≠ hap2</code>.
+    biologically heterozygous. For phased input: <code>hap1 != hap2</code>.
     For unphased input: any dosage position equals 1, regardless of
     whether phase was resolved.</p></dd>
 

@@ -32,9 +32,9 @@ by matching on \code{block_id} and \code{allele}. \code{NULL} (default)
 leaves \code{allele_effect} as \code{NA} throughout.
 \strong{Required columns when not \code{NULL}:}
 \itemize{
-  \item \code{block_id} (character) — matching \code{names(haplotypes)}.
-  \item \code{allele} (character) — matching haplotype allele strings.
-  \item \code{allele_effect} (numeric) — effect value per allele.
+  \item \code{block_id} (character) - matching \code{names(haplotypes)}.
+  \item \code{allele} (character) - matching haplotype allele strings.
+  \item \code{allele_effect} (numeric) - effect value per allele.
 }
 Accepts the output of \code{\link{decompose_block_effects}} directly.
 For \code{\link{test_block_haplotypes}} output, filter to one trait
@@ -56,11 +56,11 @@ indicate missing genotype data. Individuals with this string at a block
 are skipped for that block (no rows emitted). Default \code{"."}.}
 }
 \value{
-Data frame in long format. One row per individual × block × allele
+Data frame in long format. One row per individual x block x allele
   combination, including rows where \code{dosage = 0} (allele absent).
   Sorted ascending by \code{id}, \code{CHR}, \code{start_bp}, then
   descending by \code{dosage} (so carried alleles appear before absent ones
-  for each individual–block combination). Contains 10 columns:
+  for each individual-block combination). Contains 10 columns:
 \describe{
   \item{\code{id}}{Character. Individual identifier.}
   \item{\code{block_id}}{Character. LD block identifier matching
@@ -74,7 +74,7 @@ Data frame in long format. One row per individual × block × allele
     the individual: 0 = absent; 1 = one copy (heterozygous for phased data,
     or present for unphased data); 2 = two copies (homozygous, phased data
     only). For unphased input (no \code{"|"} in strings), dosage is always
-    0 or 1 — the two chromosomes cannot be distinguished, so an individual
+    0 or 1 - the two chromosomes cannot be distinguished, so an individual
     matching this allele string exactly receives dosage 1 regardless of
     whether they are truly homozygous or heterozygous.}
   \item{\code{allele_freq}}{Numeric in [0, 1]. Population frequency of this
@@ -82,7 +82,7 @@ Data frame in long format. One row per individual × block × allele
     as \code{table(valid_haplotypes) / length(valid_haplotypes)} before
     any \code{candidate_ids} filtering is applied.}
   \item{\code{allele_effect}}{Numeric or \code{NA}. Effect value from
-    \code{allele_effects} if supplied and the allele–block combination
+    \code{allele_effects} if supplied and the allele-block combination
     is matched; \code{NA} otherwise.}
   \item{\code{is_rare}}{Logical. \code{TRUE} when
     \code{allele_freq < 0.10}. Convenience flag for filtering the inventory
@@ -99,7 +99,7 @@ rare alleles at important blocks, which candidates are genomically
 redundant (same alleles at all blocks), and which blocks should be
 targeted in crossing schemes.
 
-The output includes one row per (individual × block × allele) combination,
+The output includes one row per (individual x block x allele) combination,
 including rows where the individual carries 0 copies of an allele. This
 ensures that all candidates can be compared on the same rows for any
 given block.

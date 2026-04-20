@@ -40,7 +40,7 @@ centering.
 \examples{
 data(ldx_geno, ldx_snp_info, ldx_blocks, package = "LDxBlocks")
 haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3)
-feat <- build_haplotype_feature_matrix(haps, top_n = 5)
+feat <- build_haplotype_feature_matrix(haps, top_n = 5)$matrix
 G    <- compute_haplotype_grm(feat)
 dim(G)
 round(range(diag(G)), 3)  # diagonal ~= 1 for typical populations

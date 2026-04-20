@@ -211,7 +211,7 @@ test_that("build_haplotype_feature_matrix: correct dimensions, additive_012", {
   data(ldx_snp_info, package = "LDxBlocks")
   data(ldx_blocks,   package = "LDxBlocks")
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=3)
-  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="additive_012")
+  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="additive_012")$matrix
   expect_equal(nrow(feat), 120L)
   expect_equal(ncol(feat), length(haps) * 3L)
   vals <- as.vector(feat[!is.na(feat)])
@@ -223,7 +223,7 @@ test_that("build_haplotype_feature_matrix: presence_01 encoding", {
   data(ldx_snp_info, package = "LDxBlocks")
   data(ldx_blocks,   package = "LDxBlocks")
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=3)
-  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="presence_01")
+  feat <- build_haplotype_feature_matrix(haps, top_n=3, encoding="presence_01")$matrix
   vals <- as.vector(feat[!is.na(feat)])
   expect_true(all(vals %in% c(0, 1)))  # presence/absence: 0 or 1
 })
@@ -258,7 +258,7 @@ test_that("write_haplotype_numeric writes readable dosage table", {
   data(ldx_snp_info, package = "LDxBlocks")
   data(ldx_blocks,   package = "LDxBlocks")
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
-  feat <- build_haplotype_feature_matrix(haps, top_n=2)
+  feat <- build_haplotype_feature_matrix(haps, top_n=2)$matrix
   tmp  <- tempfile(fileext=".csv")
   write_haplotype_numeric(feat, tmp, verbose=FALSE)
   df <- read.table(tmp, sep="\t", header=TRUE, check.names=FALSE)

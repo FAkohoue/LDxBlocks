@@ -95,7 +95,7 @@
 #'
 #' \strong{Implementation and scaling:}
 #' The GRM is inverted once per trait via \code{rrBLUP::mixed.solve()} (dominant
-#' cost, O(n³)). Per-allele tests on the de-regressed residuals are then fully
+#' cost, O(n^3)). Per-allele tests on the de-regressed residuals are then fully
 #' vectorised across all blocks simultaneously using a single
 #' \code{crossprod()} call (O(n x p), analogous to the BLAS DGEMV trick in
 #' marginal SNP screening). For 5,000 individuals and 51,000 haplotype allele
@@ -341,7 +341,7 @@ test_block_haplotypes <- function(
   .log("Building haplotype feature matrix ...")
   hap_mat <- build_haplotype_feature_matrix(
     haplotypes, top_n = top_n, min_freq = min_freq, encoding = "additive_012"
-  )
+  )$matrix
   # Column names are "blockID__hapN" - extract block ID prefix for grouping
   col_blocks <- sub("__hap\\d+$", "", colnames(hap_mat))
 
@@ -349,7 +349,7 @@ test_block_haplotypes <- function(
   G <- compute_haplotype_grm(hap_mat)
 
   # -- Derive GRM PCs once (shared across all traits) -------------------------
-  # G = Q Λ Q^T - columns of Q are PCs of individuals in haplotype space.
+  # G = Q Lambda Q^T - columns of Q are PCs of individuals in haplotype space.
   # Mathematically equivalent to PCA on genotypes (SVD duality) but guaranteed
   # consistent with the GRM random effect - same kinship model for both.
   n_pcs_used <- 0L
@@ -794,7 +794,7 @@ estimate_diplotype_effects <- function(
 
   .log("Building haplotype GRM ...")
   hap_mat <- build_haplotype_feature_matrix(haplotypes, min_freq = min_freq,
-                                            encoding = "additive_012")
+                                            encoding = "additive_012")$matrix
   G <- compute_haplotype_grm(hap_mat)
 
   .log("Inferring diplotypes ...")

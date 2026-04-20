@@ -170,7 +170,7 @@ unlink("vignettes/LDxBlocks-large-scale_cache", recursive = TRUE)
 pkgdown::build_article("LDxBlocks-large-scale")
 
 
-file <- "R/haplotype_association.R"
+file <- "R/haplotypes.R"
 
 txt <- readLines(file, encoding = "UTF-8")
 
@@ -184,7 +184,7 @@ writeLines(txt, file, useBytes = TRUE)
 tools::showNonASCIIfile("R/haplotypes.R")
 
 
-file <- "R/haplotype_analysis.R"
+file <- "R/haplotypes.R"
 
 txt <- readLines(file, encoding = "UTF-8")
 
@@ -193,4 +193,13 @@ txt <- gsub("—", "-", txt, fixed = TRUE)
 
 writeLines(txt, file, useBytes = TRUE)
 
-tools::showNonASCIIfile("R/haplotype_analysis.R")
+tools::showNonASCIIfile("R/haplotypes.R")
+
+
+file <- "R/haplotype_association.R"
+txt <- readLines(file, encoding = "UTF-8")
+
+txt <- gsub("Λ", "Lambda", txt, fixed = TRUE)
+
+writeLines(txt, file, useBytes = TRUE)
+tools::showNonASCIIfile(file)

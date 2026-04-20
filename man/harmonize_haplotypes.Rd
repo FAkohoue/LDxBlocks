@@ -14,10 +14,10 @@ harmonize_haplotypes(
 }
 \arguments{
 \item{haplotypes_target}{Named list from \code{\link{extract_haplotypes}}
-(the panel to harmonize — validation set, new environment, etc.).}
+(the panel to harmonize - validation set, new environment, etc.).}
 
 \item{haplotypes_ref}{Named list from \code{\link{extract_haplotypes}}
-(the reference panel — training set, base population, etc.).
+(the reference panel - training set, base population, etc.).
 Must cover the same blocks as \code{haplotypes_target} (extra blocks
 in either panel are silently skipped).}
 
@@ -26,7 +26,7 @@ reference panel form the dictionary. Default \code{0.02}.}
 
 \item{max_hamming}{Integer. Maximum Hamming distance for a
 nearest-neighbour match; alleles beyond this distance are labelled
-\code{"<novel>"}. Default \code{NULL} (no limit — always assigns to
+\code{"<novel>"}. Default \code{NULL} (no limit - always assigns to
 nearest reference allele).}
 
 \item{missing_string}{Character. Missing data placeholder. Default \code{"."}.}
@@ -51,12 +51,12 @@ built from a training/reference panel. New (target) haplotypes are then
 matched against this dictionary:
 \enumerate{
   \item \strong{Exact match}: the allele string exists verbatim in the
-    reference dictionary → labelled with the reference allele label.
-  \item \strong{Nearest-Hamming match}: no exact match → labelled with
+    reference dictionary -> labelled with the reference allele label.
+  \item \strong{Nearest-Hamming match}: no exact match -> labelled with
     the most similar reference allele (minimum Hamming distance). If the
     minimum Hamming distance exceeds \code{max_hamming}, the allele is
     labelled \code{"<novel>"}.
-  \item \strong{Novel}: distance > \code{max_hamming} → \code{"<novel>"}.
+  \item \strong{Novel}: distance > \code{max_hamming} -> \code{"<novel>"}.
 }
 }
 \examples{

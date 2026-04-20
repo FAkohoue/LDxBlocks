@@ -56,6 +56,76 @@
 }
 
 
+# -- Internal: build post-filter/post-imputation backend -----------------------
+# Called after call-rate filter + MAF filter + imputation.
+# Creates a new backend whose columns exactly match the filtered/imputed
+# snp_info, so read_chunk() and extract_haplotypes() are always aligned.
+.make_imputed_backend <- function(geno_mat, snp_info, sample_ids,
+                                  use_bigmemory  = FALSE,
+                                  bigmemory_path = tempdir(),
+                                  bigmemory_type = "char",
+                                  verbose        = TRUE) {
+  if (!is.matrix(geno_mat)) geno_mat <- as.matrix(geno_mat)
+  rownames(geno_mat) <- sample_ids
+  colnames(geno_mat) <- snp_info$SNP
+
+  if (isTRUE(use_bigmemory) &&
+      requireNamespace("bigmemory", quietly = TRUE)) {
+
+    bigmemory_path <- normalizePath(bigmemory_path, mustWork = FALSE)
+    bigmemory_path <- gsub("\\", "/", bigmemory_path, fixed = TRUE)
+    imp_stem     <- file.path(bigmemory_path, "ldxblocks_bm_imputed")
+    imp_bin      <- paste0(imp_stem, ".bin")
+    imp_desc     <- paste0(imp_stem, ".desc")
+    imp_si_file  <- paste0(imp_stem, "_snpinfo.rds")
+    imp_sid_file <- paste0(imp_stem, "_sampleids.rds")
+
+    # Reattach if all four imputed backend files already exist from a
+    # previous run in the same bigmemory_path.  This mirrors the main
+    # backend reattach logic and avoids the "Backing file already exists"
+    # error that bigmemory raises when trying to create over an existing file.
+    imp_bin_noext <- sub("[.]bin$", "", imp_bin)
+    imp_bin_ok    <- file.exists(imp_bin) || file.exists(imp_bin_noext)
+    imp_all_ok    <- imp_bin_ok && file.exists(imp_desc) &&
+      file.exists(imp_si_file) && file.exists(imp_sid_file)
+
+    if (imp_all_ok) {
+      if (verbose) message("[imputed backend] Reattaching existing imputed backend.")
+      si_imp  <- readRDS(imp_si_file)
+      be_imp  <- read_geno_bigmemory(
+        source      = imp_desc,
+        snp_info    = si_imp,
+        backingfile = basename(imp_stem),
+        backingpath = bigmemory_path
+      )
+      return(be_imp)
+    }
+
+    # Remove any partial imputed files before building fresh
+    for (f in c(imp_bin, imp_bin_noext, imp_desc, imp_si_file, imp_sid_file)) {
+      if (file.exists(f)) file.remove(f)
+    }
+
+    if (verbose) message("[imputed backend] Building file-backed imputed backend ...")
+    be_imp <- read_geno_bigmemory(
+      source      = geno_mat,
+      snp_info    = snp_info,
+      backingfile = "ldxblocks_bm_imputed",
+      backingpath = bigmemory_path,
+      type        = bigmemory_type,
+      verbose     = verbose
+    )
+    saveRDS(snp_info,    imp_si_file)
+    saveRDS(sample_ids, imp_sid_file)
+    return(be_imp)
+  }
+
+  # Fallback: in-memory matrix backend (no bigmemory installed or not requested)
+  read_geno(path = geno_mat, format = "matrix",
+            snp_info = snp_info, sample_ids = sample_ids,
+            verbose = FALSE)
+}
+
 # -- Main pipeline function -----------------------------------------------------
 
 #' End-to-End Haplotype Block Pipeline
@@ -648,7 +718,7 @@ run_ldx_pipeline <- function(
   }
 
   # -- 4.5b: MAF filter (authoritative, post call-rate) ----------------------
-  # Always run — not conditional on min_callrate > 0.
+  # Always run - not conditional on min_callrate > 0.
   # This is the authoritative MAF filter: call-rate filtering in 4.5a ensures
   # allele frequencies are now computed on clean (non-missing-inflated) data.
   {
@@ -708,11 +778,30 @@ run_ldx_pipeline <- function(
       impute, imp_res$n_imputed, n_na_before, pct_missing, n_na_after))
   }
 
+  # -- Step 4.6: Build post-imputation backend (be_imputed) ------------------
+  # After call-rate filter + MAF filter + imputation, geno_mat is fully clean.
+  # We wrap it in a backend so all downstream steps (LD detection, haplotype
+  # extraction) use read_chunk() against the SAME filtered/imputed data.
+  # This eliminates the SNP-index mismatch between be (raw) and geno_mat.
+  .ldx_log("Building imputed backend (", nrow(geno_mat), " ind x ",
+           ncol(geno_mat), " SNPs) ...")
+  be_imputed <- .make_imputed_backend(
+    geno_mat       = geno_mat,
+    snp_info       = snp_info_filtered,
+    sample_ids     = be$sample_ids,
+    use_bigmemory  = use_bigmemory,
+    bigmemory_path = bigmemory_path,
+    bigmemory_type = bigmemory_type,
+    verbose        = verbose
+  )
+  .ldx_log("Imputed backend: ", be_imputed$type, " | ",
+           be_imputed$n_samples, " ind | ", be_imputed$n_snps, " SNPs")
+
   # -- Step 5: Genome-wide LD block detection ---------------------------------
   .ldx_log("Running genome-wide LD block detection ...")
   blocks <- run_Big_LD_all_chr(
-    geno_matrix        = geno_mat,
-    snp_info           = be$snp_info,
+    geno_matrix        = be_imputed,
+    snp_info           = be_imputed$snp_info,
     method             = method,
     kin_method         = kin_method,
     CLQcut             = CLQcut,
@@ -743,15 +832,15 @@ run_ldx_pipeline <- function(
   .ldx_log("Block table written: ", out_blocks)
 
   # -- Step 6: Haplotype extraction -------------------------------------------
-  # extract_haplotypes() uses build_hap_strings_cpp() (C++) internally,
-  # replacing an R vapply() loop. ~20-50x faster for large panels.
+  # Use be_imputed (not be or geno_mat): its columns are aligned with
+  # snp_info_filtered and contain the imputed values. The streaming backend
+  # path in extract_haplotypes() does read_chunk(geno, chr_idx) which must
+  # see the same SNP order as snp_info -- that is only guaranteed with
+  # be_imputed after filtering and imputation.
   .ldx_log("Extracting haplotypes (min_snps = ", min_snps_block, ") ...")
-  # Pass the backend (be) not geno_mat so extract_haplotypes() uses
-  # the chromosome-wise streaming path. This avoids repeated O(n_snps)
-  # scans of the full 2.96M SNP metadata for each of the 291k blocks.
   haplotypes <- extract_haplotypes(
-    geno     = be,
-    snp_info = be$snp_info,
+    geno     = be_imputed,
+    snp_info = be_imputed$snp_info,
     blocks   = blocks,
     chr      = NULL,
     min_snps = min_snps_block
@@ -769,45 +858,49 @@ run_ldx_pipeline <- function(
   write_haplotype_diversity(
     diversity,
     out_diversity,
-    append_summary = TRUE,   # adds genome-wide mean row at the bottom
+    append_summary = TRUE,
     verbose        = FALSE
   )
   .ldx_log("Diversity table written: ", out_diversity)
 
   # -- Step 8: Build haplotype genotype matrix --------------------------------
+  # build_haplotype_feature_matrix() now returns list(matrix, info).
+  # info contains exact per-column metadata (hap_id, CHR, start_bp, end_bp,
+  # n_snps, hap_string, frequency) computed during matrix construction --
+  # not reconstructed afterwards. This is the authoritative metadata source.
   .ldx_log("Building haplotype feature matrix (top_n = ", top_n,
            ", min_freq = ", min_freq, ") ...")
-  hap_matrix <- build_haplotype_feature_matrix(
+  feat_out <- build_haplotype_feature_matrix(
     haplotypes     = haplotypes,
     top_n          = top_n,
     min_freq       = min_freq,
     scale_features = scale_hap_matrix
   )
+  hap_matrix <- feat_out$matrix
+  hap_info   <- feat_out$info
   n_hap_cols <- ncol(hap_matrix)
   .ldx_log("Haplotype matrix: ", nrow(hap_matrix), " individuals x ",
            n_hap_cols, " haplotype allele columns")
 
   # -- Step 9: Write haplotype genotype matrix --------------------------------
-  # Both formats: rows = haplotype alleles, cols = individuals.
-  # Metadata columns: hap_id, CHR, start_bp, end_bp, n_snps, alleles, frequency.
   .ldx_log("Writing haplotype matrix (format = ", hap_format, ") ...")
 
   if (identical(hap_format, "numeric")) {
-    # Numeric: individual cells = 0/1/2/NA dosage
-    # write_haplotype_numeric() handles transposition and metadata internally
+    # Pass hap_info so the writer uses exact builder metadata directly --
+    # no reverse-reconstruction of alleles/frequency from raw haplotypes.
     write_haplotype_numeric(
       hap_matrix = hap_matrix,
       out_file   = out_hap_matrix,
       haplotypes = haplotypes,
-      snp_info   = be$snp_info,
+      snp_info   = be_imputed$snp_info,
+      hap_info   = hap_info,
       sep        = "\t",
       verbose    = verbose
     )
   } else {
-    # Character: individual cells = nucleotide sequence or "-" or "."
     write_haplotype_character(
       haplotypes = haplotypes,
-      snp_info   = be$snp_info,
+      snp_info   = be_imputed$snp_info,
       out_file   = out_hap_matrix,
       min_freq   = min_freq,
       top_n      = top_n,
@@ -824,16 +917,14 @@ run_ldx_pipeline <- function(
   .ldx_log("  Haplotype columns:   ", n_hap_cols)
   .ldx_log("  Individuals:         ", nrow(hap_matrix))
 
-  # res$hap_matrix: always return the numeric dosage matrix (individuals x
-  # haplotype alleles) regardless of hap_format, so downstream R code can
-  # use it directly for modelling. The file on disk matches hap_format.
   invisible(list(
     blocks            = blocks,
     diversity         = diversity,
-    hap_matrix        = hap_matrix,          # individuals x haplotype allele columns
-    haplotypes        = haplotypes,           # raw dosage strings per block
-    geno_matrix       = geno_mat,            # individuals x SNPs (MAF-filtered)
-    snp_info_filtered = be$snp_info,
+    hap_matrix        = hap_matrix,      # individuals x haplotype allele columns
+    hap_matrix_info   = hap_info,        # exact per-column metadata from builder
+    haplotypes        = haplotypes,      # raw dosage strings per block
+    geno_matrix       = geno_mat,        # individuals x SNPs (filtered + imputed)
+    snp_info_filtered = be_imputed$snp_info,
     n_blocks          = nrow(blocks),
     n_hap_columns     = n_hap_cols
   ))

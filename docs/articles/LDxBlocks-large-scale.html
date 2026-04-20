@@ -592,7 +592,7 @@ avoid loading the full genome matrix:</p>
 <span><span class="co"># Feature matrix and output (haps is a list of strings, always small in RAM)</span></span>
 <span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>,</span>
 <span>                                        encoding <span class="op">=</span> <span class="st">"additive_012"</span>,</span>
-<span>                                        scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>                                        scale_features <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">matrix</span></span>
 <span><span class="fu"><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric</a></span><span class="op">(</span><span class="va">feat</span>, <span class="st">"haplotype_matrix_dosage.csv"</span>,</span>
 <span>                         haplotypes <span class="op">=</span> <span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/write_haplotype_character.html">write_haplotype_character</a></span><span class="op">(</span>haplotypes <span class="op">=</span> <span class="va">haps</span>, snp_info <span class="op">=</span> <span class="va">be</span><span class="op">$</span><span class="va">snp_info</span>,</span>

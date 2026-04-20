@@ -32,7 +32,7 @@ Residual error.
 
 Implementation and scaling:
 The GRM is inverted once per trait via rrBLUP::mixed.solve() (dominant
-cost, O(n³)). Per-allele tests on the de-regressed residuals are then fully
+cost, O(n^3)). Per-allele tests on the de-regressed residuals are then fully
 vectorised across all blocks simultaneously using a single
 crossprod() call (O(n x p), analogous to the BLAS DGEMV trick in
 marginal SNP screening). For 5,000 individuals and 51,000 haplotype allele
@@ -70,7 +70,7 @@ Residual error.
 
 Implementation and scaling:
 The GRM is inverted once per trait via rrBLUP::mixed.solve() (dominant
-cost, O(n³)). Per-allele tests on the de-regressed residuals are then fully
+cost, O(n^3)). Per-allele tests on the de-regressed residuals are then fully
 vectorised across all blocks simultaneously using a single
 crossprod() call (O(n x p), analogous to the BLAS DGEMV trick in
 marginal SNP screening). For 5,000 individuals and 51,000 haplotype allele
@@ -156,7 +156,7 @@ kinship are corrected jointly through a unified mixed linear model.</p>
 
 </dl><p><strong>Implementation and scaling:</strong>
 The GRM is inverted once per trait via <code><a href="https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html" class="external-link">rrBLUP::mixed.solve()</a></code> (dominant
-cost, O(n³)). Per-allele tests on the de-regressed residuals are then fully
+cost, O(n^3)). Per-allele tests on the de-regressed residuals are then fully
 vectorised across all blocks simultaneously using a single
 <code><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">crossprod()</a></code> call (O(n x p), analogous to the BLAS DGEMV trick in
 marginal SNP screening). For 5,000 individuals and 51,000 haplotype allele

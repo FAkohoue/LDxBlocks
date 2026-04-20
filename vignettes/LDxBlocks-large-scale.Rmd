@@ -405,7 +405,7 @@ div  <- compute_haplotype_diversity(haps)
 # Feature matrix and output (haps is a list of strings, always small in RAM)
 feat <- build_haplotype_feature_matrix(haps,
                                         encoding = "additive_012",
-                                        scale_features = TRUE)
+                                        scale_features = TRUE)$matrix
 write_haplotype_numeric(feat, "haplotype_matrix_dosage.csv",
                          haplotypes = haps, snp_info = be$snp_info)
 write_haplotype_character(haplotypes = haps, snp_info = be$snp_info,

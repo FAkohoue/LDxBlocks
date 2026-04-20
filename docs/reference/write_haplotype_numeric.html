@@ -72,6 +72,7 @@ columns. Individual cells contain 0/1/2/NA dosage values.</p>
 <span>  <span class="va">out_file</span>,</span>
 <span>  haplotypes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  snp_info <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  hap_info <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sep <span class="op">=</span> <span class="st">"\t"</span>,</span>
 <span>  na_str <span class="op">=</span> <span class="st">"NA"</span>,</span>
 <span>  min_freq <span class="op">=</span> <span class="fl">0.01</span>,</span>
@@ -102,6 +103,18 @@ metadata columns are populated.</p></dd>
 <dt id="arg-snp-info">snp_info<a class="anchor" aria-label="anchor" href="#arg-snp-info"></a></dt>
 <dd><p>Data frame with <code>CHR</code>, <code>POS</code>, <code>REF</code>,
 <code>ALT</code>. Required for <code>alleles</code> column.</p></dd>
+
+
+<dt id="arg-hap-info">hap_info<a class="anchor" aria-label="anchor" href="#arg-hap-info"></a></dt>
+<dd><p>Data frame of exact per-column metadata from
+<code><a href="build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a>()\$info</code>. When supplied,
+the <code>alleles</code>, <code>frequency</code>, <code>n_snps</code>, <code>CHR</code>,
+<code>start_bp</code>, and <code>end_bp</code> columns are written directly from
+this object without any reconstruction. Recommended - pass
+<code>hap_info = feat_out\$info</code> where <code>feat_out</code> is the return
+value of <code><a href="build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>. Default <code>NULL</code>
+(falls back to legacy reconstruction from <code>haplotypes</code> and
+<code>snp_info</code>).</p></dd>
 
 
 <dt id="arg-sep">sep<a class="anchor" aria-label="anchor" href="#arg-sep"></a></dt>

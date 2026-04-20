@@ -223,6 +223,11 @@ extract_haplotypes <- function(geno, snp_info, blocks,
       n_ret <- cpp_res$n_retained
       if (n_ret > 0L) {
         for (b in seq_len(n_ret)) {
+          # Hard guard: reject blocks where C++ reports n_snps < min_snps.
+          # Second barrier against misalignment or edge cases even if the
+          # C++ min_snps filter already ran.
+          if (is.na(cpp_res$n_snps[b]) || cpp_res$n_snps[b] < min_snps) next
+
           blk  <- chr_blk_srt[b, , drop=FALSE]
           sb   <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
           bid  <- paste0("block_",cb,"_",sb,"_",eb)
@@ -656,73 +661,122 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
                                            missing_string=".", scale_features=FALSE,
                                            min_freq=0.01) {
   encoding <- match.arg(encoding)
-  # "presence_02" is a legacy alias accepted for backward compatibility
   if (identical(encoding, "presence_02")) encoding <- "presence_01"
-  bi       <- attr(haplotypes,"block_info")
-  inames   <- names(haplotypes[[1L]])
-  mats     <- vector("list",length(haplotypes))
+
+  bi        <- attr(haplotypes, "block_info")
+  inames    <- names(haplotypes[[1L]])
+  mats      <- vector("list", length(haplotypes))
+  info_rows <- list()
+  info_i    <- 0L
+
   for (bk in seq_along(haplotypes)) {
-    bn <- names(haplotypes)[bk]; hap <- haplotypes[[bn]]
-    phased <- isTRUE(bi$phased[bi$block_id==bn][1L])
+    bn  <- names(haplotypes)[bk]
+    hap <- haplotypes[[bk]]
+
+    brow   <- if (!is.null(bi)) bi[bi$block_id == bn, , drop = FALSE] else data.frame()
+    phased <- isTRUE(brow$phased[1L])
+
     if (phased) {
-      parts <- strsplit(hap,"|",fixed=TRUE)
-      g1 <- vapply(parts,`[`,character(1L),1L); g2 <- vapply(parts,`[`,character(1L),2L)
-      miss <- grepl(missing_string,g1,fixed=TRUE)|grepl(missing_string,g2,fixed=TRUE)
-      gam  <- c(g1[!grepl(missing_string,g1,fixed=TRUE)],g2[!grepl(missing_string,g2,fixed=TRUE)])
+      parts <- strsplit(hap, "|", fixed = TRUE)
+      g1 <- vapply(parts, `[`, character(1L), 1L)
+      g2 <- vapply(parts, `[`, character(1L), 2L)
+      miss <- grepl(missing_string, g1, fixed = TRUE) |
+        grepl(missing_string, g2, fixed = TRUE)
+      gam  <- c(g1[!grepl(missing_string, g1, fixed = TRUE)],
+                g2[!grepl(missing_string, g2, fixed = TRUE)])
     } else {
-      # An individual is only NA if their entire string was missing.
-      miss <- !nzchar(gsub(missing_string, "", hap, fixed=TRUE))
-      gam <- hap[!miss]
+      miss <- !nzchar(gsub(missing_string, "", hap, fixed = TRUE))
+      gam  <- hap[!miss]
     }
-    tbl <- sort(table(gam),decreasing=TRUE); fv <- as.numeric(tbl)/sum(tbl)
+
+    if (!length(gam)) { mats[[bk]] <- NULL; next }
+
+    tbl  <- sort(table(gam), decreasing = TRUE)
+    fv   <- as.numeric(tbl) / sum(tbl)
     tbl  <- tbl[fv >= min_freq]
-    tops <- if (is.null(top_n)) names(tbl) else names(tbl)[seq_len(min(as.integer(top_n), length(tbl)))]
-    if (!length(tops)){mats[[bk]]<-NULL;next}
-    mat <- matrix(NA_real_,nrow=length(inames),ncol=length(tops),
-                  dimnames=list(inames,paste0(bn,"__hap",seq_along(tops))))
+    fv   <- fv[fv >= min_freq]
+    tops <- if (is.null(top_n)) names(tbl) else
+      names(tbl)[seq_len(min(as.integer(top_n), length(tbl)))]
+    if (!length(tops)) { mats[[bk]] <- NULL; next }
+
+    mat <- matrix(NA_real_, nrow = length(inames), ncol = length(tops),
+                  dimnames = list(inames, paste0(bn, "__hap", seq_along(tops))))
+
     for (j in seq_along(tops)) {
       ref <- tops[j]
-      # Dosage encoding:
-      # additive_012 + phased:   0/1/2/NA  (gamete 1 + gamete 2 copy counts)
-      # additive_012 + unphased: 0/1/NA    (1 = present, 0 = absent)
-      # presence_01  + phased:   0/1/NA    (present on either gamete)
-      # presence_01  + unphased: 0/1/NA    (present = exact string match)
-      # Using 2 for unphased presence would falsely imply homozygosity
-      # which cannot be inferred from unphased data.
-      d <- if (identical(encoding, "additive_012")) {
-        if (phased) ifelse(miss, NA_real_, (g1==ref)*1L + (g2==ref)*1L)
-        else        ifelse(miss, NA_real_, ifelse(hap==ref, 1L, 0L))
-      } else {  # presence_01
-        if (phased) ifelse(miss, NA_real_, ifelse(g1==ref | g2==ref, 1L, 0L))
-        else        ifelse(miss, NA_real_, ifelse(hap==ref, 1L, 0L))
+      if (phased) {
+        parts <- strsplit(hap, "|", fixed = TRUE)
+        g1 <- vapply(parts, `[`, character(1L), 1L)
+        g2 <- vapply(parts, `[`, character(1L), 2L)
+        miss <- grepl(missing_string, g1, fixed = TRUE) |
+          grepl(missing_string, g2, fixed = TRUE)
+        if (identical(encoding, "additive_012")) {
+          mat[, j] <- ifelse(miss, NA_real_,
+                             as.numeric(g1 == ref) + as.numeric(g2 == ref))
+        } else {
+          mat[, j] <- ifelse(miss, NA_real_,
+                             as.numeric((g1 == ref) | (g2 == ref)))
+        }
+      } else {
+        miss <- !nzchar(gsub(missing_string, "", hap, fixed = TRUE))
+        mat[, j] <- ifelse(miss, NA_real_, as.numeric(hap == ref))
       }
-      mat[,j] <- d
+
+      # Accumulate exact per-column metadata while we have the information.
+      # This is the only place where the retained hap_string, rank, and
+      # frequency are all known simultaneously. The writer uses this
+      # directly -- no reconstruction needed later.
+      info_i <- info_i + 1L
+      info_rows[[info_i]] <- data.frame(
+        hap_id     = colnames(mat)[j],
+        block_id   = bn,
+        CHR        = if (nrow(brow)) brow$CHR[1L]        else NA_character_,
+        start_bp   = if (nrow(brow)) as.integer(brow$start_bp[1L]) else NA_integer_,
+        end_bp     = if (nrow(brow)) as.integer(brow$end_bp[1L])   else NA_integer_,
+        n_snps     = if (nrow(brow)) as.integer(brow$n_snps[1L])   else NA_integer_,
+        hap_rank   = j,
+        hap_string = ref,
+        frequency  = round(as.numeric(tbl[ref]) / sum(tbl), 4),
+        phased     = phased,
+        stringsAsFactors = FALSE
+      )
     }
     mats[[bk]] <- mat
   }
-  mats <- Filter(Negate(is.null),mats)
-  if (!length(mats)) stop("No columns produced. Lower min_freq.",call.=FALSE)
-  feat <- do.call(cbind,mats)
-  if (scale_features) { feat <- scale(feat); feat[is.nan(feat)] <- 0 }
 
-  # Diagnostic: warn if total predictor count is too low or high.
-  # Difabachew et al. (2023) show < 500 total haplotype predictors
-  # collapses genomic prediction accuracy relative to single-SNP baseline.
-  # Weber et al. (2023) show very large blocks lose relationship information.
-  n_pred <- ncol(feat)
-  n_blks <- length(mats)
-  # Only warn when the dataset is large enough that 500 columns is achievable
-  # (requires >= 20 blocks at 25 alleles each). On small example datasets
-  # (< 20 blocks) the threshold cannot be reached regardless of parameters,
-  # so the advice is not actionable and the warning would just be noise.
+  mats <- Filter(Negate(is.null), mats)
+
+  # Build info data frame (empty case handled explicitly)
+  info_empty <- data.frame(
+    hap_id=character(), block_id=character(), CHR=character(),
+    start_bp=integer(), end_bp=integer(), n_snps=integer(),
+    hap_rank=integer(), hap_string=character(), frequency=numeric(),
+    phased=logical(), stringsAsFactors=FALSE)
+
+  if (!length(mats)) {
+    out <- matrix(NA_real_, nrow=length(inames), ncol=0L,
+                  dimnames=list(inames, character(0)))
+    return(list(matrix=out, info=info_empty))
+  }
+
+  out <- do.call(cbind, mats)
+  if (scale_features && ncol(out) > 0L) { out <- scale(out); out[is.nan(out)] <- 0 }
+
+  n_pred <- ncol(out); n_blks <- length(mats)
   if (n_pred < 500L && n_blks >= 20L)
-    warning(
-      "build_haplotype_feature_matrix: only ", n_pred, " predictor columns ",
-      "from ", n_blks, " blocks. Difabachew et al. (2023) show that < 500 ",
-      "haplotype predictors reduce genomic prediction accuracy below the ",
-      "single-SNP baseline. Consider lowering CLQcut or min_freq.",
-      call. = FALSE)
-  feat
+    warning("build_haplotype_feature_matrix: only ", n_pred,
+            " predictor columns from ", n_blks,
+            " blocks. Difabachew et al. (2023) show that < 500 haplotype ",
+            "predictors reduce genomic prediction accuracy below the ",
+            "single-SNP baseline. Consider lowering CLQcut or min_freq.",
+            call. = FALSE)
+
+  info <- if (info_i > 0L)
+    as.data.frame(data.table::rbindlist(info_rows[seq_len(info_i)],
+                                        use.names = TRUE, fill = TRUE))
+  else info_empty
+
+  list(matrix = out, info = info)
 }
 
 
@@ -769,7 +823,7 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
 #' @examples
 #' data(ldx_geno, ldx_snp_info, ldx_blocks, package = "LDxBlocks")
 #' haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3)
-#' feat <- build_haplotype_feature_matrix(haps, top_n = 5)
+#' feat <- build_haplotype_feature_matrix(haps, top_n = 5)$matrix
 #' G    <- compute_haplotype_grm(feat)
 #' dim(G)
 #' round(range(diag(G)), 3)  # diagonal ~= 1 for typical populations
@@ -976,6 +1030,15 @@ write_haplotype_character <- function(haplotypes, snp_info, out_file,
 #'   \code{ALT}. Required for \code{alleles} column.
 #' @param sep        Field separator. Default \code{","}.
 #' @param na_str     NA string. Default \code{"NA"}.
+#' @param hap_info   Data frame of exact per-column metadata from
+#'   \code{\link{build_haplotype_feature_matrix}()\$info}. When supplied,
+#'   the \code{alleles}, \code{frequency}, \code{n_snps}, \code{CHR},
+#'   \code{start_bp}, and \code{end_bp} columns are written directly from
+#'   this object without any reconstruction. Recommended - pass
+#'   \code{hap_info = feat_out\$info} where \code{feat_out} is the return
+#'   value of \code{build_haplotype_feature_matrix()}. Default \code{NULL}
+#'   (falls back to legacy reconstruction from \code{haplotypes} and
+#'   \code{snp_info}).
 #' @param min_freq   Minimum frequency used when computing \code{alleles}.
 #'   Default \code{0.01}.
 #' @param missing_string Missing genotype marker. Default \code{"."}.
@@ -983,140 +1046,149 @@ write_haplotype_character <- function(haplotypes, snp_info, out_file,
 #' @return Invisibly returns \code{out_file}.
 #' @export
 write_haplotype_numeric <- function(hap_matrix, out_file,
-                                    haplotypes = NULL,
-                                    snp_info   = NULL,
-                                    sep        = "\t",
-                                    na_str     = "NA",
-                                    min_freq   = 0.01,
+                                    haplotypes     = NULL,
+                                    snp_info       = NULL,
+                                    hap_info       = NULL,
+                                    sep            = "\t",
+                                    na_str         = "NA",
+                                    min_freq       = 0.01,
                                     missing_string = ".",
-                                    verbose    = TRUE) {
+                                    verbose        = TRUE) {
   # Output orientation: haplotype alleles as ROWS, individuals as COLUMNS.
-  #
   # Metadata columns (before individual columns):
-  #   hap_id        - haplotype allele identifier
-  #   CHR           - chromosome
-  #   start_bp      - block start position (bp)
-  #   end_bp        - block end position (bp)
-  #   n_snps        - number of SNPs in the block
-  #   alleles       - nucleotide sequence of this specific haplotype allele,
-  #                   decoded from the dosage string using SNP REF/ALT.
-  #                   Unphased: gametic sequence (e.g. "AGTTA" for 5 SNPs).
-  #                   Phased: gametic sequence of one strand (haploid).
-  #                   Dosage = 2: both gametes carry this allele (unphased: present).
-  #                   Dosage = 1: one gamete carries it (phased data only).
-  #                   Dosage = 0: neither gamete carries this allele.
-  #   frequency     - observed frequency in the panel
+  #   hap_id, CHR, start_bp, end_bp, n_snps, alleles, frequency
   #
-  # Individual columns:
-  #   Unphased: 0 = does not carry this allele, 2 = carries it, NA = missing.
-  #   Phased:   0 = neither gamete carries it, 1 = one gamete carries it,
-  #             2 = both gametes carry it, NA = missing.
+  # hap_info (from build_haplotype_feature_matrix()$info) is the authoritative
+  # metadata source. When supplied, no reconstruction is performed. This fixes
+  # the alleles/frequency inconsistency that occurred when the writer tried to
+  # reverse-engineer metadata from the raw haplotypes list.
 
-  nhap    <- ncol(hap_matrix)
   hnm     <- colnames(hap_matrix)
   ind_ids <- rownames(hap_matrix)
-  if (is.null(hnm))     hnm     <- paste0("hap", seq_len(nhap))
+  if (is.null(hnm))     hnm     <- paste0("hap", seq_len(ncol(hap_matrix)))
   if (is.null(ind_ids)) ind_ids <- paste0("Ind", seq_len(nrow(hap_matrix)))
+  nhap <- length(hnm)
 
-  # Parse CHR, start_bp, end_bp from column names:
-  # block_{CHR}_{start_bp}_{end_bp}__{hapN}
-  parts    <- strsplit(hnm, "_", fixed = TRUE)
-  chr_col  <- vapply(parts, function(x) if (length(x)>=2L) x[2L] else "NA", character(1L))
-  spos_col <- suppressWarnings(
-    as.integer(vapply(parts, function(x) if (length(x)>=3L) x[3L] else "0", character(1L))))
-  epos_col <- suppressWarnings(
-    as.integer(vapply(parts, function(x) if (length(x)>=4L) x[4L] else "0", character(1L))))
-  spos_col[is.na(spos_col)] <- 0L
-  epos_col[is.na(epos_col)] <- 0L
+  # -- Metadata: use hap_info when available (authoritative path) ------------
+  if (!is.null(hap_info)) {
+    hap_info  <- as.data.frame(hap_info, stringsAsFactors = FALSE)
+    idx       <- match(hnm, hap_info$hap_id)
 
-  # block_info for n_snps
-  bi <- if (!is.null(haplotypes)) attr(haplotypes, "block_info") else NULL
+    chr_col    <- hap_info$CHR[idx]
+    spos_col   <- hap_info$start_bp[idx]
+    epos_col   <- hap_info$end_bp[idx]
+    n_snps_col <- hap_info$n_snps[idx]
+    freq_col   <- round(hap_info$frequency[idx], 4)
 
-  # Nucleotide decoder: converts a dosage string to a nucleotide sequence.
-  # Works for both unphased ("02110") and phased gametic strings ("0110")
-  # because extract_haplotypes() already splits phased strings into individual
-  # gametes before tabling frequencies. So tops[] always contains single-strand
-  # gametic dosage strings regardless of phasing.
-  # "0" -> REF, "2" -> ALT, "1" -> IUPAC ambiguity code (het, phased only), "." -> N
-  decode_str <- function(dstr, ref_v, alt_v) {
-    chars <- strsplit(dstr, "", fixed = TRUE)[[1L]]
-    n     <- min(length(chars), length(ref_v))
+    # Decode dosage strings to nucleotide sequences using snp_info REF/ALT.
+    # hap_info$hap_string holds the raw dosage string (e.g. "0210").
+    # decode_haplotype_strings() converts it to nucleotide sequence ("AGTA").
+    # If snp_info is unavailable, fall back to the raw dosage string.
+    if (!is.null(snp_info) && !is.null(haplotypes)) {
+      dec <- tryCatch(
+        decode_haplotype_strings(haplotypes, snp_info, min_freq = 0, top_n = NULL),
+        error = function(e) NULL
+      )
+      if (!is.null(dec) && nrow(dec) > 0L) {
+        dec_map     <- stats::setNames(dec$nucleotide_sequence, dec$hap_id)
+        alt_seq_col <- unname(dec_map[hnm])
+        # Fall back to raw dosage string where decode failed
+        missing_dec <- is.na(alt_seq_col)
+        if (any(missing_dec))
+          alt_seq_col[missing_dec] <- hap_info$hap_string[idx][missing_dec]
+      } else {
+        alt_seq_col <- hap_info$hap_string[idx]
+      }
+    } else {
+      alt_seq_col <- hap_info$hap_string[idx]
+    }
+
+  } else {
+    # -- Fallback: reconstruct from column names (legacy path) ---------------
+    # Used when hap_info is not supplied (e.g. direct call without pipeline).
+    # NOTE: this path can produce wrong alleles/frequency for multi-SNP blocks
+    # where multiple SNPs share the same bp coordinate. Prefer supplying hap_info.
+    parts    <- strsplit(hnm, "_", fixed = TRUE)
+    chr_col  <- vapply(parts, function(x) if (length(x)>=2L) x[2L] else "NA", character(1L))
+    spos_col <- suppressWarnings(
+      as.integer(vapply(parts, function(x) if (length(x)>=3L) x[3L] else "0", character(1L))))
+    epos_col <- suppressWarnings(
+      as.integer(vapply(parts, function(x) if (length(x)>=4L) x[4L] else "0", character(1L))))
+    spos_col[is.na(spos_col)] <- 0L
+    epos_col[is.na(epos_col)] <- 0L
+
+    bi         <- if (!is.null(haplotypes)) attr(haplotypes, "block_info") else NULL
+    alt_seq_col <- rep(NA_character_, nhap)
+    freq_col    <- rep(NA_real_, nhap)
+    n_snps_col  <- rep(NA_integer_, nhap)
+
     iupac <- c(AG="R",GA="R",CT="Y",TC="Y",GC="S",CG="S",
                AT="W",TA="W",GT="K",TG="K",AC="M",CA="M")
-    paste(vapply(seq_len(n), function(i) {
-      switch(chars[i], "0"=ref_v[i], "2"=alt_v[i],
-             "1"={ key <- paste0(ref_v[i],alt_v[i])
-             if (!is.na(iupac[key])) unname(iupac[key]) else "N" },
-             "N")
-    }, character(1L)), collapse="")
-  }
+    decode_str <- function(dstr, ref_v, alt_v) {
+      chars <- strsplit(dstr, "", fixed=TRUE)[[1L]]
+      n     <- min(length(chars), length(ref_v))
+      paste(vapply(seq_len(n), function(i) {
+        switch(chars[i], "0"=ref_v[i], "2"=alt_v[i],
+               "1"={ key <- paste0(ref_v[i],alt_v[i])
+               if (!is.na(iupac[key])) unname(iupac[key]) else "N" }, "N")
+      }, character(1L)), collapse="")
+    }
 
-  # Compute metadata per haplotype allele
-  alt_seq_col  <- rep(NA_character_, nhap)
-  freq_col     <- rep(NA_real_, nhap)
-  n_snps_col   <- rep(NA_integer_, nhap)
-
-  if (!is.null(haplotypes) && !is.null(snp_info) &&
-      all(c("CHR","POS","REF","ALT") %in% names(snp_info))) {
-    snp_info$CHR <- .norm_chr_hap(snp_info$CHR)
-    for (j in seq_len(nhap)) {
-      bn <- sub("__hap[0-9]+$", "", hnm[j])
-      hap_rank <- suppressWarnings(as.integer(sub(".*__hap","",hnm[j])))
-      if (is.na(hap_rank)) next
-
-      hap_strs <- haplotypes[[bn]]
-      if (is.null(hap_strs)) next
-
-      # Block SNPs
-      blk_snps <- snp_info[snp_info$CHR == chr_col[j] &
-                             snp_info$POS >= spos_col[j] &
-                             snp_info$POS <= epos_col[j], , drop=FALSE]
-      blk_snps <- blk_snps[order(blk_snps$POS), ]
-      if (!nrow(blk_snps)) next
-
-      ref_v <- as.character(blk_snps$REF)
-      alt_v <- as.character(blk_snps$ALT)
-      n_snps_col[j] <- nrow(blk_snps)
-
-      # Frequency table of this block
-      miss <- grepl(missing_string, hap_strs, fixed=TRUE)
-      gam  <- hap_strs[!miss]
-      if (!length(gam)) next
-      tbl  <- sort(table(gam), decreasing=TRUE)
-      fv   <- as.numeric(tbl)/sum(tbl)
-      tbl  <- tbl[fv >= min_freq]
-      tops <- names(tbl)
-
-      # This specific haplotype allele (ALT sequence)
-      if (hap_rank <= length(tops)) {
-        alt_hapstr     <- tops[hap_rank]
-        alt_seq_col[j] <- decode_str(alt_hapstr, ref_v, alt_v)  # stored as "alleles" column
-        freq_col[j]    <- round(as.numeric(tbl[hap_rank])/sum(tbl), 4)
+    if (!is.null(haplotypes) && !is.null(snp_info) &&
+        all(c("CHR","POS","REF","ALT") %in% names(snp_info))) {
+      snp_info$CHR <- sub("^chr","",as.character(snp_info$CHR),ignore.case=TRUE)
+      for (j in seq_len(nhap)) {
+        bn       <- sub("__hap[0-9]+$","",hnm[j])
+        hap_rank <- suppressWarnings(as.integer(sub(".*__hap","",hnm[j])))
+        if (is.na(hap_rank)) next
+        hap_strs <- haplotypes[[bn]]; if (is.null(hap_strs)) next
+        blk_snps <- snp_info[snp_info$CHR==chr_col[j] &
+                               snp_info$POS>=spos_col[j] &
+                               snp_info$POS<=epos_col[j],,drop=FALSE]
+        blk_snps <- blk_snps[order(blk_snps$POS),]
+        # Use block_info n_snps as authoritative count
+        if (!is.null(bi)) {
+          brow <- bi[bi$block_id==bn,,drop=FALSE]
+          if (nrow(brow)) n_snps_col[j] <- brow$n_snps[1L]
+        }
+        if (!nrow(blk_snps)) next
+        if (is.na(n_snps_col[j])) n_snps_col[j] <- nrow(blk_snps)
+        ref_v <- as.character(blk_snps$REF); alt_v <- as.character(blk_snps$ALT)
+        miss  <- grepl(".",hap_strs,fixed=TRUE)
+        gam   <- hap_strs[!miss]; if (!length(gam)) next
+        tbl   <- sort(table(gam),decreasing=TRUE)
+        fv    <- as.numeric(tbl)/sum(tbl); tbl <- tbl[fv>=min_freq]
+        tops  <- names(tbl)
+        if (hap_rank<=length(tops)) {
+          alt_hapstr <- tops[hap_rank]
+          # Guard against truncated decode when multiple SNPs share same bp
+          if (length(ref_v) >= nchar(alt_hapstr))
+            alt_seq_col[j] <- decode_str(alt_hapstr, ref_v, alt_v)
+          freq_col[j] <- round(as.numeric(tbl[hap_rank])/sum(tbl), 4)
+        }
+      }
+    }
+    # Fill remaining n_snps from block_info
+    if (!is.null(bi)) {
+      for (j in seq_len(nhap)) {
+        if (!is.na(n_snps_col[j])) next
+        bn   <- sub("__hap[0-9]+$","",hnm[j])
+        brow <- bi[bi$block_id==bn,,drop=FALSE]
+        if (nrow(brow)) n_snps_col[j] <- brow$n_snps[1L]
       }
     }
   }
 
-  # Block n_snps from block_info if not computed above
-  if (!is.null(bi)) {
-    for (j in seq_len(nhap)) {
-      if (!is.na(n_snps_col[j])) next
-      bn <- sub("__hap[0-9]+$", "", hnm[j])
-      brow <- bi[bi$block_id == bn, , drop=FALSE]
-      if (nrow(brow)) n_snps_col[j] <- brow$n_snps[1L]
-    }
-  }
-
-  # Transpose dosage matrix: haplotypes as rows
+  # Transpose: haplotypes as rows, individuals as columns
   t_mat <- t(hap_matrix)
-
   out <- data.frame(
-    hap_id       = hnm,
-    CHR          = chr_col,
-    start_bp     = spos_col,
-    end_bp       = epos_col,
-    n_snps       = n_snps_col,
-    alleles      = alt_seq_col,
-    frequency    = freq_col,
+    hap_id    = hnm,
+    CHR       = chr_col,
+    start_bp  = spos_col,
+    end_bp    = epos_col,
+    n_snps    = n_snps_col,
+    alleles   = alt_seq_col,
+    frequency = freq_col,
     as.data.frame(t_mat, check.names=FALSE),
     check.names=FALSE, stringsAsFactors=FALSE, row.names=NULL
   )
@@ -1125,6 +1197,7 @@ write_haplotype_numeric <- function(hap_matrix, out_file,
                        " (", nhap, " haplotypes x ", length(ind_ids), " individuals)")
   invisible(out_file)
 }
+
 
 #' Decode Haplotype Strings to Nucleotide Sequences
 #'
@@ -1645,7 +1718,7 @@ compute_local_gebv <- function(geno_matrix, snp_info, blocks,
 #' @examples
 #' \dontrun{
 #' # After building haplotype feature matrix:
-#' feat  <- build_haplotype_feature_matrix(haps, top_n = 5)
+#' feat  <- build_haplotype_feature_matrix(haps, top_n = 5)$matrix
 #' pheno <- read.csv("phenotypes.csv")   # columns: id, YLD, PHT, ...
 #'
 #' inp <- prepare_gblup_inputs(feat, pheno, id_col = "id",
@@ -1939,7 +2012,8 @@ run_haplotype_prediction <- function(geno_matrix,
 
   # -- Step 2: Feature matrix ------------------------------------------------
   .log("Building haplotype feature matrix ...")
-  feat <- build_haplotype_feature_matrix(haps, top_n = top_n, min_freq = min_freq)
+  feat_out <- build_haplotype_feature_matrix(haps, top_n = top_n, min_freq = min_freq)
+  feat <- feat_out$matrix
   .log(nrow(feat), " ind x ", ncol(feat), " haplotype allele columns")
 
   # -- Step 3: Single shared GRM ---------------------------------------------
