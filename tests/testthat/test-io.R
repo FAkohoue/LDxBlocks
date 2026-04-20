@@ -1,15 +1,15 @@
 ## tests/testthat/test-io.R
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 ## Tests for the read_geno() / read_chunk() / close_backend() I/O layer.
 ## Each format is tested by writing a minimal file to a tempfile, reading it
 ## with read_geno(), and verifying the backend's properties and read_chunk()
-## output — independent of inst/extdata so they pass even without built data.
-## ─────────────────────────────────────────────────────────────────────────────
+## output - independent of inst/extdata so they pass even without built data.
+## -----------------------------------------------------------------------------
 
 library(testthat)
 library(LDxBlocks)
 
-# ── Local helper: tiny synthetic genotype matrix ──────────────────────────────
+# -- Local helper: tiny synthetic genotype matrix ------------------------------
 # Uses smaller defaults than make_geno() from helper.R (12 x 8 vs 60 x 30)
 # to keep I/O tests fast. Local because test-io.R should be self-contained.
 make_tiny <- function(n = 12, p = 8, seed = 7L) {
@@ -20,7 +20,7 @@ make_tiny <- function(n = 12, p = 8, seed = 7L) {
   G
 }
 
-# ── Local flat-file writers ───────────────────────────────────────────────────
+# -- Local flat-file writers ---------------------------------------------------
 # These are intentionally local so test-io.R is self-contained and does not
 # depend on helper.R write_* functions, which use write.table with sep="\t".
 
@@ -82,7 +82,7 @@ write_vcf <- function(G, info, path) {
   writeLines(lines, path)
 }
 
-# ── Format: matrix ────────────────────────────────────────────────────────────
+# -- Format: matrix ------------------------------------------------------------
 
 test_that("matrix backend: n_samples, n_snps, type are correct", {
   G    <- make_tiny()
@@ -137,7 +137,7 @@ test_that("matrix backend: dimension mismatch throws error", {
   expect_error(read_geno(G, format="matrix", snp_info=info), "ncol\\(mat\\)")
 })
 
-# ── Format: numeric dosage CSV ────────────────────────────────────────────────
+# -- Format: numeric dosage CSV ------------------------------------------------
 
 test_that("numeric CSV: basic read properties", {
   G    <- make_tiny()
@@ -182,7 +182,7 @@ test_that("numeric CSV: NA values survive round-trip", {
   close_backend(be); unlink(tmp)
 })
 
-# ── Format: HapMap ────────────────────────────────────────────────────────────
+# -- Format: HapMap ------------------------------------------------------------
 
 test_that("HapMap: dosage decoding is correct for all three calls and NA", {
   G    <- matrix(c(0L,1L,2L,NA_integer_), nrow=1, ncol=4)
@@ -215,7 +215,7 @@ test_that("HapMap: backend properties match input", {
   close_backend(be); unlink(tmp)
 })
 
-# ── Format: VCF ──────────────────────────────────────────────────────────────
+# -- Format: VCF --------------------------------------------------------------
 
 test_that("VCF: unphased GT decoded correctly for all three dosages", {
   G    <- matrix(c(0L,1L,2L), nrow=1, ncol=3)
@@ -288,7 +288,7 @@ test_that("VCF: clean_malformed=TRUE removes lines with wrong field count", {
   unlink(tmp)
 })
 
-# ── GDS backend ───────────────────────────────────────────────────────────────
+# -- GDS backend ---------------------------------------------------------------
 
 test_that("GDS backend: read from SNPRelate GDS file", {
   skip_if_not_installed("SNPRelate")
@@ -313,7 +313,7 @@ test_that("GDS backend: read from SNPRelate GDS file", {
   unlink(c(tmp_vcf, tmp_gds))
 })
 
-# ── PLINK BED backend ─────────────────────────────────────────────────────────
+# -- PLINK BED backend ---------------------------------------------------------
 
 test_that("BED backend: read from PLINK BED/BIM/FAM files", {
   skip_if_not_installed("BEDMatrix")
@@ -342,7 +342,7 @@ test_that("BED backend: read from PLINK BED/BIM/FAM files", {
            paste0(tmp_bed, c(".bed",".bim",".fam"))))
 })
 
-# ── Auto-detection ────────────────────────────────────────────────────────────
+# -- Auto-detection ------------------------------------------------------------
 
 test_that("format auto-detection works for CSV, HapMap, and VCF extensions", {
   G    <- make_tiny(6L, 4L)
@@ -376,7 +376,7 @@ test_that("unknown extension without format= throws informative error", {
   unlink(tmp)
 })
 
-# ── print / summary S3 methods ────────────────────────────────────────────────
+# -- print / summary S3 methods ------------------------------------------------
 
 test_that("print.LDxBlocks_backend outputs type and dimension", {
   G    <- make_tiny()
@@ -397,7 +397,7 @@ test_that("summary.LDxBlocks_backend shows per-chromosome SNP counts", {
   close_backend(be)
 })
 
-# ── bigmemory backend ─────────────────────────────────────────────────────────
+# -- bigmemory backend ---------------------------------------------------------
 
 test_that("read_geno_bigmemory: accepts file path directly (no snp_info needed)", {
   skip_if_not_installed("bigmemory")

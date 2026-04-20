@@ -125,13 +125,13 @@ blocks <- run_Big_LD_all_chr(
   subSegmSize = 100L, verbose = FALSE
 )
 head(blocks)
-#>   start end start.rsID end.rsID start.bp end.bp CHR length_bp
-#> 1     1  25     rs1001   rs1025     1000  25027   1     24028
-#> 2    31  50     rs1031   rs1050    81064  99022   1     17959
-#> 3    56  80     rs1056   rs1080   155368 179371   1     24004
-#> 4     1  30     rs2001   rs2030     1000  30023   2     29024
-#> 5    36  55     rs2036   rs2055    86236 105290   2     19055
-#> 6    61  80     rs2061   rs2080   161515 180473   2     18959
+#>   start end start.rsID end.rsID start.bp end.bp n_snps CHR length_bp
+#> 1     1  25     rs1001   rs1025     1000  25027     25   1     24028
+#> 2    31  50     rs1031   rs1050    81064  99022     20   1     17959
+#> 3    56  80     rs1056   rs1080   155368 179371     25   1     24004
+#> 4     1  30     rs2001   rs2030     1000  30023     30   2     29024
+#> 5    36  55     rs2036   rs2055    86236 105290     20   2     19055
+#> 6    61  80     rs2061   rs2080   161515 180473     20   2     18959
 summarise_blocks(blocks)
 #>      CHR n_blocks min_bp median_bp  mean_bp max_bp total_bp_covered
 #> 1      1        3  17959     24004 21997.00  24028            65991

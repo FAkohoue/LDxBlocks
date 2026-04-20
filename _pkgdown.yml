@@ -6,6 +6,11 @@ template:
     in_header: |
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+
+authors:
+  Félicien Akohoue:
+    href: https://github.com/FAkohoue
+
 navbar:
   structure:
     left:  [intro, reference, articles, news]

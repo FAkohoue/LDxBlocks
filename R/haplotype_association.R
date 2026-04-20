@@ -342,8 +342,8 @@ test_block_haplotypes <- function(
   hap_mat <- build_haplotype_feature_matrix(
     haplotypes, top_n = top_n, min_freq = min_freq, encoding = "additive_012"
   )$matrix
-  # Column names are "blockID__hapN" - extract block ID prefix for grouping
-  col_blocks <- sub("__hap\\d+$", "", colnames(hap_mat))
+  # Column names are "blockID_hapN" - extract block ID prefix for grouping
+  col_blocks <- sub("_hap\\d+$", "", colnames(hap_mat))
 
   .log("Computing haplotype GRM ...")
   G <- compute_haplotype_grm(hap_mat)
@@ -481,7 +481,7 @@ test_block_haplotypes <- function(
       gm <- function(col, def = NA) {
         if (!is.null(blk_meta) && nrow(blk_meta)>0) blk_meta[[col]][1] else def
       }
-      allele_label <- sub(paste0("^", bn, "__hap\\d+__?"), "",
+      allele_label <- sub(paste0("^", bn, "_hap\\d+_?"), "",
                           colnames(hap_mat)[orig_ci])
       if (allele_label == "" || allele_label == colnames(hap_mat)[orig_ci])
         allele_label <- colnames(hap_mat)[orig_ci]

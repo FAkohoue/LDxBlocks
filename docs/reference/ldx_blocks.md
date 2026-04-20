@@ -16,12 +16,12 @@ ldx_blocks
 
 ## Format
 
-A `data.frame` with 9 rows and 8 columns:
+A `data.frame` with 9 rows and 9 columns:
 
 - `start`:
 
   Integer. Index of the first SNP in the block (1-based, over the full
-  230-SNP set).
+  230-SNP set including monomorphics).
 
 - `end`:
 
@@ -49,7 +49,15 @@ A `data.frame` with 9 rows and 8 columns:
 
 - `length_bp`:
 
-  Integer. `end.bp - start.bp + 1`.
+  Integer. `end.bp - start.bp + 1`. Physical span of the block in base
+  pairs.
+
+- `n_snps`:
+
+  Integer. Number of polymorphic SNPs in the block (those that passed
+  the MAF filter and were assigned to a clique). For singletons
+  `n_snps = 1`. Note that `end - start + 1` may exceed `n_snps` when
+  monomorphic SNPs fall within the block boundaries.
 
 ## Source
 
@@ -68,16 +76,16 @@ Derived analytically from the founder-haplotype simulation in
 ``` r
 data(ldx_blocks)
 ldx_blocks
-#>   start end start.rsID end.rsID start.bp end.bp CHR length_bp
-#> 1     1  25     rs1001   rs1025     1000  25027   1     24028
-#> 2    31  50     rs1031   rs1050    81064  99022   1     17959
-#> 3    56  80     rs1056   rs1080   155368 179371   1     24004
-#> 4    81 110     rs2001   rs2030     1000  30023   2     29024
-#> 5   116 135     rs2036   rs2055    86236 105290   2     19055
-#> 6   141 160     rs2061   rs2080   161515 180473   2     18959
-#> 7   161 180     rs3001   rs3020     1000  19068   3     18069
-#> 8   186 205     rs3026   rs3045    74532  93854   3     19323
-#> 9   211 230     rs3051   rs3070   149647 168376   3     18730
+#>   start end start.rsID end.rsID start.bp end.bp CHR length_bp n_snps
+#> 1     1  25     rs1001   rs1025     1000  25027   1     24028     25
+#> 2    31  50     rs1031   rs1050    81064  99022   1     17959     20
+#> 3    56  80     rs1056   rs1080   155368 179371   1     24004     25
+#> 4    81 110     rs2001   rs2030     1000  30023   2     29024     30
+#> 5   116 135     rs2036   rs2055    86236 105290   2     19055     20
+#> 6   141 160     rs2061   rs2080   161515 180473   2     18959     20
+#> 7   161 180     rs3001   rs3020     1000  19068   3     18069     20
+#> 8   186 205     rs3026   rs3045    74532  93854   3     19323     20
+#> 9   211 230     rs3051   rs3070   149647 168376   3     18730     20
 summarise_blocks(ldx_blocks)
 #>      CHR n_blocks min_bp median_bp  mean_bp max_bp total_bp_covered
 #> 1      1        3  17959     24004 21997.00  24028            65991

@@ -1,5 +1,5 @@
 ## tests/testthat/test-extensions.R
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 ## Tests for the 10 new analysis extension and haplotype inference functions:
 ##
 ##   haplotype_analysis.R:
@@ -18,7 +18,7 @@
 ##
 ## Shared fixtures use helper.R (make_geno, make_snpinfo, make_blocks, make_blues)
 ## and the ldx_* example datasets.
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 
 library(testthat)
 library(LDxBlocks)
@@ -29,14 +29,14 @@ data(ldx_blocks,   package = "LDxBlocks")
 data(ldx_gwas,     package = "LDxBlocks")
 data(ldx_blues,    package = "LDxBlocks")
 
-# ── Shared fixtures ───────────────────────────────────────────────────────────
+# -- Shared fixtures -----------------------------------------------------------
 
 # Small synthetic genotype + block infrastructure for fast tests
 .G   <- make_geno(n = 40, p = 30, seed = 7L)
 .si  <- make_snpinfo(p = 30, chr = "1")
 .blk <- make_blocks(.si, n_blocks = 3L)
 
-# Extract haplotypes once — reused across multiple test groups
+# Extract haplotypes once - reused across multiple test groups
 .haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 5L)
 
 # Small haplotypes for fast-path tests
@@ -669,7 +669,7 @@ test_that("collapse_haplotypes: rare_to_other pools rare alleles into <other>", 
   all_strings <- unique(unlist(haps_col))
   all_strings <- all_strings[!grepl(".", all_strings, fixed = TRUE)]
   # <other> appears if there were rare alleles
-  # (not guaranteed if all alleles happened to be common — just check structure)
+  # (not guaranteed if all alleles happened to be common - just check structure)
   expect_true(is.list(haps_col))
   expect_equal(length(haps_col), length(.haps_small))
 })
@@ -843,7 +843,7 @@ test_that("harmonize_haplotypes: novel alleles labelled <novel> when max_hamming
   # Check that <novel> appears if any target allele was not in reference dict
   all_strings <- unique(unlist(hh))
   # Not guaranteed to have <novel> if target is subset of ref, but
-  # the assignment mechanism is correct — just confirm no error and
+  # the assignment mechanism is correct - just confirm no error and
   # <novel> is a valid string if it appears
   if ("<novel>" %in% all_strings)
     expect_true("<novel>" %in% all_strings)  # trivially true if present

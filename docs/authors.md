@@ -2,8 +2,8 @@
 
 ## Authors
 
-- **Félicien Akohoue**. Author, maintainer.
-  [](https://orcid.org/0000-0002-2160-0182)
+- **[Félicien Akohoue](https://github.com/FAkohoue)**. Author,
+  maintainer. [](https://orcid.org/0000-0002-2160-0182)
 
 ## Citation
 

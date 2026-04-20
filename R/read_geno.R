@@ -531,7 +531,7 @@ read_geno <- function(
   data.table::setnames(dt, names(dt)[1L], "CHROM")   # handle leading #
 
   snp_info <- data.frame(
-    SNP = ifelse(is.na(dt$ID) | dt$ID == ".", paste0(dt$CHROM,":",dt$POS), dt$ID),
+    SNP = ifelse(is.na(dt$ID) | dt$ID == ".", paste0(dt$CHROM,"_",dt$POS), dt$ID),
     CHR = as.character(dt$CHROM),
     POS = as.integer(dt$POS),
     REF = as.character(dt$REF),
@@ -593,9 +593,9 @@ read_geno <- function(
 
   # rsID: stored in snp.rs.id (SeqArray: "annotation/id")
   rsid <- tryCatch(.gdsn("snp.rs.id"),
-                   error = function(e) paste0(chrom, ":", pos))
+                   error = function(e) paste0(chrom, "_", pos))
   empty <- is.na(rsid) | rsid == "" | rsid == "."
-  rsid[empty] <- paste0(chrom, ":", pos)[empty]
+  rsid[empty] <- paste0(chrom, "_", pos)[empty]
 
   # REF / ALT: SNPRelate stores combined "REF/ALT" in snp.allele
   allele_raw <- tryCatch(.gdsn("snp.allele"),
@@ -1027,7 +1027,7 @@ read_geno_bigmemory <- function(source,
   # must use forward slashes only (no backslashes). We normalize
   # first to resolve . / .. / symlinks, then convert separators.
   backingpath <- normalizePath(backingpath, mustWork = FALSE)
-  backingpath <- gsub("\\\\", "/", backingpath, fixed = TRUE)
+  backingpath <- gsub("\\", "/", backingpath, fixed = TRUE)
 
   # -- Reattach from descriptor ----------------------------------------------
   if (is.character(source) && length(source) == 1L && grepl("\\.desc$", source)) {

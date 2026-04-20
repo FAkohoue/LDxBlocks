@@ -491,15 +491,17 @@ res <- run_ldx_pipeline(
   # hap_format  = "character",  # alternative to "numeric"
   verbose        = FALSE
 )
+#> [LDxBlocks] Hap QC: n_snps range [19, 30] | blocks=90 | NA_matrix=0
+#> [LDxBlocks] Pipeline QC: all checks passed.
 
 head(res$blocks)
-#>   start end start.rsID end.rsID start.bp end.bp CHR length_bp
-#> 1     1  25     rs1001   rs1025     1000  25027   1     24028
-#> 2    31  50     rs1031   rs1050    81064  99022   1     17959
-#> 3    56  80     rs1056   rs1080   155368 179371   1     24004
-#> 4     1  30     rs2001   rs2030     1000  30023   2     29024
-#> 5    36  55     rs2036   rs2055    86236 105290   2     19055
-#> 6    61  80     rs2061   rs2080   161515 180473   2     18959
+#>   start end start.rsID end.rsID start.bp end.bp n_snps CHR length_bp
+#> 1     1  25     rs1001   rs1025     1000  25027     25   1     24028
+#> 2    31  50     rs1031   rs1050    81064  99022     20   1     17959
+#> 3    56  80     rs1056   rs1080   155368 179371     25   1     24004
+#> 4     1  30     rs2001   rs2030     1000  30023     30   2     29024
+#> 5    36  55     rs2036   rs2055    86236 105290     20   2     19055
+#> 6    61  80     rs2061   rs2080   161515 180473     20   2     18959
 head(res$diversity)
 #>                block_id CHR start_bp end_bp n_snps n_ind n_haplotypes        He
 #> 1    block_1_1000_25027   1     1000  25027     25   120           30 0.9163866
@@ -543,19 +545,19 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [bigmemory]   chr 1 loaded (80/230 SNPs)
 #> [bigmemory]   chr 2 loaded (160/230 SNPs)
 #> [bigmemory]   chr 3 loaded (230/230 SNPs)
-#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmpc3l2QZ/ldxbm3dd04092699.bin
-#> [01:44:22] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
-#> [01:44:22] Pre-screen: removing monomorphic / MAF < 0.05 SNPs (streaming) ...
+#> [bigmemory] Done. Backing file: C:/Users/fakohoue/AppData/Local/Temp/RtmpsvzoF6/ldxbm8cc44da71f.bin
+#> [17:14:29] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
+#> [17:14:29] Pre-screen: removing monomorphic / MAF < 0.05 SNPs (streaming) ...
 #> [MAF filter] Computing MAF for 230 SNPs ...
 #> [MAF filter] 230 / 230 SNPs pass MAF >= 0.05
-#> [01:44:23] Loading filtered genotype matrix ...
-#> [01:44:23] Genotype matrix: 120 x 230
-#> [01:44:23] Call-rate filter: disabled (min_callrate = 0).
-#> [01:44:23] MAF filter (>= 0.05): all 230 SNPs passed.
-#> [01:44:23] Imputation: skipped | matrix 120 ind x 230 SNPs | 0 missing values.
-#> [01:44:23] Building imputed backend (120 ind x 230 SNPs) ...
-#> [01:44:23] Imputed backend: matrix | 120 ind | 230 SNPs
-#> [01:44:23] Running genome-wide LD block detection ...
+#> [17:14:29] Loading filtered genotype matrix ...
+#> [17:14:29] Genotype matrix: 120 x 230
+#> [17:14:29] Call-rate filter: disabled (min_callrate = 0).
+#> [17:14:29] MAF filter (>= 0.05): all 230 SNPs passed.
+#> [17:14:29] Imputation: skipped | matrix 120 ind x 230 SNPs | 0 missing values.
+#> [17:14:29] Building imputed backend (120 ind x 230 SNPs) ...
+#> [17:14:29] Imputed backend: matrix | 120 ind | 230 SNPs
+#> [17:14:29] Running genome-wide LD block detection ...
 #> 
 #> [run_Big_LD_all_chr] Processing 1 ...
 #> [Big_LD] Subsegmenting via C++ boundary scan...
@@ -605,21 +607,24 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [CLQD] Building graph on 70 SNPs...
 #> [CLQD] Found 16 maximal cliques.
 #> [Big_LD] Segment 1/1 done.
-#> [01:44:23] Detected 9 LD blocks
-#> [01:44:23] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpc3l2QZ\file3dd01a427e3.csv
-#> [01:44:23] Extracting haplotypes (min_snps = 3) ...
-#> [01:44:24] Haplotypes extracted for 9 blocks
-#> [01:44:24] Computing haplotype diversity ...
-#> [01:44:24] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpc3l2QZ\file3dd079384980.csv
-#> [01:44:24] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
-#> [01:44:24] Haplotype matrix: 120 individuals x 90 haplotype allele columns
-#> [01:44:24] Writing haplotype matrix (format = numeric) ...
-#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmpc3l2QZ\file3dd0330151e6.csv (90 haplotypes x 120 individuals)
-#> [01:44:24] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmpc3l2QZ\file3dd0330151e6.csv
-#> [01:44:24] Pipeline complete.
-#> [01:44:24]   Blocks:              9
-#> [01:44:24]   Haplotype blocks:    9
-#> [01:44:24]   Haplotype columns:   90
-#> [01:44:24]   Individuals:         120
+#> [17:14:30] Detected 9 LD blocks
+#> [17:14:30] Block table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpsvzoF6\file8cc7dfc7517.csv
+#> [17:14:30] Extracting haplotypes (min_snps = 3) ...
+#> [17:14:31] Haplotypes extracted for 9 blocks
+#> [17:14:31] QC: singleton-mismatch check passed (0 bad blocks).
+#> [17:14:31] Computing haplotype diversity ...
+#> [17:14:31] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpsvzoF6\file8cc3ef14cd6.csv
+#> [17:14:31] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
+#> [17:14:31] Haplotype matrix: 120 individuals x 90 haplotype allele columns
+#> [17:14:31] Writing haplotype matrix (format = numeric) ...
+#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\RtmpsvzoF6\file8cc35fd276.csv (90 haplotypes x 120 individuals)
+#> [17:14:31] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\RtmpsvzoF6\file8cc35fd276.csv
+#> [LDxBlocks] Hap QC: n_snps range [19, 30] | blocks=90 | NA_matrix=0
+#> [LDxBlocks] Pipeline QC: all checks passed.
+#> [17:14:31] Pipeline complete.
+#> [17:14:31]   Blocks:              9
+#> [17:14:31]   Haplotype blocks:    9
+#> [17:14:31]   Haplotype columns:   90
+#> [17:14:31]   Individuals:         120
 # }
 ```

@@ -67,14 +67,14 @@ list.files("pkgdown/favicon")
 #######################################################################################################
 
 # =============================================================================
-# LDxBlocks — clean build script
+# LDxBlocks - clean build script
 # Run SESSION A top-to-bottom, let it restart R, then run SESSION B.
 # Both sessions must start with the working directory set to the package root
 # (the folder containing DESCRIPTION).
 # =============================================================================
 
 
-# ─────────────────────────────── SESSION A ───────────────────────────────────
+# ------------------------------- SESSION A -----------------------------------
 # Goal: wipe every stale artifact so the next session starts from zero.
 
 # 1. Remove the installed package so no old DLL can be loaded by mistake.
@@ -88,12 +88,12 @@ unlink(file.path(.libPaths()[1], "00LOCK-LDxBlocks"), recursive = TRUE)
 
 # 3. Restart R.  All loaded DLLs are released, file locks are cleared.
 .rs.restartR()
-# ── after restart, continue in SESSION B ──────────────────────────────────────
+# -- after restart, continue in SESSION B --------------------------------------
 
 
 
 
-# ─────────────────────────────── SESSION B ───────────────────────────────────
+# ------------------------------- SESSION B -----------------------------------
 # Goal: rebuild everything from source in the correct dependency order.
 
 # 1. Regenerate example data (.rda files in data/ and flat files in
@@ -115,7 +115,7 @@ Rcpp::compileAttributes()
 devtools::document()
 
 # 5. Compile C++ and install into the library.
-#    upgrade = FALSE  — do not touch other packages.
+#    upgrade = FALSE  - do not touch other packages.
 devtools::install()
 
 # 6. Run the test suite.  All C++ symbols are now registered in the
@@ -124,7 +124,6 @@ devtools::test()
 
 # 7. Full CRAN check (run after tests pass).
 devtools::check()
-
 
 
 # 9. Build vignettes
@@ -170,36 +169,65 @@ unlink("vignettes/LDxBlocks-large-scale_cache", recursive = TRUE)
 pkgdown::build_article("LDxBlocks-large-scale")
 
 
-file <- "R/haplotypes.R"
+file <- "tests/testthat/test-association.R"
+
+tools::showNonASCIIfile(file)
 
 txt <- readLines(file, encoding = "UTF-8")
 
-txt <- gsub("→", "->", txt, fixed = TRUE)
-txt <- gsub("×", "x", txt, fixed = TRUE)
-txt <- gsub("─", "-", txt, fixed = TRUE)
-txt <- gsub("…", "...", txt, fixed = TRUE)
+txt <- gsub("->", "->", txt, fixed = TRUE)
+txt <- gsub("x", "x", txt, fixed = TRUE)
+txt <- gsub("-", "-", txt, fixed = TRUE)
+txt <- gsub("...", "...", txt, fixed = TRUE)
 
 writeLines(txt, file, useBytes = TRUE)
 
-tools::showNonASCIIfile("R/haplotypes.R")
+tools::showNonASCIIfile(file)
 
-
-file <- "R/haplotypes.R"
 
 txt <- readLines(file, encoding = "UTF-8")
 
-txt <- gsub("–", "-", txt, fixed = TRUE)
-txt <- gsub("—", "-", txt, fixed = TRUE)
+txt <- gsub("-", "-", txt, fixed = TRUE)
+txt <- gsub("-", "-", txt, fixed = TRUE)
 
 writeLines(txt, file, useBytes = TRUE)
 
-tools::showNonASCIIfile("R/haplotypes.R")
-
-
-file <- "R/haplotype_association.R"
 txt <- readLines(file, encoding = "UTF-8")
 
-txt <- gsub("Λ", "Lambda", txt, fixed = TRUE)
+txt <- gsub("->", "->", txt, fixed = TRUE)
+txt <- gsub("x", "x", txt, fixed = TRUE)
+txt <- gsub("-", "-", txt, fixed = TRUE)
+txt <- gsub("...", "...", txt, fixed = TRUE)
+txt <- gsub("union", "union", txt, fixed = TRUE)
+txt <- gsub("<=", "<=", txt, fixed = TRUE)
+txt <- gsub(">=", ">=", txt, fixed = TRUE)
+writeLines(txt, file, useBytes = TRUE)
+
+tools::showNonASCIIfile(file)
+
+
+
+
+txt <- readLines(file, encoding = "UTF-8")
+
+replacements <- c(
+  "->"="->",
+  "x"="x",
+  "-"="-",
+  "-"="-",
+  "-"="-",
+  "..."="...",
+  "union"="union",
+  "<="="<=",
+  ">="=">=",
+  "^3"="^3",
+  "Lambda"="Lambda"
+)
+
+for (sym in names(replacements)) {
+  txt <- gsub(sym, replacements[[sym]], txt, fixed = TRUE)
+}
 
 writeLines(txt, file, useBytes = TRUE)
+
 tools::showNonASCIIfile(file)

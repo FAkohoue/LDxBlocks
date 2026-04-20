@@ -56,6 +56,10 @@ extract_chr_haplotypes_cpp <- function(geno_chr, snp_pos, block_sb, block_eb, mi
     .Call(`_LDxBlocks_extract_chr_haplotypes_cpp`, geno_chr, snp_pos, block_sb, block_eb, min_snps, min_freq, top_n, na_char)
 }
 
+extract_chr_haplotypes_phased_cpp <- function(hap1_chr, hap2_chr, snp_pos, block_sb, block_eb, min_snps, min_freq, top_n, na_char = ".") {
+    .Call(`_LDxBlocks_extract_chr_haplotypes_phased_cpp`, hap1_chr, hap2_chr, snp_pos, block_sb, block_eb, min_snps, min_freq, top_n, na_char)
+}
+
 impute_and_filter_cpp <- function(geno, min_callrate = 0.0, method = 0L) {
     .Call(`_LDxBlocks_impute_and_filter_cpp`, geno, min_callrate, method)
 }

@@ -12,7 +12,7 @@ data(ldx_snp_info, package = "LDxBlocks")
 data(ldx_blocks,   package = "LDxBlocks")
 data(ldx_gwas,     package = "LDxBlocks")
 
-# ── Input validation ──────────────────────────────────────────────────────────
+# -- Input validation ----------------------------------------------------------
 
 test_that("compute_ld_decay: rejects invalid r2_threshold values", {
   expect_error(
@@ -53,7 +53,7 @@ test_that("compute_ld_decay: rejects geno without snp_info when matrix", {
   )
 })
 
-# ── Return structure ──────────────────────────────────────────────────────────
+# -- Return structure ----------------------------------------------------------
 
 test_that("compute_ld_decay: returns LDxBlocks_decay object with required fields", {
   decay <- compute_ld_decay(ldx_geno, ldx_snp_info,
@@ -104,7 +104,7 @@ test_that("compute_ld_decay: n_pairs_used named vector matches chromosomes", {
                sort(unique(ldx_snp_info$CHR)))
 })
 
-# ── Sampling modes ────────────────────────────────────────────────────────────
+# -- Sampling modes ------------------------------------------------------------
 
 test_that("compute_ld_decay: random sampling produces non-empty pairs", {
   decay <- compute_ld_decay(ldx_geno, ldx_snp_info,
@@ -144,7 +144,7 @@ test_that("compute_ld_decay: chr parameter restricts to named chromosomes", {
     expect_true(all(decay$decay_curve$CHR == "1"))
 })
 
-# ── SNP position sorting ──────────────────────────────────────────────────────
+# -- SNP position sorting ------------------------------------------------------
 
 test_that("compute_ld_decay: produces valid pairs when snp_info is unsorted", {
   # Shuffle snp_info rows -- function must sort internally
@@ -158,7 +158,7 @@ test_that("compute_ld_decay: produces valid pairs when snp_info is unsorted", {
   expect_true(all(decay$pairs$dist_bp >= 0L))
 })
 
-# ── Threshold types ───────────────────────────────────────────────────────────
+# -- Threshold types -----------------------------------------------------------
 
 test_that("compute_ld_decay: fixed numeric threshold populates decay_dist", {
   decay <- compute_ld_decay(ldx_geno, ldx_snp_info,
@@ -192,7 +192,7 @@ test_that("compute_ld_decay: 'both' returns both thresholds", {
   expect_equal(decay$critical_r2, decay$critical_r2_param)
 })
 
-# ── Model fitting ─────────────────────────────────────────────────────────────
+# -- Model fitting -------------------------------------------------------------
 
 test_that("compute_ld_decay: fit_model='none' skips smoothing", {
   decay <- compute_ld_decay(ldx_geno, ldx_snp_info,
@@ -221,7 +221,7 @@ test_that("compute_ld_decay: fit_model='nonlinear' attempts Hill-Weir fit", {
   expect_s3_class(decay, "LDxBlocks_decay")
 })
 
-# ── Decay distance ────────────────────────────────────────────────────────────
+# -- Decay distance ------------------------------------------------------------
 
 test_that("compute_ld_decay: decay_dist_bp is positive for each chromosome", {
   decay <- compute_ld_decay(ldx_geno, ldx_snp_info,
@@ -252,7 +252,7 @@ test_that("compute_ld_decay: censored=TRUE when threshold never crossed", {
     expect_true(any(decay$decay_dist$censored))
 })
 
-# ── Backend types ─────────────────────────────────────────────────────────────
+# -- Backend types -------------------------------------------------------------
 
 test_that("compute_ld_decay: accepts LDxBlocks_backend (matrix type)", {
   be <- read_geno(ldx_geno, format = "matrix", snp_info = ldx_snp_info)
@@ -297,7 +297,7 @@ test_that("compute_ld_decay: accepts bigmemory backend", {
   expect_gt(nrow(decay$pairs), 0L)
 })
 
-# ── print method ─────────────────────────────────────────────────────────────
+# -- print method -------------------------------------------------------------
 
 test_that("print.LDxBlocks_decay: prints without error", {
   decay <- compute_ld_decay(ldx_geno, ldx_snp_info,
@@ -306,7 +306,7 @@ test_that("print.LDxBlocks_decay: prints without error", {
   expect_output(print(decay), "LDxBlocks LD Decay Analysis")
 })
 
-# ── plot_ld_decay ─────────────────────────────────────────────────────────────
+# -- plot_ld_decay -------------------------------------------------------------
 
 test_that("plot_ld_decay: returns ggplot when fit_model produces curve", {
   skip_if_not_installed("ggplot2")
@@ -340,7 +340,7 @@ test_that("plot_ld_decay: facet=TRUE produces facet_wrap", {
   expect_true(inherits(p$facet, "FacetWrap"))
 })
 
-# ── define_qtl_regions integration ───────────────────────────────────────────
+# -- define_qtl_regions integration -------------------------------------------
 
 test_that("define_qtl_regions: accepts LDxBlocks_decay object in ld_decay", {
   decay <- compute_ld_decay(ldx_geno, ldx_snp_info,

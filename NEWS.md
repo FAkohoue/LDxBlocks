@@ -1,3 +1,107 @@
+## LDxBlocks 0.3.1.9000 (development patch)
+
+### Breaking change: SNP ID separator changed from `:` to `_`
+
+When a VCF or GDS file has no rsID (i.e. the ID field is `.` or empty),
+`read_geno()` previously generated fallback SNP identifiers in `CHR:POS`
+format (e.g. `"1:4106"`). These are now generated as `CHR_POS` format
+(e.g. `"1_4106"`).
+
+**Reason:** The colon `:` is a reserved character in many genomic file
+formats (BED, VCF INFO field, R data frames used as rownames) and causes
+silent parsing errors downstream. The underscore `_` is safe in all contexts.
+
+**Impact:** Any cached bigmemory backing files (`ldxblocks_bm*.rds`,
+`ldxblocks_bm*.bin`, `ldxblocks_bm*.desc`) built with the old format must
+be deleted before rerunning. The pipeline will rebuild them automatically.
+
+**Files to delete before rerunning:**
+```r
+results_dir <- "/your/results/dir"
+for (f in list.files(results_dir, pattern = "^ldxblocks_bm", full.names = TRUE))
+  file.remove(f)
+```
+
+## LDxBlocks 0.3.1.9000 (development patch)
+
+### Bug fixes
+
+- **`extract_chr_haplotypes_cpp()` — `retained_idx` field added (critical)**
+  The C++ extractor now returns a `retained_idx` integer vector (1-based) giving
+  the row index in the input `block_sb`/`block_eb` arrays for each retained block.
+  Previously the compact `hap_strings` and `n_snps` arrays (indexed over retained
+  blocks only) were paired in R with `chr_blk_srt[b, ]` (indexed over all blocks),
+  causing a systematic mismatch: singleton coordinates were paired with multi-SNP
+  haplotype strings and inflated `n_snps` values. Both the backend streaming path
+  and the matrix path in `extract_haplotypes()` now use `ret_idx <- cpp_res$retained_idx`
+  to fetch block metadata, eliminating the mismatch entirely.
+  Sanity checks stop immediately with an informative message if `retained_idx` is
+  missing or malformed (indicating the old compiled binary is still in use).
+  Both extraction paths also pre-filter `chr_blk_srt` with `findInterval` before
+  calling C++, providing a first-pass guard independent of compilation.
+
+- **Pipeline QC singleton check** — `run_ldx_pipeline()` now asserts that no
+  `block_info` row has `start_bp == end_bp` with `n_snps > 1` immediately after
+  `extract_haplotypes()`, stopping with a clear message if the stale binary is
+  still loaded.
+
+- **`.validate_hap_output()` added** — called at end of pipeline; reports NA
+  count in feature matrix, duplicated `hap_id` values, n_snps range, and
+  hap_id / column alignment.
+
+### Improvements
+
+- **`alleles` column in writer** — `write_haplotype_numeric()` now decodes
+  nucleotide sequences directly from `hap_info$hap_string` + `snp_info` per row,
+  without calling `decode_haplotype_strings()`. Single source of truth: the
+  dosage string stored in `hap_info` is always the one used to build the matrix
+  column.
+
+- **Backend extraction list accumulation** — the backend streaming path in
+  `extract_haplotypes()` now accumulates `block_info` rows in a pre-allocated
+  list (`bi_rows`) and binds once at the end with `data.table::rbindlist()`,
+  matching the matrix path and eliminating O(n²) rbind growth.
+
+- **`.prefilter_blocks_by_span()` helper** — shared `findInterval`-based
+  pre-filter extracted to a single internal function used by both extraction
+  paths; eliminates duplicated logic and future drift risk.
+
+- **`extract_chr_haplotypes_phased_cpp()` — new C++ phased extractor (Item 5)**
+  A dedicated phased haplotype extractor is now compiled into `ld_core.cpp`.
+  It accepts `hap1_chr` and `hap2_chr` (0/1 gamete matrices) and builds
+  `"gamete1|gamete2"` strings in one OpenMP pass, counting gamete frequencies
+  correctly (each individual contributes two observations). Returns the same
+  contract as `extract_chr_haplotypes_cpp()`: `retained_idx`, `retained_start_bp`,
+  `retained_end_bp`, `hap_freq`, `freq_dominant`, etc. The matrix path in
+  `extract_haplotypes()` now dispatches to this function when `isp = TRUE`,
+  eliminating the previous R loop that called `build_hap_strings_cpp()` twice
+  per block and concatenated results with `paste0()`.
+  The R `for(b)` loop is now identical for phased and unphased: both read
+  `cpp_res$hap_strings[[b]]` from their respective C++ extractor.
+
+- **Imputed backend parameter fingerprinting (Item 6)** — `.make_imputed_backend()`
+  now accepts `maf_cut`, `min_callrate`, and `impute_method` parameters and
+  saves them as `ldxblocks_bm_imputed_params.rds` alongside the other four
+  backing files. On reattach the saved fingerprint is compared to the current
+  parameters; if they differ (or the fingerprint file is absent, indicating an
+  old-format cache), all five files are cleaned and the backend is rebuilt.
+  Without this, a run with `maf_cut = 0.10` would silently reuse an imputed
+  backend built with `maf_cut = 0.05`. `run_ldx_pipeline()` passes `maf_cut`,
+  `min_callrate`, and the `impute` argument through to `.make_imputed_backend()`.
+
+- **C++ as bp coordinate truth — `retained_start_bp` and `retained_end_bp` (Item 8)**
+  Both `extract_chr_haplotypes_cpp()` and `extract_chr_haplotypes_phased_cpp()`
+  now return `retained_start_bp` and `retained_end_bp` integer vectors: for each
+  retained block, the values are direct copies of `block_sb[b]` and `block_eb[b]`
+  from the C++ arrays — no R-side index lookup into `chr_blk_srt`. Both R
+  extraction loops check `!is.null(cpp_res$retained_start_bp)` and read
+  coordinates directly from C++ when available. The R-side fallback
+  (`chr_blk_srt[ret_idx[b], ]`) remains for binary-compatibility with old
+  compiled objects. This removes the last avenue for a coordinate mismatch
+  between the C++ compact array index and the R full-block-table row index.
+
+---
+
 ## LDxBlocks 0.3.1 (development)
 
 ### Performance: C++ overlap resolution and WGS stall fixes
@@ -551,5 +655,31 @@ blocks <- run_Big_LD_all_chr(
   encoding (`additive_012` / `presence_01`), output writers,
   `rank_haplotype_blocks`, and `integrate_gwas_haplotypes`.
 
+---
 
+## LDxBlocks 0.2.0 (2025-04-07)
 
+### New features
+
+- C++/Armadillo core: `compute_r2_cpp()`, `compute_rV2_cpp()`,
+  `maf_filter_cpp()`, `build_adj_matrix_cpp()`, `col_r2_cpp()`,
+  `compute_r2_sparse_cpp()`, `boundary_scan_cpp()`.
+- OpenMP parallelism via `n_threads` parameter.
+- Dual LD metric: `method = "r2"` or `"rV2"`.
+- `prepare_geno()`, `compute_ld()`.
+
+### Bug fixes
+
+- `CLQD()`: fixed `re_idx` tracking after dense-core pre-pass.
+- `Big_LD()`: `vapply()` used throughout for type-stability.
+
+---
+
+## LDxBlocks 0.1.0 (2025-04-07)
+
+Initial release.
+
+- `Big_LD()`, `CLQD()`, `run_Big_LD_all_chr()`, `tune_LD_params()`.
+- `extract_haplotypes()`, `compute_haplotype_diversity()`,
+  `build_haplotype_feature_matrix()`.
+- `summarise_blocks()`, `plot_ld_blocks()`.

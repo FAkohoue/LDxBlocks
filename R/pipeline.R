@@ -64,6 +64,9 @@
                                   use_bigmemory  = FALSE,
                                   bigmemory_path = tempdir(),
                                   bigmemory_type = "char",
+                                  maf_cut        = 0.05,
+                                  min_callrate   = 0.0,
+                                  impute_method  = "none",
                                   verbose        = TRUE) {
   if (!is.matrix(geno_mat)) geno_mat <- as.matrix(geno_mat)
   rownames(geno_mat) <- sample_ids
@@ -89,20 +92,44 @@
     imp_all_ok    <- imp_bin_ok && file.exists(imp_desc) &&
       file.exists(imp_si_file) && file.exists(imp_sid_file)
 
+    # Fingerprint: maf, callrate, impute method. Refuse reattach if params changed.
+    imp_fp_file <- paste0(imp_stem, "_params.rds")
+    curr_fp     <- list(maf_cut = maf_cut, min_callrate = min_callrate,
+                        impute_method = impute_method, n_snps = nrow(snp_info))
+
     if (imp_all_ok) {
-      if (verbose) message("[imputed backend] Reattaching existing imputed backend.")
-      si_imp  <- readRDS(imp_si_file)
-      be_imp  <- read_geno_bigmemory(
-        source      = imp_desc,
-        snp_info    = si_imp,
-        backingfile = basename(imp_stem),
-        backingpath = bigmemory_path
-      )
-      return(be_imp)
+      stale <- FALSE
+      if (file.exists(imp_fp_file)) {
+        saved_fp <- tryCatch(readRDS(imp_fp_file), error = function(e) NULL)
+        if (is.null(saved_fp) || !identical(saved_fp, curr_fp)) {
+          if (verbose)
+            message("[imputed backend] Filtering parameters changed ",
+                    "(maf/callrate/impute/n_snps). Rebuilding imputed backend.")
+          stale <- TRUE
+        }
+      } else {
+        # No fingerprint file: old-format cache; rebuild to add fingerprint
+        if (verbose)
+          message("[imputed backend] No parameter fingerprint found. Rebuilding.")
+        stale <- TRUE
+      }
+
+      if (!stale) {
+        if (verbose) message("[imputed backend] Reattaching existing imputed backend.")
+        si_imp  <- readRDS(imp_si_file)
+        be_imp  <- read_geno_bigmemory(
+          source      = imp_desc,
+          snp_info    = si_imp,
+          backingfile = basename(imp_stem),
+          backingpath = bigmemory_path
+        )
+        return(be_imp)
+      }
+      # Stale: fall through to rebuild after cleaning
     }
 
-    # Remove any partial imputed files before building fresh
-    for (f in c(imp_bin, imp_bin_noext, imp_desc, imp_si_file, imp_sid_file)) {
+    # Remove any partial or stale imputed files before building fresh
+    for (f in c(imp_bin, imp_bin_noext, imp_desc, imp_si_file, imp_sid_file, imp_fp_file)) {
       if (file.exists(f)) file.remove(f)
     }
 
@@ -117,6 +144,7 @@
     )
     saveRDS(snp_info,    imp_si_file)
     saveRDS(sample_ids, imp_sid_file)
+    saveRDS(curr_fp,     imp_fp_file)   # fingerprint for stale-cache detection
     return(be_imp)
   }
 
@@ -535,7 +563,7 @@ run_ldx_pipeline <- function(
       # uses sprintf("%s/%s", backingpath, file) so backslashes from
       # Windows normalizePath produce mixed separators that fail.
       bigmemory_path <- normalizePath(bigmemory_path, mustWork = FALSE)
-      bigmemory_path <- gsub("\\\\", "/", bigmemory_path, fixed = TRUE)
+      bigmemory_path <- gsub("\\", "/", bigmemory_path, fixed = TRUE)
       bm_stem     <- file.path(bigmemory_path, "ldxblocks_bm")
       bm_bin_file <- paste0(bm_stem, ".bin")
       bm_desc_file <- paste0(bm_stem, ".desc")
@@ -792,6 +820,9 @@ run_ldx_pipeline <- function(
     use_bigmemory  = use_bigmemory,
     bigmemory_path = bigmemory_path,
     bigmemory_type = bigmemory_type,
+    maf_cut        = maf_cut,
+    min_callrate   = min_callrate,
+    impute_method  = impute,
     verbose        = verbose
   )
   .ldx_log("Imputed backend: ", be_imputed$type, " | ",
@@ -847,6 +878,20 @@ run_ldx_pipeline <- function(
   )
   n_hap_blocks <- length(haplotypes)
   .ldx_log("Haplotypes extracted for ", n_hap_blocks, " blocks")
+
+  # -- QC: catch stale compiled binary (missing retained_idx fix) --------------
+  hap_bi <- attr(haplotypes, "block_info")
+  if (!is.null(hap_bi) && nrow(hap_bi) > 0L) {
+    bad_sing <- hap_bi[!is.na(hap_bi$start_bp) & !is.na(hap_bi$end_bp) &
+                         !is.na(hap_bi$n_snps) &
+                         hap_bi$start_bp == hap_bi$end_bp &
+                         hap_bi$n_snps > 1L, ]
+    if (nrow(bad_sing) > 0L)
+      stop("[LDxBlocks] Singleton-coordinate / multi-SNP mismatch in ",
+           nrow(bad_sing), " block(s). The C++ retained_idx fix is not active. ",
+           "Run devtools::install() to recompile ld_core.cpp, then retry.")
+    .ldx_log("QC: singleton-mismatch check passed (0 bad blocks).")
+  }
 
   if (n_hap_blocks == 0L)
     stop("No haplotype blocks produced. Check min_snps_block vs block sizes.")
@@ -911,6 +956,8 @@ run_ldx_pipeline <- function(
   .ldx_log("Haplotype matrix written: ", out_hap_matrix)
 
   # -- Done -------------------------------------------------------------------
+  # -- Pipeline QC summary ----------------------------------------------------
+  .validate_hap_output(hap_matrix, hap_info, haplotypes)
   .ldx_log("Pipeline complete.")
   .ldx_log("  Blocks:              ", nrow(blocks))
   .ldx_log("  Haplotype blocks:    ", n_hap_blocks)

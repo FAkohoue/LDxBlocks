@@ -1,9 +1,9 @@
 ## tests/testthat/test-algorithm.R
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 ## Tests for the Big-LD segmentation algorithm: LDxBlocks:::Big_LD(), LDxBlocks:::CLQD(),
 ## run_Big_LD_all_chr(), summarise_blocks(), plot_ld_blocks().
 ## Uses ldx_* example data and small synthetic fixtures.
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 
 library(testthat)
 library(LDxBlocks)
@@ -12,7 +12,7 @@ data(ldx_geno,     package = "LDxBlocks")
 data(ldx_snp_info, package = "LDxBlocks")
 data(ldx_blocks,   package = "LDxBlocks")
 
-# ── CLQD ─────────────────────────────────────────────────────────────────────
+# -- CLQD ---------------------------------------------------------------------
 
 test_that("CLQD: returns integer vector of correct length", {
   g    <- ldx_geno[, 1:25]
@@ -52,7 +52,7 @@ test_that("CLQD: Density mode vs Maximal mode produce valid bin vectors", {
   expect_equal(length(bv_m), 30L)
 })
 
-# ── Big_LD ────────────────────────────────────────────────────────────────────
+# -- Big_LD --------------------------------------------------------------------
 
 test_that("Big_LD: returns data.frame with required columns", {
   idx  <- which(ldx_snp_info$CHR == "1")
@@ -60,7 +60,7 @@ test_that("Big_LD: returns data.frame with required columns", {
                              ldx_snp_info[idx, c("SNP","POS")],
                              method = "r2", CLQcut = 0.5,
                              leng = 10, subSegmSize = 70, verbose = FALSE)
-  req <- c("start","end","start.rsID","end.rsID","start.bp","end.bp")
+  req <- c("start","end","start.rsID","end.rsID","start.bp","end.bp","n_snps")
   expect_true(all(req %in% names(blks)))
   expect_s3_class(blks, "data.frame")
 })
@@ -153,7 +153,7 @@ test_that("Big_LD: singleton_as_block=TRUE includes single-SNP entries", {
     expect_true(any(blks_sing$start == blks_sing$end))
 })
 
-# ── run_Big_LD_all_chr ────────────────────────────────────────────────────────
+# -- run_Big_LD_all_chr --------------------------------------------------------
 
 test_that("run_Big_LD_all_chr: processes all three chromosomes", {
   blks <- run_Big_LD_all_chr(ldx_geno, snp_info = ldx_snp_info,
@@ -218,7 +218,7 @@ test_that("run_Big_LD_all_chr: chr parameter restricts to one chromosome", {
   expect_false("3" %in% blks$CHR)
 })
 
-# ── summarise_blocks ──────────────────────────────────────────────────────────
+# -- summarise_blocks ----------------------------------------------------------
 
 test_that("summarise_blocks: GENOME row always present", {
   s <- summarise_blocks(ldx_blocks)
@@ -252,7 +252,7 @@ test_that("summarise_blocks: works without CHR column", {
   expect_equal(nrow(s), 1L)
 })
 
-# ── plot_ld_blocks ────────────────────────────────────────────────────────────
+# -- plot_ld_blocks ------------------------------------------------------------
 
 test_that("plot_ld_blocks: returns ggplot when ggplot2 available", {
   skip_if_not_installed("ggplot2")
@@ -271,7 +271,7 @@ test_that("plot_ld_blocks: missing CHR column throws error", {
   expect_error(plot_ld_blocks(blks_no_chr), "CHR")
 })
 
-# ── v0.3.1: CLQmode = "Louvain" ───────────────────────────────────────────────
+# -- v0.3.1: CLQmode = "Louvain" -----------------------------------------------
 
 test_that("CLQD: Louvain mode returns integer vector of correct length", {
   g    <- ldx_geno[, 1:25]
@@ -293,7 +293,7 @@ test_that("CLQD: Louvain mode values are positive integers or NA", {
 })
 
 test_that("CLQD: Louvain detects known block structure (chr1 block 1)", {
-  # First 25 SNPs of ldx_geno are one LD block — Louvain should assign
+  # First 25 SNPs of ldx_geno are one LD block - Louvain should assign
   # the majority to a single community rather than all singletons.
   g    <- ldx_geno[, 1:25]
   info <- ldx_snp_info[1:25, c("SNP", "POS")]
@@ -336,7 +336,7 @@ test_that("run_Big_LD_all_chr: CLQmode Louvain produces valid block table", {
   expect_true(all(blocks$start.bp <= blocks$end.bp))
 })
 
-# ── v0.3.1: max_bp_distance (sparse LD) ──────────────────────────────────────
+# -- v0.3.1: max_bp_distance (sparse LD) --------------------------------------
 
 test_that("CLQD: max_bp_distance produces same-length output as default", {
   g    <- ldx_geno[, 1:30]
@@ -382,7 +382,7 @@ test_that("run_Big_LD_all_chr: max_bp_distance=500000 produces valid blocks", {
   expect_true(all(blocks$start.bp <= blocks$end.bp))
 })
 
-# ── v0.3.1: bigmemory backend ─────────────────────────────────────────────────
+# -- v0.3.1: bigmemory backend -------------------------------------------------
 
 test_that("read_geno_bigmemory: converts matrix to bigmemory backend", {
   skip_if_not_installed("bigmemory")
@@ -445,7 +445,7 @@ test_that("read_geno_bigmemory: run_Big_LD_all_chr works through bigmemory backe
   expect_true(nrow(blocks) >= 1L)
 })
 
-# ── v0.3.1: LD-informed overlap resolution ───────────────────────────────────
+# -- v0.3.1: LD-informed overlap resolution -----------------------------------
 
 test_that("LD-informed split: overlapping blocks from adjacent sub-segments are resolved", {
   # Construct a genotype matrix with two clear LD blocks separated by a

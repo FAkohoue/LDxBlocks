@@ -127,7 +127,7 @@ zero unassigned markers.</p>
 <span class="r-in"><span><span class="co"># All markers should fall within ldx_blocks:</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">ldx_blocks</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">ldx_snp_info</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">ldx_gwas</span><span class="op">$</span><span class="va">Marker</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">ldx_snp_info</span><span class="op">$</span><span class="va">SNP</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">is.element</a></span><span class="op">(</span><span class="va">ldx_gwas</span><span class="op">$</span><span class="va">Marker</span>, <span class="va">ldx_snp_info</span><span class="op">$</span><span class="va">SNP</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 </code></pre></div>
     </div>
@@ -136,7 +136,7 @@ zero unassigned markers.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Félicien Akohoue.</p>
+  <p>Developed by <a href="https://github.com/FAkohoue" class="external-link">Félicien Akohoue</a>.</p>
 </div>
 
 <div class="pkgdown-footer-right">

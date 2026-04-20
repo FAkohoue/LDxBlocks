@@ -49,6 +49,39 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-patch">LDxBlocks 0.3.1.9000 (development patch)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-patch"></a></h2>
+<div class="section level3">
+<h3 id="breaking-change-snp-id-separator-changed-from--to-_-0-3-1-9000">Breaking change: SNP ID separator changed from <code>:</code> to <code>_</code>
+<a class="anchor" aria-label="anchor" href="#breaking-change-snp-id-separator-changed-from--to-_-0-3-1-9000"></a></h3>
+<p>When a VCF or GDS file has no rsID (i.e. the ID field is <code>.</code> or empty), <code><a href="../reference/read_geno.html">read_geno()</a></code> previously generated fallback SNP identifiers in <code>CHR:POS</code> format (e.g. <code>"1:4106"</code>). These are now generated as <code>CHR_POS</code> format (e.g. <code>"1_4106"</code>).</p>
+<p><strong>Reason:</strong> The colon <code>:</code> is a reserved character in many genomic file formats (BED, VCF INFO field, R data frames used as rownames) and causes silent parsing errors downstream. The underscore <code>_</code> is safe in all contexts.</p>
+<p><strong>Impact:</strong> Any cached bigmemory backing files (<code>ldxblocks_bm*.rds</code>, <code>ldxblocks_bm*.bin</code>, <code>ldxblocks_bm*.desc</code>) built with the old format must be deleted before rerunning. The pipeline will rebuild them automatically.</p>
+<p><strong>Files to delete before rerunning:</strong></p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">results_dir</span> <span class="op">&lt;-</span> <span class="st">"/your/results/dir"</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">f</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">results_dir</span>, pattern <span class="op">=</span> <span class="st">"^ldxblocks_bm"</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.remove</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-patch-1">LDxBlocks 0.3.1.9000 (development patch)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-patch-1"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-0-3-1-9000">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-3-1-9000"></a></h3>
+<ul><li><p><strong><code>extract_chr_haplotypes_cpp()</code> — <code>retained_idx</code> field added (critical)</strong> The C++ extractor now returns a <code>retained_idx</code> integer vector (1-based) giving the row index in the input <code>block_sb</code>/<code>block_eb</code> arrays for each retained block. Previously the compact <code>hap_strings</code> and <code>n_snps</code> arrays (indexed over retained blocks only) were paired in R with <code>chr_blk_srt[b, ]</code> (indexed over all blocks), causing a systematic mismatch: singleton coordinates were paired with multi-SNP haplotype strings and inflated <code>n_snps</code> values. Both the backend streaming path and the matrix path in <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code> now use <code>ret_idx &lt;- cpp_res$retained_idx</code> to fetch block metadata, eliminating the mismatch entirely. Sanity checks stop immediately with an informative message if <code>retained_idx</code> is missing or malformed (indicating the old compiled binary is still in use). Both extraction paths also pre-filter <code>chr_blk_srt</code> with <code>findInterval</code> before calling C++, providing a first-pass guard independent of compilation.</p></li>
+<li><p><strong>Pipeline QC singleton check</strong> — <code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code> now asserts that no <code>block_info</code> row has <code>start_bp == end_bp</code> with <code>n_snps &gt; 1</code> immediately after <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>, stopping with a clear message if the stale binary is still loaded.</p></li>
+<li><p><strong><code>.validate_hap_output()</code> added</strong> — called at end of pipeline; reports NA count in feature matrix, duplicated <code>hap_id</code> values, n_snps range, and hap_id / column alignment.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="improvements-0-3-1-9000">Improvements<a class="anchor" aria-label="anchor" href="#improvements-0-3-1-9000"></a></h3>
+<ul><li><p><strong><code>alleles</code> column in writer</strong> — <code><a href="../reference/write_haplotype_numeric.html">write_haplotype_numeric()</a></code> now decodes nucleotide sequences directly from <code>hap_info$hap_string</code> + <code>snp_info</code> per row, without calling <code><a href="../reference/decode_haplotype_strings.html">decode_haplotype_strings()</a></code>. Single source of truth: the dosage string stored in <code>hap_info</code> is always the one used to build the matrix column.</p></li>
+<li><p><strong>Backend extraction list accumulation</strong> — the backend streaming path in <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code> now accumulates <code>block_info</code> rows in a pre-allocated list (<code>bi_rows</code>) and binds once at the end with <code><a href="https://rdrr.io/pkg/data.table/man/rbindlist.html" class="external-link">data.table::rbindlist()</a></code>, matching the matrix path and eliminating O(n²) rbind growth.</p></li>
+<li><p><strong><code>.prefilter_blocks_by_span()</code> helper</strong> — shared <code>findInterval</code>-based pre-filter extracted to a single internal function used by both extraction paths; eliminates duplicated logic and future drift risk.</p></li>
+<li><p><strong><code>extract_chr_haplotypes_phased_cpp()</code> — new C++ phased extractor (Item 5)</strong> A dedicated phased haplotype extractor is now compiled into <code>ld_core.cpp</code>. It accepts <code>hap1_chr</code> and <code>hap2_chr</code> (0/1 gamete matrices) and builds <code>"gamete1|gamete2"</code> strings in one OpenMP pass, counting gamete frequencies correctly (each individual contributes two observations). Returns the same contract as <code>extract_chr_haplotypes_cpp()</code>: <code>retained_idx</code>, <code>retained_start_bp</code>, <code>retained_end_bp</code>, <code>hap_freq</code>, <code>freq_dominant</code>, etc. The matrix path in <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code> now dispatches to this function when <code>isp = TRUE</code>, eliminating the previous R loop that called <code>build_hap_strings_cpp()</code> twice per block and concatenated results with <code><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0()</a></code>. The R <code>for(b)</code> loop is now identical for phased and unphased: both read <code>cpp_res$hap_strings[[b]]</code> from their respective C++ extractor.</p></li>
+<li><p><strong>Imputed backend parameter fingerprinting (Item 6)</strong> — <code>.make_imputed_backend()</code> now accepts <code>maf_cut</code>, <code>min_callrate</code>, and <code>impute_method</code> parameters and saves them as <code>ldxblocks_bm_imputed_params.rds</code> alongside the other four backing files. On reattach the saved fingerprint is compared to the current parameters; if they differ (or the fingerprint file is absent, indicating an old-format cache), all five files are cleaned and the backend is rebuilt. Without this, a run with <code>maf_cut = 0.10</code> would silently reuse an imputed backend built with <code>maf_cut = 0.05</code>. <code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code> passes <code>maf_cut</code>, <code>min_callrate</code>, and the <code>impute</code> argument through to <code>.make_imputed_backend()</code>.</p></li>
+<li><p><strong>C++ as bp coordinate truth — <code>retained_start_bp</code> and <code>retained_end_bp</code> (Item 8)</strong> Both <code>extract_chr_haplotypes_cpp()</code> and <code>extract_chr_haplotypes_phased_cpp()</code> now return <code>retained_start_bp</code> and <code>retained_end_bp</code> integer vectors: for each retained block, the values are direct copies of <code>block_sb[b]</code> and <code>block_eb[b]</code> from the C++ arrays — no R-side index lookup into <code>chr_blk_srt</code>. Both R extraction loops check <code>!is.null(cpp_res$retained_start_bp)</code> and read coordinates directly from C++ when available. The R-side fallback (<code>chr_blk_srt[ret_idx[b], ]</code>) remains for binary-compatibility with old compiled objects. This removes the last avenue for a coordinate mismatch between the C++ compact array index and the R full-block-table row index.</p></li>
+</ul><hr></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.1" id="ldxblocks-031-development">LDxBlocks 0.3.1 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-031-development"></a></h2>
 <div class="section level3">
 <h3 id="performance-c-overlap-resolution-and-wgs-stall-fixes-0-3-1">Performance: C++ overlap resolution and WGS stall fixes<a class="anchor" aria-label="anchor" href="#performance-c-overlap-resolution-and-wgs-stall-fixes-0-3-1"></a></h3>
@@ -180,7 +213,7 @@
 </ul></div>
 <div class="section level3">
 <h3 id="recommended-configuration-form-snp-wgs-panels-0-3-1">Recommended configuration for 3M-SNP WGS panels<a class="anchor" aria-label="anchor" href="#recommended-configuration-form-snp-wgs-panels-0-3-1"></a></h3>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blocks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span></span>
 <span>  <span class="va">be</span>,</span>
 <span>  CLQmode         <span class="op">=</span> <span class="st">"Leiden"</span>,    <span class="co"># polynomial — guaranteed connected communities</span></span>
@@ -370,14 +403,42 @@
 <code>test-algorithm.R</code>: property-based tests for the Big-LD segmentation algorithm: <code>CLQD</code>, <code>Big_LD</code>, <code>run_Big_LD_all_chr</code>, <code>summarise_blocks</code>, <code>plot_ld_blocks</code>.</li>
 <li>
 <code>test-haplotypes.R</code>: comprehensive tests for haplotype extraction (phased and unphased), diversity metrics (<code>n_eff_alleles</code>, <code>sweep_flag</code>), QTL region definition (<code>lead_beta</code>, <code>sig_snps</code>, <code>sig_betas</code>), feature matrix encoding (<code>additive_012</code> / <code>presence_01</code>), output writers, <code>rank_haplotype_blocks</code>, and <code>integrate_gwas_haplotypes</code>.</li>
-</ul></div>
+</ul><hr></div>
 </div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="ldxblocks-020-2025-04-07">LDxBlocks 0.2.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-020-2025-04-07"></a></h2>
+<div class="section level3">
+<h3 id="new-features-0-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-2-0"></a></h3>
+<ul><li>C++/Armadillo core: <code>compute_r2_cpp()</code>, <code>compute_rV2_cpp()</code>, <code>maf_filter_cpp()</code>, <code>build_adj_matrix_cpp()</code>, <code>col_r2_cpp()</code>, <code>compute_r2_sparse_cpp()</code>, <code>boundary_scan_cpp()</code>.</li>
+<li>OpenMP parallelism via <code>n_threads</code> parameter.</li>
+<li>Dual LD metric: <code>method = "r2"</code> or <code>"rV2"</code>.</li>
+<li>
+<code><a href="../reference/prepare_geno.html">prepare_geno()</a></code>, <code><a href="../reference/compute_ld.html">compute_ld()</a></code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-2-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
+<ul><li>
+<code><a href="../reference/CLQD.html">CLQD()</a></code>: fixed <code>re_idx</code> tracking after dense-core pre-pass.</li>
+<li>
+<code>Big_LD()</code>: <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code> used throughout for type-stability.</li>
+</ul><hr></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.0" id="ldxblocks-010-2025-04-07">LDxBlocks 0.1.0 (2025-04-07)<a class="anchor" aria-label="anchor" href="#ldxblocks-010-2025-04-07"></a></h2>
+<p>Initial release.</p>
+<ul><li>
+<code>Big_LD()</code>, <code><a href="../reference/CLQD.html">CLQD()</a></code>, <code><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>, <code><a href="../reference/tune_LD_params.html">tune_LD_params()</a></code>.</li>
+<li>
+<code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code>, <code><a href="../reference/compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>, <code><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>.</li>
+<li>
+<code><a href="../reference/summarise_blocks.html">summarise_blocks()</a></code>, <code><a href="../reference/plot_ld_blocks.html">plot_ld_blocks()</a></code>.</li>
+</ul></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Félicien Akohoue.</p>
+  <p>Developed by <a href="https://github.com/FAkohoue" class="external-link">Félicien Akohoue</a>.</p>
 </div>
 
 <div class="pkgdown-footer-right">

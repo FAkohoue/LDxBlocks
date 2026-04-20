@@ -1,5 +1,5 @@
 ## tests/testthat/test-association.R
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 ## Tests for haplotype_association.R and breeding_decisions.R:
 ##   test_block_haplotypes()
 ##   estimate_diplotype_effects()
@@ -9,7 +9,7 @@
 ## All tests use the ldx_* example datasets plus small synthetic fixtures
 ## from helper.R. rrBLUP is required for the first two functions; tests
 ## are skipped automatically when the package is unavailable.
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 
 library(testthat)
 library(LDxBlocks)
@@ -19,7 +19,7 @@ data(ldx_snp_info, package = "LDxBlocks")
 data(ldx_blocks,   package = "LDxBlocks")
 data(ldx_blues,    package = "LDxBlocks")
 
-# ── Shared fixtures ───────────────────────────────────────────────────────────
+# -- Shared fixtures -----------------------------------------------------------
 
 .haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 5L)
 .blues_vec  <- setNames(ldx_blues$YLD, ldx_blues$id)
@@ -33,7 +33,7 @@ data(ldx_blues,    package = "LDxBlocks")
 .haps_s <- extract_haplotypes(.G_s, .si_s, .blk_s, min_snps = 3L)
 .blues_s <- make_blues(.G_s, seed = 9L)
 
-# ── Deterministic diplotype fixture (exercises estimate_diplotype_effects) ───
+# -- Deterministic diplotype fixture (exercises estimate_diplotype_effects) ---
 # 18 individuals x 1 block x 5 SNPs.
 # Exactly 6 AA, 6 AB, 6 BB diplotypes, ensuring dominance_table is non-empty.
 # Blues are set so: a = 0.5, d = 1.0, d/a = 2.0 -> overdominance.
@@ -642,7 +642,7 @@ test_that("summarize_parent_haplotypes: allele_effects with wrong columns errors
 # 6. Gap-coverage: edge cases and alternative input paths
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── Gap 1: estimate_diplotype_effects with PHASED input ──────────────────────
+# -- Gap 1: estimate_diplotype_effects with PHASED input ----------------------
 # Phased haplotypes use "|" separator strings; heterozygous is determined by
 # h1 != h2 (not by dosage containing "1"), so the code path through
 # infer_block_haplotypes differs from the unphased path.
@@ -724,7 +724,7 @@ test_that("estimate_diplotype_effects: phased input produces non-empty dominance
   )
 })
 
-# ── Gap 2: All-homozygous population ─────────────────────────────────────────
+# -- Gap 2: All-homozygous population -----------------------------------------
 # When all individuals are homozygous (dosage in {0,2} only), there are no AB
 # diplotypes. estimate_diplotype_effects must return empty dominance_table and
 # test_block_haplotypes must still produce allele_tests without error.
@@ -788,7 +788,7 @@ test_that("test_block_haplotypes: all-homozygous population runs without error",
   expect_s3_class(res, "LDxBlocks_haplotype_assoc")
 })
 
-# ── Gap 3: Degenerate GRM (all identical genotypes) ──────────────────────────
+# -- Gap 3: Degenerate GRM (all identical genotypes) --------------------------
 # When all individuals carry identical genotypes, the GRM is rank-deficient
 # (all entries equal). Both test_block_haplotypes and estimate_diplotype_effects
 # must handle this gracefully via their internal tryCatch on mixed.solve().
@@ -810,7 +810,7 @@ test_that("test_block_haplotypes: degenerate GRM handled gracefully", {
                         stringsAsFactors = FALSE)
   haps_deg <- extract_haplotypes(G_deg, si_deg, blk_deg, min_snps = 3L)
   blues_deg <- setNames(rnorm(n_ind), rownames(G_deg))
-  # Should not throw — degenerate GRM causes mixed.solve to fail,
+  # Should not throw - degenerate GRM causes mixed.solve to fail,
   # which is caught internally and the block is skipped
   expect_no_error(
     test_block_haplotypes(haps_deg, blues = blues_deg,
@@ -828,7 +828,7 @@ test_that("estimate_diplotype_effects: degenerate GRM handled gracefully", {
   )
 })
 
-# ── Gap 4: d/a edge cases ─────────────────────────────────────────────────────
+# -- Gap 4: d/a edge cases -----------------------------------------------------
 # a=0 (mean_AA == mean_BB): d_over_a must be NA, overdominance must be FALSE.
 # d=0 (no dominance, AB = midpoint): overdominance must be FALSE.
 

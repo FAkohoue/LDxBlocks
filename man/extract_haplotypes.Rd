@@ -2,7 +2,7 @@
 % Please edit documentation in R/haplotypes.R
 \name{extract_haplotypes}
 \alias{extract_haplotypes}
-\title{Extract Haplotype Strings Within LD Blocks}
+\title{Extract Haplotype Dosage Strings from LD Blocks}
 \usage{
 extract_haplotypes(
   geno,
@@ -14,24 +14,53 @@ extract_haplotypes(
 )
 }
 \arguments{
-\item{geno}{Dosage matrix (individuals x SNPs) OR phased list from read_phased_vcf()/phase_with_pedigree().}
+\item{geno}{One of:
+\itemize{
+  \item An \code{LDxBlocks_backend} from \code{\link{read_geno}} or
+    \code{\link{read_geno_bigmemory}} (streaming, one chromosome at a time).
+  \item A named list with elements \code{hap1} and \code{hap2} (phased
+    SNPs x individuals matrices from \code{\link{read_phased_vcf}}).
+  \item A numeric matrix (individuals x SNPs, values 0/1/2/NA).
+}}
 
-\item{snp_info}{Data frame with SNP, CHR, POS.}
+\item{snp_info}{Data frame with columns \code{SNP}, \code{CHR}, \code{POS}.}
 
-\item{blocks}{LD block data frame from run_Big_LD_all_chr() with CHR, start.bp, end.bp.}
+\item{blocks}{Data frame of LD blocks from \code{\link{run_Big_LD_all_chr}},
+with columns \code{CHR}, \code{start.bp}, \code{end.bp}, \code{n_snps}.}
 
-\item{chr}{Optional chromosome filter. Default NULL (all).}
+\item{chr}{Character vector of chromosomes to process. \code{NULL} (default)
+processes all chromosomes present in \code{blocks}.}
 
-\item{min_snps}{Minimum SNPs per block. Default 3L.}
+\item{min_snps}{Integer. Minimum number of SNPs a block must contain to be
+included. Default \code{3L}.}
 
-\item{na_char}{Missing allele character. Default ".".}
+\item{na_char}{Character. Symbol used to denote missing genotype in the
+dosage string. Default \code{"."}.}
 }
 \value{
-Named list of character vectors (length=n_individuals), one per block.
-  Carries block_info attribute.
+A named list of per-block haplotype dosage matrices (individuals x
+  haplotype alleles, values 0/1/2 for phased data or 0/1 for unphased).
+  The list carries a \code{block_info} attribute (data frame with one row
+  per block: \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+  \code{n_snps}, \code{n_haplotypes}, \code{phased}).
 }
 \description{
-Builds haplotype strings per individual per LD block.
-  Unphased mode: "012201" (diploid). Phased mode: "011|100" (gametes).
-  Blocks are always defined within a single chromosome.
+Builds per-block haplotype dosage strings for all individuals across the
+LD blocks in \code{blocks}. Each block is processed by the C++ engine
+\code{extract_chr_haplotypes_cpp()} (unphased) or
+\code{extract_chr_haplotypes_phased_cpp()} (phased VCF input), which
+assigns each individual a dosage string of 0/1/2 characters (one per SNP
+in the block) and identifies the top haplotype alleles by frequency.
+}
+\examples{
+data(ldx_geno, ldx_snp_info, ldx_blocks)
+haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3L)
+length(haps)                     # one element per block
+names(haps)[1]                   # e.g. "block_1_1000_25000"
+dim(haps[[1]])                   # individuals x haplotype alleles
+
+}
+\seealso{
+\code{\link{run_Big_LD_all_chr}}, \code{\link{build_haplotype_feature_matrix}},
+  \code{\link{compute_haplotype_diversity}}, \code{\link{decode_haplotype_strings}}
 }

@@ -1,5 +1,5 @@
 ## tests/testthat/test-resolve-overlap.R
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 ## Unit tests for LD-informed overlap resolution:
 ##   - LDxBlocks:::.resolve_overlap()    R reference implementation
 ##   - LDxBlocks::resolve_overlap_cpp()  C++ accelerated implementation
@@ -16,7 +16,7 @@
 ##   5. Tie-breaking: zero-variance overlap SNPs -> all-left (block A priority)
 ##   6. Non-overlapping input passes through unchanged
 ##   7. C++ and R produce identical boundaries on all cases above
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 
 library(testthat)
 library(LDxBlocks)
@@ -24,7 +24,7 @@ library(LDxBlocks)
 data(ldx_geno,     package = "LDxBlocks")
 data(ldx_snp_info, package = "LDxBlocks")
 
-# ── Shared fixtures ───────────────────────────────────────────────────────────
+# -- Shared fixtures -----------------------------------------------------------
 
 # Centred adjusted matrix for a 30-column window (used by most tests)
 adj30 <- scale(ldx_geno[, 1:30], center = TRUE, scale = FALSE)
@@ -39,7 +39,7 @@ make_hap_block <- function(n, p, seed) {
 }
 
 
-# ── 1. No overlap: input unchanged ───────────────────────────────────────────
+# -- 1. No overlap: input unchanged -------------------------------------------
 
 test_that(".resolve_overlap: non-overlapping blocks pass through unchanged", {
   blocks_in <- matrix(c(1L, 10L, 12L, 20L), nrow = 2L, byrow = TRUE)
@@ -61,7 +61,7 @@ test_that("C++ vs R: non-overlapping input", {
 })
 
 
-# ── 2. Union merge: B fully inside A ─────────────────────────────────────────
+# -- 2. Union merge: B fully inside A -----------------------------------------
 
 test_that(".resolve_overlap: union merge when B fully inside A", {
   blocks_in <- matrix(c(1L, 30L, 10L, 20L), nrow = 2L, byrow = TRUE)
@@ -89,7 +89,7 @@ test_that("C++ vs R: union merge when B fully inside A", {
 })
 
 
-# ── 3. All-left path ──────────────────────────────────────────────────────────
+# -- 3. All-left path ----------------------------------------------------------
 
 # One strong haplotype across all 25 cols -> overlap SNPs (16:20) all prefer left
 .make_allleft_data <- function() {
@@ -127,7 +127,7 @@ test_that("C++ vs R: all-left path produces identical boundaries", {
 })
 
 
-# ── 4. All-right path ─────────────────────────────────────────────────────────
+# -- 4. All-right path ---------------------------------------------------------
 
 # Copy overlap columns to match right core exactly -> all scores negative
 .make_allright_data <- function() {
@@ -162,7 +162,7 @@ test_that("C++ vs R: all-right path produces identical boundaries", {
 })
 
 
-# ── 5. Tie-breaking: zero-variance overlap -> all-left ────────────────────────
+# -- 5. Tie-breaking: zero-variance overlap -> all-left ------------------------
 
 .make_ties_data <- function() {
   adj <- scale(ldx_geno[, 1:30], center = TRUE, scale = FALSE)
@@ -196,7 +196,7 @@ test_that("C++ vs R: tie-breaking path produces identical boundaries", {
 })
 
 
-# ── 6. Mixed split with cumulative-score rule ─────────────────────────────────
+# -- 6. Mixed split with cumulative-score rule ---------------------------------
 
 .make_mixed_data <- function() {
   set.seed(42)
@@ -248,7 +248,7 @@ test_that("C++ vs R: mixed split produces identical boundaries", {
 })
 
 
-# ── 7. Output invariants ──────────────────────────────────────────────────────
+# -- 7. Output invariants ------------------------------------------------------
 
 test_that("resolve_overlap_cpp: output has <= input rows (no new blocks created)", {
   blocks_in <- matrix(as.integer(c(1, 15, 12, 25, 23, 30)), nrow = 3L, byrow = TRUE)
@@ -279,7 +279,7 @@ test_that("resolve_overlap_cpp: global span preserved (min start, max end unchan
 })
 
 
-# ── 8. Big_LD integration: C++ resolver produces non-overlapping output ───────
+# -- 8. Big_LD integration: C++ resolver produces non-overlapping output -------
 
 test_that("Big_LD with resolve_overlap_cpp: no overlapping blocks in output", {
   idx  <- which(ldx_snp_info$CHR == "1")

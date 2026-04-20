@@ -73,6 +73,6 @@ head(ldx_gwas)
 # All markers should fall within ldx_blocks:
 data(ldx_blocks)
 data(ldx_snp_info)
-all(ldx_gwas$Marker %in% ldx_snp_info$SNP)
+all(is.element(ldx_gwas$Marker, ldx_snp_info$SNP))
 #> [1] TRUE
 ```

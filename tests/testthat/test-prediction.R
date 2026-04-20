@@ -1,12 +1,12 @@
 ## tests/testthat/test-prediction.R
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 ## Thorough tests for run_haplotype_prediction():
 ##   - All four blues input formats (named vector, ST df, MT df, named list)
 ##   - Single-trait: full return structure verification
 ##   - Multi-trait: all three importance_rule values, auto blue_cols, list format
 ##   - Edge cases: id mismatch, NA blues, partial overlap
 ##   - run_haplotype_prediction via ldx_blues canonical example
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 
 library(testthat)
 library(LDxBlocks)
@@ -34,7 +34,7 @@ blues_mt_df <- data.frame(
   stringsAsFactors = FALSE
 )
 
-# ── Format 1: Named numeric vector ────────────────────────────────────────────
+# -- Format 1: Named numeric vector --------------------------------------------
 
 test_that("ST named vector: runs without error", {
   expect_no_error(
@@ -124,7 +124,7 @@ test_that("ST named vector: G is a square symmetric matrix", {
   expect_true(isSymmetric(res$G, tol = 1e-8))
 })
 
-# ── Format 2: Data frame, single trait, explicit id_col + blue_col ────────────
+# -- Format 2: Data frame, single trait, explicit id_col + blue_col ------------
 
 test_that("ST data.frame (id_col + blue_col): runs without error", {
   expect_no_error(
@@ -160,7 +160,7 @@ test_that("ST data.frame: gebv matches output from named vector (same data)", {
   expect_equal(res_vec$gebv[common], res_df$gebv[common], tolerance = 1e-6)
 })
 
-# ── Format 2b: Data frame, auto-detect single numeric column ──────────────────
+# -- Format 2b: Data frame, auto-detect single numeric column ------------------
 
 test_that("ST data.frame auto-detect: single numeric column detected without blue_col", {
   blues_auto <- data.frame(
@@ -168,7 +168,7 @@ test_that("ST data.frame auto-detect: single numeric column detected without blu
     YLD  = blues_vec,
     stringsAsFactors = FALSE
   )
-  # blue_col default is "blue" — not present, so auto-detect should kick in
+  # blue_col default is "blue" - not present, so auto-detect should kick in
   expect_no_error(
     res <- run_haplotype_prediction(ldx_geno, ldx_snp_info, ldx_blocks,
                                     blues   = blues_auto,
@@ -178,7 +178,7 @@ test_that("ST data.frame auto-detect: single numeric column detected without blu
   expect_equal(res$n_traits, 1L)
 })
 
-# ── Format 3: Data frame, multiple traits, explicit blue_cols ─────────────────
+# -- Format 3: Data frame, multiple traits, explicit blue_cols -----------------
 
 test_that("MT data.frame (blue_cols): runs without error", {
   expect_no_error(
@@ -300,7 +300,7 @@ test_that("MT data.frame: gebv and snp_effects are named lists (one per trait)",
   expect_equal(sort(names(res$snp_effects)), sort(c("YLD", "RES")))
 })
 
-# ── Format 3b: Data frame, auto-detect blue_cols (blue_cols = NULL) ───────────
+# -- Format 3b: Data frame, auto-detect blue_cols (blue_cols = NULL) -----------
 
 test_that("MT data.frame auto-detect blue_cols=NULL: finds YLD and RES", {
   res <- run_haplotype_prediction(ldx_geno, ldx_snp_info, ldx_blocks,
@@ -312,7 +312,7 @@ test_that("MT data.frame auto-detect blue_cols=NULL: finds YLD and RES", {
   expect_equal(sort(res$traits), sort(c("YLD", "RES")))
 })
 
-# ── Format 4: Named list of named numeric vectors ─────────────────────────────
+# -- Format 4: Named list of named numeric vectors -----------------------------
 
 test_that("MT named list: runs without error", {
   blues_list <- list(
@@ -364,7 +364,7 @@ test_that("MT named list: unnamed list throws an error", {
   )
 })
 
-# ── Canonical example: ldx_blues dataset ─────────────────────────────────────
+# -- Canonical example: ldx_blues dataset -------------------------------------
 
 test_that("ldx_blues single-trait (YLD): complete pipeline runs end-to-end", {
   res <- run_haplotype_prediction(
@@ -399,7 +399,7 @@ test_that("ldx_blues multi-trait (YLD + RES): complete pipeline runs end-to-end"
   expect_equal(nrow(res$block_importance), res$n_blocks)
 })
 
-# ── Edge cases ────────────────────────────────────────────────────────────────
+# -- Edge cases ----------------------------------------------------------------
 
 test_that("ID mismatch (zero overlap): throws informative error", {
   blues_bad <- c(NOBODY1 = 1.0, NOBODY2 = 2.0, NOBODY3 = 3.0)
@@ -410,7 +410,7 @@ test_that("ID mismatch (zero overlap): throws informative error", {
 })
 
 test_that("Partial ID overlap: proceeds with common individuals only", {
-  # Use only first 60 individuals — valid partial overlap
+  # Use only first 60 individuals - valid partial overlap
   blues_partial <- blues_vec[1:60]
   expect_no_error(
     res <- run_haplotype_prediction(ldx_geno, ldx_snp_info, ldx_blocks,
@@ -442,7 +442,7 @@ test_that("wrong id_col name throws informative error", {
 
 test_that("wrong blue_col name throws informative error", {
   # When the specified blue_col doesn't exist, it should not silently
-  # fall through — it should error or warn clearly.
+  # fall through - it should error or warn clearly.
   expect_error(
     run_haplotype_prediction(ldx_geno, ldx_snp_info, ldx_blocks,
                              blues    = blues_st_df,

@@ -1,8 +1,8 @@
 ## tests/testthat/helper.R
 ## Shared helpers loaded automatically by testthat before every test file.
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 
-# ── Genotype matrix ───────────────────────────────────────────────────────────
+# -- Genotype matrix -----------------------------------------------------------
 
 #' Simulate a random dosage matrix
 #' @param n  Number of individuals. Default 60.
@@ -17,7 +17,7 @@ make_geno <- function(n = 60, p = 30, seed = 1L) {
   G
 }
 
-# ── SNP metadata ──────────────────────────────────────────────────────────────
+# -- SNP metadata --------------------------------------------------------------
 
 #' Build a minimal SNP information data frame
 #' @param p    Number of SNPs. Default 30.
@@ -38,7 +38,7 @@ make_snpinfo <- function(p = 30, chr = "1") {
   )
 }
 
-# ── Block table ───────────────────────────────────────────────────────────────
+# -- Block table ---------------------------------------------------------------
 
 #' Build a minimal block table from snp_info
 #' @param snp_info  Data frame from make_snpinfo() or ldx_snp_info.
@@ -69,7 +69,7 @@ make_blocks <- function(snp_info, n_blocks = 3L) {
   do.call(rbind, rows)
 }
 
-# ── Phenotype / BLUEs ─────────────────────────────────────────────────────────
+# -- Phenotype / BLUEs ---------------------------------------------------------
 
 #' Simulate pre-adjusted phenotype values (BLUEs) for run_haplotype_prediction()
 #' @param geno_matrix  Genotype matrix (individuals x SNPs) from make_geno().
@@ -79,7 +79,7 @@ make_blocks <- function(snp_info, n_blocks = 3L) {
 #'   "data.frame" (data frame with columns "id" and "blue").
 #' @param seed         RNG seed. Default 42L.
 #' @return Named numeric vector or data frame of simulated BLUEs. These
-#'   represent the output of a field trial mixed model — the typical input to
+#'   represent the output of a field trial mixed model - the typical input to
 #'   GWAS and run_haplotype_prediction().
 make_blues <- function(geno_matrix, n_qtl = 5L, h2 = 0.5,
                        format = c("vector", "data.frame"), seed = 42L) {
@@ -103,7 +103,7 @@ make_blues <- function(geno_matrix, n_qtl = 5L, h2 = 0.5,
   blues
 }
 
-# ── Flat-file writers ─────────────────────────────────────────────────────────
+# -- Flat-file writers ---------------------------------------------------------
 
 #' Write a numeric dosage CSV compatible with read_geno(format = "numeric")
 write_numeric_csv <- function(G, info, sep = ",") {

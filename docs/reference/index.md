@@ -80,7 +80,7 @@ map GWAS hits to QTL regions, and build feature matrices for genomic
 prediction.
 
 - [`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
-  : Extract Haplotype Strings Within LD Blocks
+  : Extract Haplotype Dosage Strings from LD Blocks
 - [`decode_haplotype_strings()`](https://FAkohoue.github.io/LDxBlocks/reference/decode_haplotype_strings.md)
   : Decode Haplotype Strings to Nucleotide Sequences
 - [`compute_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.md)

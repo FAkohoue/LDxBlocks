@@ -149,18 +149,109 @@ unphase_to_dosage <- function(phased_list) {
   phased_list$hap1+phased_list$hap2
 }
 
-#' Extract Haplotype Strings Within LD Blocks
-#' @description Builds haplotype strings per individual per LD block.
-#'   Unphased mode: "012201" (diploid). Phased mode: "011|100" (gametes).
-#'   Blocks are always defined within a single chromosome.
-#' @param geno Dosage matrix (individuals x SNPs) OR phased list from read_phased_vcf()/phase_with_pedigree().
-#' @param snp_info Data frame with SNP, CHR, POS.
-#' @param blocks LD block data frame from run_Big_LD_all_chr() with CHR, start.bp, end.bp.
-#' @param chr Optional chromosome filter. Default NULL (all).
-#' @param min_snps Minimum SNPs per block. Default 3L.
-#' @param na_char Missing allele character. Default ".".
-#' @return Named list of character vectors (length=n_individuals), one per block.
-#'   Carries block_info attribute.
+# ==============================================================================
+# Internal pipeline QC validator
+# ==============================================================================
+
+.validate_hap_output <- function(hap_matrix, hap_info, haplotypes = NULL) {
+  issues <- character(0)
+
+  # 1. NAs in feature matrix
+  n_na <- sum(is.na(hap_matrix))
+  if (n_na > 0L)
+    issues <- c(issues, paste0("Feature matrix has ", n_na, " NA values"))
+
+  if (!is.null(hap_info) && nrow(hap_info) > 0L) {
+    # 2. Duplicated hap_ids
+    n_dup <- sum(duplicated(hap_info$hap_id))
+    if (n_dup > 0L)
+      issues <- c(issues, paste0(n_dup, " duplicated hap_id values in hap_info"))
+
+    # 3. Singleton coordinate / multi-SNP mismatch
+    bad <- !is.na(hap_info$start_bp) & !is.na(hap_info$end_bp) &
+      !is.na(hap_info$n_snps) &
+      hap_info$start_bp == hap_info$end_bp & hap_info$n_snps > 1L
+    if (any(bad))
+      issues <- c(issues, paste0(sum(bad),
+                                 " hap_info rows have start_bp==end_bp but n_snps>1 (retained_idx mismatch)"))
+
+    # 4. hap_id / matrix column alignment
+    if (!is.null(hap_matrix)) {
+      missing_ids <- setdiff(hap_info$hap_id, colnames(hap_matrix))
+      if (length(missing_ids) > 0L)
+        issues <- c(issues, paste0(length(missing_ids),
+                                   " hap_info hap_id(s) not found as matrix columns"))
+    }
+
+    # 5. n_snps range
+    nsnps <- hap_info$n_snps[!is.na(hap_info$n_snps)]
+    message("[LDxBlocks] Hap QC: n_snps range [", min(nsnps), ", ", max(nsnps), "]",
+            " | blocks=", nrow(hap_info),
+            " | NA_matrix=", n_na)
+  }
+
+  if (length(issues) > 0L) {
+    warning("[LDxBlocks] Pipeline QC warnings:\n",
+            paste0("  - ", issues, collapse="\n"), call.=FALSE)
+  } else {
+    message("[LDxBlocks] Pipeline QC: all checks passed.")
+  }
+  invisible(issues)
+}
+
+.prefilter_blocks_by_span <- function(chr_blk_srt, snp_pos_sorted, min_snps) {
+  # Keep only blocks whose bp interval [start.bp, end.bp] contains >= min_snps
+  # positions in snp_pos_sorted (a sorted integer vector of SNP bp positions).
+  # Returns a logical vector of length nrow(chr_blk_srt).
+  lo <- findInterval(as.integer(chr_blk_srt$start.bp) - 1L, snp_pos_sorted) + 1L
+  hi <- findInterval(as.integer(chr_blk_srt$end.bp),         snp_pos_sorted)
+  pmax(0L, hi - lo + 1L) >= as.integer(min_snps)
+}
+
+#' Extract Haplotype Dosage Strings from LD Blocks
+#'
+#' @description
+#' Builds per-block haplotype dosage strings for all individuals across the
+#' LD blocks in \code{blocks}. Each block is processed by the C++ engine
+#' \code{extract_chr_haplotypes_cpp()} (unphased) or
+#' \code{extract_chr_haplotypes_phased_cpp()} (phased VCF input), which
+#' assigns each individual a dosage string of 0/1/2 characters (one per SNP
+#' in the block) and identifies the top haplotype alleles by frequency.
+#'
+#' @param geno One of:
+#'   \itemize{
+#'     \item An \code{LDxBlocks_backend} from \code{\link{read_geno}} or
+#'       \code{\link{read_geno_bigmemory}} (streaming, one chromosome at a time).
+#'     \item A named list with elements \code{hap1} and \code{hap2} (phased
+#'       SNPs x individuals matrices from \code{\link{read_phased_vcf}}).
+#'     \item A numeric matrix (individuals x SNPs, values 0/1/2/NA).
+#'   }
+#' @param snp_info Data frame with columns \code{SNP}, \code{CHR}, \code{POS}.
+#' @param blocks Data frame of LD blocks from \code{\link{run_Big_LD_all_chr}},
+#'   with columns \code{CHR}, \code{start.bp}, \code{end.bp}, \code{n_snps}.
+#' @param chr Character vector of chromosomes to process. \code{NULL} (default)
+#'   processes all chromosomes present in \code{blocks}.
+#' @param min_snps Integer. Minimum number of SNPs a block must contain to be
+#'   included. Default \code{3L}.
+#' @param na_char Character. Symbol used to denote missing genotype in the
+#'   dosage string. Default \code{"."}.
+#'
+#' @return A named list of per-block haplotype dosage matrices (individuals x
+#'   haplotype alleles, values 0/1/2 for phased data or 0/1 for unphased).
+#'   The list carries a \code{block_info} attribute (data frame with one row
+#'   per block: \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+#'   \code{n_snps}, \code{n_haplotypes}, \code{phased}).
+#'
+#' @seealso \code{\link{run_Big_LD_all_chr}}, \code{\link{build_haplotype_feature_matrix}},
+#'   \code{\link{compute_haplotype_diversity}}, \code{\link{decode_haplotype_strings}}
+#'
+#' @examples
+#' data(ldx_geno, ldx_snp_info, ldx_blocks)
+#' haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 3L)
+#' length(haps)                     # one element per block
+#' names(haps)[1]                   # e.g. "block_1_1000_25000"
+#' dim(haps[[1]])                   # individuals x haplotype alleles
+#'
 #' @export
 extract_haplotypes <- function(geno, snp_info, blocks,
                                chr=NULL, min_snps=3L, na_char=".") {
@@ -185,10 +276,9 @@ extract_haplotypes <- function(geno, snp_info, blocks,
       chr    <- .norm_chr_hap(chr)
       blocks <- blocks[blocks$CHR %in% chr, ]
     }
-    res <- list()
-    bi  <- data.frame(block_id=character(),CHR=character(),start_bp=integer(),
-                      end_bp=integer(),n_snps=integer(),phased=logical(),
-                      stringsAsFactors=FALSE)
+    res      <- list()
+    bi_rows  <- list()   # accumulate block_info rows; bind once at end
+    bi_count <- 0L
     for (cb in unique(blocks$CHR)) {
       chr_blocks <- blocks[blocks$CHR == cb, ]
       if (!nrow(chr_blocks)) next
@@ -208,44 +298,78 @@ extract_haplotypes <- function(geno, snp_info, blocks,
       chr_si_srt  <- chr_si[chr_pos_ord, , drop=FALSE]
       blk_ord     <- order(chr_blocks$start.bp)
       chr_blk_srt <- chr_blocks[blk_ord, , drop=FALSE]
-      # Pass sorted genotype matrix (columns in position order)
+
+      # PRE-FILTER: remove blocks that cannot pass min_snps before calling C++.
+      # This ensures the compact cpp_res arrays map 1:1 to chr_blk_srt rows,
+      # eliminating any index mismatch between retained results and block metadata.
+      snp_pos_sorted <- as.integer(chr_si_srt$POS)
+      keep_blk <- .prefilter_blocks_by_span(chr_blk_srt, snp_pos_sorted, min_snps)
+      chr_blk_srt <- chr_blk_srt[keep_blk, , drop=FALSE]
+      if (!nrow(chr_blk_srt)) {
+        rm(chr_geno, chr_si); gc(FALSE)
+        next
+      }
+
       geno_sorted <- chr_geno[, chr_pos_ord, drop=FALSE]
       cpp_res <- extract_chr_haplotypes_cpp(
         geno_chr  = matrix(as.integer(geno_sorted), nrow=nrow(geno_sorted)),
-        snp_pos   = as.integer(chr_si_srt$POS),
+        snp_pos   = snp_pos_sorted,
         block_sb  = as.integer(chr_blk_srt$start.bp),
         block_eb  = as.integer(chr_blk_srt$end.bp),
         min_snps  = as.integer(min_snps),
-        min_freq  = 0,        # apply min_freq later at feature matrix stage
-        top_n     = 0L,       # no cap at extraction; cap at feature matrix
+        min_freq  = 0,
+        top_n     = 0L,
         na_char   = na_char
       )
-      n_ret <- cpp_res$n_retained
+      n_ret   <- cpp_res$n_retained
+      ret_idx <- as.integer(cpp_res$retained_idx)
+
+      # Sanity check: retained_idx must exist and be the right length
       if (n_ret > 0L) {
+        if (is.null(ret_idx) || length(ret_idx) != n_ret)
+          stop("extract_chr_haplotypes_cpp(): retained_idx missing or wrong length. ",
+               "Recompile the package with devtools::install().")
+        if (any(ret_idx < 1L | ret_idx > nrow(chr_blk_srt)))
+          stop("extract_chr_haplotypes_cpp(): retained_idx out of range.")
+
+        # Use C++ bp coordinates directly when available (strongest contract);
+        # fall back to R-side index lookup for backward compatibility.
+        use_cpp_coords <- !is.null(cpp_res$retained_start_bp) &&
+          length(cpp_res$retained_start_bp) == n_ret
         for (b in seq_len(n_ret)) {
-          # Hard guard: reject blocks where C++ reports n_snps < min_snps.
-          # Second barrier against misalignment or edge cases even if the
-          # C++ min_snps filter already ran.
           if (is.na(cpp_res$n_snps[b]) || cpp_res$n_snps[b] < min_snps) next
 
-          blk  <- chr_blk_srt[b, , drop=FALSE]
-          sb   <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
-          bid  <- paste0("block_",cb,"_",sb,"_",eb)
-          hs   <- cpp_res$hap_strings[[b]]
+          if (use_cpp_coords) {
+            sb <- as.numeric(cpp_res$retained_start_bp[b])
+            eb <- as.numeric(cpp_res$retained_end_bp[b])
+          } else {
+            blk <- chr_blk_srt[ret_idx[b], , drop=FALSE]
+            sb  <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
+          }
+          bid <- paste0("block_", cb, "_", sb, "_", eb)
+          hs  <- cpp_res$hap_strings[[b]]
           names(hs) <- iids
           res[[bid]] <- hs
-          bi <- rbind(bi, data.frame(block_id=bid, CHR=cb,
-                                     start_bp=as.integer(sb),
-                                     end_bp=as.integer(eb),
-                                     n_snps=cpp_res$n_snps[b], phased=FALSE,
-                                     stringsAsFactors=FALSE))
+          bi_count <- bi_count + 1L
+          bi_rows[[bi_count]] <- data.frame(
+            block_id = bid, CHR = cb,
+            start_bp = as.integer(sb), end_bp = as.integer(eb),
+            n_snps   = as.integer(cpp_res$n_snps[b]),
+            phased   = FALSE, stringsAsFactors = FALSE
+          )
         }
         if (length(res) %% 1000L == 0L && length(res) > 0L)
           message("[extract_haplotypes] ", length(res), " blocks extracted...")
       }
       rm(chr_geno, chr_si, geno_sorted, cpp_res); gc(FALSE)
     }
-    attr(res,"block_info") <- bi
+    bi <- if (bi_count > 0L)
+      data.table::rbindlist(bi_rows[seq_len(bi_count)], use.names=TRUE)
+    else
+      data.frame(block_id=character(),CHR=character(),start_bp=integer(),
+                 end_bp=integer(),n_snps=integer(),phased=logical(),
+                 stringsAsFactors=FALSE)
+    attr(res,"block_info") <- as.data.frame(bi)
     return(res)
   }
 
@@ -301,54 +425,82 @@ extract_haplotypes <- function(geno, snp_info, blocks,
     si_orig_idx <- chr_si_idx[si_ord]   # original snp_info row indices
     blk_ord     <- order(chr_blks$start.bp)
     chr_blk_srt <- chr_blks[blk_ord, , drop=FALSE]
+
+    # PRE-FILTER: remove blocks that cannot reach min_snps before calling C++.
+    # cpp_res arrays are compact (one entry per retained block); pre-filtering
+    # ensures they map 1:1 to chr_blk_srt rows without any index mismatch.
+    snp_pos_sorted_m <- as.integer(chr_si_srt$POS)
+    keep_blk_m <- .prefilter_blocks_by_span(chr_blk_srt, snp_pos_sorted_m, min_snps)
+    chr_blk_srt <- chr_blk_srt[keep_blk_m, , drop=FALSE]
+    if (!nrow(chr_blk_srt)) next
+
     # B7+B9+B10: full C++ chromosome extractor.
-    # Replaces block_snp_ranges_cpp + per-block R slicing + build_hap_strings_cpp.
-    # One call handles interval lookup, string building (OpenMP), and tabulation.
     gm_chr_srt <- t(gm)[si_orig_idx, , drop=FALSE]  # p_chr x n_ind -> transpose
     gm_chr_srt <- t(gm_chr_srt)                      # n_ind x p_chr (pos-sorted)
-    cpp_res <- extract_chr_haplotypes_cpp(
-      geno_chr  = matrix(as.integer(gm_chr_srt), nrow=nrow(gm_chr_srt)),
-      snp_pos   = as.integer(chr_si_srt$POS),
-      block_sb  = as.integer(chr_blk_srt$start.bp),
-      block_eb  = as.integer(chr_blk_srt$end.bp),
-      min_snps  = as.integer(min_snps),
-      min_freq  = 0, top_n = 0L, na_char = na_char
-    )
-    n_ret <- cpp_res$n_retained
+
+    if (isp) {
+      # Phased path: use dedicated C++ phased extractor (one OpenMP pass;
+      # returns "g1|g2" strings directly, avoiding two build_hap_strings_cpp calls).
+      h1_chr_srt <- t(h1m)[si_orig_idx, , drop=FALSE]; h1_chr_srt <- t(h1_chr_srt)
+      h2_chr_srt <- t(h2m)[si_orig_idx, , drop=FALSE]; h2_chr_srt <- t(h2_chr_srt)
+      cpp_res <- extract_chr_haplotypes_phased_cpp(
+        hap1_chr = matrix(as.integer(h1_chr_srt), nrow=nrow(h1_chr_srt)),
+        hap2_chr = matrix(as.integer(h2_chr_srt), nrow=nrow(h2_chr_srt)),
+        snp_pos  = snp_pos_sorted_m,
+        block_sb = as.integer(chr_blk_srt$start.bp),
+        block_eb = as.integer(chr_blk_srt$end.bp),
+        min_snps = as.integer(min_snps),
+        min_freq = 0, top_n = 0L, na_char = na_char
+      )
+    } else {
+      cpp_res <- extract_chr_haplotypes_cpp(
+        geno_chr  = matrix(as.integer(gm_chr_srt), nrow=nrow(gm_chr_srt)),
+        snp_pos   = snp_pos_sorted_m,
+        block_sb  = as.integer(chr_blk_srt$start.bp),
+        block_eb  = as.integer(chr_blk_srt$end.bp),
+        min_snps  = as.integer(min_snps),
+        min_freq  = 0, top_n = 0L, na_char = na_char
+      )
+    }
+    n_ret   <- cpp_res$n_retained
+    ret_idx <- as.integer(cpp_res$retained_idx)
+
+    if (n_ret > 0L) {
+      if (is.null(ret_idx) || length(ret_idx) != n_ret)
+        stop("extract_chr_haplotypes_cpp(): retained_idx missing or wrong length. ",
+             "Recompile the package with devtools::install().")
+      if (any(ret_idx < 1L | ret_idx > nrow(chr_blk_srt)))
+        stop("extract_chr_haplotypes_cpp(): retained_idx out of range.")
+    }
+
+    use_cpp_coords_m <- !is.null(cpp_res$retained_start_bp) &&
+      length(cpp_res$retained_start_bp) == n_ret
     for (b in seq_len(n_ret)) {
-      blk <- chr_blk_srt[b, , drop=FALSE]
-      sb  <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
-      if (cpp_res$n_snps[b] < min_snps) next
-      if (TRUE) {  # scope guard
-        bid <- paste0("block_",cb,"_",sb,"_",eb)
-        if (isp) {
-          # Phased path: compute geno column indices (ci) via findInterval.
-          # chr_si_srt$POS is already sorted; si_orig_idx maps back to snp_info rows.
-          lo_b <- findInterval(sb - 1, chr_si_srt$POS) + 1L
-          hi_b <- findInterval(eb,     chr_si_srt$POS)
-          if (hi_b < lo_b) next
-          idx_b <- si_orig_idx[lo_b:hi_b]
-          ci <- sg_idx[snp_info$SNP[idx_b]]; ci <- ci[!is.na(ci)]
-          if (length(ci) < min_snps) next
-          h1_int <- matrix(as.integer(h1m[, ci, drop = FALSE]), nrow = nrow(h1m))
-          h2_int <- matrix(as.integer(h2m[, ci, drop = FALSE]), nrow = nrow(h2m))
-          s1 <- build_hap_strings_cpp(h1_int, na_char)
-          s2 <- build_hap_strings_cpp(h2_int, na_char)
-          hs <- paste0(s1, "|", s2)
-        } else {
-          hs <- cpp_res$hap_strings[[b]]  # from extract_chr_haplotypes_cpp (B7)
-        }
-        names(hs) <- iids; res[[bid]] <- hs
-        bi_count <- bi_count + 1L
-        if (bi_count %% 1000L == 0L)
-          message("[extract_haplotypes] ", bi_count, " blocks extracted...")
-        bi_rows[[bi_count]] <- data.frame(block_id=bid,CHR=cb,start_bp=as.integer(sb),
-                                          end_bp=as.integer(eb),
-                                          n_snps=if(isp) length(ci) else cpp_res$n_snps[b],
-                                          phased=isp,stringsAsFactors=FALSE)
-      }  # end if(TRUE) scope guard
+      if (is.na(cpp_res$n_snps[b]) || cpp_res$n_snps[b] < min_snps) next
+
+      if (use_cpp_coords_m) {
+        sb <- as.numeric(cpp_res$retained_start_bp[b])
+        eb <- as.numeric(cpp_res$retained_end_bp[b])
+      } else {
+        blk <- chr_blk_srt[ret_idx[b], , drop=FALSE]
+        sb  <- as.numeric(blk$start.bp); eb <- as.numeric(blk$end.bp)
+      }
+
+      bid <- paste0("block_", cb, "_", sb, "_", eb)
+      # Both phased and unphased: hap_strings come from C++ extractor
+      hs <- cpp_res$hap_strings[[b]]
+      names(hs) <- iids; res[[bid]] <- hs
+      bi_count <- bi_count + 1L
+      if (bi_count %% 1000L == 0L)
+        message("[extract_haplotypes] ", bi_count, " blocks extracted...")
+      bi_rows[[bi_count]] <- data.frame(
+        block_id = bid, CHR = cb,
+        start_bp = as.integer(sb), end_bp = as.integer(eb),
+        n_snps   = as.integer(cpp_res$n_snps[b]),
+        phased   = isp, stringsAsFactors = FALSE
+      )
     }  # end for(b)
-    rm(gm_chr_srt, cpp_res)
+    rm(gm_chr_srt, cpp_res); gc(FALSE)
   }  # end for(cb)
   bi <- if (bi_count > 0L) data.table::rbindlist(bi_rows[seq_len(bi_count)],
                                                  use.names=TRUE) else data.frame(
@@ -700,7 +852,7 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
     if (!length(tops)) { mats[[bk]] <- NULL; next }
 
     mat <- matrix(NA_real_, nrow = length(inames), ncol = length(tops),
-                  dimnames = list(inames, paste0(bn, "__hap", seq_along(tops))))
+                  dimnames = list(inames, paste0(bn, "_hap", seq_along(tops))))
 
     for (j in seq_along(tops)) {
       ref <- tops[j]
@@ -728,16 +880,17 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
       # directly -- no reconstruction needed later.
       info_i <- info_i + 1L
       info_rows[[info_i]] <- data.frame(
-        hap_id     = colnames(mat)[j],
-        block_id   = bn,
-        CHR        = if (nrow(brow)) brow$CHR[1L]        else NA_character_,
-        start_bp   = if (nrow(brow)) as.integer(brow$start_bp[1L]) else NA_integer_,
-        end_bp     = if (nrow(brow)) as.integer(brow$end_bp[1L])   else NA_integer_,
-        n_snps     = if (nrow(brow)) as.integer(brow$n_snps[1L])   else NA_integer_,
-        hap_rank   = j,
-        hap_string = ref,
-        frequency  = round(as.numeric(tbl[ref]) / sum(tbl), 4),
-        phased     = phased,
+        hap_id        = colnames(mat)[j],
+        block_id      = bn,
+        CHR           = if (nrow(brow)) brow$CHR[1L]        else NA_character_,
+        start_bp      = if (nrow(brow)) as.integer(brow$start_bp[1L]) else NA_integer_,
+        end_bp        = if (nrow(brow)) as.integer(brow$end_bp[1L])   else NA_integer_,
+        n_snps        = if (nrow(brow)) as.integer(brow$n_snps[1L])   else NA_integer_,
+        hap_rank      = j,
+        hap_string    = ref,
+        frequency     = round(as.numeric(tbl[ref]) / sum(tbl), 4),
+        phased        = phased,
+        alleles_export = NA_character_,   # filled below after snp_info decode
         stringsAsFactors = FALSE
       )
     }
@@ -970,7 +1123,7 @@ write_haplotype_character <- function(haplotypes, snp_info, out_file,
     for (r in seq_along(tops)) {
       dstr   <- tops[r]
       nuc_seq <- decode_str(dstr, ref_v, alt_v)
-      hap_id  <- paste0(bn, "__hap", r)
+      hap_id  <- paste0(bn, "_hap", r)
 
       cell_vals <- ifelse(
         miss, missing_string,
@@ -1081,24 +1234,36 @@ write_haplotype_numeric <- function(hap_matrix, out_file,
     freq_col   <- round(hap_info$frequency[idx], 4)
 
     # Decode dosage strings to nucleotide sequences using snp_info REF/ALT.
-    # hap_info$hap_string holds the raw dosage string (e.g. "0210").
-    # decode_haplotype_strings() converts it to nucleotide sequence ("AGTA").
-    # If snp_info is unavailable, fall back to the raw dosage string.
-    if (!is.null(snp_info) && !is.null(haplotypes)) {
-      dec <- tryCatch(
-        decode_haplotype_strings(haplotypes, snp_info, min_freq = 0, top_n = NULL),
-        error = function(e) NULL
-      )
-      if (!is.null(dec) && nrow(dec) > 0L) {
-        dec_map     <- stats::setNames(dec$nucleotide_sequence, dec$hap_id)
-        alt_seq_col <- unname(dec_map[hnm])
-        # Fall back to raw dosage string where decode failed
-        missing_dec <- is.na(alt_seq_col)
-        if (any(missing_dec))
-          alt_seq_col[missing_dec] <- hap_info$hap_string[idx][missing_dec]
-      } else {
-        alt_seq_col <- hap_info$hap_string[idx]
-      }
+    # Uses hap_info$hap_string (e.g. "021") + snp_info REF/ALT for the block's
+    # SNP range. Falls back to the raw dosage string when snp_info is unavailable.
+    # This is a direct per-row decode, no re-traversal of haplotypes list needed.
+    iupac_map <- c(AG="R",GA="R",CT="Y",TC="Y",GC="S",CG="S",
+                   AT="W",TA="W",GT="K",TG="K",AC="M",CA="M")
+    if (!is.null(snp_info) &&
+        all(c("CHR","POS","REF","ALT") %in% names(snp_info))) {
+      snp_info_w <- snp_info
+      snp_info_w$CHR <- sub("^chr","",as.character(snp_info_w$CHR),ignore.case=TRUE)
+      alt_seq_col <- vapply(seq_along(hnm), function(k) {
+        hi   <- hap_info[idx[k], ]
+        if (is.na(hi$start_bp) || is.na(hi$end_bp) || is.na(hi$hap_string))
+          return(hi$hap_string)
+        blk_snps <- snp_info_w[snp_info_w$CHR == hi$CHR &
+                                 snp_info_w$POS >= hi$start_bp &
+                                 snp_info_w$POS <= hi$end_bp, , drop=FALSE]
+        blk_snps <- blk_snps[order(blk_snps$POS), ]
+        ds <- hi$hap_string
+        if (!nzchar(ds) || nrow(blk_snps) == 0L) return(ds)
+        chars <- strsplit(ds, "", fixed=TRUE)[[1L]]
+        n <- min(length(chars), nrow(blk_snps))
+        paste(vapply(seq_len(n), function(i) {
+          switch(chars[i],
+                 "0" = as.character(blk_snps$REF[i]),
+                 "2" = as.character(blk_snps$ALT[i]),
+                 "1" = { key <- paste0(blk_snps$REF[i], blk_snps$ALT[i])
+                 if (!is.na(iupac_map[key])) unname(iupac_map[key]) else "N" },
+                 "N")
+        }, character(1L)), collapse="")
+      }, character(1L))
     } else {
       alt_seq_col <- hap_info$hap_string[idx]
     }
@@ -1138,8 +1303,8 @@ write_haplotype_numeric <- function(hap_matrix, out_file,
         all(c("CHR","POS","REF","ALT") %in% names(snp_info))) {
       snp_info$CHR <- sub("^chr","",as.character(snp_info$CHR),ignore.case=TRUE)
       for (j in seq_len(nhap)) {
-        bn       <- sub("__hap[0-9]+$","",hnm[j])
-        hap_rank <- suppressWarnings(as.integer(sub(".*__hap","",hnm[j])))
+        bn       <- sub("_hap[0-9]+$","",hnm[j])
+        hap_rank <- suppressWarnings(as.integer(sub(".*_hap","",hnm[j])))
         if (is.na(hap_rank)) next
         hap_strs <- haplotypes[[bn]]; if (is.null(hap_strs)) next
         blk_snps <- snp_info[snp_info$CHR==chr_col[j] &
@@ -1172,7 +1337,7 @@ write_haplotype_numeric <- function(hap_matrix, out_file,
     if (!is.null(bi)) {
       for (j in seq_len(nhap)) {
         if (!is.na(n_snps_col[j])) next
-        bn   <- sub("__hap[0-9]+$","",hnm[j])
+        bn   <- sub("_hap[0-9]+$","",hnm[j])
         brow <- bi[bi$block_id==bn,,drop=FALSE]
         if (nrow(brow)) n_snps_col[j] <- brow$n_snps[1L]
       }
@@ -1332,7 +1497,7 @@ decode_haplotype_strings <- function(haplotypes, snp_info,
         start_bp           = as.integer(sb),
         end_bp             = as.integer(eb),
         hap_rank           = r,
-        hap_id             = paste0(bn, "__hap", r),
+        hap_id             = paste0(bn, "_hap", r),
         dosage_string      = dstr,
         nucleotide_sequence = decode_one(dstr),
         frequency          = round(as.numeric(tbl[dstr]) / sum(tbl), 4),

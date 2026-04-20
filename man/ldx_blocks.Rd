@@ -5,17 +5,23 @@
 \alias{ldx_blocks}
 \title{Example LD Block Table}
 \format{
-A \code{data.frame} with 9 rows and 8 columns:
+A \code{data.frame} with 9 rows and 9 columns:
 \describe{
   \item{\code{start}}{Integer. Index of the first SNP in the block
-    (1-based, over the full 230-SNP set).}
+    (1-based, over the full 230-SNP set including monomorphics).}
   \item{\code{end}}{Integer. Index of the last SNP.}
   \item{\code{start.rsID}}{Character. SNP ID at the block start.}
   \item{\code{end.rsID}}{Character. SNP ID at the block end.}
   \item{\code{start.bp}}{Integer. Base-pair position of the block start.}
   \item{\code{end.bp}}{Integer. Base-pair position of the block end.}
   \item{\code{CHR}}{Character. Chromosome label.}
-  \item{\code{length_bp}}{Integer. \code{end.bp - start.bp + 1}.}
+  \item{\code{length_bp}}{Integer. \code{end.bp - start.bp + 1}. Physical
+    span of the block in base pairs.}
+  \item{\code{n_snps}}{Integer. Number of polymorphic SNPs in the block
+    (those that passed the MAF filter and were assigned to a clique).
+    For singletons \code{n_snps = 1}. Note that \code{end - start + 1}
+    may exceed \code{n_snps} when monomorphic SNPs fall within the block
+    boundaries.}
 }
 }
 \source{

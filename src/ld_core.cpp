@@ -977,7 +977,7 @@ static std::string build_one_hap(
    // Serial (string map operations not thread-safe without locks)
    Rcpp::List  hap_strings_list, hap_alleles_list, hap_freq_list, hap_counts_list;
    Rcpp::NumericVector out_freq_dom;  // dominant allele freq per retained block
-   Rcpp::IntegerVector out_lo, out_hi, out_nsnps;
+   Rcpp::IntegerVector out_lo, out_hi, out_nsnps, out_retained_idx, out_start_bp, out_end_bp;
 
    for (int b = 0; b < n_blocks; b++) {
      if (lo_vec[b] < 0 || all_strings[b].empty()) continue;
@@ -1037,6 +1037,9 @@ static std::string build_one_hap(
      out_lo.push_back(lo_vec[b]);
      out_hi.push_back(hi_vec[b]);
      out_nsnps.push_back(n_snps_vec[b]);
+     out_retained_idx.push_back(b + 1);   // 1-based row index into block_sb/block_eb for R
+     out_start_bp.push_back((int)block_sb[b]);   // bp coordinate of retained block start
+     out_end_bp.push_back((int)block_eb[b]);     // bp coordinate of retained block end
    }
 
    return Rcpp::List::create(
@@ -1048,9 +1051,146 @@ static std::string build_one_hap(
      Rcpp::Named("block_lo")      = out_lo,
      Rcpp::Named("block_hi")      = out_hi,
      Rcpp::Named("n_snps")        = out_nsnps,
+     Rcpp::Named("retained_idx")  = out_retained_idx,
+     Rcpp::Named("retained_start_bp") = out_start_bp,   // bp coordinates (avoids R-side index lookup)
+     Rcpp::Named("retained_end_bp")   = out_end_bp,
      Rcpp::Named("n_retained")    = (int)out_lo.size()
    );
  }
+
+// =============================================================================
+// extract_chr_haplotypes_phased_cpp
+// Chromosome-level phased haplotype extraction.
+// For each retained block: builds "gamete1|gamete2" strings per individual,
+// tabulates allele frequencies, and applies min_freq / top_n filtering.
+// Returns the same contract as extract_chr_haplotypes_cpp plus phased=TRUE.
+// [[Rcpp::export]]
+Rcpp::List extract_chr_haplotypes_phased_cpp(
+    const Rcpp::IntegerMatrix& hap1_chr,  // n_ind x p_chr (gamete 1 dosage 0/1)
+    const Rcpp::IntegerMatrix& hap2_chr,  // n_ind x p_chr (gamete 2 dosage 0/1)
+    const Rcpp::IntegerVector& snp_pos,   // sorted bp positions, length p_chr
+    const Rcpp::IntegerVector& block_sb,  // block start bp
+    const Rcpp::IntegerVector& block_eb,  // block end bp
+    int                        min_snps,
+    double                     min_freq,
+    int                        top_n,
+    std::string                na_char = "."
+) {
+  int n_ind    = hap1_chr.nrow();
+  int p_chr    = hap1_chr.ncol();
+  int n_blocks = block_sb.size();
+
+  // Step 1: interval lookup (O(p_chr + n_blocks))
+  std::vector<int> lo_vec(n_blocks, -1), hi_vec(n_blocks, -1);
+  {
+    int ptr = 0;
+    for (int b = 0; b < n_blocks; b++) {
+      int sb = block_sb[b], eb = block_eb[b];
+      while (ptr < p_chr && snp_pos[ptr] < sb) ptr++;
+      if (ptr >= p_chr) break;
+      int lo = ptr, hi = lo;
+      while (hi < p_chr && snp_pos[hi] <= eb) hi++;
+      hi--;
+      if ((hi - lo + 1) >= min_snps) { lo_vec[b] = lo; hi_vec[b] = hi; }
+      ptr = lo;
+    }
+  }
+
+  // Step 2: build phased strings "g1|g2" per individual per block (OpenMP)
+  std::vector<std::vector<std::string>> all_g1(n_blocks), all_g2(n_blocks);
+  std::vector<int> n_snps_vec(n_blocks, 0);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic, 4) num_threads(4)
+#endif
+  for (int b = 0; b < n_blocks; b++) {
+    if (lo_vec[b] < 0) continue;
+    int lo = lo_vec[b], hi = hi_vec[b], ns = hi - lo + 1;
+    n_snps_vec[b] = ns;
+    std::vector<int> cols(ns);
+    for (int j = 0; j < ns; j++) cols[j] = lo + j;
+    std::vector<std::string> s1(n_ind), s2(n_ind);
+    for (int i = 0; i < n_ind; i++) {
+      s1[i] = build_one_hap(hap1_chr, i, cols, na_char);
+      s2[i] = build_one_hap(hap2_chr, i, cols, na_char);
+    }
+    all_g1[b] = s1;
+    all_g2[b] = s2;
+  }
+
+  // Step 3: tabulate frequencies and filter (serial)
+  Rcpp::List  hap_strings_list, hap_alleles_list, hap_freq_list, hap_counts_list;
+  Rcpp::NumericVector out_freq_dom;
+  Rcpp::IntegerVector out_lo, out_hi, out_nsnps, out_retained_idx, out_start_bp, out_end_bp;
+
+  for (int b = 0; b < n_blocks; b++) {
+    if (lo_vec[b] < 0 || all_g1[b].empty()) continue;
+    const std::vector<std::string>& g1 = all_g1[b];
+    const std::vector<std::string>& g2 = all_g2[b];
+
+    // Build phased strings and count gamete frequencies (each ind contributes 2)
+    std::unordered_map<std::string, int> cnt;
+    int total = 0;
+    Rcpp::CharacterVector hs(n_ind);
+    for (int i = 0; i < n_ind; i++) {
+      bool na1 = (g1[i].find(na_char[0]) != std::string::npos);
+      bool na2 = (g2[i].find(na_char[0]) != std::string::npos);
+      hs[i] = g1[i] + "|" + g2[i];
+      if (!na1) { cnt[g1[i]]++; total++; }
+      if (!na2) { cnt[g2[i]]++; total++; }
+    }
+    if (total == 0) continue;
+
+    // Sort gametes by frequency descending
+    std::vector<std::pair<std::string, int>> sv(cnt.begin(), cnt.end());
+    std::sort(sv.begin(), sv.end(),
+              [](const std::pair<std::string,int>& a,
+                 const std::pair<std::string,int>& b){ return a.second > b.second; });
+
+    double freq_dom = (double)sv[0].second / total;
+
+    // Apply min_freq and top_n
+    Rcpp::CharacterVector alleles;
+    Rcpp::NumericVector   freqs;
+    Rcpp::IntegerVector   counts;
+    for (int k = 0; k < (int)sv.size(); k++) {
+      if (top_n > 0 && k >= top_n) break;
+      double f = (double)sv[k].second / total;
+      if (f < min_freq) break;
+      alleles.push_back(sv[k].first);
+      freqs.push_back(f);
+      counts.push_back(sv[k].second);
+    }
+    if (alleles.size() == 0) continue;
+
+    hap_strings_list.push_back(hs);
+    hap_alleles_list.push_back(alleles);
+    hap_freq_list.push_back(freqs);
+    hap_counts_list.push_back(counts);
+    out_freq_dom.push_back(freq_dom);
+    out_lo.push_back(lo_vec[b]);
+    out_hi.push_back(hi_vec[b]);
+    out_nsnps.push_back(n_snps_vec[b]);
+    out_retained_idx.push_back(b + 1);
+    out_start_bp.push_back((int)block_sb[b]);
+    out_end_bp.push_back((int)block_eb[b]);
+  }
+
+  return Rcpp::List::create(
+    Rcpp::Named("hap_strings")        = hap_strings_list,
+    Rcpp::Named("hap_alleles")        = hap_alleles_list,
+    Rcpp::Named("hap_freq")           = hap_freq_list,
+    Rcpp::Named("hap_counts")         = hap_counts_list,
+    Rcpp::Named("freq_dominant")      = out_freq_dom,
+    Rcpp::Named("block_lo")           = out_lo,
+    Rcpp::Named("block_hi")           = out_hi,
+    Rcpp::Named("n_snps")             = out_nsnps,
+    Rcpp::Named("retained_idx")       = out_retained_idx,
+    Rcpp::Named("retained_start_bp")  = out_start_bp,
+    Rcpp::Named("retained_end_bp")    = out_end_bp,
+    Rcpp::Named("n_retained")         = (int)out_lo.size()
+  );
+}
 
 // =============================================================================
 // impute_and_filter_cpp()

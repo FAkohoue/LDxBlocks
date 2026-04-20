@@ -85,9 +85,9 @@
 #' head(blocks)
 #' }
 #' @keywords internal
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # LD-informed overlap resolution (package-scope so tests can access via :::)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 #' @noRd
 .resolve_overlap <- function(blocks, adj_mat, k_rep = 10L) {
   i <- 1L
@@ -244,7 +244,8 @@ Big_LD <- function(
     warning("[Big_LD] Fewer than 2 polymorphic SNPs after MAF filter. Returning empty.")
     return(data.frame(start = integer(), end = integer(),
                       start.rsID = character(), end.rsID = character(),
-                      start.bp = numeric(), end.bp = numeric()))
+                      start.bp = numeric(), end.bp = numeric(),
+                      n_snps = integer()))
   }
 
   # ==========================================================================
@@ -711,7 +712,7 @@ Big_LD <- function(
   # resolve_overlap_cpp() implements the identical cumulative-score split
   # rule as the original R .resolve_overlap(), but:
   #   1. Runs entirely in C++ (no R interpreter overhead per block pair)
-  #   2. Computes r2 ONLY against left_reps ∪ right_reps (at most 2*k_rep
+  #   2. Computes r2 ONLY against left_reps union right_reps (at most 2*k_rep
   #      columns), not all p columns - O(n * 2k_rep) vs O(n * p) per SNP
   #   3. Uses a lazy column cache: standardises each column at most once
   #   4. Single pass (not twice): one call is sufficient because the C++
@@ -732,6 +733,11 @@ Big_LD <- function(
     start.bp   = as.numeric(SNPinfo[[2L]][LDblocks[,1L]]),
     end.bp     = as.numeric(SNPinfo[[2L]][LDblocks[,2L]])
   )
+  # n_snps is computed BEFORE re-indexing while indices still map 1:1 to
+  # the filtered SNPinfo rows (every index from start to end IS a SNP that
+  # passed MAF filtering). After re-indexing over the full set including
+  # monomorphics, end - start + 1 would over-count; computing here avoids that.
+  out$n_snps <- out$end - out$start + 1L
 
   # Re-index over full set including monomorphic SNPs
   all_bp  <- sort(c(as.numeric(monoSNPs[[2L]]), as.numeric(OSNPinfo[[2L]])))
@@ -780,6 +786,7 @@ Big_LD <- function(
         end.bp     = si_bp,
         CHR        = if ("CHR" %in% names(out)) out$CHR[1L] else NA_character_,
         length_bp  = 1L,
+        n_snps     = 1L,
         stringsAsFactors = FALSE
       )
       # Merge with multi-SNP blocks and re-sort by position

@@ -118,16 +118,14 @@
       data.frame](#id_154-computehaplotypediversity-dataframe)
     - 15.5. [`read_geno()` —
       LDxBlocks_backend](#id_155-readgeno-ldxblocksbackend)
-
-- 15.6. [`test_block_haplotypes()` —
-  LDxBlocks_haplotype_assoc](#id_156-test_block_haplotypes--ldxblocks_haplotype_assoc)
-- 15.7. [`estimate_diplotype_effects()` —
-  LDxBlocks_diplotype](#id_157-estimate_diplotype_effects--ldxblocks_diplotype)
-- 15.8. [`score_favorable_haplotypes()` — data
-  frame](#id_158-score_favorable_haplotypes--data-frame)
-- 15.9. [`summarize_parent_haplotypes()` — data
-  frame](#id_159-summarize_parent_haplotypes--data-frame)
-
+    - 15.6. [`test_block_haplotypes()` —
+      LDxBlocks_haplotype_assoc](#id_156-test_block_haplotypes--ldxblocks_haplotype_assoc)
+    - 15.7. [`estimate_diplotype_effects()` —
+      LDxBlocks_diplotype](#id_157-estimate_diplotype_effects--ldxblocks_diplotype)
+    - 15.8. [`score_favorable_haplotypes()` — data
+      frame](#id_158-score_favorable_haplotypes--data-frame)
+    - 15.9. [`summarize_parent_haplotypes()` — data
+      frame](#id_159-summarize_parent_haplotypes--data-frame)
 16. [Memory and performance notes](#id_16-memory-and-performance-notes)
     - 16.1. [C++ core](#id_161-c-core)
     - 16.2. [Never-full-genome memory

@@ -169,6 +169,12 @@ run_Big_LD_all_chr <- function(
     all_blocks$start.rsID <- as.character(all_blocks$start.rsID)
     all_blocks$end.rsID   <- as.character(all_blocks$end.rsID)
     all_blocks$length_bp  <- all_blocks$end.bp - all_blocks$start.bp + 1L
+    # n_snps: carried through from Big_LD(); ensure it is present and integer.
+    # Big_LD() computes it before re-indexing (when start/end map 1:1 to
+    # filtered SNP rows), so it correctly counts only polymorphic SNPs in block.
+    if (!"n_snps" %in% names(all_blocks))
+      all_blocks$n_snps <- all_blocks$end - all_blocks$start + 1L
+    all_blocks$n_snps <- as.integer(all_blocks$n_snps)
     data.table::setorder(all_blocks, CHR, start.bp)
   }
   as.data.frame(all_blocks)

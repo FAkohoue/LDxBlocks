@@ -1,9 +1,9 @@
 ## tests/testthat/test-cpp.R
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 ## Unit tests for all eight exported C++ kernels in src/ld_core.cpp.
 ## Tests are property-based: verify mathematical guarantees rather than
 ## exact numeric values, so they pass regardless of BLAS implementation.
-## ─────────────────────────────────────────────────────────────────────────────
+## -----------------------------------------------------------------------------
 
 library(testthat)
 library(LDxBlocks)
@@ -12,7 +12,7 @@ set.seed(99)
 G_small <- matrix(sample(0:2, 80 * 30, replace = TRUE), 80, 30)
 G_na    <- G_small; G_na[sample(80*30, 60)] <- NA   # inject NAs
 
-# ── compute_r2_cpp ────────────────────────────────────────────────────────────
+# -- compute_r2_cpp ------------------------------------------------------------
 test_that("compute_r2_cpp: symmetric, diagonal 0, values in [0,1]", {
   r2 <- compute_r2_cpp(G_small)
   expect_true(isSymmetric(r2, tol = 1e-10))
@@ -53,7 +53,7 @@ test_that("compute_r2_cpp: perfectly correlated columns give r2 = 1", {
   expect_equal(r2[1, 2], 1.0, tolerance = 1e-10)
 })
 
-# ── compute_rV2_cpp ───────────────────────────────────────────────────────────
+# -- compute_rV2_cpp -----------------------------------------------------------
 test_that("compute_rV2_cpp: same guarantees as compute_r2_cpp", {
   # rV2 on whitened data is the same kernel
   Gc <- scale(G_small, center = TRUE, scale = FALSE)
@@ -63,7 +63,7 @@ test_that("compute_rV2_cpp: same guarantees as compute_r2_cpp", {
   expect_true(all(r2 >= 0 & r2 <= 1 + 1e-8))
 })
 
-# ── maf_filter_cpp ────────────────────────────────────────────────────────────
+# -- maf_filter_cpp ------------------------------------------------------------
 test_that("maf_filter_cpp: all-ref monomorphic column removed", {
   G       <- G_small
   G[, 3]  <- 0L
@@ -97,7 +97,7 @@ test_that("maf_filter_cpp: returns LogicalVector of correct length", {
   expect_type(keep, "logical")
 })
 
-# ── build_adj_matrix_cpp ──────────────────────────────────────────────────────
+# -- build_adj_matrix_cpp ------------------------------------------------------
 test_that("build_adj_matrix_cpp: 0/1, symmetric, zero diagonal", {
   r2  <- compute_r2_cpp(G_small)
   adj <- build_adj_matrix_cpp(r2, 0.3)
@@ -107,7 +107,7 @@ test_that("build_adj_matrix_cpp: 0/1, symmetric, zero diagonal", {
 })
 
 test_that("build_adj_matrix_cpp: threshold 0 gives all-ones off-diagonal", {
-  # Use a single shared founder — all columns identical -> r2 = 1 for all pairs
+  # Use a single shared founder - all columns identical -> r2 = 1 for all pairs
   founder <- c(rep(0L, 10), rep(1L, 10), rep(2L, 10))
   G2  <- matrix(rep(founder, 5), nrow = 30, ncol = 5)
   r2  <- compute_r2_cpp(G2)
@@ -128,7 +128,7 @@ test_that("build_adj_matrix_cpp: threshold 1.0 gives all-zeros", {
   expect_true(all(adj == 0L))
 })
 
-# ── col_r2_cpp ────────────────────────────────────────────────────────────────
+# -- col_r2_cpp ----------------------------------------------------------------
 test_that("col_r2_cpp: query column with itself is 0", {
   r2_col <- col_r2_cpp(G_small, 5L)
   expect_equal(r2_col[5], 0.0)
@@ -145,7 +145,7 @@ test_that("col_r2_cpp: matches corresponding row of full r2 matrix", {
   expect_equal(r2_col, r2_full[8, ], tolerance = 1e-10)
 })
 
-# ── compute_r2_sparse_cpp ─────────────────────────────────────────────────────
+# -- compute_r2_sparse_cpp -----------------------------------------------------
 test_that("compute_r2_sparse_cpp: returns triplet list", {
   bp     <- as.integer(seq(1000, by = 5000, length.out = 30))
   result <- compute_r2_sparse_cpp(G_small, bp, max_bp_dist = 20000L,
@@ -173,7 +173,7 @@ test_that("compute_r2_sparse_cpp: threshold filters pairs correctly", {
   expect_true(all(thresh$r2 >= 0.3))
 })
 
-# ── boundary_scan_cpp ─────────────────────────────────────────────────────────
+# -- boundary_scan_cpp ---------------------------------------------------------
 test_that("boundary_scan_cpp: returns 0/1 integer vector of correct length", {
   Gc  <- scale(G_small, center = TRUE, scale = FALSE)
   res <- boundary_scan_cpp(Gc, start = 5L, end = 20L,
@@ -191,7 +191,7 @@ test_that("boundary_scan_cpp: high threshold yields more valid cuts", {
   expect_true(sum(high == 1L) >= sum(low == 1L))
 })
 
-# ── build_hap_strings_cpp ─────────────────────────────────────────────────────
+# -- build_hap_strings_cpp -----------------------------------------------------
 test_that("build_hap_strings_cpp: returns character vector of correct length", {
   blk <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
   out <- build_hap_strings_cpp(blk, ".")
@@ -241,7 +241,7 @@ test_that("build_hap_strings_cpp: matches R vapply reference implementation", {
   expect_equal(out, ref)
 })
 
-# ── resolve_overlap_cpp ───────────────────────────────────────────────────────
+# -- resolve_overlap_cpp -------------------------------------------------------
 # Note: Comprehensive cross-validation against .resolve_overlap() R reference
 # is in test-resolve-overlap.R. These tests verify the C++ kernel properties.
 
@@ -288,7 +288,7 @@ test_that("resolve_overlap_cpp: matches .resolve_overlap on random overlapping i
 })
 
 
-# ── block_snp_ranges_cpp ──────────────────────────────────────────────────────
+# -- block_snp_ranges_cpp ------------------------------------------------------
 
 test_that("block_snp_ranges_cpp: returns list with lo, hi, n_snps", {
   pos      <- as.integer(seq(1000L, by = 1000L, length.out = 30L))
@@ -386,7 +386,7 @@ test_that("block_snp_ranges_cpp: matches R findInterval reference", {
   }
 })
 
-# ── impute_and_filter_cpp ─────────────────────────────────────────────────────
+# -- impute_and_filter_cpp -----------------------------------------------------
 
 test_that("impute_and_filter_cpp: no missing, no callrate filter -> unchanged", {
   G   <- matrix(as.integer(G_small), nrow = nrow(G_small))
@@ -496,7 +496,7 @@ test_that("impute_and_filter_cpp: n_filtered + n_kept = ncol(geno)", {
   expect_equal(res$n_filtered + sum(as.logical(res$keep)), ncol(G_na))
 })
 
-# ── extract_chr_haplotypes_cpp ────────────────────────────────────────────────
+# -- extract_chr_haplotypes_cpp ------------------------------------------------
 
 test_that("extract_chr_haplotypes_cpp: returns list with required fields", {
   G   <- matrix(as.integer(G_small[, 1:15]), nrow = nrow(G_small))
@@ -509,7 +509,9 @@ test_that("extract_chr_haplotypes_cpp: returns list with required fields", {
   expect_type(res, "list")
   expected_fields <- c("hap_strings","hap_alleles","hap_freq",
                        "hap_counts","freq_dominant",
-                       "block_lo","block_hi","n_snps","n_retained")
+                       "block_lo","block_hi","n_snps",
+                       "retained_idx","retained_start_bp","retained_end_bp",
+                       "n_retained")
   expect_true(all(expected_fields %in% names(res)))
 })
 
@@ -591,7 +593,7 @@ test_that("extract_chr_haplotypes_cpp: freq_dominant equals max(hap_freq) per bl
   for (b in seq_len(res$n_retained)) {
     freqs <- res$hap_freq[[b]]
     # freq_dominant should equal the first (highest) frequency since alleles
-    # are sorted descending — and should equal max(freqs)
+    # are sorted descending - and should equal max(freqs)
     expect_equal(res$freq_dominant[b], max(freqs), tolerance = 1e-10,
                  label = paste("block", b, "freq_dominant == max(hap_freq)"))
   }
@@ -643,6 +645,27 @@ test_that("extract_chr_haplotypes_cpp: blocks below min_snps are excluded", {
   expect_equal(res$n_snps[1L], 5L)
 })
 
+test_that("extract_chr_haplotypes_cpp: retained_idx maps to correct original block", {
+  G   <- matrix(as.integer(G_small[, 1:10]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  # Three blocks: singleton (skip), 5-SNP (retain, original index 2), 3-SNP (retain, index 3)
+  sb  <- as.integer(c(1000L, 3000L,  9000L))
+  eb  <- as.integer(c(1000L, 7000L, 10000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  expect_equal(res$n_retained, 2L)
+  expect_true(!is.null(res$retained_idx))
+  expect_equal(length(res$retained_idx), res$n_retained)
+  # retained_idx[1] must be 2 (1-based: block 2, the 5-SNP one) -- block 1 was skipped
+  expect_equal(res$retained_idx[1L], 2L)
+  # retained_idx[2] must be 3 (1-based: block 3, the 2-SNP one)
+  expect_equal(res$retained_idx[2L], 3L)
+  # n_snps should match the actual SNP counts of the retained blocks
+  expect_equal(res$n_snps[1L], 5L)
+  expect_equal(res$n_snps[2L], 2L)
+})
+
 test_that("extract_chr_haplotypes_cpp: NA genotypes encoded as na_char in strings", {
   G      <- matrix(as.integer(G_small[, 1:8]), nrow = nrow(G_small))
   G[1, 3] <- NA_integer_   # inject NA for individual 1 at SNP 3
@@ -656,6 +679,29 @@ test_that("extract_chr_haplotypes_cpp: NA genotypes encoded as na_char in string
     # Individual 1 string should contain "." at position 3
     ind1_str <- res$hap_strings[[1L]][1L]
     expect_equal(substr(ind1_str, 3L, 3L), ".")
+  }
+})
+
+test_that("extract_chr_haplotypes_cpp: retained_start_bp and retained_end_bp match input block coords", {
+  G   <- matrix(as.integer(G_small[, 1:12]), nrow = nrow(G_small))
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 12L))
+  sb  <- as.integer(c(1000L, 4000L, 9000L))   # three blocks
+  eb  <- as.integer(c(3000L, 7000L, 12000L))
+  res <- extract_chr_haplotypes_cpp(G, pos, sb, eb,
+                                    min_snps = 2L, min_freq = 0.0,
+                                    top_n = 0L, na_char = ".")
+  # retained_start_bp/end_bp must be present
+  expect_true(!is.null(res$retained_start_bp))
+  expect_true(!is.null(res$retained_end_bp))
+  expect_equal(length(res$retained_start_bp), res$n_retained)
+  expect_equal(length(res$retained_end_bp),   res$n_retained)
+  # Each retained block's coords must equal the original block_sb/block_eb
+  for (k in seq_len(res$n_retained)) {
+    orig_idx <- res$retained_idx[k]   # 1-based
+    expect_equal(res$retained_start_bp[k], sb[orig_idx],
+                 label = paste("block", k, "start_bp matches sb"))
+    expect_equal(res$retained_end_bp[k],   eb[orig_idx],
+                 label = paste("block", k, "end_bp matches eb"))
   }
 })
 
@@ -674,4 +720,123 @@ test_that("extract_chr_haplotypes_cpp: matches build_hap_strings_cpp for a singl
     # Both should produce the same set of strings (possibly different order)
     expect_equal(sort(res$hap_strings[[1L]]), sort(ref))
   }
+})
+
+# -- extract_chr_haplotypes_phased_cpp -----------------------------------------
+
+test_that("extract_chr_haplotypes_phased_cpp: returns list with required fields", {
+  n   <- nrow(G_small)
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 15L))
+  h1  <- matrix(as.integer(G_small[, 1:15] > 0L), nrow = n)   # gamete 1: 0/1
+  h2  <- matrix(as.integer(G_small[, 1:15] == 2L), nrow = n)  # gamete 2: 0/1
+  sb  <- as.integer(c(1000L, 8000L))
+  eb  <- as.integer(c(6000L, 13000L))
+  res <- extract_chr_haplotypes_phased_cpp(h1, h2, pos, sb, eb,
+                                           min_snps = 2L, min_freq = 0.0,
+                                           top_n = 0L, na_char = ".")
+  expect_type(res, "list")
+  expected <- c("hap_strings","hap_alleles","hap_freq","hap_counts",
+                "freq_dominant","block_lo","block_hi","n_snps",
+                "retained_idx","retained_start_bp","retained_end_bp","n_retained")
+  expect_true(all(expected %in% names(res)))
+})
+
+test_that("extract_chr_haplotypes_phased_cpp: strings have pipe separator", {
+  n   <- nrow(G_small)
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  h1  <- matrix(as.integer(G_small[, 1:10] > 0L), nrow = n)
+  h2  <- matrix(as.integer(G_small[, 1:10] == 2L), nrow = n)
+  res <- extract_chr_haplotypes_phased_cpp(h1, h2, pos,
+                                           as.integer(1000L), as.integer(10000L),
+                                           min_snps = 2L, min_freq = 0.0,
+                                           top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    hs <- res$hap_strings[[1L]]
+    expect_true(all(grepl("|", hs, fixed = TRUE)))
+  }
+})
+
+test_that("extract_chr_haplotypes_phased_cpp: each gamete half has width = n_snps", {
+  n   <- nrow(G_small)
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 8L))
+  h1  <- matrix(as.integer(G_small[, 1:8] > 0L), nrow = n)
+  h2  <- matrix(as.integer(G_small[, 1:8] == 2L), nrow = n)
+  res <- extract_chr_haplotypes_phased_cpp(h1, h2, pos,
+                                           as.integer(1000L), as.integer(8000L),
+                                           min_snps = 2L, min_freq = 0.0,
+                                           top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    ns <- res$n_snps[1L]
+    parts <- strsplit(res$hap_strings[[1L]][1L], "|", fixed = TRUE)[[1L]]
+    expect_equal(length(parts), 2L)
+    expect_equal(nchar(parts[1L]), ns)
+    expect_equal(nchar(parts[2L]), ns)
+  }
+})
+
+test_that("extract_chr_haplotypes_phased_cpp: hap_freq sums to 1.0 (gamete counts)", {
+  n   <- nrow(G_small)
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 10L))
+  h1  <- matrix(as.integer(G_small[, 1:10] > 0L), nrow = n)
+  h2  <- matrix(as.integer(G_small[, 1:10] == 2L), nrow = n)
+  res <- extract_chr_haplotypes_phased_cpp(h1, h2, pos,
+                                           as.integer(1000L), as.integer(10000L),
+                                           min_snps = 2L, min_freq = 0.0,
+                                           top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    expect_equal(sum(res$hap_freq[[1L]]), 1.0, tolerance = 1e-8)
+  }
+})
+
+test_that("extract_chr_haplotypes_phased_cpp: retained_idx and bp coords are consistent", {
+  n   <- nrow(G_small)
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 12L))
+  h1  <- matrix(as.integer(G_small[, 1:12] > 0L), nrow = n)
+  h2  <- matrix(as.integer(G_small[, 1:12] == 2L), nrow = n)
+  sb  <- as.integer(c(1000L, 1500L, 6000L))  # block 1 has 1 SNP -> filtered
+  eb  <- as.integer(c(1000L, 5000L, 12000L))
+  res <- extract_chr_haplotypes_phased_cpp(h1, h2, pos, sb, eb,
+                                           min_snps = 2L, min_freq = 0.0,
+                                           top_n = 0L, na_char = ".")
+  expect_equal(length(res$retained_idx),      res$n_retained)
+  expect_equal(length(res$retained_start_bp), res$n_retained)
+  expect_equal(length(res$retained_end_bp),   res$n_retained)
+  # Each retained block's bp coords must equal the input sb/eb at retained_idx
+  for (k in seq_len(res$n_retained)) {
+    oi <- res$retained_idx[k]
+    expect_equal(res$retained_start_bp[k], sb[oi])
+    expect_equal(res$retained_end_bp[k],   eb[oi])
+  }
+})
+
+test_that("extract_chr_haplotypes_phased_cpp: homozygous ref gives gametes '00...0|00...0'", {
+  n   <- nrow(G_small)
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 5L))
+  # All individuals homozygous reference (dosage 0) -> both gametes = "00000"
+  h1  <- matrix(0L, nrow = n, ncol = 5L)
+  h2  <- matrix(0L, nrow = n, ncol = 5L)
+  res <- extract_chr_haplotypes_phased_cpp(h1, h2, pos,
+                                           as.integer(1000L), as.integer(5000L),
+                                           min_snps = 2L, min_freq = 0.0,
+                                           top_n = 0L, na_char = ".")
+  if (res$n_retained > 0L) {
+    # All strings should be "00000|00000" -> one unique haplotype
+    expect_equal(length(res$hap_alleles[[1L]]), 1L)
+    expect_equal(res$freq_dominant[1L], 1.0, tolerance = 1e-10)
+    hs <- res$hap_strings[[1L]]
+    expect_true(all(hs == "00000|00000"))
+  }
+})
+
+test_that("extract_chr_haplotypes_phased_cpp: n_retained <= n_blocks", {
+  n   <- nrow(G_small)
+  pos <- as.integer(seq(1000L, by = 1000L, length.out = 20L))
+  h1  <- matrix(as.integer(G_small[, 1:20] > 0L), nrow = n)
+  h2  <- matrix(as.integer(G_small[, 1:20] == 2L), nrow = n)
+  sb  <- as.integer(c(1000L, 6000L, 11000L, 16000L))
+  eb  <- as.integer(c(5000L, 10000L, 15000L, 20000L))
+  res <- extract_chr_haplotypes_phased_cpp(h1, h2, pos, sb, eb,
+                                           min_snps = 2L, min_freq = 0.0,
+                                           top_n = 0L, na_char = ".")
+  expect_true(res$n_retained <= length(sb))
 })

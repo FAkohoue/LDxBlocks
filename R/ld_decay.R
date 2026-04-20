@@ -367,7 +367,7 @@ compute_ld_decay <- function(
     .log("Whitening matrix ready (", n_ind, " x ", n_ind, ")")
   }
 
-  # ── CORE HELPERS ──────────────────────────────────────────────────────────
+  # -- CORE HELPERS ----------------------------------------------------------
 
   # Apply optional whitening to a genotype column vector
   .prep_col <- function(x) {
@@ -383,7 +383,7 @@ compute_ld_decay <- function(
     if (is.na(r)) 0 else r * r
   }
 
-  # ── RANDOM SAMPLING: compute_r2_sparse_cpp + minimal read ─────────────────
+  # -- RANDOM SAMPLING: compute_r2_sparse_cpp + minimal read -----------------
   # STRATEGY:
   #   1. Sample pair (i,j) indices from SNP positions ONLY (no genotype I/O).
   #      For chromosomes with >200k SNPs, only a random subset of anchors is
@@ -467,7 +467,7 @@ compute_ld_decay <- function(
                r2      = pmax(0, pmin(1, sp$r2)))
   }
 
-  # ── SLIDING WINDOW: adaptive stride, bounded I/O calls ─────────────────────
+  # -- SLIDING WINDOW: adaptive stride, bounded I/O calls ---------------------
   # Problem: window_snps=50 on a 500k-SNP chromosome = 10,000 read_chunk calls
   # and 12M pairs -- endless even with per-window reads.
   #
@@ -531,7 +531,7 @@ compute_ld_decay <- function(
     data.frame(dist_bp = out_dist, r2 = pmax(0, pmin(1, out_r2)))
   }
 
-  # ── MAIN LOOP: per chromosome ─────────────────────────────────────────────
+  # -- MAIN LOOP: per chromosome ---------------------------------------------
   all_pairs    <- list()
   rn_pairs_list <- list()  # extra random pairs when sampling='both'
   n_pairs_used <- integer(length(chrs))
@@ -582,7 +582,7 @@ compute_ld_decay <- function(
       data.frame(CHR = character(), dist_bp = integer(), r2 = numeric())
   rownames(pairs_df) <- NULL
 
-  # ── PARAMETRIC THRESHOLD: cross-chromosome pairs ─────────────────────────
+  # -- PARAMETRIC THRESHOLD: cross-chromosome pairs -------------------------
   # Never loads a full chromosome -- samples n_per_chr_side indices and
   # calls read_chunk() only for those SNPs.
   unlinked_r2 <- NULL; critical_r2_param <- NULL
@@ -638,7 +638,7 @@ compute_ld_decay <- function(
   critical_r2 <- if (use_param && !is.null(critical_r2_param))
     critical_r2_param else if (use_fixed) fixed_val else NULL
 
-  # ── BIN INTO DECAY CURVE ─────────────────────────────────────────────────
+  # -- BIN INTO DECAY CURVE -------------------------------------------------
   .bin_curve <- function(df, n_b, max_d) {
     if (!nrow(df)) return(NULL)
     # Bin over the actual observed distance range so that all bins are
@@ -658,7 +658,7 @@ compute_ld_decay <- function(
     }))
   }
 
-  # ── FIT MODELS & COMPUTE DECAY DISTANCES ─────────────────────────────────
+  # -- FIT MODELS & COMPUTE DECAY DISTANCES ---------------------------------
   .hw_expect <- function(C, n, d_mb)
     (10 + C * d_mb) / ((2 + C * d_mb) * (11 + C * d_mb)) + 1 / n
 
