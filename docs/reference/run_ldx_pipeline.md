@@ -293,11 +293,11 @@ run_ldx_pipeline(
 - min_callrate:
 
   Numeric in `[0, 1]`. Minimum per-SNP call rate (proportion of
-  non-missing samples) required to retain a SNP. Applied as the first
-  filtering step (before MAF re-filter and imputation). SNPs with call
-  rate below this threshold are removed. Default `0.0` (disabled). The
-  three-step order is: (1) call-rate filter, (2) MAF re-filter on the
-  remaining SNPs, (3) imputation. Example: set `min_callrate = 0.8` to
+  non-missing samples) required to retain a SNP. Applied before the
+  authoritative MAF filter so that allele frequencies are computed on
+  clean (non-missing-inflated) data. Default `0.0` (disabled). The
+  three-step post-load order is: (1) call-rate filter, (2) MAF filter
+  (authoritative), (3) imputation. Example: set `min_callrate = 0.8` to
   require calls in at least 80% of samples.
 
 ## Value
@@ -543,16 +543,17 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [bigmemory]   chr 1 loaded (80/230 SNPs)
 #> [bigmemory]   chr 2 loaded (160/230 SNPs)
 #> [bigmemory]   chr 3 loaded (230/230 SNPs)
-#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U/ldxbm23cc1b8f7d01.bin
-#> [18:21:18] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
-#> [18:21:18] MAF filtering (>= 0.05) ...
+#> [bigmemory] Done. Backing file: C:\Users\fakohoue\AppData\Local\Temp\RtmpCafy50/ldxbm818015654746.bin
+#> [20:31:52] Using pre-built backend: bigmemory | 120 ind | 230 SNPs
+#> [20:31:52] Pre-screen: removing monomorphic / MAF < 0.05 SNPs (streaming) ...
 #> [MAF filter] Computing MAF for 230 SNPs ...
 #> [MAF filter] 230 / 230 SNPs pass MAF >= 0.05
-#> [18:21:18] Loading filtered genotype matrix ...
-#> [18:21:18] Genotype matrix: 120 x 230
-#> [18:21:18] Call-rate filter: disabled (min_callrate = 0).
-#> [18:21:18] Imputation: skipped | matrix 120 ind x 230 SNPs | 0 missing values.
-#> [18:21:18] Running genome-wide LD block detection ...
+#> [20:31:52] Loading filtered genotype matrix ...
+#> [20:31:52] Genotype matrix: 120 x 230
+#> [20:31:52] Call-rate filter: disabled (min_callrate = 0).
+#> [20:31:52] MAF filter (>= 0.05): all 230 SNPs passed.
+#> [20:31:52] Imputation: skipped | matrix 120 ind x 230 SNPs | 0 missing values.
+#> [20:31:52] Running genome-wide LD block detection ...
 #> 
 #> [run_Big_LD_all_chr] Processing 1 ...
 #> [Big_LD] Subsegmenting via C++ boundary scan...
@@ -602,21 +603,21 @@ if (requireNamespace("bigmemory", quietly = TRUE)) {
 #> [CLQD] Building graph on 70 SNPs...
 #> [CLQD] Found 16 maximal cliques.
 #> [Big_LD] Segment 1/1 done.
-#> [18:21:19] Detected 9 LD blocks
-#> [18:21:19] Block table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U\file23cc48701db.csv
-#> [18:21:19] Extracting haplotypes (min_snps = 3) ...
-#> [18:21:20] Haplotypes extracted for 9 blocks
-#> [18:21:20] Computing haplotype diversity ...
-#> [18:21:20] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U\file23cc20116fbc.csv
-#> [18:21:20] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
-#> [18:21:20] Haplotype matrix: 120 individuals x 90 haplotype allele columns
-#> [18:21:20] Writing haplotype matrix (format = numeric) ...
-#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U\file23cc24c870af.csv (90 haplotypes x 120 individuals)
-#> [18:21:20] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\Rtmp63oF8U\file23cc24c870af.csv
-#> [18:21:20] Pipeline complete.
-#> [18:21:20]   Blocks:              9
-#> [18:21:20]   Haplotype blocks:    9
-#> [18:21:20]   Haplotype columns:   90
-#> [18:21:20]   Individuals:         120
+#> [20:31:53] Detected 9 LD blocks
+#> [20:31:53] Block table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpCafy50\file81807d5717bf.csv
+#> [20:31:53] Extracting haplotypes (min_snps = 3) ...
+#> [20:31:54] Haplotypes extracted for 9 blocks
+#> [20:31:54] Computing haplotype diversity ...
+#> [20:31:54] Diversity table written: C:\Users\fakohoue\AppData\Local\Temp\RtmpCafy50\file8180161f65e3.csv
+#> [20:31:54] Building haplotype feature matrix (top_n = , min_freq = 0.01) ...
+#> [20:31:54] Haplotype matrix: 120 individuals x 90 haplotype allele columns
+#> [20:31:54] Writing haplotype matrix (format = numeric) ...
+#> [write_haplotype_numeric] C:\Users\fakohoue\AppData\Local\Temp\RtmpCafy50\file81803ad94060.csv (90 haplotypes x 120 individuals)
+#> [20:31:54] Haplotype matrix written: C:\Users\fakohoue\AppData\Local\Temp\RtmpCafy50\file81803ad94060.csv
+#> [20:31:54] Pipeline complete.
+#> [20:31:54]   Blocks:              9
+#> [20:31:54]   Haplotype blocks:    9
+#> [20:31:54]   Haplotype columns:   90
+#> [20:31:54]   Individuals:         120
 # }
 ```

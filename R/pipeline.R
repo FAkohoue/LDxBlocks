@@ -237,10 +237,10 @@
 #'   }
 #' @param min_callrate      Numeric in \code{[0, 1]}. Minimum per-SNP call
 #'   rate (proportion of non-missing samples) required to retain a SNP.
-#'   Applied as the first filtering step (before MAF re-filter and imputation).
-#'   SNPs with call rate below this threshold are removed. Default \code{0.0}
-#'   (disabled). The three-step order is: (1) call-rate filter, (2) MAF
-#'   re-filter on the remaining SNPs, (3) imputation. Example: set
+#'   Applied before the authoritative MAF filter so that allele frequencies
+#'   are computed on clean (non-missing-inflated) data. Default \code{0.0}
+#'   (disabled). The three-step post-load order is: (1) call-rate filter,
+#'   (2) MAF filter (authoritative), (3) imputation. Example: set
 #'   \code{min_callrate = 0.8} to require calls in at least 80\% of samples.
 #' @param CLQcut            r^2 threshold for clique edges in CLQD. Higher
 #'   values produce tighter, smaller blocks. Default `0.5`.
@@ -552,21 +552,21 @@ run_ldx_pipeline <- function(
              be$n_samples, " ind | ", be$n_snps, " SNPs")
   }
 
-  # -- Step 2: MAF filtering --------------------------------------------------
-  # Store the original full SNP info before filtering -- needed in Step 4
-  # to map filtered SNP IDs back to correct column indices in the backend.
+  # -- Step 2: Streaming MAF pre-screen (monomorphic removal) ----------------
+  # This is a LOOSE pre-screen only: it removes obvious monomorphics and
+  # very rare SNPs from the backend before loading, reducing the size of
+  # the matrix loaded in Step 4. It is NOT the authoritative MAF filter.
+  # The authoritative filtering (in correct biological order) happens
+  # post-load in Step 4.5: call-rate -> MAF -> imputation.
   orig_snp_info <- be$snp_info
 
-  .ldx_log("MAF filtering (>= ", maf_cut, ") ...")
+  .ldx_log("Pre-screen: removing monomorphic / MAF < ", maf_cut, " SNPs (streaming) ...")
   snp_info_filtered <- .maf_filter_backend(be, maf_cut = maf_cut,
                                            verbose = verbose)
   n_pass <- nrow(snp_info_filtered)
   if (n_pass == 0L)
-    stop("No SNPs remain after MAF filtering. Lower maf_cut.")
+    stop("No SNPs remain after MAF pre-screen. Lower maf_cut.")
 
-  # Rebuild backend with filtered SNP list by subsetting the snp_info
-  # The backend still reads from the original file; we just track which
-  # SNP indices to use via the filtered snp_info
   be$snp_info <- snp_info_filtered
   be$n_snps   <- n_pass
 
@@ -596,19 +596,18 @@ run_ldx_pipeline <- function(
   colnames(geno_mat) <- be$snp_info$SNP
   .ldx_log("Genotype matrix: ", nrow(geno_mat), " x ", ncol(geno_mat))
 
-  # -- Step 2.5: Call-rate filter -> MAF re-filter -> Impute (C++) -----------
-  # Correct biological order:
-  #   1. Call-rate filter : drop SNPs with too much missing data.
-  #      Computed on the actual loaded matrix (not the streaming approximation).
-  #   2. MAF re-filter    : recompute MAF after call-rate filter.
-  #      A SNP with 40% missing that passes the backend MAF threshold may fail
-  #      once low-callrate samples are excluded from the denominator.
-  #      Uses maf_filter_cpp() on the subset matrix.
+  # -- Step 4.5: Call-rate filter -> MAF filter -> Impute (C++) -------------
+  # Authoritative filtering in correct biological order (all post-load, C++):
+  #   1. Call-rate filter : drop SNPs with call rate < min_callrate.
+  #      A SNP with 40% missing may appear to pass MAF on observed calls;
+  #      removing it first ensures MAF is computed on clean data.
+  #   2. MAF filter       : authoritative MAF filter on call-rate-passed SNPs.
+  #      Replaces the streaming pre-screen from Step 2 which used estimated
+  #      frequencies inflated by missing data.
   #   3. Impute           : fill remaining NAs in passing SNPs.
-  #      Uses impute_and_filter_cpp() with min_callrate = 0 (filter already done).
   # All three steps use C++; applied to geno_mat only (disk data unchanged).
 
-  # -- 2.5a: Call-rate filter ------------------------------------------------
+  # -- 4.5a: Call-rate filter ------------------------------------------------
   n_ind  <- nrow(geno_mat)
   n_snps_before_cr <- ncol(geno_mat)
   if (min_callrate > 0) {
@@ -648,29 +647,32 @@ run_ldx_pipeline <- function(
     .ldx_log("Call-rate filter: disabled (min_callrate = 0).")
   }
 
-  # -- 2.5b: MAF re-filter after call-rate filter ----------------------------
-  if (min_callrate > 0 && ncol(geno_mat) > 0L) {
-    n_before_maf2 <- ncol(geno_mat)
+  # -- 4.5b: MAF filter (authoritative, post call-rate) ----------------------
+  # Always run — not conditional on min_callrate > 0.
+  # This is the authoritative MAF filter: call-rate filtering in 4.5a ensures
+  # allele frequencies are now computed on clean (non-missing-inflated) data.
+  {
+    n_before_maf <- ncol(geno_mat)
     keep_maf <- maf_filter_cpp(geno_mat, maf_cut = maf_cut)
-    n_maf2_removed <- sum(!keep_maf)
-    if (n_maf2_removed > 0L) {
+    n_maf_removed <- sum(!keep_maf)
+    if (n_maf_removed > 0L) {
       geno_mat          <- geno_mat[, keep_maf, drop = FALSE]
       snp_info_filtered <- snp_info_filtered[keep_maf, , drop = FALSE]
       be$snp_info       <- snp_info_filtered
       be$n_snps         <- nrow(snp_info_filtered)
       .ldx_log(sprintf(
-        "MAF re-filter (>= %.2f after call-rate filter): removed %d / %d SNPs (%.1f%%) | Remaining: %d SNPs",
-        maf_cut, n_maf2_removed, n_before_maf2,
-        100 * n_maf2_removed / n_before_maf2, ncol(geno_mat)))
+        "MAF filter (>= %.2f): removed %d / %d SNPs (%.1f%%) | Remaining: %d SNPs",
+        maf_cut, n_maf_removed, n_before_maf,
+        100 * n_maf_removed / n_before_maf, ncol(geno_mat)))
     } else {
       .ldx_log(sprintf(
-        "MAF re-filter (>= %.2f): all %d SNPs passed.", maf_cut, n_before_maf2))
+        "MAF filter (>= %.2f): all %d SNPs passed.", maf_cut, n_before_maf))
     }
     if (ncol(geno_mat) == 0L)
       stop("No SNPs remain after call-rate and MAF filtering.")
   }
 
-  # -- 2.5c: Imputation ------------------------------------------------------
+  # -- 4.5c: Imputation ------------------------------------------------------
   n_na_before   <- sum(is.na(geno_mat))
   n_cells_total <- as.numeric(nrow(geno_mat)) * ncol(geno_mat)
   pct_missing   <- round(100 * n_na_before / n_cells_total, 3)

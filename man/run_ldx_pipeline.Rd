@@ -217,10 +217,10 @@ detection and haplotype extraction. One of:
 
 \item{min_callrate}{Numeric in \code{[0, 1]}. Minimum per-SNP call
 rate (proportion of non-missing samples) required to retain a SNP.
-Applied as the first filtering step (before MAF re-filter and imputation).
-SNPs with call rate below this threshold are removed. Default \code{0.0}
-(disabled). The three-step order is: (1) call-rate filter, (2) MAF
-re-filter on the remaining SNPs, (3) imputation. Example: set
+Applied before the authoritative MAF filter so that allele frequencies
+are computed on clean (non-missing-inflated) data. Default \code{0.0}
+(disabled). The three-step post-load order is: (1) call-rate filter,
+(2) MAF filter (authoritative), (3) imputation. Example: set
 \code{min_callrate = 0.8} to require calls in at least 80\% of samples.}
 }
 \value{
