@@ -1,20 +1,20 @@
 ## tests/testthat/test-phasing.R
-## -----------------------------------------------------------------------------
+## ─────────────────────────────────────────────────────────────────────────────
 ## Tests for the Beagle phasing layer:
-##   .write_cleaned_vcf()       - internal VCF writer (pipeline.R)
-##   phase_with_beagle()        - Java/Beagle wrapper (haplotypes.R)
-##   read_phased_vcf()          - phased-VCF reader  (haplotypes.R)
-##   run_ldx_pipeline(phase=TRUE) - end-to-end integration
+##   .write_cleaned_vcf()       — internal VCF writer (pipeline.R)
+##   phase_with_beagle()        — Java/Beagle wrapper (haplotypes.R)
+##   read_phased_vcf()          — phased-VCF reader  (haplotypes.R)
+##   run_ldx_pipeline(phase=TRUE) — end-to-end integration
 ##
 ## Test organisation
 ## -----------------
-## Section 1 - .write_cleaned_vcf(): pure-R, no JAR needed.
+## Section 1 — .write_cleaned_vcf(): pure-R, no JAR needed.
 ##   Tests VCF format compliance, sorting, encoding, and round-trip fidelity.
 ##
-## Section 2 - phase_with_beagle() argument validation: no JAR needed.
+## Section 2 — phase_with_beagle() argument validation: no JAR needed.
 ##   Tests that invalid arguments are caught before any Java is called.
 ##
-## Section 3 - phase_with_beagle() + read_phased_vcf() integration: JAR required.
+## Section 3 — phase_with_beagle() + read_phased_vcf() integration: JAR required.
 ##   All tests in this section are wrapped in:
 ##     skip_if(!.beagle_works(), "Beagle not functional ...")
 ##   .beagle_works() checks java on PATH + beagle.jar in inst/extdata +
@@ -23,10 +23,10 @@
 ##     system.file("extdata", "beagle.jar", package = "LDxBlocks")
 ##   Copy beagle.jar there before running these tests.
 ##
-## Section 4 - run_ldx_pipeline(phase=TRUE): JAR required (same skip guard).
+## Section 4 — run_ldx_pipeline(phase=TRUE): JAR required (same skip guard).
 ##
-## Section 5 - read_phased_vcf(): tests on hand-crafted phased VCF, no JAR.
-## -----------------------------------------------------------------------------
+## Section 5 — read_phased_vcf(): tests on hand-crafted phased VCF, no JAR.
+## ─────────────────────────────────────────────────────────────────────────────
 
 library(testthat)
 library(LDxBlocks)
@@ -35,7 +35,7 @@ data(ldx_geno,     package = "LDxBlocks")
 data(ldx_snp_info, package = "LDxBlocks")
 data(ldx_blocks,   package = "LDxBlocks")
 
-# -- Helper: locate beagle.jar -------------------------------------------------
+# ── Helper: locate beagle.jar ─────────────────────────────────────────────────
 .beagle_jar_path <- function() {
   system.file("extdata", "beagle.jar", package = "LDxBlocks")
 }
@@ -44,11 +44,11 @@ data(ldx_blocks,   package = "LDxBlocks")
   nzchar(j) && file.exists(j)
 }
 
-# .beagle_works() - cached smoke-test: can Beagle actually execute?
+# .beagle_works() — cached smoke-test: can Beagle actually execute?
 # Returns TRUE only when java is on PATH AND beagle.jar is found AND
 # a minimal phasing run exits with status 0.
 # Result is cached per session (one Beagle call across all 10 tests).
-# IMPORTANT: builds its own minimal VCF inline - does NOT depend on
+# IMPORTANT: builds its own minimal VCF inline — does NOT depend on
 # .G30/.si30/.wcv which are defined later in this file.
 .beagle_works_cache <- NULL
 .beagle_works <- function() {
@@ -104,15 +104,15 @@ data(ldx_blocks,   package = "LDxBlocks")
   ok
 }
 
-# -- Shared small dataset (30 SNPs, chr 1) -------------------------------------
+# ── Shared small dataset (30 SNPs, chr 1) ─────────────────────────────────────
 # Use a 30-SNP subset of ldx_geno chr1 for fast tests.
 .idx30 <- which(ldx_snp_info$CHR == "1")[1:30]
 .G30   <- ldx_geno[, .idx30]
 .si30  <- ldx_snp_info[.idx30, ]
 
-# ==============================================================================
-# Section 1: .write_cleaned_vcf() - no JAR required
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
+# Section 1: .write_cleaned_vcf() — no JAR required
+# ══════════════════════════════════════════════════════════════════════════════
 
 # Access the internal function via LDxBlocks:::.write_cleaned_vcf
 .wcv <- LDxBlocks:::.write_cleaned_vcf
@@ -239,9 +239,9 @@ test_that(".write_cleaned_vcf: round-trips dosage losslessly (no NAs)", {
   unlink(tmp)
 })
 
-# ==============================================================================
-# Section 2: phase_with_beagle() argument validation - no JAR required
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
+# Section 2: phase_with_beagle() argument validation — no JAR required
+# ══════════════════════════════════════════════════════════════════════════════
 
 test_that("phase_with_beagle: missing input_vcf errors immediately", {
   expect_error(
@@ -292,9 +292,9 @@ test_that("phase_with_beagle: missing beagle_jar with no fallback errors", {
   unlink(tmp_vcf); unlink(out_dir, recursive = TRUE)
 })
 
-# ==============================================================================
-# Section 3: phase_with_beagle() + read_phased_vcf() - beagle.jar required
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
+# Section 3: phase_with_beagle() + read_phased_vcf() — beagle.jar required
+# ══════════════════════════════════════════════════════════════════════════════
 
 test_that("phase_with_beagle: produces phased VCF.gz output file", {
   skip_if(!.beagle_works(), "Beagle not functional (check java PATH and beagle.jar)")
@@ -475,9 +475,9 @@ test_that("phase_with_beagle: seed argument produces reproducible output", {
   expect_equal(p1$dosage,  p2$dosage,  label = "dosage reproducible with same seed")
 })
 
-# ==============================================================================
-# Section 4: run_ldx_pipeline(phase=TRUE) - beagle.jar required
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
+# Section 4: run_ldx_pipeline(phase=TRUE) — beagle.jar required
+# ══════════════════════════════════════════════════════════════════════════════
 
 test_that("run_ldx_pipeline phase=TRUE: returns phased haplotypes list", {
   skip_if(!.beagle_works(), "Beagle not functional (check java PATH and beagle.jar)")
@@ -581,9 +581,9 @@ test_that("run_ldx_pipeline phase=TRUE: second call reuses cached phased VCF", {
   expect_no_error(do.call(run_ldx_pipeline, common_args))
 })
 
-# ==============================================================================
-# Section 5: read_phased_vcf() on hand-crafted VCFs - no JAR required
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
+# Section 5: read_phased_vcf() on hand-crafted VCFs — no JAR required
+# ══════════════════════════════════════════════════════════════════════════════
 
 # Helper: write a minimal phased VCF.gz
 .write_hand_phased_vcf <- function(n_snp = 5L, n_ind = 10L, seed = 1L) {
@@ -803,7 +803,7 @@ test_that("read_phased_vcf: empty string IDs also synthesised as CHR_POS", {
   expect_true(all(grepl("^2_\\d+$", rn)))
 })
 
-test_that("read_phased_vcf: mixed real and dot IDs - only dot rows synthesised", {
+test_that("read_phased_vcf: mixed real and dot IDs — only dot rows synthesised", {
   tmp <- tempfile(fileext = ".vcf.gz")
   con <- gzcon(file(tmp, "wb"))
   writeLines(c(
@@ -881,8 +881,8 @@ test_that("read_phased_vcf: GT with FORMAT subfields (0|1:35:99) parsed correctl
   con <- gzcon(file(tmp, "wb"))
   writeLines(c(
     "##fileformat=VCFv4.2",
-    "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
-    "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">",
+    "##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">",
+    "##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Depth">",
     "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tind1\tind2\tind3",
     "1\t1000\trs1\tA\tT\t.\tPASS\t.\tGT:DP\t0|1:35\t1|1:20\t0|0:40"
   ), con)

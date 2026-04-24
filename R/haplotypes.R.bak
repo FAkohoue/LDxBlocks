@@ -11,47 +11,116 @@
 #' @param verbose Logical. Default TRUE.
 #' @return List: hap1, hap2 (SNPs x individuals, 0/1), dosage (0/1/2), snp_info, sample_ids.
 #' @export
-read_phased_vcf <- function(vcf_file, min_maf=0.0, verbose=TRUE) {
-  if (!file.exists(vcf_file)) stop("VCF not found: ", vcf_file, call.=FALSE)
+read_phased_vcf <- function(vcf_file, min_maf = 0.0, verbose = TRUE) {
+  if (!is.numeric(min_maf) || length(min_maf) != 1L ||
+      is.na(min_maf) || min_maf < 0 || min_maf > 0.5)
+    stop("min_maf must be a single numeric in [0, 0.5].", call. = FALSE)
+  if (!file.exists(vcf_file))
+    stop("VCF not found: ", vcf_file, call. = FALSE)
   if (verbose) message("[read_phased_vcf] Reading: ", basename(vcf_file))
-  con <- gzfile(vcf_file,"r"); on.exit(try(close(con),silent=TRUE),add=TRUE)
-  header <- NULL; data_lines <- character(0)
-  repeat {
-    ln <- readLines(con, n=1L, warn=FALSE); if (!length(ln)) break
-    if (startsWith(ln,"##")) next
-    if (startsWith(ln,"#CHROM")) { header <- ln; next }
-    data_lines <- c(data_lines, ln)
-  }
-  if (is.null(header)) stop("No #CHROM header.", call.=FALSE)
-  cols <- strsplit(header,"\t",fixed=TRUE)[[1L]]
-  sids <- cols[10:length(cols)]; ns <- length(sids); nv <- length(data_lines)
-  if (verbose) message("[read_phased_vcf] ",nv," variants x ",ns," samples")
-  h1 <- matrix(NA_real_,nv,ns); h2 <- matrix(NA_real_,nv,ns)
-  sc <- character(nv); sp <- integer(nv); sid <- character(nv)
-  sr <- character(nv); sa <- character(nv)
-  for (i in seq_len(nv)) {
-    f <- strsplit(data_lines[i],"\t",fixed=TRUE)[[1L]]
-    sc[i] <- .norm_chr_hap(f[1]); sp[i] <- as.integer(f[2])
-    sid[i] <- f[3]; sr[i] <- f[4]; sa[i] <- f[5]
-    fi <- which(strsplit(f[9],":",fixed=TRUE)[[1]]=="GT")
-    for (j in seq_len(ns)) {
-      gt <- strsplit(f[9+j],":",fixed=TRUE)[[1]][fi]
-      al <- strsplit(gt,"[|/]")[[1]]
-      if (length(al)==2L && !any(al%in%c(".",NA))) {
-        h1[i,j] <- suppressWarnings(as.integer(al[1]))
-        h2[i,j] <- suppressWarnings(as.integer(al[2]))
-      }
-    }
-  }
-  rownames(h1) <- rownames(h2) <- sid; colnames(h1) <- colnames(h2) <- sids
-  dos <- h1+h2
 
-  # Synthesise CHR_POS IDs for missing/dot ID columns, matching read_geno.R
-  # behaviour.  Standard VCF files frequently use "." in the ID (column 3)
-  # when no rsID is assigned.  Beagle preserves whatever ID was in the input,
-  # so a VCF written externally may arrive here with all-dot IDs.
-  # Duplicate rownames (".", ".", ...) would break extract_haplotypes() which
-  # uses colnames to slice the genotype matrix by SNP name.
+  # ── Step 1: Extract header lines to get sample IDs ─────────────────────────
+  # Read only until the #CHROM line — at most ~100 meta lines for any VCF.
+  con <- gzfile(vcf_file, "r")
+  on.exit(try(close(con), silent = TRUE), add = TRUE)
+  header_line <- NULL
+  repeat {
+    ln <- readLines(con, n = 1L, warn = FALSE)
+    if (!length(ln)) break
+    if (startsWith(ln, "#CHROM")) { header_line <- ln; break }
+  }
+  close(con)
+  if (is.null(header_line)) stop("No #CHROM header found.", call. = FALSE)
+
+  cols <- strsplit(header_line, "\t", fixed = TRUE)[[1L]]
+  sids <- cols[10:length(cols)]
+  ns   <- length(sids)
+
+  # ── Step 2: Read all data lines with data.table::fread() ───────────────────
+  # Fast path: fread(cmd=) pipes through zcat + grep at C level (~50x speedup).
+  # This requires zcat and grep on PATH. Check availability BEFORE calling fread
+  # so that we never emit the shell-command-not-found WARNING that fread/shell()
+  # produces on Windows when the command is missing. tryCatch only catches errors;
+  # a shell warning leaks out even when the error handler runs the fallback.
+  is_gz <- grepl("\\.gz$", vcf_file, ignore.case = TRUE)
+  .use_shell <- nzchar(Sys.which(if (is_gz) "zcat" else "grep"))
+
+  dt <- if (.use_shell) {
+    cmd <- if (is_gz) {
+      paste0("zcat ", shQuote(vcf_file), " | grep -v '^#'")
+    } else {
+      paste0("grep -v '^#' ", shQuote(vcf_file))
+    }
+    data.table::fread(
+      cmd          = cmd,
+      header       = FALSE,
+      sep          = "\t",
+      colClasses   = "character",
+      showProgress = FALSE,
+      data.table   = FALSE
+    )
+  } else {
+    # Fallback: pure-R reader for Windows without zcat/grep on PATH.
+    # Reads all lines via gzcon then passes the text to fread — avoids the
+    # O(n^2) growing-vector problem of the original line-at-a-time loop.
+    if (verbose)
+      message("[read_phased_vcf] Shell tools not on PATH; using R fallback reader")
+    pipe_con <- if (is_gz) gzcon(file(vcf_file, "rb")) else file(vcf_file, "r")
+    on.exit(try(close(pipe_con), silent = TRUE), add = TRUE)
+    all_lines  <- readLines(pipe_con, warn = FALSE)
+    close(pipe_con)
+    data_lines <- all_lines[!startsWith(all_lines, "#")]
+    if (!length(data_lines))
+      stop("No data lines found in VCF.", call. = FALSE)
+    data.table::fread(
+      text         = paste(data_lines, collapse = "\n"),
+      header       = FALSE,
+      sep          = "\t",
+      colClasses   = "character",
+      showProgress = FALSE,
+      data.table   = FALSE
+    )
+  }
+
+  nv <- nrow(dt)
+  if (nv == 0L) stop("No variant rows found in phased VCF.", call. = FALSE)
+  if (verbose) message("[read_phased_vcf] ", nv, " variants x ", ns, " samples")
+
+  # Fixed column positions: 1=CHROM 2=POS 3=ID 4=REF 5=ALT 10..=sample GTs
+  sc  <- .norm_chr_hap(dt[[1L]])
+  sp  <- suppressWarnings(as.integer(dt[[2L]]))
+  sid <- dt[[3L]]
+  sr  <- dt[[4L]]
+  sa  <- dt[[5L]]
+
+  # ── Step 3: Vectorised GT parsing ─────────────────────────────────────────
+  # Beagle 5.x always produces phased biallelic GT: "0|0" "0|1" "1|0" "1|1" ".|."
+  # Alleles sit at fixed character positions 1 and 3 (pipe separator at 2).
+  # substr() operates at C speed on the whole matrix — no strsplit loop needed.
+  gt_mat  <- as.matrix(dt[, 10:(9L + ns), drop = FALSE])
+  # Strip FORMAT subfields (e.g. "0|1:35:99" -> "0|1").
+  # This makes the parser robust to VCFs with extra FORMAT fields.
+  # Note: Beagle 5.x always writes FORMAT=GT only for the phased output,
+  # so sub() is a no-op for Beagle-produced files.
+  if (any(grepl(":", gt_mat[1L, ], fixed = TRUE)))
+    gt_mat <- matrix(sub(":.*$", "", gt_mat), nrow = nv, ncol = ns)
+  # Parse alleles using sub() to support multi-character allele indices
+  # (e.g. "10|2") as well as the standard single-character case.
+  a1_char <- matrix(sub("\\|.*$", "", gt_mat), nrow = nv, ncol = ns)
+  a2_char <- matrix(sub("^.*\\|",  "", gt_mat), nrow = nv, ncol = ns)
+
+  missing_allele <- a1_char == "." | a1_char == "" |
+    a2_char == "." | a2_char == ""
+  h1 <- matrix(suppressWarnings(as.integer(a1_char)), nrow = nv, ncol = ns)
+  h2 <- matrix(suppressWarnings(as.integer(a2_char)), nrow = nv, ncol = ns)
+  h1[missing_allele] <- NA_real_
+  h2[missing_allele] <- NA_real_
+
+  rownames(h1) <- rownames(h2) <- sid
+  colnames(h1) <- colnames(h2) <- sids
+  dos <- h1 + h2
+
+  # ── Step 4: Synthesise CHR_POS IDs for dot/empty ID fields ─────────────────
   dot_or_empty <- is.na(sid) | sid == "." | !nzchar(sid)
   if (any(dot_or_empty)) {
     sid[dot_or_empty] <- paste0(sc[dot_or_empty], "_", sp[dot_or_empty])
@@ -61,17 +130,30 @@ read_phased_vcf <- function(vcf_file, min_maf=0.0, verbose=TRUE) {
               " SNP ID(s) as CHR_POS (original ID was '.' or empty)")
   }
 
-  snp_info <- data.frame(SNP=sid,CHR=sc,POS=sp,REF=sr,ALT=sa,stringsAsFactors=FALSE)
-  if (min_maf>0) {
-    af <- rowMeans(dos,na.rm=TRUE)/2; maf <- pmin(af,1-af)
-    ok <- !is.na(maf)&maf>=min_maf
-    h1 <- h1[ok,,drop=FALSE]; h2 <- h2[ok,,drop=FALSE]
-    dos <- dos[ok,,drop=FALSE]; snp_info <- snp_info[ok,]
-    if (verbose) message("[read_phased_vcf] After MAF>=",min_maf,": ",sum(ok))
+  snp_info <- data.frame(SNP = sid, CHR = sc, POS = sp,
+                         REF = sr,  ALT = sa,
+                         stringsAsFactors = FALSE)
+
+  # ── Step 5: Optional MAF filter ────────────────────────────────────────────
+  if (min_maf > 0) {
+    af  <- rowMeans(dos, na.rm = TRUE) / 2
+    maf <- pmin(af, 1 - af)
+    ok  <- !is.na(maf) & maf >= min_maf
+    h1       <- h1[ok,  , drop = FALSE]
+    h2       <- h2[ok,  , drop = FALSE]
+    dos      <- dos[ok, , drop = FALSE]
+    snp_info <- snp_info[ok, ]
+    if (verbose)
+      message("[read_phased_vcf] After MAF >= ", min_maf, ": ", sum(ok), " variants")
   }
-  list(hap1=h1, hap2=h2, dosage=dos, snp_info=snp_info,
-       sample_ids=sids, phased=TRUE, phase_method="vcf_phased")
+
+  list(hap1 = h1, hap2 = h2, dosage = dos,
+       snp_info     = snp_info,
+       sample_ids   = sids,
+       phased       = TRUE,
+       phase_method = "vcf_phased")
 }
+
 
 #' Statistical Phasing via Beagle 5.x
 #'
@@ -244,9 +326,10 @@ phase_with_beagle <- function(
 #' @return Numeric matrix (individuals x SNPs, 0/1/2/NA).
 #' @keywords internal
 unphase_to_dosage <- function(phased_list) {
-  if (!all(c("hap1","hap2")%in%names(phased_list)))
-    stop("Need hap1 and hap2 elements.",call.=FALSE)
-  phased_list$hap1+phased_list$hap2
+  if (!all(c("hap1", "hap2") %in% names(phased_list)))
+    stop("Need hap1 and hap2 elements.", call. = FALSE)
+  # hap1/hap2 are stored as SNPs x individuals; return individuals x SNPs
+  t(phased_list$hap1 + phased_list$hap2)
 }
 
 # ==============================================================================
@@ -285,9 +368,15 @@ unphase_to_dosage <- function(phased_list) {
 
     # 5. n_snps range
     nsnps <- hap_info$n_snps[!is.na(hap_info$n_snps)]
-    message("[LDxBlocks] Hap QC: n_snps range [", min(nsnps), ", ", max(nsnps), "]",
-            " | blocks=", nrow(hap_info),
-            " | NA_matrix=", n_na)
+    if (length(nsnps)) {
+      message("[LDxBlocks] Hap QC: n_snps range [", min(nsnps), ", ", max(nsnps), "]",
+              " | blocks=", nrow(hap_info),
+              " | NA_matrix=", n_na)
+    } else {
+      message("[LDxBlocks] Hap QC: n_snps unavailable",
+              " | blocks=", nrow(hap_info),
+              " | NA_matrix=", n_na)
+    }
   }
 
   if (length(issues) > 0L) {
@@ -355,6 +444,23 @@ unphase_to_dosage <- function(phased_list) {
 #' @export
 extract_haplotypes <- function(geno, snp_info, blocks,
                                chr=NULL, min_snps=3L, na_char=".") {
+
+  # -- Required-column validation -------------------------------------------
+  req_snp  <- c("SNP", "CHR", "POS")
+  miss_snp <- setdiff(req_snp, names(snp_info))
+  if (length(miss_snp))
+    stop("snp_info is missing required column(s): ",
+         paste(miss_snp, collapse = ", "), call. = FALSE)
+
+  req_blk  <- c("CHR", "start.bp", "end.bp")
+  miss_blk <- setdiff(req_blk, names(blocks))
+  if (length(miss_blk))
+    stop("blocks is missing required column(s): ",
+         paste(miss_blk, collapse = ", "), call. = FALSE)
+
+  min_snps <- suppressWarnings(as.integer(min_snps))
+  if (length(min_snps) != 1L || is.na(min_snps) || min_snps < 1L)
+    stop("min_snps must be a positive integer.", call. = FALSE)
 
   # -- Input type detection --------------------------------------------------
   # Three paths:
@@ -941,6 +1047,22 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
   encoding <- match.arg(encoding)
   if (identical(encoding, "presence_02")) encoding <- "presence_01"
 
+  # Guard: empty haplotypes list (all blocks filtered by min_snps etc.)
+  if (!length(haplotypes)) {
+    info_empty <- data.frame(
+      hap_id = character(), block_id = character(),
+      CHR = character(), start_bp = integer(), end_bp = integer(),
+      n_snps = integer(), hap_rank = integer(),
+      hap_string = character(), frequency = numeric(),
+      phased = logical(), alleles_export = character(),
+      stringsAsFactors = FALSE
+    )
+    return(list(
+      matrix = matrix(numeric(0), nrow = 0L, ncol = 0L),
+      info   = info_empty
+    ))
+  }
+
   bi        <- attr(haplotypes, "block_info")
   inames    <- names(haplotypes[[1L]])
   mats      <- vector("list", length(haplotypes))
@@ -1119,6 +1241,29 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
 compute_haplotype_grm <- function(hap_matrix, bend = FALSE, phased = NULL) {
   if (!is.matrix(hap_matrix))
     hap_matrix <- as.matrix(hap_matrix)
+
+  if (!ncol(hap_matrix))
+    stop("hap_matrix has zero columns; cannot compute GRM.", call. = FALSE)
+
+  # Drop all-NA columns (mean imputation would produce NaN)
+  all_na <- colSums(!is.na(hap_matrix)) == 0L
+  if (any(all_na)) hap_matrix <- hap_matrix[, !all_na, drop = FALSE]
+  if (!ncol(hap_matrix))
+    stop("All haplotype columns are NA; cannot compute GRM.", call. = FALSE)
+
+  # Drop monomorphic columns (zero variance -> VanRaden scaling undefined)
+  mono <- apply(hap_matrix, 2L, function(x) {
+    ux <- unique(x[!is.na(x)]); length(ux) <= 1L
+  })
+  if (any(mono)) hap_matrix <- hap_matrix[, !mono, drop = FALSE]
+  if (!ncol(hap_matrix)) {
+    warning("All haplotype columns are monomorphic; returning identity GRM.",
+            call. = FALSE)
+    n <- nrow(hap_matrix)
+    G <- diag(n)
+    rownames(G) <- colnames(G) <- rownames(hap_matrix)
+    return(G)
+  }
 
   # Mean-impute NA per column
   for (j in seq_len(ncol(hap_matrix))) {

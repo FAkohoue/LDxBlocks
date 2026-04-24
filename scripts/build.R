@@ -129,15 +129,7 @@ Sys.setenv(PATH = paste(
 #    installed DLL, so load_all() will find them.
 devtools::test()
 
-.beagle_jar_path <- function() {
-  system.file("extdata", "beagle.jar", package = "LDxBlocks")
-}
-.beagle_available <- function() {
-  j <- .beagle_jar_path()
-  nzchar(j) && file.exists(j)
-}
-
-devtools::test(filter = "phasing")
+#devtools::test(filter = "association")
 
 # 7. Full CRAN check (run after tests pass).
 devtools::check()
