@@ -39,6 +39,12 @@ encoding="presence_02" (kernel methods, random forest):
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-large-scale.html">Large-Scale Analysis: GDS and PLINK BED Backends</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-phasing.html">Statistical Phasing with Beagle 5.x in LDxBlocks</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-workflow.html">LDxBlocks Workflow: From Genotype File to Haplotype Features</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
@@ -104,22 +110,21 @@ highly diverse haplotypes (many rare alleles above <code>min_freq</code>).</p></
 
 
 <dt id="arg-encoding">encoding<a class="anchor" aria-label="anchor" href="#arg-encoding"></a></dt>
-<dd><p>Dosage encoding for the feature matrix:</p><ul><li><p><code>"additive_012"</code> (default): values are 0, 1, or 2 for
-    <strong>phased</strong> data (0 = neither gamete, 1 = one gamete,
-    2 = both gametes carry this allele); values are 0 or 2 for
-    <strong>unphased</strong> data (0 = absent, 2 = homozygous for this allele).
-    For <strong>unphased</strong> data the value is 0 or 1/NA: 1 = the
-    individual's haplotype string matches this allele exactly,
-    0 = it does not. The value 2 is not used for unphased data
-    because we cannot confirm both chromosomes carry the same
-    allele from unphased dosage strings. Compatible with
-    rrBLUP, BGLR, sommer, ASReml-R.</p></li>
-<li><p><code>"presence_01"</code>: values are 0 or 1 – clean presence/absence
-    encoding. For phased data: 1 if either gamete carries the allele.
-    For unphased data: 1 if the individual's allele string matches.
-    Loses copy-number information compared to <code>"additive_012"</code>
-    but may be preferable for Bayesian variable selection models
-    (BayesB, BayesC) where the prior expects binary indicators.</p></li>
+<dd><p>Dosage encoding for the feature matrix:</p><ul><li><p><code>"additive_012"</code> (default):
+    <strong>Phased data</strong>: values are 0 (neither gamete carries the allele),
+    1 (one gamete carries it - heterozygous), or 2 (both gametes - homozygous).
+    This gives true allele dosage on the standard 0/1/2 scale.
+    <strong>Unphased data</strong>: values are 0 or 1 only (presence/absence of the
+    dosage-pattern haplotype). The value 2 is never produced for unphased
+    data because it is impossible to confirm that both chromosomes carry
+    the same haplotype string without phase information.
+    Compatible with rrBLUP, BGLR, sommer, ASReml-R.</p></li>
+<li><p><code>"presence_01"</code>: values are 0 or 1 for both phased and unphased
+    data. For phased data: 1 if either gamete carries the allele (loses
+    copy-number information vs <code>"additive_012"</code>). For unphased data:
+    identical to <code>"additive_012"</code> since that already gives 0/1.
+    May be preferable for Bayesian variable selection models (BayesB,
+    BayesC) where the prior expects binary indicators.</p></li>
 </ul></dd>
 
 
@@ -138,6 +143,28 @@ highly diverse haplotypes (many rare alleles above <code>min_freq</code>).</p></
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Numeric matrix (individuals x haplotype allele columns).</p>
+    </div>
+    <div class="section level2">
+    <h2 id="phased-vs-unphased-haplotypes">Phased vs unphased haplotypes<a class="anchor" aria-label="anchor" href="#phased-vs-unphased-haplotypes"></a></h2>
+
+
+<p><strong>Phased data</strong> (from <code><a href="read_phased_vcf.html">read_phased_vcf</a></code>,
+<code><a href="phase_with_beagle.html">phase_with_beagle</a></code>):
+each individual's block string is <code>"g1|g2"</code> where <code>g1</code> and <code>g2</code>
+are the two gametic sequences. Haplotype alleles are identified at the
+<em>gamete</em> level - true haplotypes in the biological sense. Frequencies
+are gamete frequencies (each individual contributes two observations).
+Dosage values 0, 1, 2 measure actual allele copy number.</p>
+<p><strong>Unphased data</strong> (from an unphased VCF or dosage matrix): each
+individual's block string is a single multi-SNP dosage string (e.g.
+<code>"021002"</code>). Haplotype <em>alleles</em> are distinct dosage patterns,
+not true gametic haplotypes. Frequencies measure the proportion of
+<em>individuals</em> carrying each dosage pattern. This is biologically
+meaningful (distinct genotypic patterns at the block level) but should not
+be equated with true haplotype allele frequency without phasing.
+The recommended workflow for true haplotype analysis is:
+phase first with Beagle, then call
+<code><a href="extract_haplotypes.html">extract_haplotypes()</a></code> on the phased output.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

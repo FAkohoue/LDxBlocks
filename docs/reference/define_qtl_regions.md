@@ -14,7 +14,8 @@ define_qtl_regions(
   p_threshold = 5e-08,
   trait_col = "trait",
   min_snps = 3L,
-  ld_decay = NULL
+  ld_decay = NULL,
+  verbose = TRUE
 )
 ```
 
@@ -56,6 +57,10 @@ define_qtl_regions(
   distance on both sides of each lead SNP position, adding columns
   `candidate_region_start`, `candidate_region_end`, and
   `candidate_region_size_kb` to the output. Default `NULL`.
+
+- verbose:
+
+  Logical. Print progress messages. Default `TRUE`.
 
 ## Value
 

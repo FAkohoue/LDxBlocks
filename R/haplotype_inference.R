@@ -28,7 +28,7 @@
 #' flag, and a phase-ambiguity flag.
 #'
 #' When the input is a \strong{phased list} (from \code{\link{read_phased_vcf}}
-#' or \code{\link{phase_with_pedigree}}), \code{hap1} and \code{hap2} are the
+#' or a pre-phased VCF via \code{\link{read_phased_vcf}}), \code{hap1} and \code{hap2} are the
 #' true gametic strings and \code{phase_ambiguous} is always \code{FALSE}.
 #'
 #' When the input is \strong{unphased} (diploid allele strings), heterozygous
@@ -80,7 +80,7 @@
 #' tapply(dip$heterozygous, dip$block_id, mean, na.rm = TRUE)
 #' }
 #' @seealso \code{\link{extract_haplotypes}}, \code{\link{phase_with_beagle}},
-#'   \code{\link{phase_with_pedigree}}, \code{\link{collapse_haplotypes}}
+#'   \code{\link{collapse_haplotypes}}
 #' @export
 infer_block_haplotypes <- function(
     haplotypes,
@@ -451,7 +451,7 @@ collapse_haplotypes <- function(
 #' @examples
 #' \donttest{
 #' data(ldx_geno, ldx_snp_info, ldx_blocks, package = "LDxBlocks")
-#' # Split into training (70\%) and validation (30\%)
+#' # Split into training (70 pct) and validation (30 pct)
 #' n    <- nrow(ldx_geno)
 #' idx  <- sample(n)
 #' ref_geno  <- ldx_geno[idx[1:round(n*0.7)], ]

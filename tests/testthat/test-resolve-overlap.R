@@ -305,3 +305,58 @@ test_that("Big_LD with resolve_overlap_cpp: detects known block structure", {
                              verbose = FALSE)
   expect_true(nrow(blks) >= 3L)
 })
+
+# -- BUG 1 fix: non-adjacent contained blocks ---------------------------------
+# Before the fix, blocks from different sub-segments arriving non-adjacent in
+# the blocks matrix could produce overlapping output. The fix sorts by
+# (start ASC, end DESC) and uses a max_end sweep to find ALL overlapping pairs.
+
+test_that("resolve_overlap_cpp BUG1 fix: non-adjacent block B inside A is resolved", {
+  # Block A = [1, 30], Block B = [8, 20] - B is fully inside A.
+  # They are placed non-adjacently (rows 1 and 3) to trigger the old bug.
+  # A third non-overlapping block C = [35, 45] separates them.
+  data(ldx_geno,     package = "LDxBlocks")
+  adj <- scale(ldx_geno[, 1:45], center = TRUE, scale = FALSE)
+  # Row order: A [1,30], C [35,45], B [8,20] - B and A are NOT adjacent rows
+  blocks_in <- matrix(
+    as.integer(c(1, 30,   # row 1: block A (wide)
+                 35, 45,  # row 2: block C (non-overlapping)
+                 8, 20)), # row 3: block B (inside A, non-adjacent)
+    nrow = 3L, byrow = TRUE
+  )
+  result <- resolve_overlap_cpp(blocks_in, adj, k_rep = 5L)
+  # After fix: A and B must be merged (B inside A -> union [1,30])
+  # or A extended; result must be non-overlapping
+  if (nrow(result) > 1L) {
+    expect_true(all(result[-1L, 1L] > result[-nrow(result), 2L]),
+                label = "output must be non-overlapping after BUG1 fix")
+  }
+  # The block covering [1,30] should still exist
+  covers_A <- any(result[, 1L] <= 1L & result[, 2L] >= 20L)
+  expect_true(covers_A, label = "union of A and B should be retained")
+})
+
+test_that("resolve_overlap_cpp BUG2 fix: three consecutive overlapping blocks resolved", {
+  # Three blocks with pairwise overlaps: A=[1,15], B=[12,25], C=[22,30].
+  # A-B overlap [12,15] and B-C overlap [22,25].
+  # BUG 2 (shed_row) caused index corruption when applying A-B merge then B-C merge.
+  # Fix: keep[] vector + single-pass compaction.
+  data(ldx_geno,     package = "LDxBlocks")
+  adj <- scale(ldx_geno[, 1:30], center = TRUE, scale = FALSE)
+  blocks_in <- matrix(
+    as.integer(c(1,  15,   # A
+                 12, 25,   # B (overlaps A)
+                 22, 30)), # C (overlaps B)
+    nrow = 3L, byrow = TRUE
+  )
+  result <- resolve_overlap_cpp(blocks_in, adj, k_rep = 5L)
+  # Must produce non-overlapping output regardless of merge strategy
+  expect_true(nrow(result) >= 1L, label = "at least one block must survive")
+  if (nrow(result) > 1L) {
+    expect_true(all(result[-1L, 1L] > result[-nrow(result), 2L]),
+                label = "output must be non-overlapping after BUG2 fix")
+  }
+  # Global span must be preserved
+  expect_equal(min(result[, 1L]), 1L,  label = "global start preserved")
+  expect_equal(max(result[, 2L]), 30L, label = "global end preserved")
+})

@@ -11,7 +11,8 @@ define_qtl_regions(
   p_threshold = 5e-08,
   trait_col = "trait",
   min_snps = 3L,
-  ld_decay = NULL
+  ld_decay = NULL,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -38,6 +39,8 @@ gene windows are extended by the chromosome-specific decay distance
 on both sides of each lead SNP position, adding columns
 \code{candidate_region_start}, \code{candidate_region_end}, and
 \code{candidate_region_size_kb} to the output. Default \code{NULL}.}
+
+\item{verbose}{Logical. Print progress messages. Default \code{TRUE}.}
 }
 \value{
 Data frame with one row per block containing significant markers:

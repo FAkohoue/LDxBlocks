@@ -69,7 +69,9 @@ Derived analytically from the founder-haplotype simulation in
 
 [`ldx_geno`](https://FAkohoue.github.io/LDxBlocks/reference/ldx_geno.md),
 [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md),
-[`summarise_blocks`](https://FAkohoue.github.io/LDxBlocks/reference/summarise_blocks.md)
+[`summarise_blocks`](https://FAkohoue.github.io/LDxBlocks/reference/summarise_blocks.md),
+[`compare_block_effects`](https://FAkohoue.github.io/LDxBlocks/reference/compare_block_effects.md),
+[`compare_gwas_effects`](https://FAkohoue.github.io/LDxBlocks/reference/compare_gwas_effects.md)
 
 ## Examples
 
@@ -113,5 +115,55 @@ head(cmp[, c("block_id","n1","n2","FST","divergent")])
 #> 4    block_2_1000_30023 60 60 0.0046     FALSE
 #> 5  block_2_86236_105290 60 60 0.0034     FALSE
 #> 6 block_2_161515_180473 60 60 0.0099     FALSE
+
+# Cross-population haplotype effect concordance.
+# test_block_haplotypes() produces LDxBlocks_haplotype_assoc objects;
+# compare_block_effects() compares their allele effects block by block.
+data(ldx_blues)
+blues_vec <- setNames(ldx_blues$YLD, ldx_blues$id)
+# Simulate two populations by splitting the 120 individuals
+set.seed(2L)
+idx1 <- sample(ids, 70L);  idx2 <- setdiff(ids, idx1)
+haps1 <- extract_haplotypes(ldx_geno[idx1, ], ldx_snp_info, ldx_blocks)
+haps2 <- extract_haplotypes(ldx_geno[idx2, ], ldx_snp_info, ldx_blocks)
+assoc1 <- test_block_haplotypes(haps1, blues = blues_vec[idx1],
+                                 blocks = ldx_blocks, n_pcs = 0L,
+                                 verbose = FALSE)
+assoc2 <- test_block_haplotypes(haps2, blues = blues_vec[idx2],
+                                 blocks = ldx_blocks, n_pcs = 0L,
+                                 verbose = FALSE)
+# block_match = "position" handles different block boundaries;
+# use "id" (default) when both populations share the same block table.
+conc <- compare_block_effects(
+  assoc1, assoc2,
+  pop1_name   = "Pop1",
+  pop2_name   = "Pop2",
+  blocks_pop1 = ldx_blocks,
+  blocks_pop2 = ldx_blocks,
+  block_match = "id",
+  verbose     = FALSE
+)
+conc$concordance[, c("block_id","n_shared_alleles",
+                     "direction_agreement","meta_p","replicated")]
+#>                block_id n_shared_alleles direction_agreement    meta_p
+#> 1    block_1_1000_25027                7              0.4286 0.7964556
+#> 2   block_1_81064_99022                5              0.4000 0.7000451
+#> 3 block_1_155368_179371                7              0.4286 0.8408251
+#> 4    block_2_1000_30023                7              0.5714 0.6899425
+#> 5  block_2_86236_105290                7              0.4286 0.7257983
+#> 6 block_2_161515_180473                6              0.6667 0.7767358
+#> 7    block_3_1000_19068                7              0.8571 0.5867187
+#> 8   block_3_74532_93854                6              0.5000 0.8366144
+#> 9 block_3_149647_168376                8              0.5000 0.9410410
+#>   replicated
+#> 1      FALSE
+#> 2      FALSE
+#> 3      FALSE
+#> 4      FALSE
+#> 5      FALSE
+#> 6      FALSE
+#> 7       TRUE
+#> 8      FALSE
+#> 9      FALSE
 # }
 ```

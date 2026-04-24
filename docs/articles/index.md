@@ -14,3 +14,13 @@
 
 - [Large-Scale Analysis: GDS and PLINK BED
   Backends](https://FAkohoue.github.io/LDxBlocks/articles/LDxBlocks-large-scale.md):
+
+### Advanced
+
+- [Statistical Phasing with Beagle 5.x in
+  LDxBlocks](https://FAkohoue.github.io/LDxBlocks/articles/LDxBlocks-phasing.md):
+
+### Advanced
+
+- [LDxBlocks Workflow: From Genotype File to Haplotype
+  Features](https://FAkohoue.github.io/LDxBlocks/articles/LDxBlocks-workflow.md):

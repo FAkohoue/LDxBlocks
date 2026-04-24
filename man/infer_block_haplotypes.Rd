@@ -53,7 +53,7 @@ into a structured per-individual, per-block diplotype table with explicit
 flag, and a phase-ambiguity flag.
 
 When the input is a \strong{phased list} (from \code{\link{read_phased_vcf}}
-or \code{\link{phase_with_pedigree}}), \code{hap1} and \code{hap2} are the
+or a pre-phased VCF via \code{\link{read_phased_vcf}}), \code{hap1} and \code{hap2} are the
 true gametic strings and \code{phase_ambiguous} is always \code{FALSE}.
 
 When the input is \strong{unphased} (diploid allele strings), heterozygous
@@ -75,5 +75,5 @@ tapply(dip$heterozygous, dip$block_id, mean, na.rm = TRUE)
 }
 \seealso{
 \code{\link{extract_haplotypes}}, \code{\link{phase_with_beagle}},
-  \code{\link{phase_with_pedigree}}, \code{\link{collapse_haplotypes}}
+  \code{\link{collapse_haplotypes}}
 }

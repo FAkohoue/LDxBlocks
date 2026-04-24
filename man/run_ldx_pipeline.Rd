@@ -6,11 +6,28 @@
 \usage{
 run_ldx_pipeline(
   geno_source,
+  out_dir = ".",
   out_blocks,
   out_diversity,
   out_hap_matrix,
   hap_format = c("numeric", "character"),
+  phase = FALSE,
+  beagle_jar = NULL,
+  beagle_threads = 1L,
+  java_path = "java",
+  beagle_java_mem_gb = NULL,
+  beagle_args = "",
+  beagle_ref_panel = NULL,
+  beagle_map_file = NULL,
+  beagle_chrom = NULL,
+  beagle_seed = NULL,
+  beagle_burnin = NULL,
+  beagle_iterations = NULL,
+  beagle_window = NULL,
+  beagle_overlap = NULL,
   maf_cut = 0.05,
+  impute = c("mean_rounded", "mode", "none"),
+  min_callrate = 0,
   CLQcut = 0.5,
   method = c("r2", "rV2"),
   kin_method = "chol",
@@ -25,389 +42,206 @@ run_ldx_pipeline(
   digits = -1L,
   n_threads = 1L,
   min_snps_chr = 10L,
+  max_bp_distance = 0L,
   min_snps_block = 3L,
   top_n = NULL,
   min_freq = 0.01,
   scale_hap_matrix = FALSE,
   chr = NULL,
-  verbose = TRUE,
-  max_bp_distance = 0L,
   clean_malformed = FALSE,
   use_bigmemory = FALSE,
   bigmemory_path = tempdir(),
   bigmemory_type = "char",
-  impute = c("mean_rounded", "mode", "none"),
-  min_callrate = 0
+  verbose = TRUE
 )
 }
 \arguments{
-\item{geno_source}{Path to a genotype file, OR an
-\code{LDxBlocks_backend} object already created by \code{\link{read_geno}}
-or \code{\link{read_geno_bigmemory}}. Passing a backend skips the
-internal \code{read_geno()} call, allowing you to use any pre-built
-backend including file-backed \code{bigmemory} stores.
-Supported file formats when a path is supplied:
-numeric dosage CSV (`.csv`), HapMap (`.hmp.txt`),
-VCF (`.vcf`, `.vcf.gz`), SNPRelate GDS (`.gds`),
-PLINK BED (`.bed`). Format is detected automatically
-from the file extension.}
+\item{geno_source}{File path or \code{LDxBlocks_backend}. Supported
+formats: VCF (\code{.vcf}/\code{.vcf.gz}), HapMap (\code{.hmp.txt}),
+CSV, GDS, PLINK BED. \code{phase = TRUE} requires VCF/VCF.gz.}
 
-\item{out_blocks}{Path for the LD block table CSV. Columns:
-`CHR`, `start`, `end`, `start.rsID`, `end.rsID`, `start.bp`, `end.bp`,
-`length_bp`, `length_snps`, `block_name`.}
+\item{out_dir}{Output directory. Default \code{"."}. When
+\code{phase = TRUE}, \code{beagle.jar} is expected here and the phased
+VCF is written here.}
 
-\item{out_diversity}{Path for the haplotype diversity table CSV.
-Columns: \code{block_id}, \code{CHR}, \code{start_bp},
-\code{end_bp}, \code{n_snps}, \code{n_ind},
-\code{n_haplotypes}, \code{He} (Nei 1973 corrected),
-\code{Shannon}, \code{n_eff_alleles} (effective number of
-alleles = 1/\eqn{\sum p_i^2}), \code{freq_dominant},
-\code{sweep_flag} (\code{TRUE} when freq_dominant >= 0.90,
-indicating a possible selective sweep or strong founder effect),
-\code{phased}.}
+\item{out_blocks}{Path for LD block table CSV.}
 
-\item{out_hap_matrix}{Path for the haplotype genotype matrix. Format is
-controlled by `hap_format`. See section **Haplotype genotype matrix**.}
+\item{out_diversity}{Path for haplotype diversity table CSV.}
 
-\item{hap_format}{Output format for the haplotype matrix:
-\itemize{
-  \item \code{"numeric"} (default) - Tab-delimited. Rows = haplotype
-    alleles, columns = individuals. Metadata columns: \code{hap_id},
-    \code{CHR}, \code{start_bp}, \code{end_bp}, \code{n_snps},
-    \code{alleles} (nucleotide sequence of this allele), \code{frequency}.
-    Individual columns contain 0/1/2/NA dosage.
-  \item \code{"character"} - Tab-delimited. Same row/column orientation.
-    Individual cells contain the nucleotide sequence of the haplotype
-    allele if the individual carries it, \code{"-"} if absent, \code{"."}
-    if missing.
-}}
+\item{out_hap_matrix}{Path for haplotype genotype matrix file.}
 
-\item{maf_cut}{Minimum minor allele frequency. SNPs below this
-threshold are removed before block detection. Default `0.05`.}
+\item{hap_format}{\code{"numeric"} (default) or \code{"character"}.}
 
-\item{CLQcut}{r^2 threshold for clique edges in CLQD. Higher
-values produce tighter, smaller blocks. Default `0.5`.}
+\item{phase}{If \code{TRUE}, phase with Beagle. Default \code{FALSE}.}
 
-\item{method}{LD metric: \code{"r2"} (default) or \code{"rV2"}
-(requires kinship matrix; see \code{\link{run_Big_LD_all_chr}}).}
+\item{beagle_jar}{Path to \code{beagle.jar}.
+Default: \code{file.path(out_dir, "beagle.jar")}.}
 
-\item{kin_method}{Whitening method for \code{rV2}: \code{"chol"}
-(Cholesky, default, faster) or \code{"eigen"} (eigendecomposition,
-more stable for near-singular kinship matrices).}
+\item{beagle_threads}{Beagle threads. Default \code{1L}.}
 
-\item{CLQmode}{Clique scoring mode: \code{"Density"} (default,
-prefers compact high-density cliques -- recommended for most analyses)
-or \code{"Maximal"} (prefers the largest cliques regardless of span).}
+\item{java_path}{Java executable. Default \code{"java"}.}
 
-\item{leng}{Boundary scan half-window in SNPs. Default `200L`.
-Reduce to 50-100 for very dense WGS panels.}
+\item{beagle_java_mem_gb}{JVM heap in GB (\code{-Xmx}). Default \code{NULL}.}
 
-\item{subSegmSize}{Maximum SNPs per CLQD sub-segment. Controls peak
-RAM: `subSegmSize x n_individuals x 8` bytes. Default `1500L`.}
+\item{beagle_args}{Extra Beagle argument string. Default \code{""}.}
 
-\item{clstgap}{Maximum base-pair gap allowed within a clique
-before it is split. Default \code{40000L} (40 kb). Increase for
-populations with long-range LD (e.g. inbred lines); decrease for
-high-recombination panels.}
+\item{beagle_ref_panel}{Phased reference VCF path. Default \code{NULL}.}
 
-\item{split}{Logical. If \code{TRUE}, split cliques whose
-SNP span exceeds \code{clstgap} bp at the largest internal gap.
-Default \code{FALSE}.}
+\item{beagle_map_file}{Genetic map file path. Default \code{NULL}.}
 
-\item{appendrare}{Logical. If \code{TRUE}, SNPs that fail MAF
-filtering are appended to the nearest block after detection. Default
-\code{FALSE}.}
+\item{beagle_chrom}{Restrict Beagle to one chromosome. Default \code{NULL}
+(inherits \code{chr} if set).}
 
-\item{singleton_as_block}{Logical. If \code{TRUE}, SNPs that receive
-no clique assignment (singletons at recombination hotspots) are
-returned as single-SNP blocks in the block table. Default \code{FALSE}
-(original Big-LD behaviour -- singletons are silently dropped).}
+\item{beagle_seed}{Integer seed for reproducibility. Default \code{NULL}.}
 
-\item{checkLargest}{Logical. If \code{TRUE}, apply a dense-core
-pre-pass before clique enumeration on sub-segments with >=500 SNPs to
-prevent exponential blowup. Default \code{FALSE}.}
+\item{beagle_burnin}{Burn-in iterations. Default \code{NULL}.}
 
-\item{digits}{Integer. Round r^2 values to this many decimal
-places before clique detection. \code{-1L} (default) disables rounding.}
+\item{beagle_iterations}{Phasing iterations. Default \code{NULL}.}
 
-\item{n_threads}{OpenMP threads for the C++ LD kernel. Default `1L`.}
+\item{beagle_window}{Window size. Default \code{NULL}.}
 
-\item{min_snps_chr}{Skip chromosomes with fewer post-filter SNPs than
-this. Default `10L`. Increase to skip unplaced scaffolds.}
+\item{beagle_overlap}{Window overlap. Default \code{NULL}.}
 
-\item{min_snps_block}{Minimum SNPs per haplotype block. Blocks smaller
-than this are excluded from haplotype analysis. Default `3L`.}
+\item{maf_cut}{Minimum MAF. Default \code{0.05}.}
 
-\item{top_n}{Integer or \code{NULL}. Maximum haplotype alleles per
-block in the output matrix. \code{NULL} (default) retains all alleles
-above \code{min_freq} -- no cap. Set an integer (e.g. \code{5L}) only to
-limit column count for memory reasons.}
+\item{impute}{\code{"mean_rounded"} (default), \code{"mode"}, or
+\code{"none"}.}
 
-\item{min_freq}{Minimum haplotype allele frequency (0--1). Alleles
-observed at lower frequency than this threshold are dropped before building
-the feature matrix and output files. Default \code{0.01} (1\%). Rare
-alleles below this threshold cannot be estimated reliably in typical
-training sets and add noise. Lower values retain more rare alleles;
-higher values (e.g. \code{0.05}) match the MAF filter applied to SNPs.}
+\item{min_callrate}{Minimum per-SNP call rate. Default \code{0.0}.}
 
-\item{scale_hap_matrix}{Logical. If `TRUE`, scale the haplotype matrix
-columns to zero mean and unit variance before writing. Useful for
-GBLUP-style models. Default `FALSE`.}
+\item{CLQcut}{r\eqn{^2} threshold for CLQD. Default \code{0.5}.}
 
-\item{chr}{Character vector of chromosome names to process.
-`NULL` (default) processes all chromosomes.}
+\item{method}{\code{"r2"} (default) or \code{"rV2"}.}
 
-\item{verbose}{Logical. Print timestamped progress. Default `TRUE`.}
+\item{kin_method}{\code{"chol"} (default) or \code{"eigen"}.}
 
-\item{max_bp_distance}{Integer. Maximum bp distance between a SNP pair
-for its r\eqn{^2} to be computed in the LD graph. \code{0L} (default)
-computes all pairs. Recommended for WGS panels: \code{500000L} (500 kb).
-Reduces O(p\eqn{^2}) LD computation to near-O(p) when set.}
+\item{CLQmode}{\code{"Density"} (default), \code{"Maximal"},
+\code{"Louvain"}, or \code{"Leiden"}.}
 
-\item{clean_malformed}{Logical. Stream-clean the input file before reading
-by removing any lines whose column count does not match the header. Needed
-for files from NGSEP and some variant callers. Default \code{FALSE}.}
+\item{leng}{Boundary scan half-window (SNPs). Default \code{200L}.}
 
-\item{use_bigmemory}{Logical. If \code{TRUE} and \code{geno_source} is a
-file path, the source file is first loaded into a file-backed
-\code{bigmemory::big.matrix} before block detection. Only the OS pages
-needed for each sub-segment window are loaded into RAM, keeping peak memory
-proportional to \code{n_samples x subSegmSize} rather than the full genome.
-Requires the \pkg{bigmemory} package. Default \code{FALSE}.
-Ignored when \code{geno_source} is already an
-\code{LDxBlocks_backend} (the supplied backend is used as-is).}
+\item{subSegmSize}{Max SNPs per sub-segment. Default \code{1500L}.}
 
-\item{bigmemory_path}{Directory where the bigmemory backing files
-(\code{.bin} and \code{.desc}) and SNP info cache
-(\code{_snpinfo.rds}) are written or read from. Defaults to
-\code{tempdir()} so files are cleaned up at the end of the R session.
-Supply a persistent directory (e.g. next to the output CSVs) when you
-want to reattach the backing file on a restart without re-reading the VCF.}
+\item{clstgap}{Max bp gap within clique. Default \code{40000L}.}
 
-\item{bigmemory_type}{Storage type for the \code{big.matrix}: \code{"char"}
-(1 byte per cell, 8x smaller than double, sufficient for 0/1/2 dosage),
-\code{"short"} (2 bytes), or \code{"double"} (8 bytes). Default
-\code{"char"}.}
+\item{split}{Split cliques at largest gap. Default \code{FALSE}.}
 
-\item{impute}{Character. Missing genotype imputation strategy
-applied to the genotype matrix after MAF filtering and before LD block
-detection and haplotype extraction. One of:
-\describe{
-  \item{\code{"mean_rounded"} (default)}{Per-SNP mean imputation rounded
-    to the nearest valid dosage (0, 1, or 2). For each SNP, compute the
-    mean dosage over non-missing samples and round: mean 0.08 -> 0,
-    mean 0.94 -> 1, mean 1.82 -> 2. Recommended for WGS data with
-    partial missingness (e.g. \code{miss20} VCF filter). Ensures
-    haplotype strings never contain \code{"."}  so all individuals
-    contribute 0/1 values to the feature matrix.}
-  \item{\code{"mode"}}{Per-SNP mode imputation. Imputes each missing
-    value with the most common observed dosage (0, 1, or 2) at that
-    SNP. \strong{Tie-breaking}: when two or more dosage values share
-    the maximum count (ambiguous mode), the SNP automatically falls
-    back to \code{"mean_rounded"} imputation for that SNP only
-    (\code{round(column_mean)}, clamped to \{0, 1, 2\}). This
-    ensures no silent bias toward the lower dosage and is consistent
-    with what \code{"mean_rounded"} would produce. Ties are
-    biologically rare at MAF >= 0.05 but can occur in blocks with
-    very high heterozygosity.}
-  \item{\code{"none"}}{No imputation. If any missing values remain
-    after MAF filtering the function stops with an informative error.
-    Use only when the input data are already fully imputed.}
-}}
+\item{appendrare}{Append rare SNPs to nearest block. Default \code{FALSE}.}
 
-\item{min_callrate}{Numeric in \code{[0, 1]}. Minimum per-SNP call
-rate (proportion of non-missing samples) required to retain a SNP.
-Applied before the authoritative MAF filter so that allele frequencies
-are computed on clean (non-missing-inflated) data. Default \code{0.0}
-(disabled). The three-step post-load order is: (1) call-rate filter,
-(2) MAF filter (authoritative), (3) imputation. Example: set
-\code{min_callrate = 0.8} to require calls in at least 80\% of samples.}
+\item{singleton_as_block}{Return singletons as blocks. Default \code{FALSE}.}
+
+\item{checkLargest}{Dense-core pre-pass. Default \code{FALSE}.}
+
+\item{digits}{Round r\eqn{^2} (\code{-1L} = off). Default \code{-1L}.}
+
+\item{n_threads}{OpenMP threads. Default \code{1L}.}
+
+\item{min_snps_chr}{Skip chromosomes below this SNP count. Default \code{10L}.}
+
+\item{max_bp_distance}{Max bp for r\eqn{^2} (\code{0L} = all). Default \code{0L}.}
+
+\item{min_snps_block}{Min SNPs per haplotype block. Default \code{3L}.}
+
+\item{top_n}{Max alleles per block (\code{NULL} = all above
+\code{min_freq}). Default \code{NULL}.}
+
+\item{min_freq}{Min haplotype allele frequency. Default \code{0.01}.}
+
+\item{scale_hap_matrix}{Scale haplotype matrix columns. Default \code{FALSE}.}
+
+\item{chr}{Chromosomes to process (\code{NULL} = all). Default
+\code{NULL}.}
+
+\item{clean_malformed}{Remove malformed VCF lines. Default \code{FALSE}.}
+
+\item{use_bigmemory}{File-backed bigmemory store. Default \code{FALSE}.}
+
+\item{bigmemory_path}{Directory for backing files. Default \code{tempdir()}.}
+
+\item{bigmemory_type}{\code{"char"} (default), \code{"short"},
+or \code{"double"}.}
+
+\item{verbose}{Print progress. Default \code{TRUE}.}
 }
 \value{
-A named list (invisibly) with elements:
-\describe{
-  \item{\code{blocks}}{Data frame of LD blocks from \code{run_Big_LD_all_chr}.}
-  \item{\code{diversity}}{Data frame of per-block haplotype diversity
-    metrics: \code{block_id}, \code{CHR}, \code{start_bp},
-    \code{end_bp}, \code{n_snps}, \code{n_ind}, \code{n_haplotypes},
-    \code{He} (sample-size corrected expected heterozygosity),
-    \code{Shannon}, \code{n_eff_alleles}, \code{freq_dominant},
-    \code{sweep_flag}, \code{phased}.}
-  \item{\code{hap_matrix}}{Numeric matrix (individuals x haplotype
-    allele columns) -- the dimensionality-reduced genotype matrix for
-    genomic prediction. Always returned as a numeric R matrix
-    regardless of \code{hap_format} (which only controls the
-    \emph{file} written to \code{out_hap_matrix}). Dosage values:
-    0/1/2/NA for phased data; 0/1/NA for unphased data.
-    Compatible with rrBLUP, BGLR, sommer, ASReml-R.}
-  \item{\code{haplotypes}}{Named list of per-block haplotype dosage strings
-    from \code{extract_haplotypes()}. Pass to
-    \code{decode_haplotype_strings()} for nucleotide sequences, or to
-    \code{rank_haplotype_blocks()} for evidence-based ranking.}
-  \item{\code{snp_info_filtered}}{Data frame of SNP metadata after
-    MAF filtering: \code{SNP}, \code{CHR}, \code{POS}, and any
-    additional columns from the input file.}
-  \item{\code{geno_matrix}}{Numeric matrix (individuals x SNPs) of
-    MAF-filtered genotypes (0/1/2/NA). Needed directly by
-    \code{\link{tune_LD_params}} and
-    \code{\link{run_haplotype_prediction}} -- avoids reloading
-    the genotype file after the pipeline completes.}
-  \item{\code{n_blocks}}{Integer. Total LD blocks detected genome-wide.}
-  \item{\code{n_hap_columns}}{Integer. Total haplotype allele columns
-    after \code{min_freq} filtering -- the effective number of predictors
-    for genomic prediction.}
-}
+Named list (invisibly): \code{blocks}, \code{diversity},
+  \code{hap_matrix}, \code{hap_matrix_info}, \code{haplotypes},
+  \code{geno_matrix}, \code{snp_info_filtered}, \code{phased_vcf},
+  \code{phased_backend_desc}, \code{phase_method},
+  \code{n_blocks}, \code{n_hap_columns}.
 }
 \description{
-A single-call wrapper that takes one genotype file and produces a complete
-haplotype-based dataset ready for genomic prediction. Internally handles
-format detection, optional GDS conversion for large files, MAF filtering,
-genome-wide LD block detection, haplotype extraction, diversity analysis,
-and output writing.
-
-The user provides only the input file path and desired output paths. All
-intermediate steps run transparently.
+Single-call wrapper: one genotype file in, complete haplotype dataset out.
+Handles format detection, MAF filtering, call-rate filtering, imputation,
+LD block detection, optional Beagle phasing, haplotype extraction, diversity
+analysis, feature matrix construction, and output writing.
 }
-\section{File-backed memory-mapped genotype store (\code{use_bigmemory})}{
+\section{Phasing modes}{
 
-When \code{use_bigmemory = TRUE} the pipeline converts the source file into
-a \code{bigmemory::big.matrix} backed by two binary files on disk before
-running any analysis. Only the OS pages needed for each sub-segment window
-are loaded into RAM; the rest of the genome stays on disk. Peak RAM is
-proportional to \code{n_samples x subSegmSize x bytes_per_cell} rather than
-the full genome matrix.
-
-\strong{Backing files created in \code{bigmemory_path}:}
 \describe{
-  \item{\code{ldxblocks_bm.bin}}{Raw binary genotype data.
-    Size = n_samples x n_snps x bytes_per_cell.
-    With \code{type = "char"} and 204 samples x 3M SNPs: ~0.6 GB.}
-  \item{\code{ldxblocks_bm.desc}}{Tiny text descriptor that bigmemory
-    uses to memory-map the \code{.bin} file. Never edit this manually.}
-  \item{\code{ldxblocks_bm_snpinfo.rds}}{Cached SNP metadata (SNP, CHR,
-    POS, REF, ALT). bigmemory does not store metadata, so this file is
-    saved separately to enable restart without re-reading the source file.}
-}
+  \item{\code{phase = FALSE} (default)}{
+    Dosage-pattern haplotypes extracted directly from the imputed matrix.
+    No external tools required. Fast. Suitable for genomic prediction.
+    Each block entry is a multi-SNP dosage string - not a true gametic
+    haplotype. Frequencies are individual-level pattern proportions.}
+  \item{\code{phase = TRUE}}{
+    Beagle 5.x called on the original input VCF after LD block detection,
+    producing true statistically-inferred gametic haplotypes using
+    population-LD across all markers. Haplotype strings become
+    \code{"g1|g2"}. Frequencies are computed over \eqn{2N} gamete
+    observations. Recommended for diversity analysis and biologically
+    interpretable results.
 
-\strong{Restart behaviour:} if all three files already exist in
-\code{bigmemory_path} when the pipeline is called, the \code{.bin} is
-reattached instantly via \code{bigmemory::attach.big.matrix()} -- the
-source VCF is not touched. To force a rebuild, delete the \code{.bin}
-and \code{.desc} files.
-
-\strong{Choosing \code{bigmemory_type}:}
-\describe{
-  \item{\code{"char"} (default, recommended)}{1 signed byte per cell
-    (range --128..127). Genotype dosage values 0, 1, 2 fit without loss.
-    8x smaller than \code{"double"}.}
-  \item{\code{"short"}}{2 bytes per cell. Not needed for 0/1/2 dosage;
-    use only if your pipeline stores values outside --128..127 in the
-    same matrix.}
-  \item{\code{"double"}}{8 bytes per cell. Same as a standard R
-    \code{matrix()}. Use only if downstream code requires \code{double}
-    precision and the RAM saving is not needed.}
-}
-
-\strong{When to use \code{use_bigmemory = TRUE}:}
-\itemize{
-  \item Peak RAM from GDS streaming exceeds available node memory.
-  \item You need fast restart: the \code{.bin} persists across R sessions
-    (supply a persistent \code{bigmemory_path}, not \code{tempdir()}).
-  \item Multiple pipeline runs share the same panel (one \code{.bin},
-    many readers -- bigmemory memory-maps are safe for concurrent access).
+    \strong{Requirements:} \code{geno_source} must be VCF/VCF.gz.
+    Place \code{beagle.jar} in \code{out_dir} or supply via
+    \code{beagle_jar}. Download:
+    \url{https://faculty.washington.edu/browning/beagle/beagle.html}}
 }
 }
 
-\section{Scale behaviour}{
+\section{Why Beagle and why a cleaned VCF}{
 
-Files are processed via the `LDxBlocks_backend` streaming interface.
-For VCF, HapMap, and numeric CSV files the backend reads one chromosome
-window at a time - peak RAM equals one `subSegmSize`-SNP window regardless
-of total marker count. For very large files (> 2 M SNPs) the GDS backend
-via `SNPRelate` is used automatically if the `SNPRelate` package is installed.
-}
+Beagle 5.x performs chromosome-level statistical phasing using population
+LD across all markers simultaneously, producing true inferred gametic
+haplotypes. This is the only supported phasing method in LDxBlocks.
 
-\section{Haplotype genotype matrix}{
-
-Both output formats have haplotype alleles as rows and individuals as
-columns, preceded by metadata columns: \code{hap_id}, \code{CHR},
-\code{start_bp}, \code{end_bp}, \code{n_snps}, \code{alleles}
-(nucleotide sequence of this allele), \code{frequency}.
-\itemize{
-  \item \code{"numeric"}: individual cells are haplotype dosage values:
-    \itemize{
-      \item \strong{Phased data}: 0/1/2/NA -- 0 = neither gamete carries
-        this allele, 1 = one gamete carries it (heterozygous),
-        2 = both gametes carry it (homozygous).
-      \item \strong{Unphased data}: 0/1/NA -- 0 = absent, 1 = present
-        (individual's block-level string matches this allele exactly).
-        The value 2 is not used for unphased data because the two
-        chromosomes cannot be distinguished -- an individual homozygous
-        for this allele and one heterozygous for it produce different
-        observable strings and are treated as different alleles.
-    }
-    Compatible with rrBLUP, BGLR, sommer, ASReml-R.
-  \item \code{"character"}: individual cells are the full nucleotide
-    sequence of the allele (e.g. \code{"AGTTA"}) if the individual
-    carries it, \code{"-"} if absent, \code{"."} if missing.
-    Heterozygous positions use IUPAC ambiguity codes
-    (R=A/G, Y=C/T, S=G/C, W=A/T, K=G/T, M=A/C).
-}
+When \code{phase = TRUE}, the pipeline does \strong{not} pass
+\code{geno_source} directly to Beagle. Instead it first writes a
+cleaned VCF (\code{<geno_source_stem>_cleaned.vcf.gz} in \code{out_dir})
+containing exactly the SNPs that survived MAF filtering, call-rate
+filtering, chromosome subsetting, and malformed-record removal. This
+guarantees that the phased VCF's SNP set is identical to the marker set
+used for LD block detection, so \code{.read_and_cache_phased_vcf()} can
+align phased gametes to blocks without SNP-count mismatches.
 }
 
 \examples{
 \donttest{
-# Path A: supply a file path (original interface, unchanged)
 geno_file <- system.file("extdata", "example_genotypes_numeric.csv",
-                         package = "LDxBlocks")
-
+                          package = "LDxBlocks")
 res <- run_ldx_pipeline(
-  geno_source    = geno_file,
-  out_blocks     = tempfile(fileext = ".csv"),
-  out_diversity  = tempfile(fileext = ".csv"),
-  out_hap_matrix = tempfile(fileext = ".csv"),
-  hap_format     = "numeric",
-  maf_cut        = 0.05,
-  CLQcut         = 0.5,
-  leng           = 10L,
-  subSegmSize    = 80L,
-  min_snps_block = 3L,
-  # top_n       = 5L,   # optional integer cap; NULL = all above min_freq
-  # hap_format  = "character",  # alternative to "numeric"
-  verbose        = FALSE
+  geno_source = geno_file, out_dir = tempdir(),
+  out_blocks = tempfile(fileext=".csv"),
+  out_diversity = tempfile(fileext=".csv"),
+  out_hap_matrix = tempfile(fileext=".csv"),
+  phase = FALSE, maf_cut = 0.05, CLQcut = 0.5,
+  leng = 10L, subSegmSize = 80L, verbose = FALSE
 )
-
-head(res$blocks)
-head(res$diversity)
-dim(res$hap_matrix)
-
-# Path B: supply a pre-built bigmemory backend
-if (requireNamespace("bigmemory", quietly = TRUE)) {
-  # read_geno_bigmemory() accepts a file path directly:
-  # it calls read_geno() internally and wraps the result.
-  be_bm <- read_geno_bigmemory(
-    source      = geno_file,
-    backingfile = tempfile("ldxbm"),
-    type        = "char"
-  )
-  res2 <- run_ldx_pipeline(
-    geno_source    = be_bm,
-    out_blocks     = tempfile(fileext = ".csv"),
-    out_diversity  = tempfile(fileext = ".csv"),
-    out_hap_matrix = tempfile(fileext = ".csv"),
-    CLQcut         = 0.5, leng = 10L, subSegmSize = 70L
-  )
-  close_backend(be_bm)
-}
-}
+\dontrun{
+# With Beagle phasing (place beagle.jar in out_dir first):
+res2 <- run_ldx_pipeline(
+  geno_source = "data.vcf.gz", out_dir = "results/",
+  out_blocks = "results/blocks.csv",
+  out_diversity = "results/diversity.csv",
+  out_hap_matrix = "results/hap_matrix.csv",
+  phase = TRUE, beagle_threads = 4L,
+  beagle_java_mem_gb = 8, beagle_seed = 42L
+)
+}}
 
 }
 \seealso{
-\code{\link{run_Big_LD_all_chr}},
-  \code{\link{extract_haplotypes}},
-  \code{\link{compute_haplotype_diversity}},
+\code{\link{run_Big_LD_all_chr}}, \code{\link{extract_haplotypes}},
   \code{\link{build_haplotype_feature_matrix}},
-  \code{\link{rank_haplotype_blocks}},
-  \code{\link{run_haplotype_prediction}},
-  \code{\link{tune_LD_params}}
+  \code{\link{run_haplotype_prediction}}
 }

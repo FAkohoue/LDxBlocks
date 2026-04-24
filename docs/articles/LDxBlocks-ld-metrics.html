@@ -47,6 +47,12 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-large-scale.html">Large-Scale Analysis: GDS and PLINK BED Backends</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-phasing.html">Statistical Phasing with Beagle 5.x in LDxBlocks</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-workflow.html">LDxBlocks Workflow: From Genotype File to Haplotype Features</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
@@ -99,58 +105,31 @@ is:</p>
   {\sqrt{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}}\right]^2</annotation></semantics></math></p>
 <p>This estimator assumes the
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>
-individuals are exchangeable — drawn independently from the same
-population. In structured or related populations this assumption fails.
-Two individuals who share a recent common ancestor carry correlated
-alleles at <em>all</em> loci, not just loci in true LD. The sample
-covariance therefore picks up both genuine recombination-based LD
+individuals are drawn independently from the same population. In
+structured or related populations this fails: two individuals sharing a
+recent common ancestor carry correlated alleles at <em>all</em> loci,
+not just loci in true LD. The sample covariance picks up both genuine LD
 <em>and</em> kinship-induced allele sharing, inflating
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math>
-relative to the true population value.</p>
-<p>The consequence for block detection is that blocks are drawn too
-broadly: regions that are genuinely independent appear correlated in the
-sample, the clique graph has more edges than it should, and singletons
-are absorbed into large blocks.</p>
+and causing blocks to be drawn too broadly.</p>
 </div>
 <div class="section level2">
 <h2 id="the-kinship-correction-rv²">2. The kinship correction: rV²<a class="anchor" aria-label="anchor" href="#the-kinship-correction-rv%C2%B2"></a>
 </h2>
-<p>Mangin et al. (2012) proposed replacing
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>r</mi><mn>2</mn></msup><annotation encoding="application/x-tex">r^2</annotation></semantics></math>
-with the <strong>kinship-adjusted squared correlation</strong>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msup><mi>V</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2</annotation></semantics></math>
-specifically to correct LD estimates in structured or related
-populations:</p>
+<p>Mangin et al. (2012) proposed the <strong>kinship-adjusted squared
+correlation</strong>:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msubsup><mi>V</mi><mrow><mi>j</mi><mi>k</mi></mrow><mn>2</mn></msubsup><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">[</mo><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>g</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.278em"></mspace><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msub><mi>g</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2_{jk} = \left[\mathrm{Cor}(V^{-1/2} g_j,\; V^{-1/2} g_k)\right]^2</annotation></semantics></math></p>
 <p>where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mi>Z</mi><msup><mi>Z</mi><mi>⊤</mi></msup><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">V = ZZ^\top / (2\sum_j p_j q_j)</annotation></semantics></math>
-is the VanRaden (2008) GRM
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>G</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">Z_{ij} = G_{ij} - 2p_j</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>
-= raw dosage matrix,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mi>j</mi></msub><annotation encoding="application/x-tex">p_j</annotation></semantics></math>
-= allele frequency at SNP
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>),
-called
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math>
-by Mangin et al. (2012) and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>
-by VanRaden (2008) himself. In LDxBlocks the symbol
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math>
-is used to avoid collision with
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>G</mi><annotation encoding="application/x-tex">G</annotation></semantics></math>
-the raw genotype matrix.
+is the VanRaden (2008) GRM and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math>
-is its inverse square root. Left-multiplying the mean-centred genotype
-matrix
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>G</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde{G}</annotation></semantics></math>
-by
+is its inverse square root. Left-multiplying by
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math>
-removes the kinship-induced correlation between individuals, so the
-resulting correlation measures only recombination-based LD.</p>
+removes kinship-induced correlation so the resulting correlation
+measures only recombination-based LD.</p>
 </div>
 <div class="section level2">
-<h2 id="decision-table-r²-versus-rv²">3. Decision table: r² versus rV²<a class="anchor" aria-label="anchor" href="#decision-table-r%C2%B2-versus-rv%C2%B2"></a>
+<h2 id="decision-table">3. Decision table<a class="anchor" aria-label="anchor" href="#decision-table"></a>
 </h2>
 <table class="table">
 <caption>r² versus rV²: decision table</caption>
@@ -201,13 +180,9 @@ resulting correlation measures only recombination-based LD.</p>
 <div class="section level2">
 <h2 id="computing-rv²-in-ldxblocks">4. Computing rV² in LDxBlocks<a class="anchor" aria-label="anchor" href="#computing-rv%C2%B2-in-ldxblocks"></a>
 </h2>
-<p>The whitening is handled by <code><a href="../reference/prepare_geno.html">prepare_geno()</a></code>. The
-subsequent correlation computation uses the same C++ kernel as the
-standard r² path.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># r² path: just mean-centre</span></span>
-<span><span class="va">prep_r2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_geno.html">prepare_geno</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"r2"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">prep_r2</span><span class="op">)</span>   <span class="co"># adj_geno = centred matrix; V_inv_sqrt = NULL</span></span>
+<code class="sourceCode R"><span><span class="va">prep_r2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prepare_geno.html">prepare_geno</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"r2"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">prep_r2</span><span class="op">)</span></span>
 <span><span class="co">#&gt; List of 2</span></span>
 <span><span class="co">#&gt;  $ adj_geno  : num [1:120, 1:30] 1.4 -0.6 0.4 -0.6 1.4 1.4 1.4 1.4 -0.6 -0.6 ...</span></span>
 <span><span class="co">#&gt;   ..- attr(*, "dimnames")=List of 2</span></span>
@@ -215,50 +190,14 @@ standard r² path.</p>
 <span><span class="co">#&gt;   .. ..$ : chr [1:30] "rs1001" "rs1002" "rs1003" "rs1004" ...</span></span>
 <span><span class="co">#&gt;   ..- attr(*, "scaled:center")= Named num [1:30] 0.6 0.417 1.317 1.025 0.583 ...</span></span>
 <span><span class="co">#&gt;   .. ..- attr(*, "names")= chr [1:30] "rs1001" "rs1002" "rs1003" "rs1004" ...</span></span>
-<span><span class="co">#&gt;  $ V_inv_sqrt: NULL</span></span>
-<span></span>
-<span><span class="co"># rV² path — requires AGHmatrix + ASRgenomics (optional Suggests)</span></span>
-<span><span class="co"># prep_rv2 &lt;- prepare_geno(ldx_geno[, 1:30], method = "rV2")</span></span>
-<span><span class="co"># str(prep_rv2)  # adj_geno = whitened matrix; V_inv_sqrt = n x n matrix</span></span></code></pre></div>
+<span><span class="co">#&gt;  $ V_inv_sqrt: NULL</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="the-vanraden-grm">4.1 The VanRaden GRM<a class="anchor" aria-label="anchor" href="#the-vanraden-grm"></a>
 </h3>
-<p>The kinship matrix
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math>
-is the additive genomic relationship matrix of VanRaden (2008), computed
-by <code><a href="https://rdrr.io/pkg/AGHmatrix/man/Gmatrix.html" class="external-link">AGHmatrix::Gmatrix()</a></code> inside
-<code><a href="../reference/prepare_geno.html">prepare_geno()</a></code>:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mfrac><mrow><mi>Z</mi><msup><mi>Z</mi><mi>⊤</mi></msup></mrow><mrow><mn>2</mn><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">V = \frac{ZZ^\top}{2\sum_j p_j q_j}</annotation></semantics></math></p>
 <p>where
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math>
-is the
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>×</mo><mi>m</mi></mrow><annotation encoding="application/x-tex">n \times m</annotation></semantics></math>
-frequency-centred genotype matrix with elements
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>g</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">z_{ij} = g_{ij} - 2p_j</annotation></semantics></math>
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>p</mi><mi>j</mi></msub><annotation encoding="application/x-tex">p_j</annotation></semantics></math>
-= frequency of allele
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>A</mi><mn>2</mn></msub><annotation encoding="application/x-tex">A_2</annotation></semantics></math>
-at SNP
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>j</mi></msub><mo>=</mo><mn>1</mn><mo>−</mo><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">q_j = 1 - p_j</annotation></semantics></math>).
-The coefficients at SNP
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
-are:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">0 - 2p_j</annotation></semantics></math>
-(homozygous
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mn>1</mn></msub><msub><mi>A</mi><mn>1</mn></msub></mrow><annotation encoding="application/x-tex">A_1A_1</annotation></semantics></math>),
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">1 - 2p_j</annotation></semantics></math>
-(heterozygous
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mn>1</mn></msub><msub><mi>A</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">A_1A_2</annotation></semantics></math>),
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mo>−</mo><mn>2</mn><msub><mi>p</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">2 - 2p_j</annotation></semantics></math>
-(homozygous
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>A</mi><mn>2</mn></msub><msub><mi>A</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">A_2A_2</annotation></semantics></math>).
-The scalar denominator
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>p</mi><mi>j</mi></msub><msub><mi>q</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">2\sum_j p_j q_j</annotation></semantics></math>
-scales
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math>
-so that the diagonal elements average to approximately 1 (resembles the
-numerator relationship matrix for an outbred population).</p>
+is the frequency-centred genotype.</p>
 </div>
 <div class="section level3">
 <h3 id="the-whitening-factor">4.2 The whitening factor<a class="anchor" aria-label="anchor" href="#the-whitening-factor"></a>
@@ -267,30 +206,27 @@ numerator relationship matrix for an outbred population).</p>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup></mrow><annotation encoding="application/x-tex">A = V^{-1/2}</annotation></semantics></math>
 such that
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>V</mi><msup><mi>A</mi><mi>⊤</mi></msup><mo>=</mo><mi>I</mi></mrow><annotation encoding="application/x-tex">A V A^\top = I</annotation></semantics></math>.</p>
-<p><strong>Cholesky</strong> (<code>kin_method = "chol"</code>,
+<ul>
+<li>
+<strong>Cholesky</strong> (<code>kin_method = "chol"</code>,
 default):
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><msup><mi>R</mi><mrow><mi>−</mi><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">A = R^{-1}</annotation></semantics></math>
 where
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><msup><mi>R</mi><mi>⊤</mi></msup><mi>R</mi></mrow><annotation encoding="application/x-tex">V = R^\top R</annotation></semantics></math>.
-Fast and numerically stable.</p>
-<p><strong>Eigendecomposition</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><msup><mi>R</mi><mi>⊤</mi></msup><mi>R</mi></mrow><annotation encoding="application/x-tex">V = R^\top R</annotation></semantics></math>.</li>
+<li>
+<strong>Eigendecomposition</strong>
 (<code>kin_method = "eigen"</code>):
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><mi>Q</mi><msup><mi>Λ</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msup><mi>Q</mi><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">A = Q \Lambda^{-1/2} Q^\top</annotation></semantics></math>.
-Eigenvalues floored at
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mrow><mi>−</mi><mn>6</mn></mrow></msup><annotation encoding="application/x-tex">10^{-6}</annotation></semantics></math>
-for stability. Symmetric result; preferable when
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>V</mi><annotation encoding="application/x-tex">V</annotation></semantics></math>
-is near-singular.</p>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mo>=</mo><mi>Q</mi><msup><mi>Λ</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><msup><mi>Q</mi><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">A = Q \Lambda^{-1/2} Q^\top</annotation></semantics></math>.</li>
+</ul>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">G_small</span> <span class="op">&lt;-</span> <span class="va">ldx_geno</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">]</span></span>
 <span><span class="va">Gc</span>      <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">G_small</span>, center <span class="op">=</span> <span class="cn">TRUE</span>, scale <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">V_demo</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">Gc</span><span class="op">)</span> <span class="op">/</span> <span class="fl">30</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Gc</span><span class="op">)</span><span class="op">)</span>  <span class="co"># toy PD matrix</span></span>
+<span><span class="va">V_demo</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">Gc</span><span class="op">)</span> <span class="op">/</span> <span class="fl">30</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Gc</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">A_chol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_V_inv_sqrt.html">get_V_inv_sqrt</a></span><span class="op">(</span><span class="va">V_demo</span>, method <span class="op">=</span> <span class="st">"chol"</span><span class="op">)</span></span>
 <span><span class="va">A_eig</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_V_inv_sqrt.html">get_V_inv_sqrt</a></span><span class="op">(</span><span class="va">V_demo</span>, method <span class="op">=</span> <span class="st">"eigen"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Verify: A V A' ≈ I</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">A_chol</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">V_demo</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">A_chol</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">120</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 80.21798</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">A_eig</span>  <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">V_demo</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">A_eig</span><span class="op">)</span>  <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">120</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -301,14 +237,13 @@ is near-singular.</p>
 <h2 id="comparing-r²-and-rv²-on-example-data">5. Comparing r² and rV² on example data<a class="anchor" aria-label="anchor" href="#comparing-r%C2%B2-and-rv%C2%B2-on-example-data"></a>
 </h2>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">idx_25</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">25</span></span>
-<span><span class="va">r2_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_r2.html">compute_r2</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">[</span>, <span class="va">idx_25</span><span class="op">]</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">idx_25</span>  <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">25</span></span>
+<span><span class="va">r2_mat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_r2.html">compute_r2</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">[</span>, <span class="va">idx_25</span><span class="op">]</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># rV² with a toy kinship (normally produced by prepare_geno)</span></span>
-<span><span class="va">Gc_25</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">[</span>, <span class="va">idx_25</span><span class="op">]</span>, center <span class="op">=</span> <span class="cn">TRUE</span>, scale <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">V_toy</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">Gc_25</span><span class="op">)</span> <span class="op">/</span> <span class="fl">25</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">120</span><span class="op">)</span></span>
-<span><span class="va">A_toy</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_V_inv_sqrt.html">get_V_inv_sqrt</a></span><span class="op">(</span><span class="va">V_toy</span><span class="op">)</span></span>
-<span><span class="va">X_whit</span> <span class="op">&lt;-</span> <span class="va">A_toy</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">Gc_25</span></span>
+<span><span class="va">Gc_25</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">[</span>, <span class="va">idx_25</span><span class="op">]</span>, center <span class="op">=</span> <span class="cn">TRUE</span>, scale <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">V_toy</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">Gc_25</span><span class="op">)</span> <span class="op">/</span> <span class="fl">25</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">120</span><span class="op">)</span></span>
+<span><span class="va">A_toy</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_V_inv_sqrt.html">get_V_inv_sqrt</a></span><span class="op">(</span><span class="va">V_toy</span><span class="op">)</span></span>
+<span><span class="va">X_whit</span>  <span class="op">&lt;-</span> <span class="va">A_toy</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">Gc_25</span></span>
 <span><span class="va">rv2_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_rV2.html">compute_rV2</a></span><span class="op">(</span><span class="va">X_whit</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Mean r² :"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">r2_mat</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">upper.tri</a></span><span class="op">(</span><span class="va">r2_mat</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>,  <span class="fl">4</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
@@ -317,10 +252,10 @@ is near-singular.</p>
 <span><span class="co">#&gt; Mean rV²: 0.3388</span></span></code></pre></div>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">3</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/image.html" class="external-link">image</a></span><span class="op">(</span><span class="va">r2_mat</span>,   main <span class="op">=</span> <span class="st">"Standard r²"</span>,</span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/image.html" class="external-link">image</a></span><span class="op">(</span><span class="va">r2_mat</span>,  main <span class="op">=</span> <span class="st">"Standard r²"</span>,</span>
 <span>      col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">hcl.colors</a></span><span class="op">(</span><span class="fl">20</span>, <span class="st">"YlOrRd"</span>, rev <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>      xlab <span class="op">=</span> <span class="st">"SNP"</span>, ylab <span class="op">=</span> <span class="st">"SNP"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/image.html" class="external-link">image</a></span><span class="op">(</span><span class="va">rv2_mat</span>,  main <span class="op">=</span> <span class="st">"Kinship-adjusted rV²"</span>,</span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/image.html" class="external-link">image</a></span><span class="op">(</span><span class="va">rv2_mat</span>, main <span class="op">=</span> <span class="st">"Kinship-adjusted rV²"</span>,</span>
 <span>      col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">hcl.colors</a></span><span class="op">(</span><span class="fl">20</span>, <span class="st">"YlOrRd"</span>, rev <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>      xlab <span class="op">=</span> <span class="st">"SNP"</span>, ylab <span class="op">=</span> <span class="st">"SNP"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
@@ -340,135 +275,45 @@ the kinship-induced correlation between half-sibs inflates
 for all SNP pairs in the same family cluster. A pair of SNPs on
 different chromosomes can show
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mn>2</mn></msup><mo>&gt;</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">r^2 &gt; 0.5</annotation></semantics></math>
-purely because both correlate with family membership. The whitened
-matrix removes this signal: after left-multiplication by
+purely because both correlate with family membership. After
+left-multiplication by
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>V</mi><mrow><mi>−</mi><mn>1</mn><mi>/</mi><mn>2</mn></mrow></msup><annotation encoding="application/x-tex">V^{-1/2}</annotation></semantics></math>,
-the effective covariance between individuals is identity, so only
-genuine gametic LD contributes to
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msup><mi>V</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2</annotation></semantics></math>.</p>
-<p>In practice, rV² blocks are 10–30% smaller and more precisely
-delimited in related populations. The effect is greatest in:</p>
-<ul>
-<li>Livestock populations with many half-sib families</li>
-<li>Inbred plant populations (F2, RILs, near-isogenic lines)</li>
-<li>Multi-family human cohorts from isolated populations</li>
-</ul>
+only genuine gametic LD contributes to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><msup><mi>V</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">rV^2</annotation></semantics></math>.
+In practice, rV² blocks are 10–30% smaller and more precisely delimited
+in related populations.</p>
 </div>
 <div class="section level2">
-<h2 id="when-r²-is-preferable">7. When r² is preferable<a class="anchor" aria-label="anchor" href="#when-r%C2%B2-is-preferable"></a>
+<h2 id="switching-between-metrics">7. Switching between metrics<a class="anchor" aria-label="anchor" href="#switching-between-metrics"></a>
 </h2>
-<p>For large human biobank panels (n &gt; 10,000, p &gt; 1,000,000),
-computing and inverting the n × n GRM is computationally infeasible. The
-standard r² inflates LD modestly but the effect on block boundaries is
-small in approximately random-mating populations, and the 50× speed
-advantage of the pure C++ path dominates.</p>
-</div>
-<div class="section level2">
-<h2 id="the-c-ld-kernel">8. The C++ LD kernel<a class="anchor" aria-label="anchor" href="#the-c-ld-kernel"></a>
-</h2>
-<p>Both <code><a href="../reference/compute_r2.html">compute_r2()</a></code> and <code><a href="../reference/compute_rV2.html">compute_rV2()</a></code> call
-<code>compute_r2_cpp()</code>. The implementation in
-<code>src/ld_core.cpp</code>:</p>
-<ol style="list-style-type: decimal">
-<li>
-<strong>NA imputation</strong> — missing values replaced by column
-mean in one O(np) pass.</li>
-<li>
-<strong>Standardisation</strong> — columns centred and scaled to
-zero mean, unit variance.</li>
-<li>
-<strong>Correlation matrix</strong> —
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>Z</mi><mi>⊤</mi></msup><mi>Z</mi><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Z^\top Z / (n-1)</annotation></semantics></math>
-where
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Z</mi><annotation encoding="application/x-tex">Z</annotation></semantics></math>
-is the standardised matrix. For
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mn>1</mn><mo>,</mo><mn>500</mn></mrow><annotation encoding="application/x-tex">p = 1{,}500</annotation></semantics></math>
-and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>n</mi><mo>=</mo><mn>500</mn></mrow><annotation encoding="application/x-tex">n = 500</annotation></semantics></math>
-this is a 1,500 × 1,500 DGEMM operation, with the upper-triangular loop
-parallelised by OpenMP.</li>
-<li>
-<strong>Squaring and clamping</strong> —
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mn>2</mn></msup><mo>=</mo><mi>r</mi><mo>×</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">r^2 = r \times r</annotation></semantics></math>,
-clamped to
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0, 1]</annotation></semantics></math>.</li>
-<li>
-<strong>Symmetrisation</strong> and optional rounding
-(<code>digits</code>).</li>
-</ol>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">G_30</span> <span class="op">&lt;-</span> <span class="va">ldx_geno</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">]</span></span>
-<span></span>
-<span><span class="va">r2_raw</span>   <span class="op">&lt;-</span> <span class="fu">compute_r2_cpp</span><span class="op">(</span><span class="va">G_30</span>, digits <span class="op">=</span> <span class="op">-</span><span class="fl">1L</span>, n_threads <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span>  <span class="co"># no rounding</span></span>
-<span><span class="va">r2_round</span> <span class="op">&lt;-</span> <span class="fu">compute_r2_cpp</span><span class="op">(</span><span class="va">G_30</span>, digits <span class="op">=</span>  <span class="fl">6L</span>, n_threads <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span>  <span class="co"># 6 dp</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">r2_raw</span> <span class="op">-</span> <span class="va">r2_round</span><span class="op">)</span><span class="op">)</span>   <span class="co"># &lt; 5e-7</span></span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">G_bench</span>  <span class="op">&lt;-</span> <span class="va">ldx_geno</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">50</span><span class="op">]</span></span>
-<span><span class="va">Gc_bench</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">G_bench</span>, center <span class="op">=</span> <span class="cn">TRUE</span>, scale <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">t_r2</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span> <span class="fu"><a href="../reference/compute_r2.html">compute_r2</a></span><span class="op">(</span><span class="va">G_bench</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">t_rv2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span> <span class="fu"><a href="../reference/compute_rV2.html">compute_rV2</a></span><span class="op">(</span><span class="va">Gc_bench</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"compute_r2  (50 SNPs, 20 reps):"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">t_r2</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span>,  <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; compute_r2  (50 SNPs, 20 reps): 0 s</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"compute_rV2 (50 SNPs, 20 reps):"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">t_rv2</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"s\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; compute_rV2 (50 SNPs, 20 reps): 0 s</span></span>
-<span><span class="co"># Both use the same C++ kernel — times should be identical</span></span>
-<span><span class="co"># The cost of rV² is entirely in prepare_geno() (GRM + Cholesky)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="switching-between-metrics">9. Switching between metrics<a class="anchor" aria-label="anchor" href="#switching-between-metrics"></a>
-</h2>
-<p>Switching is a single argument change. No other code needs to
-change:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">blocks_r2</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"r2"</span>,  CLQcut <span class="op">=</span> <span class="fl">0.70</span><span class="op">)</span></span>
 <span><span class="va">blocks_rv2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></span><span class="op">(</span><span class="va">be</span>, method <span class="op">=</span> <span class="st">"rV2"</span>, CLQcut <span class="op">=</span> <span class="fl">0.70</span>,</span>
 <span>                                  kin_method <span class="op">=</span> <span class="st">"chol"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="ld-decay-and-the-parametric-threshold">10. LD decay and the parametric threshold<a class="anchor" aria-label="anchor" href="#ld-decay-and-the-parametric-threshold"></a>
+<h2 id="ld-decay-and-the-parametric-threshold">8. LD decay and the parametric threshold<a class="anchor" aria-label="anchor" href="#ld-decay-and-the-parametric-threshold"></a>
 </h2>
-<p>The parametric threshold in
-<code>compute_ld_decay(r2_threshold = "parametric")</code> estimates the
-95th percentile of r² between markers on different chromosomes (unlinked
-markers). This is conceptually identical to the kinship inflation
-demonstrated in Sections 5 and 6 above: unlinked markers should have r²
-= 0 in an ideal population; any inflation above zero is caused by
-kinship/structure.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">decay</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_ld_decay.html">compute_ld_decay</a></span><span class="op">(</span></span>
-<span>  <span class="va">ldx_geno</span>, <span class="va">ldx_snp_info</span>,</span>
-<span>  r2_threshold <span class="op">=</span> <span class="st">"both"</span>,    <span class="co"># parametric + fixed 0.1</span></span>
-<span>  n_pairs <span class="op">=</span> <span class="fl">2000L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span>
-<span><span class="co"># High critical_r2_param -&gt; structured population -&gt; use method = "rV2"</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Parametric threshold:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">decay</span><span class="op">$</span><span class="va">critical_r2_param</span>, <span class="fl">4</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Standard 0.1 threshold: fixed\n"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Decay distances (kb):\n"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">decay</span><span class="op">$</span><span class="va">decay_dist</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"CHR"</span>, <span class="st">"decay_dist_kb"</span>, <span class="st">"censored"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
-<p>A high parametric threshold (e.g. &gt; 0.05) is direct evidence that
-<code>method = "rV2"</code> should be used for block detection – the
-same kinship inflation that this vignette demonstrates algebraically is
-visible in the distribution of unlinked-marker r² values.</p>
+<p>A high parametric threshold (&gt; 0.05) from
+<code><a href="../reference/compute_ld_decay.html">compute_ld_decay()</a></code> is direct evidence that
+<code>method = "rV2"</code> should be used — the same kinship inflation
+demonstrated above is visible in unlinked-marker r² values.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">decay</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_ld_decay.html">compute_ld_decay</a></span><span class="op">(</span><span class="va">ldx_geno</span>, <span class="va">ldx_snp_info</span>,</span>
+<span>                           r2_threshold <span class="op">=</span> <span class="st">"both"</span>, n_pairs <span class="op">=</span> <span class="fl">2000L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Parametric threshold:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">decay</span><span class="op">$</span><span class="va">critical_r2_param</span>, <span class="fl">4</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="references">11. References<a class="anchor" aria-label="anchor" href="#references"></a>
+<h2 id="references">9. References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
-<li>Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype
-block detection method for dense genome sequencing data based on
-interval graph modeling and dynamic programming. <em>Bioinformatics</em>
+<li>Kim S-A et al. (2018). <em>Bioinformatics</em>
 <strong>34</strong>(4):588-596. <a href="https://doi.org/10.1093/bioinformatics/btx609" class="external-link uri">https://doi.org/10.1093/bioinformatics/btx609</a>
 </li>
-<li>Mangin B, Siberchicot A, Nicolas S, Doligez A, This P,
-Cierco-Ayrolles C (2012). Novel measures of linkage disequilibrium that
-correct the bias due to population structure and relatedness.
-<em>Heredity</em> <strong>108</strong>(3):285-291. <a href="https://doi.org/10.1038/hdy.2011.73" class="external-link uri">https://doi.org/10.1038/hdy.2011.73</a>
+<li>Mangin B et al. (2012). <em>Heredity</em>
+<strong>108</strong>(3):285-291. <a href="https://doi.org/10.1038/hdy.2011.73" class="external-link uri">https://doi.org/10.1038/hdy.2011.73</a>
 </li>
-<li>VanRaden PM (2008). Efficient methods to compute genomic
-predictions. <em>Journal of Dairy Science</em>
+<li>VanRaden PM (2008). <em>Journal of Dairy Science</em>
 <strong>91</strong>(11):4414-4423. <a href="https://doi.org/10.3168/jds.2007-0980" class="external-link uri">https://doi.org/10.3168/jds.2007-0980</a>
 </li>
 </ul>

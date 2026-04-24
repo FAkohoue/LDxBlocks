@@ -25,6 +25,12 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-large-scale.html">Large-Scale Analysis: GDS and PLINK BED Backends</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-phasing.html">Statistical Phasing with Beagle 5.x in LDxBlocks</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-workflow.html">LDxBlocks Workflow: From Genotype File to Haplotype Features</a></li>
   </ul></li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
@@ -48,6 +54,100 @@
       <small>Source: <a href="https://github.com/FAkohoue/LDxBlocks/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development"></a></h2>
+<div class="section level3">
+<h3 id="new-feature-block_match--position-in-compare_block_effects-and-compare_gwas_effects-0-3-1-9000">New feature: block_match = “position” in compare_block_effects() and compare_gwas_effects()<a class="anchor" aria-label="anchor" href="#new-feature-block_match--position-in-compare_block_effects-and-compare_gwas_effects-0-3-1-9000"></a></h3>
+<p>Both cross-population comparison functions now support matching LD blocks between populations by <strong>genomic interval overlap</strong> rather than by <code>block_id</code> string equality.</p>
+<p><strong>Why this matters.</strong> LD block boundaries are population-specific: the same causal QTL region may be carved into a 100 kb block in Population A and a 130 kb block in Population B, producing different <code>block_id</code> strings (<code>"block_1_10000_85000"</code> vs <code>"block_1_10000_91000"</code>). With the default <code>block_match = "id"</code>, these would not be compared — the block appears as Pop1-only and the replication signal is lost.</p>
+<p><strong>New parameters:</strong></p>
+<ul><li>
+<code>block_match = c("id", "position")</code> — <code>"id"</code> (default) preserves backward compatibility; <code>"position"</code> matches by Intersection-over-Union (IoU) in base pairs.</li>
+<li>
+<code>overlap_min = 0.50</code> — minimum IoU for two blocks to be considered the same region. Blocks below this threshold are labelled <code>"pop1_only"</code>.</li>
+</ul><p><strong>New output column <code>match_type</code></strong> in <code>$concordance</code>:</p>
+<ul><li>
+<code>"exact"</code> — same <code>block_id</code> string (boundaries identical)</li>
+<li>
+<code>"position"</code> — matched by genomic overlap (boundaries differ but IoU ≥ <code>overlap_min</code>)</li>
+<li>
+<code>"pop1_only"</code> — no Pop2 block overlaps this Pop1 block at the threshold</li>
+<li>
+<code>NA</code> — no block tables were supplied</li>
+</ul><p><strong>New internal function <code>.match_blocks_by_position()</code></strong> performs the interval join using a CHR-filtered IoU search. For each Pop1 block, it finds the best-matching Pop2 block by IoU and records the match type. Accessible via <code>LDxBlocks:::.match_blocks_by_position()</code>.</p>
+<p>8 new tests in <code>test-association.R</code> (122 → 130 total).</p>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-1">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-1"></a></h2>
+<div class="section level3">
+<h3 id="new-function-compare_gwas_effects-0-3-1-9000">New function: compare_gwas_effects()<a class="anchor" aria-label="anchor" href="#new-function-compare_gwas_effects-0-3-1-9000"></a></h3>
+<p>Cross-population effect concordance from <strong>external GWAS results</strong>. Complements <code><a href="../reference/compare_block_effects.html">compare_block_effects()</a></code> for users who ran association analysis outside LDxBlocks (GAPIT, TASSEL, FarmCPU, PLINK, or any other tool).</p>
+<p><strong>Two input paths:</strong></p>
+<ul><li>
+<strong>Pre-mapped (recommended):</strong> supply <code><a href="../reference/define_qtl_regions.html">define_qtl_regions()</a></code> output for each population. Block assignment is explicit and auditable.</li>
+<li>
+<strong>Raw GWAS + blocks (convenience):</strong> supply raw GWAS data frames and block tables; <code><a href="../reference/define_qtl_regions.html">define_qtl_regions()</a></code> is called internally.</li>
+</ul><p><strong>SE derivation.</strong> When the SE column is absent (common in GAPIT/FarmCPU output), SE is derived from the z-score: <code>SE = |BETA| / |Φ⁻¹(P/2)|</code>. The <code>se_derived_pop1</code> / <code>se_derived_pop2</code> output columns flag which population required this step.</p>
+<p><strong>Key differences from <code><a href="../reference/compare_block_effects.html">compare_block_effects()</a></code>:</strong> External GWAS produces one lead SNP per block rather than multiple haplotype allele effects. Consequently: - <code>effect_correlation</code> is always <code>NA</code> (needs ≥ 3 alleles). - <code>direction_agreement</code> is 0 or 1 only. - <code>Q_stat</code>, <code>Q_p</code>, <code>I2</code> are always <code>NA</code> (Cochran Q undefined with df = 0). - <code>replicated</code> uses <code>meta_p ≤ 0.05</code> instead of <code>Q_p &gt; 0.05</code>.</p>
+<p><strong>GWAS-specific output columns</strong> added to <code>$concordance</code>: <code>lead_snp_pop1</code>, <code>lead_snp_pop2</code>, <code>lead_p_pop1</code>, <code>lead_p_pop2</code>, <code>se_derived_pop1</code>, <code>se_derived_pop2</code>, <code>both_pleiotropic</code>.</p>
+<p><strong>Flexible column naming.</strong> The <code>beta_col</code>, <code>se_col</code>, and <code>p_col</code> arguments accept any column names (e.g. <code>"effect"</code>, <code>"std_err"</code>, <code>"pvalue"</code>). The <code>Marker</code> column is accepted as an alias for <code>SNP</code>.</p>
+<p><strong>Output class.</strong> Returns <code>LDxBlocks_effect_concordance</code> — the same class as <code><a href="../reference/compare_block_effects.html">compare_block_effects()</a></code>. The existing <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> method works immediately.</p>
+<p>18 new tests in <code>test-association.R</code> (104 → 122 total).</p>
+</div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-2">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-2"></a></h2>
+<div class="section level3">
+<h3 id="new-function-compare_block_effects-0-3-1-9000">New function: compare_block_effects()<a class="anchor" aria-label="anchor" href="#new-function-compare_block_effects-0-3-1-9000"></a></h3>
+<p>Cross-population haplotype effect concordance. Takes two <code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code> result objects and returns per-block statistics for systematic GWAS replication:</p>
+<ul><li>
+<strong>IVW meta-analysis</strong>: inverse-variance weighted combined effect and SE per block, identical framework to two-sample Mendelian randomisation.</li>
+<li>
+<strong>Cochran Q heterogeneity</strong>: tests whether effect sizes differ significantly between populations. Significant Q (low Q_p) flags G×E interaction or population-specific LD structure differences.</li>
+<li>
+<strong>I² inconsistency</strong>: 0–100% measure of between-population heterogeneity. Values &gt; 50% indicate that the two populations are telling a different biological story at that block.</li>
+<li>
+<strong>Direction agreement</strong>: fraction of shared alleles with the same effect sign. Controlled by <code>direction_threshold</code> (default 0.75).</li>
+<li>
+<strong><code>replicated</code> flag</strong>: composite criterion — <code>enough_shared AND   directionally_concordant AND Q_p &gt; 0.05</code>.</li>
+<li>
+<strong>Block boundary diagnostics</strong>: when <code>blocks_pop1</code> and <code>blocks_pop2</code> are supplied, <code>boundary_overlap_ratio</code> is <strong>automatically computed</strong> (not user-set) as bp(intersection) / bp(union) for every block. This quantifies how similarly the two populations carved the region into LD blocks. <code>boundary_overlap_warn</code> (input parameter, default <code>0.80</code>) is the threshold below which <code>boundary_warning = TRUE</code> is set in the output.</li>
+<li>
+<strong><code>$shared_alleles</code></strong>: per-allele detail table with <code>ivw_effect</code>, <code>ivw_SE</code>, <code>direction_agree</code>, and raw effects/SEs from both populations.</li>
+<li>15 new tests in <code>test-association.R</code> (89 → 104 total).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="enhancement-simplem-multiple-testing-correction-in-test_block_haplotypes-0-3-1-9000">Enhancement: simpleM multiple-testing correction in test_block_haplotypes()<a class="anchor" aria-label="anchor" href="#enhancement-simplem-multiple-testing-correction-in-test_block_haplotypes-0-3-1-9000"></a></h3>
+<p><code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code> now implements the simpleM procedure (Gao et al. 2008, 2010, 2011) for LD-aware multiple-testing correction of correlated haplotype allele tests. simpleM estimates the effective number of independent tests (Meff) from the eigenspectrum of the haplotype allele dosage correlation matrix, replacing raw test counting with an LD-aware effective count that is less conservative than Bonferroni while providing family-wise error control.</p>
+<p><strong>New parameters:</strong></p>
+<ul><li>
+<code>sig_metric</code>: which p-value drives <code>significant</code> / <code>significant_omnibus</code>. One of <code>"p_wald"</code>, <code>"p_fdr"</code>, <code>"p_simplem"</code> (Bonferroni-style), or <code>"p_simplem_sidak"</code> (Šidák-style, recommended). Default <code>"p_wald"</code>.</li>
+<li>
+<code>meff_scope</code>: scope for Meff estimation — <code>"chromosome"</code> (recommended), <code>"global"</code>, or <code>"block"</code>. Default <code>"chromosome"</code>.</li>
+<li>
+<code>meff_percent_cut</code>: variance threshold for simpleM eigendecomposition. Default <code>0.995</code> (99.5%), following the original simpleM recommendation.</li>
+<li>
+<code>meff_max_cols</code>: chunk size for large eigendecompositions. Default <code>1000L</code>.</li>
+</ul><p><strong>New output columns — always present regardless of <code>sig_metric</code>:</strong></p>
+<ul><li>
+<code>allele_tests</code>: <code>Meff</code>, <code>alpha_simplem</code>, <code>alpha_simplem_sidak</code>, <code>p_simplem</code>, <code>p_simplem_sidak</code>, <code>p_fdr</code>
+</li>
+<li>
+<code>block_tests</code>: <code>Meff</code>, <code>alpha_simplem</code>, <code>alpha_simplem_sidak</code>, <code>p_omnibus_fdr</code>, <code>p_omnibus_simplem</code>, <code>p_omnibus_simplem_sidak</code> (plus <code>p_omnibus_adj</code> retained for backward compatibility)</li>
+</ul><p><strong>New return list elements:</strong> <code>meff_scope</code>, <code>meff_percent_cut</code>, <code>meff</code> (nested list of Meff summaries per trait: <code>$allele$global</code>, <code>$allele$chromosome</code>, <code>$allele$block</code>, <code>$block$global</code>, <code>$block$chromosome</code>).</p>
+<p>13 new tests in <code>test-association.R</code> (76 → 89).</p>
+</div>
+<div class="section level3">
+<h3 id="bug-fix-read_phased_vcf-dot-id-synthesis-0-3-1-9000">Bug fix: read_phased_vcf() dot-ID synthesis<a class="anchor" aria-label="anchor" href="#bug-fix-read_phased_vcf-dot-id-synthesis-0-3-1-9000"></a></h3>
+<p>When a phased VCF has <code>.</code> or empty string in the ID column (column 3), <code><a href="../reference/read_phased_vcf.html">read_phased_vcf()</a></code> now synthesises <code>CHR_POS</code> identifiers for those rows, matching the behaviour of <code><a href="../reference/read_geno.html">read_geno()</a></code>. Without this fix, all-dot VCFs produced duplicate <code>rownames(hap1)</code> that caused <code><a href="../reference/extract_haplotypes.html">extract_haplotypes()</a></code> to fail when slicing by SNP name.</p>
+<ul><li>Handles <code>NA</code>, <code>"."</code>, and <code>""</code> (empty string) row-by-row.</li>
+<li>Real rsIDs in mixed VCFs are preserved; only missing IDs are replaced.</li>
+<li>Verbose message reports the count of synthesised IDs.</li>
+<li>3 new regression tests in <code>test-phasing.R</code> (30 → 33).</li>
+</ul><p>Note: this gap only affects direct calls to <code><a href="../reference/read_phased_vcf.html">read_phased_vcf()</a></code> on externally phased VCFs with dot IDs. The <code><a href="../reference/run_ldx_pipeline.html">run_ldx_pipeline()</a></code> path was already safe because <code><a href="../reference/read_geno.html">read_geno()</a></code> synthesises <code>CHR_POS</code> IDs before writing the cleaned VCF to Beagle.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-patch">LDxBlocks 0.3.1.9000 (development patch)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-patch"></a></h2>
 <div class="section level3">
@@ -112,7 +212,7 @@
 </li>
 </ul><p><strong>Re-merge skip when modeNum=2</strong></p>
 <p>The optional re-merge loop across forced cut-points is now skipped when all cut-points are forced (<code>length(atfcut) &gt;= length(cutpoints) - 2</code>), which occurs when <code>cutsequence.modi</code> switches to <code>modeNum=2</code>. In this mode every cut is forced by definition, so re-running CLQD across all boundaries produces no benefit. With 419 forced segments on chr1 this eliminated potentially hundreds of CLQD calls in a serial R loop.</p>
-<p><strong><code><a href="https://generics.r-lib.org/reference/setops.html" class="external-link">intersect()</a></code> → <code><a href="https://rdrr.io/r/base/findInterval.html" class="external-link">findInterval()</a></code> in re-merge check</strong></p>
+<p><strong><code><a href="https://rdrr.io/r/base/sets.html" class="external-link">intersect()</a></code> → <code><a href="https://rdrr.io/r/base/findInterval.html" class="external-link">findInterval()</a></code> in re-merge check</strong></p>
 <p>The per-pair forced-cut check <code>length(intersect(eb[2L]:nb[1L], atfcut)) &gt; 0L</code> — O(n_blocks × n_atfcut) total — replaced with <code>findInterval(eb[2L], atfcut)</code> binary search: O(log n_atfcut) per call.</p>
 <p><strong><code>score_overlap_cpp()</code> and <code>resolve_seam_cpp()</code> (internal static helpers)</strong></p>
 <p>Two additional C++ helpers in <code>src/ld_core.cpp</code> implement the BLAS scoring kernel and a seam-local resolver for future use at truly massive scale (pangenome panels where the global O(n_blocks) scan itself becomes a bottleneck). These are <code>static</code> functions not exported to R.</p>
@@ -164,7 +264,7 @@
 <ul><li>
 <strong><code><a href="../reference/scan_diversity_windows.html">scan_diversity_windows()</a></code></strong> — sliding-window He / Shannon / n_eff_alleles scan across the genome independent of LD block boundaries. Window size and step controlled by <code>window_bp</code> and <code>step_bp</code>. Returns a data frame with one row per window including <code>sweep_flag</code> (freq_dominant &gt;= 0.90).</li>
 </ul><p><strong>True haplotype inference and harmonisation</strong></p>
-<ul><li><p><strong><code><a href="../reference/infer_block_haplotypes.html">infer_block_haplotypes()</a></code></strong> — converts raw haplotype strings to a structured per-individual, per-block diplotype table with explicit <code>hap1</code>, <code>hap2</code>, <code>diplotype</code> (canonical sorted string), <code>heterozygous</code>, <code>phase_ambiguous</code>, and <code>missing</code> columns. Handles both phased input (from <code><a href="../reference/read_phased_vcf.html">read_phased_vcf()</a></code> / <code><a href="../reference/phase_with_pedigree.html">phase_with_pedigree()</a></code>, where <code>phase_ambiguous</code> is always <code>FALSE</code>) and unphased input (where heterozygous genotypes set <code>phase_ambiguous = TRUE</code> unless <code>resolve_unphased = TRUE</code> triggers a maximum-parsimony heuristic).</p></li>
+<ul><li><p><strong><code><a href="../reference/infer_block_haplotypes.html">infer_block_haplotypes()</a></code></strong> — converts raw haplotype strings to a structured per-individual, per-block diplotype table with explicit <code>hap1</code>, <code>hap2</code>, <code>diplotype</code> (canonical sorted string), <code>heterozygous</code>, <code>phase_ambiguous</code>, and <code>missing</code> columns. Handles both phased input (from <code><a href="../reference/read_phased_vcf.html">read_phased_vcf()</a></code>, where <code>phase_ambiguous</code> is always <code>FALSE</code>) and unphased input (where heterozygous genotypes set <code>phase_ambiguous = TRUE</code> unless <code>resolve_unphased = TRUE</code> triggers a maximum-parsimony heuristic).</p></li>
 <li><p><strong><code><a href="../reference/collapse_haplotypes.html">collapse_haplotypes()</a></code></strong> — merges rare haplotype alleles (below <code>min_freq</code>) into biologically meaningful groups rather than dropping them. Three strategies: <code>"rare_to_other"</code> (pool into <code>&lt;other&gt;</code>), <code>"nearest"</code> (merge with most similar common allele by Hamming distance), <code>"tree_based"</code> (UPGMA dendrogram; merges rare alleles at the coarsest cut that avoids merging common alleles with each other). Preserves a <code>label_map</code> attribute recording every original→collapsed mapping for use by <code><a href="../reference/harmonize_haplotypes.html">harmonize_haplotypes()</a></code>.</p></li>
 <li><p><strong><code><a href="../reference/harmonize_haplotypes.html">harmonize_haplotypes()</a></code></strong> — makes haplotype allele labels transferable across training/validation splits, populations, or environments. Builds a reference dictionary from alleles above <code>min_freq_ref</code> in the reference panel; matches target alleles by exact string first, then nearest Hamming neighbour (up to <code>max_hamming</code>), then labels unmatched alleles <code>"&lt;novel&gt;"</code>. Attaches a <code>harmonization_report</code> attribute reporting <code>n_exact</code>, <code>n_nearest</code>, <code>n_novel</code>, and <code>mean_hamming_dist</code> per block.</p></li>
 </ul></div>
@@ -247,8 +347,6 @@
 <code><a href="../reference/read_phased_vcf.html">read_phased_vcf()</a></code>: read pre-phased VCF with <code>0|1</code> GT fields; returns <code>hap1</code>/<code>hap2</code> gamete matrices plus combined dosage.</li>
 <li>
 <code><a href="../reference/phase_with_beagle.html">phase_with_beagle()</a></code>: call Beagle 5.x for statistical phasing of WGS data; returns path to phased VCF.gz.</li>
-<li>
-<code><a href="../reference/phase_with_pedigree.html">phase_with_pedigree()</a></code>: Mendelian allele transmission phasing within parent-offspring trios; exact when parents are homozygous.</li>
 <li>
 <code><a href="../reference/unphase_to_dosage.html">unphase_to_dosage()</a></code>: collapse phased gamete matrices back to 0/1/2 (internal helper; not exported).</li>
 </ul></li>

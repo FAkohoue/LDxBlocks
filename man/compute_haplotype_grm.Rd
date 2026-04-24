@@ -4,7 +4,7 @@
 \alias{compute_haplotype_grm}
 \title{Compute Haplotype-Based Genomic Relationship Matrix}
 \usage{
-compute_haplotype_grm(hap_matrix, bend = FALSE)
+compute_haplotype_grm(hap_matrix, bend = FALSE, phased = NULL)
 }
 \arguments{
 \item{hap_matrix}{Numeric matrix (individuals x haplotype alleles) from
@@ -13,6 +13,15 @@ compute_haplotype_grm(hap_matrix, bend = FALSE)
 \item{bend}{Logical. If \code{TRUE}, add a small constant to the diagonal
 to ensure positive-definiteness: \code{diag(G) + 0.001}. Useful when
 passing G to mixed model solvers. Default \code{FALSE}.}
+
+\item{phased}{Logical or \code{NULL} (default). Whether the haplotype
+feature matrix uses \code{additive_012} encoding for phased data
+(dosage values 0/1/2, dose scale = 2) or unphased data (presence/absence
+0/1, dose scale = 1). \code{NULL} auto-detects from column maxima:
+any column with a value > 1 implies phased encoding. For guaranteed
+correctness when all haplotype alleles lack homozygous carriers (max=1
+even in phased data), supply \code{phased = TRUE} or \code{FALSE}
+explicitly.}
 }
 \value{
 Symmetric n x n numeric matrix (individuals x individuals).

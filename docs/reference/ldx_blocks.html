@@ -31,6 +31,12 @@ run_Big_LD_all_chr on ldx_geno."><meta property="og:image" content="https://FAko
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-large-scale.html">Large-Scale Analysis: GDS and PLINK BED Backends</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-phasing.html">Statistical Phasing with Beagle 5.x in LDxBlocks</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-workflow.html">LDxBlocks Workflow: From Genotype File to Haplotype Features</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
@@ -113,7 +119,8 @@ used in examples and tests as the expected output of
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="ldx_geno.html">ldx_geno</a></code>, <code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr</a></code>,
-  <code><a href="summarise_blocks.html">summarise_blocks</a></code></p></div>
+  <code><a href="summarise_blocks.html">summarise_blocks</a></code>, <code><a href="compare_block_effects.html">compare_block_effects</a></code>,
+  <code><a href="compare_gwas_effects.html">compare_gwas_effects</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -157,6 +164,56 @@ used in examples and tests as the expected output of
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4    block_2_1000_30023 60 60 0.0046     FALSE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 5  block_2_86236_105290 60 60 0.0034     FALSE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 6 block_2_161515_180473 60 60 0.0099     FALSE</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Cross-population haplotype effect concordance.</span></span></span>
+<span class="r-in"><span><span class="co"># test_block_haplotypes() produces LDxBlocks_haplotype_assoc objects;</span></span></span>
+<span class="r-in"><span><span class="co"># compare_block_effects() compares their allele effects block by block.</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">ldx_blues</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">blues_vec</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">ldx_blues</span><span class="op">$</span><span class="va">YLD</span>, <span class="va">ldx_blues</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Simulate two populations by splitting the 120 individuals</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">idx1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="va">ids</span>, <span class="fl">70L</span><span class="op">)</span>;  <span class="va">idx2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">setdiff</a></span><span class="op">(</span><span class="va">ids</span>, <span class="va">idx1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">haps1</span> <span class="op">&lt;-</span> <span class="fu"><a href="extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">[</span><span class="va">idx1</span>, <span class="op">]</span>, <span class="va">ldx_snp_info</span>, <span class="va">ldx_blocks</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">haps2</span> <span class="op">&lt;-</span> <span class="fu"><a href="extract_haplotypes.html">extract_haplotypes</a></span><span class="op">(</span><span class="va">ldx_geno</span><span class="op">[</span><span class="va">idx2</span>, <span class="op">]</span>, <span class="va">ldx_snp_info</span>, <span class="va">ldx_blocks</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">assoc1</span> <span class="op">&lt;-</span> <span class="fu"><a href="test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span><span class="va">haps1</span>, blues <span class="op">=</span> <span class="va">blues_vec</span><span class="op">[</span><span class="va">idx1</span><span class="op">]</span>,</span></span>
+<span class="r-in"><span>                                 blocks <span class="op">=</span> <span class="va">ldx_blocks</span>, n_pcs <span class="op">=</span> <span class="fl">0L</span>,</span></span>
+<span class="r-in"><span>                                 verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">assoc2</span> <span class="op">&lt;-</span> <span class="fu"><a href="test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span><span class="va">haps2</span>, blues <span class="op">=</span> <span class="va">blues_vec</span><span class="op">[</span><span class="va">idx2</span><span class="op">]</span>,</span></span>
+<span class="r-in"><span>                                 blocks <span class="op">=</span> <span class="va">ldx_blocks</span>, n_pcs <span class="op">=</span> <span class="fl">0L</span>,</span></span>
+<span class="r-in"><span>                                 verbose <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># block_match = "position" handles different block boundaries;</span></span></span>
+<span class="r-in"><span><span class="co"># use "id" (default) when both populations share the same block table.</span></span></span>
+<span class="r-in"><span><span class="va">conc</span> <span class="op">&lt;-</span> <span class="fu"><a href="compare_block_effects.html">compare_block_effects</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">assoc1</span>, <span class="va">assoc2</span>,</span></span>
+<span class="r-in"><span>  pop1_name   <span class="op">=</span> <span class="st">"Pop1"</span>,</span></span>
+<span class="r-in"><span>  pop2_name   <span class="op">=</span> <span class="st">"Pop2"</span>,</span></span>
+<span class="r-in"><span>  blocks_pop1 <span class="op">=</span> <span class="va">ldx_blocks</span>,</span></span>
+<span class="r-in"><span>  blocks_pop2 <span class="op">=</span> <span class="va">ldx_blocks</span>,</span></span>
+<span class="r-in"><span>  block_match <span class="op">=</span> <span class="st">"id"</span>,</span></span>
+<span class="r-in"><span>  verbose     <span class="op">=</span> <span class="cn">FALSE</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">conc</span><span class="op">$</span><span class="va">concordance</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"n_shared_alleles"</span>,</span></span>
+<span class="r-in"><span>                     <span class="st">"direction_agreement"</span>,<span class="st">"meta_p"</span>,<span class="st">"replicated"</span><span class="op">)</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                block_id n_shared_alleles direction_agreement    meta_p</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    block_1_1000_25027                7              0.4286 0.7964556</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   block_1_81064_99022                5              0.4000 0.7000451</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 block_1_155368_179371                7              0.4286 0.8408251</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4    block_2_1000_30023                7              0.5714 0.6899425</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  block_2_86236_105290                7              0.4286 0.7257983</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 block_2_161515_180473                6              0.6667 0.7767358</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7    block_3_1000_19068                7              0.8571 0.5867187</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8   block_3_74532_93854                6              0.5000 0.8366144</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9 block_3_149647_168376                8              0.5000 0.9410410</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   replicated</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1      FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2      FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3      FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4      FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5      FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6      FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7       TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8      FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9      FALSE</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

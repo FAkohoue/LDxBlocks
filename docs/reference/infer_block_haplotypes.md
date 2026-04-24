@@ -8,8 +8,8 @@ heterozygosity flag, and a phase-ambiguity flag.
 
 When the input is a **phased list** (from
 [`read_phased_vcf`](https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.md)
-or
-[`phase_with_pedigree`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_pedigree.md)),
+or a pre-phased VCF via
+[`read_phased_vcf`](https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.md)),
 `hap1` and `hap2` are the true gametic strings and `phase_ambiguous` is
 always `FALSE`.
 
@@ -103,7 +103,6 @@ Data frame with one row per individual x block combination:
 
 [`extract_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md),
 [`phase_with_beagle`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_beagle.md),
-[`phase_with_pedigree`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_pedigree.md),
 [`collapse_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/collapse_haplotypes.md)
 
 ## Examples

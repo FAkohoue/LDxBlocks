@@ -29,38 +29,25 @@ $g_j$ and $g_k$ is:
 $$r^2_{jk} = \left[\frac{\mathrm{Cov}(g_j, g_k)}
   {\sqrt{\mathrm{Var}(g_j)\,\mathrm{Var}(g_k)}}\right]^2$$
 
-This estimator assumes the $n$ individuals are exchangeable — drawn
-independently from the same population. In structured or related populations
-this assumption fails. Two individuals who share a recent common ancestor
-carry correlated alleles at *all* loci, not just loci in true LD. The sample
-covariance therefore picks up both genuine recombination-based LD *and*
-kinship-induced allele sharing, inflating $r^2$ relative to the true
-population value.
-
-The consequence for block detection is that blocks are drawn too broadly:
-regions that are genuinely independent appear correlated in the sample, the
-clique graph has more edges than it should, and singletons are absorbed into
-large blocks.
+This estimator assumes the $n$ individuals are drawn independently from the
+same population. In structured or related populations this fails: two
+individuals sharing a recent common ancestor carry correlated alleles at
+*all* loci, not just loci in true LD. The sample covariance picks up both
+genuine LD *and* kinship-induced allele sharing, inflating $r^2$ and causing
+blocks to be drawn too broadly.
 
 ## 2. The kinship correction: rV²
 
-Mangin et al. (2012) proposed replacing $r^2$ with the **kinship-adjusted
-squared correlation** $rV^2$ specifically to correct LD estimates in
-structured or related populations:
+Mangin et al. (2012) proposed the **kinship-adjusted squared correlation**:
 
 $$rV^2_{jk} = \left[\mathrm{Cor}(V^{-1/2} g_j,\; V^{-1/2} g_k)\right]^2$$
 
-where $V = ZZ^\top / (2\sum_j p_j q_j)$ is the VanRaden (2008) GRM
-($Z_{ij} = G_{ij} - 2p_j$, $G$ = raw dosage matrix, $p_j$ = allele
-frequency at SNP $j$), called $K$ by Mangin et al. (2012) and $G$
-by VanRaden (2008) himself. In LDxBlocks the symbol $V$ is used to
-avoid collision with $G$ the raw genotype matrix.
-$V^{-1/2}$ is its inverse square root. Left-multiplying the mean-centred
-genotype matrix $\tilde{G}$ by $V^{-1/2}$ removes the kinship-induced
-correlation between individuals, so the resulting correlation measures
-only recombination-based LD.
+where $V = ZZ^\top / (2\sum_j p_j q_j)$ is the VanRaden (2008) GRM and
+$V^{-1/2}$ is its inverse square root. Left-multiplying by $V^{-1/2}$ removes
+kinship-induced correlation so the resulting correlation measures only
+recombination-based LD.
 
-## 3. Decision table: r² versus rV²
+## 3. Decision table
 
 ```{r decision-table, echo=FALSE}
 dt <- data.frame(
@@ -91,56 +78,33 @@ knitr::kable(dt, caption = "r² versus rV²: decision table")
 
 ## 4. Computing rV² in LDxBlocks
 
-The whitening is handled by `prepare_geno()`. The subsequent correlation
-computation uses the same C++ kernel as the standard r² path.
-
 ```{r prepare-demo}
-# r² path: just mean-centre
 prep_r2 <- prepare_geno(ldx_geno[, 1:30], method = "r2")
-str(prep_r2)   # adj_geno = centred matrix; V_inv_sqrt = NULL
-
-# rV² path — requires AGHmatrix + ASRgenomics (optional Suggests)
-# prep_rv2 <- prepare_geno(ldx_geno[, 1:30], method = "rV2")
-# str(prep_rv2)  # adj_geno = whitened matrix; V_inv_sqrt = n x n matrix
+str(prep_r2)
 ```
 
 ### 4.1 The VanRaden GRM
 
-The kinship matrix $V$ is the additive genomic relationship matrix of
-VanRaden (2008), computed by `AGHmatrix::Gmatrix()` inside `prepare_geno()`:
-
 $$V = \frac{ZZ^\top}{2\sum_j p_j q_j}$$
 
-where $Z$ is the $n \times m$ frequency-centred genotype matrix with
-elements $z_{ij} = g_{ij} - 2p_j$ ($p_j$ = frequency of allele $A_2$
-at SNP $j$, $q_j = 1 - p_j$). The coefficients at SNP $j$ are:
-$0 - 2p_j$ (homozygous $A_1A_1$), $1 - 2p_j$ (heterozygous $A_1A_2$),
-$2 - 2p_j$ (homozygous $A_2A_2$).
-The scalar denominator $2\sum_j p_j q_j$ scales $V$ so that the
-diagonal elements average to approximately 1 (resembles the numerator
-relationship matrix for an outbred population).
+where $z_{ij} = g_{ij} - 2p_j$ is the frequency-centred genotype.
 
 ### 4.2 The whitening factor
 
 `get_V_inv_sqrt()` computes $A = V^{-1/2}$ such that $A V A^\top = I$.
 
-**Cholesky** (`kin_method = "chol"`, default): $A = R^{-1}$ where
-$V = R^\top R$. Fast and numerically stable.
-
-**Eigendecomposition** (`kin_method = "eigen"`):
-$A = Q \Lambda^{-1/2} Q^\top$. Eigenvalues floored at $10^{-6}$ for
-stability. Symmetric result; preferable when $V$ is near-singular.
+- **Cholesky** (`kin_method = "chol"`, default): $A = R^{-1}$ where $V = R^\top R$.
+- **Eigendecomposition** (`kin_method = "eigen"`): $A = Q \Lambda^{-1/2} Q^\top$.
 
 ```{r whitening-demo}
 set.seed(1)
 G_small <- ldx_geno[, 1:30]
 Gc      <- scale(G_small, center = TRUE, scale = FALSE)
-V_demo  <- tcrossprod(Gc) / 30 + diag(0.05, nrow(Gc))  # toy PD matrix
+V_demo  <- tcrossprod(Gc) / 30 + diag(0.05, nrow(Gc))
 
 A_chol <- get_V_inv_sqrt(V_demo, method = "chol")
 A_eig  <- get_V_inv_sqrt(V_demo, method = "eigen")
 
-# Verify: A V A' ≈ I
 max(abs(A_chol %*% V_demo %*% t(A_chol) - diag(120)))
 max(abs(A_eig  %*% V_demo %*% t(A_eig)  - diag(120)))
 ```
@@ -148,14 +112,13 @@ max(abs(A_eig  %*% V_demo %*% t(A_eig)  - diag(120)))
 ## 5. Comparing r² and rV² on example data
 
 ```{r compare-matrices}
-idx_25 <- 1:25
-r2_mat <- compute_r2(ldx_geno[, idx_25])
+idx_25  <- 1:25
+r2_mat  <- compute_r2(ldx_geno[, idx_25])
 
-# rV² with a toy kinship (normally produced by prepare_geno)
-Gc_25  <- scale(ldx_geno[, idx_25], center = TRUE, scale = FALSE)
-V_toy  <- tcrossprod(Gc_25) / 25 + diag(0.1, 120)
-A_toy  <- get_V_inv_sqrt(V_toy)
-X_whit <- A_toy %*% Gc_25
+Gc_25   <- scale(ldx_geno[, idx_25], center = TRUE, scale = FALSE)
+V_toy   <- tcrossprod(Gc_25) / 25 + diag(0.1, 120)
+A_toy   <- get_V_inv_sqrt(V_toy)
+X_whit  <- A_toy %*% Gc_25
 rv2_mat <- compute_rV2(X_whit)
 
 cat("Mean r² :", round(mean(r2_mat[upper.tri(r2_mat)]),  4), "\n")
@@ -164,10 +127,10 @@ cat("Mean rV²:", round(mean(rv2_mat[upper.tri(rv2_mat)]), 4), "\n")
 
 ```{r compare-image, fig.cap="r² (left) vs rV² (right) for the first 25 SNPs on chr1", fig.width=9}
 par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
-image(r2_mat,   main = "Standard r²",
+image(r2_mat,  main = "Standard r²",
       col = hcl.colors(20, "YlOrRd", rev = TRUE),
       xlab = "SNP", ylab = "SNP")
-image(rv2_mat,  main = "Kinship-adjusted rV²",
+image(rv2_mat, main = "Kinship-adjusted rV²",
       col = hcl.colors(20, "YlOrRd", rev = TRUE),
       xlab = "SNP", ylab = "SNP")
 par(mfrow = c(1, 1))
@@ -179,63 +142,11 @@ In a livestock panel where sires appear repeatedly through progeny, the
 kinship-induced correlation between half-sibs inflates $r^2$ for all SNP
 pairs in the same family cluster. A pair of SNPs on different chromosomes
 can show $r^2 > 0.5$ purely because both correlate with family membership.
-The whitened matrix removes this signal: after left-multiplication by
-$V^{-1/2}$, the effective covariance between individuals is identity, so
-only genuine gametic LD contributes to $rV^2$.
+After left-multiplication by $V^{-1/2}$, only genuine gametic LD contributes
+to $rV^2$. In practice, rV² blocks are 10–30% smaller and more precisely
+delimited in related populations.
 
-In practice, rV² blocks are 10–30% smaller and more precisely delimited in
-related populations. The effect is greatest in:
-
-- Livestock populations with many half-sib families
-- Inbred plant populations (F2, RILs, near-isogenic lines)
-- Multi-family human cohorts from isolated populations
-
-## 7. When r² is preferable
-
-For large human biobank panels (n > 10,000, p > 1,000,000), computing and
-inverting the n × n GRM is computationally infeasible. The standard r²
-inflates LD modestly but the effect on block boundaries is small in
-approximately random-mating populations, and the 50× speed advantage of the
-pure C++ path dominates.
-
-## 8. The C++ LD kernel
-
-Both `compute_r2()` and `compute_rV2()` call `compute_r2_cpp()`.
-The implementation in `src/ld_core.cpp`:
-
-1. **NA imputation** — missing values replaced by column mean in one O(np) pass.
-2. **Standardisation** — columns centred and scaled to zero mean, unit variance.
-3. **Correlation matrix** — $Z^\top Z / (n-1)$ where $Z$ is the standardised
-   matrix. For $p = 1{,}500$ and $n = 500$ this is a 1,500 × 1,500 DGEMM
-   operation, with the upper-triangular loop parallelised by OpenMP.
-4. **Squaring and clamping** — $r^2 = r \times r$, clamped to $[0, 1]$.
-5. **Symmetrisation** and optional rounding (`digits`).
-
-```{r cpp-direct, eval=FALSE}
-G_30 <- ldx_geno[, 1:30]
-
-r2_raw   <- compute_r2_cpp(G_30, digits = -1L, n_threads = 1L)  # no rounding
-r2_round <- compute_r2_cpp(G_30, digits =  6L, n_threads = 1L)  # 6 dp
-
-max(abs(r2_raw - r2_round))   # < 5e-7
-```
-
-```{r speed}
-G_bench  <- ldx_geno[, 1:50]
-Gc_bench <- scale(G_bench, center = TRUE, scale = FALSE)
-
-t_r2  <- system.time(for(i in 1:20) compute_r2(G_bench))
-t_rv2 <- system.time(for(i in 1:20) compute_rV2(Gc_bench))
-
-cat("compute_r2  (50 SNPs, 20 reps):", round(t_r2["elapsed"],  3), "s\n")
-cat("compute_rV2 (50 SNPs, 20 reps):", round(t_rv2["elapsed"], 3), "s\n")
-# Both use the same C++ kernel — times should be identical
-# The cost of rV² is entirely in prepare_geno() (GRM + Cholesky)
-```
-
-## 9. Switching between metrics
-
-Switching is a single argument change. No other code needs to change:
+## 7. Switching between metrics
 
 ```{r switch, eval=FALSE}
 blocks_r2  <- run_Big_LD_all_chr(be, method = "r2",  CLQcut = 0.70)
@@ -243,37 +154,23 @@ blocks_rv2 <- run_Big_LD_all_chr(be, method = "rV2", CLQcut = 0.70,
                                   kin_method = "chol")
 ```
 
-## 10. LD decay and the parametric threshold
+## 8. LD decay and the parametric threshold
 
-The parametric threshold in `compute_ld_decay(r2_threshold = "parametric")`
-estimates the 95th percentile of r² between markers on different chromosomes
-(unlinked markers). This is conceptually identical to the kinship inflation
-demonstrated in Sections 5 and 6 above: unlinked markers should have r² = 0
-in an ideal population; any inflation above zero is caused by kinship/structure.
+A high parametric threshold (> 0.05) from `compute_ld_decay()` is direct
+evidence that `method = "rV2"` should be used — the same kinship inflation
+demonstrated above is visible in unlinked-marker r² values.
 
 ```{r ld-decay-demo, eval=FALSE}
-decay <- compute_ld_decay(
-  ldx_geno, ldx_snp_info,
-  r2_threshold = "both",    # parametric + fixed 0.1
-  n_pairs = 2000L, verbose = FALSE
-)
-# High critical_r2_param -> structured population -> use method = "rV2"
+decay <- compute_ld_decay(ldx_geno, ldx_snp_info,
+                           r2_threshold = "both", n_pairs = 2000L, verbose = FALSE)
 cat("Parametric threshold:", round(decay$critical_r2_param, 4), "\n")
-cat("Standard 0.1 threshold: fixed\n")
-cat("Decay distances (kb):\n")
-print(decay$decay_dist[, c("CHR", "decay_dist_kb", "censored")])
 ```
 
-A high parametric threshold (e.g. > 0.05) is direct evidence that
-`method = "rV2"` should be used for block detection -- the same kinship
-inflation that this vignette demonstrates algebraically is visible in the
-distribution of unlinked-marker r² values.
+## 9. References
 
-## 11. References
-
-- Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype block detection method for dense genome sequencing data based on interval graph modeling and dynamic programming. *Bioinformatics* **34**(4):588-596.
+- Kim S-A et al. (2018). *Bioinformatics* **34**(4):588-596.
   <https://doi.org/10.1093/bioinformatics/btx609>
-- Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles C (2012). Novel measures of linkage disequilibrium that correct the bias due to population structure and relatedness. *Heredity* **108**(3):285-291.
+- Mangin B et al. (2012). *Heredity* **108**(3):285-291.
   <https://doi.org/10.1038/hdy.2011.73>
-- VanRaden PM (2008). Efficient methods to compute genomic predictions. *Journal of Dairy Science* **91**(11):4414-4423.
+- VanRaden PM (2008). *Journal of Dairy Science* **91**(11):4414-4423.
   <https://doi.org/10.3168/jds.2007-0980>

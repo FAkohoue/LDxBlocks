@@ -21,6 +21,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <numeric>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -606,21 +607,36 @@ static arma::vec score_overlap_cpp(
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 10. resolve_overlap_cpp  (exported to R)
-//     Full C++ implementation called ONCE after all segments complete.
-//     Used as fallback for any overlaps not caught at seam time, and as
-//     the primary resolver when seam-local resolution is not used.
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. resolve_overlap_cpp  (exported to R)  — FIXED VERSION
 //
-//     Implements all friend's recommendations:
-//     A - single pass over block list (no global explosion)
-//     B - lazy column cache (standardise each col at most once)
-//     C - single call (not twice)
-//     D - BLAS matrix multiply via score_overlap_cpp()
-//     E - OpenMP over independent overlap pairs
+// Two bugs fixed vs the original:
 //
-//     blocks:  n_blocks x 2 integer matrix (1-based global indices)
-//     adj_mat: n_ind x p_snps pre-centred adjusted genotype matrix
-//     k_rep:   max representatives from each core
+// BUG 1 (primary — causes observed overlapping blocks in output):
+//   The original pair-collection loop only checked adjacent rows
+//   (blocks[i] vs blocks[i+1]). Blocks from different sub-segments can
+//   arrive non-adjacent in the blocks matrix, so containments where block B
+//   sits entirely inside block A were silently missed when A and B were not
+//   consecutive rows.
+//
+//   FIX:
+//   (a) Sort blocks by (start ASC, end DESC) before pair collection.
+//       After this sort, a container block always precedes its contained
+//       block regardless of original sub-segment order.
+//   (b) Replace the adjacent-only check with a max_end sweep: for each
+//       block i, compare against the block currently holding the furthest
+//       end seen so far (max_end_holder). This finds ALL overlapping pairs
+//       in O(n) after the O(n log n) sort.
+//
+// BUG 2 (secondary — affects consecutive merges):
+//   The serial apply loop called shed_row(R.i+1) in reverse order. When
+//   consecutive pairs both needed merges, shed_row shifted row indices and
+//   corrupted later resolutions referencing those rows.
+//
+//   FIX: store the B-row index explicitly in SeamPair. Apply all resolutions
+//   using a keep[] boolean vector, then compact the matrix in a single pass.
+//   No shed_row, no index shifting during the resolution phase.
+//
 // ─────────────────────────────────────────────────────────────────────────────
 
 //' @noRd
@@ -630,13 +646,31 @@ static arma::vec score_overlap_cpp(
      const arma::mat& adj_mat,
      int              k_rep = 10
  ) {
+   int p = (int)adj_mat.n_cols;
+   int n = (int)adj_mat.n_rows;
    int n_blocks = (int)blocks.n_rows;
-   int p        = (int)adj_mat.n_cols;
-   int n        = (int)adj_mat.n_rows;
 
-   // Lazy standardisation cache: computed on first access, stored for reuse.
-   // For a 204 x 314k matrix we never touch columns that aren't representatives
-   // or overlap SNPs — typically < 1% of all columns.
+   if (n_blocks < 2) return blocks;
+
+   // ── FIX 1a: sort blocks by (start ASC, end DESC) ─────────────────────────
+   // After this sort, contained blocks immediately follow their container.
+   // Prerequisite for the max_end sweep to work correctly.
+   {
+     std::vector<int> ord(n_blocks);
+     std::iota(ord.begin(), ord.end(), 0);
+     std::sort(ord.begin(), ord.end(), [&](int a, int b) {
+       if (blocks(a, 0) != blocks(b, 0)) return blocks(a, 0) < blocks(b, 0);
+       return blocks(a, 1) > blocks(b, 1);   // wider first on tied start
+     });
+     arma::imat sorted(n_blocks, 2);
+     for (int i = 0; i < n_blocks; i++) {
+       sorted(i, 0) = blocks(ord[i], 0);
+       sorted(i, 1) = blocks(ord[i], 1);
+     }
+     blocks = sorted;
+   }
+
+   // ── Lazy standardisation cache ────────────────────────────────────────────
    std::vector<double>    sd_vec(p, -1.0);
    std::vector<arma::vec> z_vec(p);
 
@@ -653,21 +687,43 @@ static arma::vec score_overlap_cpp(
      return z_vec[col0];
    };
 
-   // Collect all overlapping pairs first (fast scan, no LD computation)
-   struct SeamPair { int i; int sA,eA,sB,eB; };
+   // ── FIX 1b: max_end sweep — finds ALL overlapping pairs ──────────────────
+   // Track max_end_holder (row index of block with furthest end so far).
+   // Store both A_row and B_row explicitly — eliminates fragile coordinate
+   // search in the apply phase.
+   struct SeamPair {
+     int A_row, B_row;
+     int sA, eA, sB, eB;
+   };
    std::vector<SeamPair> pairs;
    pairs.reserve(64);
-   for (int i = 0; i < n_blocks - 1; i++) {
-     int sA = blocks(i,0), eA = blocks(i,1);
-     int sB = blocks(i+1,0), eB = blocks(i+1,1);
-     if (eA >= sB) pairs.push_back({i, sA, eA, sB, eB});
+
+   int max_end_holder = 0;
+   for (int i = 1; i < n_blocks; i++) {
+     int eA = blocks(max_end_holder, 1);
+     int sB = blocks(i, 0);
+     if (eA >= sB) {
+       pairs.push_back({
+         max_end_holder, i,
+         blocks(max_end_holder, 0), eA,
+         sB, blocks(i, 1)
+       });
+     }
+     if (blocks(i, 1) > blocks(max_end_holder, 1))
+       max_end_holder = i;
    }
 
-   // Resolve each overlapping pair.
-   // Friend's point E: pairs are independent -> OpenMP parallel.
-   // We use a serial result vector to avoid race conditions on blocks matrix.
+   if (pairs.empty()) return blocks;
+
+   // ── LD-based resolution (cumulative score split) ──────────────────────────
    int n_pairs = (int)pairs.size();
-   struct Resolution { int i; int new_eA; int new_sB; bool merged; int merge_start; int merge_end; };
+
+   struct Resolution {
+     int  A_row, B_row;
+     bool merged;
+     int  merge_start, merge_end;
+     int  new_eA, new_sB;
+   };
    std::vector<Resolution> resolutions(n_pairs);
 
 #ifdef _OPENMP
@@ -675,14 +731,18 @@ static arma::vec score_overlap_cpp(
 #endif
    for (int pi = 0; pi < n_pairs; pi++) {
      auto& P = pairs[pi];
-     int i  = P.i;
-     int sA = P.sA, eA = P.eA, sB = P.sB, eB = P.eB;
+     int sA  = P.sA, eA = P.eA, sB = P.sB, eB = P.eB;
 
      bool has_left  = (sB > sA);
      bool has_right = (eB > eA);
 
+     // Containment or same-start: union merge, mark B for removal
      if (!has_left || !has_right) {
-       resolutions[pi] = {i, 0, 0, true, std::min(sA,sB), std::max(eA,eB)};
+       resolutions[pi] = {
+         P.A_row, P.B_row, true,
+         std::min(sA, sB), std::max(eA, eB),
+         0, 0
+       };
        continue;
      }
 
@@ -691,30 +751,22 @@ static arma::vec score_overlap_cpp(
      int k_L = std::min(k_rep, left_len);
      int k_R = std::min(k_rep, right_len);
 
-     // Left reps: last k_L of [sA0..sB0-1] (0-based)
      std::vector<int> left_reps(k_L), right_reps(k_R);
-     for (int r = 0; r < k_L; r++) left_reps[r]  = sB - 1 - k_L + r;  // 0-based
-     for (int r = 0; r < k_R; r++) right_reps[r] = eA + r;            // 0-based (eA0+1+r but eA0=eA-1)
+     for (int r = 0; r < k_L; r++) left_reps[r]  = sB - 1 - k_L + r;
+     for (int r = 0; r < k_R; r++) right_reps[r] = eA + r;
 
-     // Overlap SNPs (0-based)
      int ovlp_len = eA - sB + 1;
      std::vector<int> ovlp_cols(ovlp_len);
-     for (int oi = 0; oi < ovlp_len; oi++) ovlp_cols[oi] = sB - 1 + oi; // 0-based
+     for (int oi = 0; oi < ovlp_len; oi++) ovlp_cols[oi] = sB - 1 + oi;
 
-     // Warm up cache for reps (thread-safe reads, writes only to own index)
-     // Note: in OpenMP parallel region, each col is initialised by at most one
-     // thread — race is benign because result is deterministic.
      for (int r : left_reps)  get_z(r);
      for (int r : right_reps) get_z(r);
 
-     // Build seam-local matrices for BLAS scoring (friend's point D)
-     // Z_o (n x ovlp_len), Z_L (n x k_L), Z_R (n x k_R)
      arma::mat Z_o(n, ovlp_len), Z_L_m(n, k_L), Z_R_m(n, k_R);
      for (int oi = 0; oi < ovlp_len; oi++) Z_o.col(oi)  = get_z(ovlp_cols[oi]);
      for (int r  = 0; r  < k_L;      r++)  Z_L_m.col(r) = get_z(left_reps[r]);
      for (int r  = 0; r  < k_R;      r++)  Z_R_m.col(r) = get_z(right_reps[r]);
 
-     // BLAS DGEMM: C_L = Z_o.t() * Z_L / (n-1)  -> (ovlp_len x k_L)
      arma::vec scores(ovlp_len, arma::fill::zeros);
      if (k_L > 0) {
        arma::mat C_L = (Z_o.t() * Z_L_m) / (double)(n - 1);
@@ -725,7 +777,6 @@ static arma::vec score_overlap_cpp(
        scores -= arma::sum(arma::clamp(C_R % C_R, 0.0, 1.0), 1) / (double)k_R;
      }
 
-     // Cumulative score split
      double cum = 0.0;
      int last_left = 0;
      for (int oi = 0; oi < ovlp_len; oi++) {
@@ -733,34 +784,45 @@ static arma::vec score_overlap_cpp(
        if (cum >= 0.0) last_left = oi + 1;
      }
 
-     // Determine new boundaries (1-based)
      int new_eA, new_sB;
-     if (last_left == 0) {
-       new_eA = sB - 1; new_sB = sB;
-     } else if (last_left == ovlp_len) {
-       new_eA = eA; new_sB = eA + 1;
-     } else {
-       int split = sB + last_left - 1;  // 1-based
+     if      (last_left == 0)        { new_eA = sB - 1; new_sB = sB;      }
+     else if (last_left == ovlp_len) { new_eA = eA;     new_sB = eA + 1;  }
+     else {
+       int split = sB + last_left - 1;
        new_eA = split; new_sB = split + 1;
      }
-     resolutions[pi] = {i, new_eA, new_sB, false, 0, 0};
+     resolutions[pi] = {P.A_row, P.B_row, false, 0, 0, new_eA, new_sB};
    }
 
-   // Apply resolutions serially (modifies blocks matrix)
-   // Process in reverse order so that merged rows don't shift indices
-   for (int pi = n_pairs - 1; pi >= 0; pi--) {
+   // ── FIX 2: keep[] vector + single-pass compaction (no shed_row) ──────────
+   // Apply all boundary updates using stored A_row/B_row — no index shifting.
+   // keep[i]=false marks row i for removal. Single compaction at the end.
+   std::vector<bool> keep(n_blocks, true);
+
+   for (int pi = 0; pi < n_pairs; pi++) {
      auto& R = resolutions[pi];
      if (R.merged) {
-       blocks(R.i, 0) = R.merge_start;
-       blocks(R.i, 1) = R.merge_end;
-       blocks.shed_row(R.i + 1);
+       blocks(R.A_row, 0) = R.merge_start;
+       blocks(R.A_row, 1) = R.merge_end;
+       keep[R.B_row]      = false;
      } else {
-       blocks(R.i,   1) = R.new_eA;
-       blocks(R.i+1, 0) = R.new_sB;
+       blocks(R.A_row, 1) = R.new_eA;
+       blocks(R.B_row, 0) = R.new_sB;
      }
    }
 
-   return blocks;
+   // Single-pass compaction
+   int n_keep = (int)std::count(keep.begin(), keep.end(), true);
+   arma::imat result(n_keep, 2);
+   int ri = 0;
+   for (int i = 0; i < n_blocks; i++) {
+     if (keep[i]) {
+       result(ri, 0) = blocks(i, 0);
+       result(ri, 1) = blocks(i, 1);
+       ri++;
+     }
+   }
+   return result;
  }
 
 // ─────────────────────────────────────────────────────────────────────────────

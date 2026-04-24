@@ -63,6 +63,12 @@ Dominance ratio: \(d/a\) - the key quantity for interpreting
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-large-scale.html">Large-Scale Analysis: GDS and PLINK BED Backends</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-phasing.html">Statistical Phasing with Beagle 5.x in LDxBlocks</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-workflow.html">LDxBlocks Workflow: From Genotype File to Haplotype Features</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
@@ -132,7 +138,7 @@ Phase-ambiguous diplotypes (unphased heterozygotes) are excluded from
 the dominance analysis but included in the omnibus F-test if their
 diplotype string is unambiguous. For accurate dominance decomposition,
 phased input (from <code>read_phased_vcf</code>, <code>phase_with_beagle</code>, or
-<code>phase_with_pedigree</code>) is strongly recommended.</p></dd>
+via <code><a href="phase_with_beagle.html">phase_with_beagle</a></code>) is strongly recommended.</p></dd>
 
 
 <dt id="arg-blues">blues<a class="anchor" aria-label="anchor" href="#arg-blues"></a></dt>
@@ -200,11 +206,14 @@ data frames. Default <code>NULL</code>.</p></dd>
         <code>"/"</code>, e.g. <code>"010/110"</code>. Homozygotes have identical
         halves: <code>"010/010"</code>. This format ensures that <code>"010/110"</code>
         and <code>"110/010"</code> are always represented identically.</p></li>
-<li><p><code>n</code> (integer) - Number of individuals with this diplotype.</p></li>
+<li><p><code>n_class</code> (integer) - Number of individuals carrying
+        this specific diplotype combination.</p></li>
+<li><p><code>n_total</code> (integer) - Total individuals with non-missing
+        data in this block (sum of n_class across all diplotype classes).</p></li>
 <li><p><code>mean_blue</code> (numeric) - Mean de-regressed phenotype value
         for this diplotype class (on the residual scale after GRM correction).</p></li>
 <li><p><code>se_mean</code> (numeric) - Standard error of the mean
-        (<code>sd / sqrt(n)</code>).</p></li>
+        (<code>sd / sqrt(n_class)</code>).</p></li>
 </ul></dd>
 
 
@@ -279,7 +288,7 @@ data frames. Default <code>NULL</code>.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 block_1_155368_179371   1   155368 179371 trait 0100010000000000001000100</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2 block_2_161515_180473   2   161515 180473 trait      00100000100000000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                    allele_B   mean_AA   mean_AB   mean_BB         a         d</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 0111011011101110001000101 -0.438808  0.135217 -0.125740  0.156534  0.417491</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 0111011011101110001000101 -0.438808  0.135218 -0.125740  0.156534  0.417491</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2      00100011100000110110  0.695056 -0.011832  0.214904 -0.240076 -0.466812</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   d_over_a overdominance</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1   2.6671          TRUE</span>

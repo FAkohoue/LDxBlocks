@@ -161,9 +161,9 @@ scores <- score_favorable_haplotypes(haps, allele_effects = ae)
 head(scores[order(scores$rank), c("id","stacking_index","rank")])
 #>            id stacking_index rank
 #> ind083 ind083       1.000000    1
-#> ind025 ind025       0.944427    2
-#> ind095 ind095       0.892077    3
-#> ind108 ind108       0.862556    4
+#> ind025 ind025       0.944428    2
+#> ind095 ind095       0.892078    3
+#> ind108 ind108       0.862557    4
 #> ind049 ind049       0.856506    5
 #> ind068 ind068       0.847426    6
 # }

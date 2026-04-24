@@ -2,7 +2,8 @@
 % Please edit documentation in R/haplotype_association.R
 \name{test_block_haplotypes}
 \alias{test_block_haplotypes}
-\title{Block-Level Haplotype Association Testing (Q+K Mixed Linear Model)}
+\title{Block-Level Haplotype Association Testing (Q+K Mixed Linear Model
+with simpleM Multiple-Testing Correction)}
 \usage{
 test_block_haplotypes(
   haplotypes,
@@ -14,172 +15,124 @@ test_block_haplotypes(
   id_col = "id",
   blue_col = "blue",
   blue_cols = NULL,
-  alpha = NULL,
+  sig_threshold = 0.05,
+  sig_metric = c("p_wald", "p_fdr", "p_simplem", "p_simplem_sidak"),
+  meff_scope = c("chromosome", "global", "block"),
+  meff_percent_cut = 0.995,
+  meff_max_cols = 1000L,
+  plot = FALSE,
+  out_dir = ".",
   verbose = TRUE
 )
 }
 \arguments{
 \item{haplotypes}{Named list produced by \code{\link{extract_haplotypes}}.
 Each element is a named character vector (one haplotype dosage string per
-individual), and the list must carry a \code{block_info} attribute (added
-automatically by \code{extract_haplotypes}). The number of elements equals
-the number of qualifying LD blocks.}
+individual), and the list must carry a \code{block_info} attribute.}
 
-\item{blues}{Pre-adjusted phenotype means (BLUEs or BLUPs from a field
-trial mixed model). Accepted in four formats:
-\itemize{
-  \item Named numeric vector: \code{c(ind1 = 2.3, ind2 = 1.8, ...)}.
-    Names must match individual IDs (row names of the genotype matrix).
-  \item Single-trait data frame: columns \code{id_col} (individual IDs)
-    and \code{blue_col} (numeric phenotype values).
-  \item Multi-trait data frame: columns \code{id_col} plus one column per
-    trait specified in \code{blue_cols}. All named traits are tested in a
-    single call sharing the same GRM.
-  \item Named list of named numeric vectors: one element per trait,
-    e.g. \code{list(YLD = c(ind1=2.3,...), RES = c(ind1=0.8,...))}.
-}
-Individuals in \code{blues} not present in \code{haplotypes} are silently
-dropped. At least 10 common individuals are required per trait.}
+\item{blues}{Pre-adjusted phenotype means. Accepted in four formats:
+named numeric vector, single-trait data frame, multi-trait data frame,
+or named list of named numeric vectors. At least 10 common individuals
+are required per trait.}
 
-\item{blocks}{LD block table returned by \code{\link{run_Big_LD_all_chr}}
-or \code{\link{run_ldx_pipeline}}. Required columns: \code{CHR},
-\code{start.bp}, \code{end.bp}. Used only for block metadata annotation
-in the output; the actual haplotype allele columns come from
-\code{haplotypes}.}
+\item{blocks}{LD block table from \code{\link{run_Big_LD_all_chr}}.
+Used for block metadata annotation in the output only.}
 
 \item{n_pcs}{Integer (\code{>= 0}) or \code{NULL}. Number of haplotype-GRM
-eigenvectors to include as fixed-effect population structure covariates
-in the null model. Controls the trade-off between correction strategies:
+eigenvectors to include as fixed-effect population structure covariates.
+\code{0L} (default): pure GRM / EMMAX. \code{1-10}: Q+K model.
+\code{NULL}: auto-selected from the GRM scree-plot elbow, capped at 10.}
+
+\item{top_n}{Integer or \code{NULL}. Maximum haplotype alleles per block
+in the feature matrix. \code{NULL} retains all alleles above
+\code{min_freq}.}
+
+\item{min_freq}{Numeric in (0, 1). Minimum haplotype allele frequency.
+Default \code{0.05}.}
+
+\item{id_col}{Character. Individual-ID column name when \code{blues} is a
+data frame. Default \code{"id"}.}
+
+\item{blue_col}{Character. Phenotype column name for single-trait data
+frames. Default \code{"blue"}.}
+
+\item{blue_cols}{Character vector. Phenotype column names for multi-trait
+data frames. Default \code{NULL}.}
+
+\item{sig_threshold}{Numeric in (0, 1]. Significance cutoff applied to the
+p-value chosen by \code{sig_metric}. Default \code{0.05}. Common choices:
 \itemize{
-  \item \code{0L} (default): Pure GRM correction - EMMAX / P3D
-    approximation. The GRM random effect absorbs all structure and kinship.
-    Appropriate for populations with diffuse continuous kinship
-    (e.g. livestock half-sib families, advanced inbred lines) where
-    there are no sharp discrete subpopulation boundaries.
-  \item \code{1} to \code{10}: Q+K model (Yu et al. 2006) - top-k GRM
-    eigenvectors as fixed effects plus the GRM random effect. The fixed-
-    effect PCs capture discrete subpopulation membership (e.g. breeds,
-    ecotypes, geographic clusters); the GRM random effect captures
-    within-subpopulation continuous kinship. Use when strong cluster
-    structure inflates the Q-Q plot under \code{n_pcs = 0}.
-    Typically 3-5 PCs are sufficient; using more than 10 risks
-    over-correction.
-  \item \code{NULL}: Auto-select via the elbow of the GRM eigenvalue scree
-    plot (first position where the marginal gain in variance explained
-    drops below 1\%), capped at 10.
+  \item \code{0.05} - recommended with \code{sig_metric = "p_fdr"},
+    \code{"p_simplem"}, or \code{"p_simplem_sidak"}.
+  \item \code{0.05 / n_tests} - raw Bonferroni with
+    \code{sig_metric = "p_wald"}.
+}}
+
+\item{sig_metric}{Character. Which p-value to use for the
+\code{significant} and \code{significant_omnibus} flags. One of:
+\itemize{
+  \item \code{"p_wald"} - raw Wald p-value. Use with a pre-corrected
+    \code{sig_threshold} (e.g. \code{0.05 / n_tests}).
+  \item \code{"p_fdr"} - Benjamini-Hochberg FDR. Recommended for
+    discovery-oriented analyses.
+  \item \code{"p_simplem"} - simpleM Bonferroni-style adjusted p-value.
+  \item \code{"p_simplem_sidak"} - simpleM Sidak-style adjusted p-value.
+    Recommended default when family-wise error control is desired with
+    correlated haplotype predictors.
 }
-PCs are derived from \code{eigen(G_hap)} - the same GRM that enters as
-the random effect - ensuring mathematical consistency.}
+All four p-value columns are always present in the output regardless of
+this choice.}
 
-\item{top_n}{Integer or \code{NULL}. Maximum number of haplotype alleles per
-block to include in the feature matrix before testing. \code{NULL}
-(default) retains all alleles above \code{min_freq}. Supply an integer
-(e.g. \code{5L}) only to cap column count for very large panels where
-memory is constrained. Alleles are ranked by frequency; the most common
-\code{top_n} are retained.}
+\item{meff_scope}{Character. Scope at which \eqn{M_{\mathrm{eff}}} is
+estimated. One of:
+\itemize{
+  \item \code{"chromosome"} (recommended) - separate \eqn{M_{\mathrm{eff}}}
+    per chromosome; best balance of scalability and LD awareness.
+  \item \code{"global"} - one genome-wide \eqn{M_{\mathrm{eff}}}; suitable
+    for moderate-sized scans.
+  \item \code{"block"} - one \eqn{M_{\mathrm{eff}}} per LD block at the
+    allele level; for block omnibus tests \eqn{M_{\mathrm{eff}} = 1}.
+}}
 
-\item{min_freq}{Numeric in (0, 1). Minimum haplotype allele frequency in
-the panel. Alleles with frequency below this threshold are excluded from
-both the feature matrix and all tests. Default \code{0.05}. Lower values
-(e.g. \code{0.02}) include rarer alleles at the cost of reduced power and
-increased multiple testing burden. Values below \code{0.02} are not
-recommended for panels smaller than 200 individuals.}
+\item{meff_percent_cut}{Numeric in (0, 1). Proportion of variance explained
+by the retained PCs in the simpleM eigendecomposition. Default \code{0.995}
+(99.5\%), following the original simpleM recommendation.}
 
-\item{id_col}{Character. Name of the individual-ID column when \code{blues}
-is a data frame. Must exactly match a column name in the data frame.
-Default \code{"id"}.}
+\item{meff_max_cols}{Integer. Maximum columns per eigendecomposition block
+when computing \eqn{M_{\mathrm{eff}}}. Larger groups are chunked and
+summed. Default \code{1000L}.}
 
-\item{blue_col}{Character. Name of the phenotype column when \code{blues}
-is a single-trait data frame. Must be numeric. Default \code{"blue"}.}
+\item{plot}{Logical. If \code{TRUE}, save Manhattan and Q-Q plots.
+Default \code{FALSE}. Significance markers reflect \code{sig_metric}.}
 
-\item{blue_cols}{Character vector. Names of phenotype columns when
-\code{blues} is a multi-trait wide data frame. Each named column is
-treated as a separate trait and tested independently (but using the same
-GRM). Default \code{NULL} (ignored unless \code{blues} is a data frame
-with more than one numeric column beyond \code{id_col}).}
+\item{out_dir}{Character. Directory for optional plots. Default \code{"."}.}
 
-\item{alpha}{Numeric or \code{NULL}. Significance threshold for the
-\code{significant} flag in \code{allele_tests} and
-\code{significant_omnibus} in \code{block_tests}. \code{NULL} (default)
-applies genome-wide Bonferroni correction:
-\eqn{\alpha = 0.05 / n_{\mathrm{tests}}} where \eqn{n_{\mathrm{tests}}}
-is the total number of allele-level tests across all blocks and traits.
-Supply a fixed value (e.g. \code{0.05}) to use a less conservative
-threshold, or \code{0.05 / nrow(blocks)} to apply Bonferroni at the block
-level rather than the allele level.}
-
-\item{verbose}{Logical. If \code{TRUE} (default), prints timestamped
-progress messages: model type, trait name, number of alleles scanned, and
-a final summary. Set \code{FALSE} for batch use or inside loops.}
+\item{verbose}{Logical. Print progress messages. Default \code{TRUE}.}
 }
 \value{
-A named list of class \code{c("LDxBlocks_haplotype_assoc", "list")}
-  with the following elements:
+A named list of class \code{c("LDxBlocks_haplotype_assoc", "list")}:
 
 \describe{
-  \item{\code{allele_tests}}{Data frame. One row per haplotype allele per
-    LD block per trait. Contains 13 columns:
-    \itemize{
-      \item \code{block_id} (character) - Block identifier string matching
-        \code{names(haplotypes)}, e.g. \code{"block_1_1000_103000"}.
-      \item \code{CHR} (character) - Chromosome label.
-      \item \code{start_bp} (integer) - Block start coordinate (base pairs).
-      \item \code{end_bp} (integer) - Block end coordinate (base pairs).
-      \item \code{trait} (character) - Trait name.
-      \item \code{allele} (character) - Haplotype allele identifier string.
-      \item \code{frequency} (numeric, (0,1]) - Allele frequency in the
-        panel (proportion of individuals carrying the allele).
-      \item \code{effect} (numeric) - Estimated additive effect: mean
-        phenotype difference per unit increase in allele dosage on the
-        de-regressed residual scale. Positive = favourable if higher trait
-        values are desirable.
-      \item \code{SE} (numeric) - Standard error of the effect estimate.
-      \item \code{t_stat} (numeric) - t-statistic (\code{effect / SE}).
-      \item \code{p_wald} (numeric, (0,1]) - Two-sided Wald p-value (raw,
-        uncorrected).
-      \item \code{p_wald_adj} (numeric, (0,1]) - Bonferroni-adjusted p-value:
-        \code{min(p_wald * n_tests, 1)}.
-      \item \code{significant} (logical) - \code{TRUE} when
-        \code{p_wald <= alpha}.
-    }
-    Rows are sorted ascending by \code{CHR}, \code{start_bp}, then
-    \code{p_wald} within each trait.}
-
-  \item{\code{block_tests}}{Data frame. One row per LD block per trait.
-    Contains 12 columns:
-    \itemize{
-      \item \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
-        \code{trait} - as above.
-      \item \code{n_alleles_tested} (integer) - Number of alleles above
-        \code{min_freq} in this block that were included in the omnibus test.
-      \item \code{F_stat} (numeric) - Omnibus F-statistic testing all
-        \code{n_alleles_tested} allele columns jointly against the de-
-        regressed residual.
-      \item \code{df_LRT} (integer) - Numerator degrees of freedom
-        (= \code{n_alleles_tested}).
-      \item \code{p_omnibus} (numeric, (0,1]) - Raw omnibus p-value from
-        the F-distribution.
-      \item \code{p_omnibus_adj} (numeric, (0,1]) - Bonferroni-adjusted
-        across all blocks per trait: \code{min(p_omnibus * n_blocks, 1)}.
-      \item \code{var_explained} (numeric, [0,1]) - Proportion of
-        de-regressed phenotypic variance explained by all haplotype alleles
-        of this block jointly: \code{1 - RSS_full / RSS_null}.
-      \item \code{significant_omnibus} (logical) - \code{TRUE} when
-        \code{p_omnibus_adj < 0.05}.
-    }
-    Rows sorted ascending by \code{CHR}, \code{start_bp}, \code{p_omnibus}.}
-
-  \item{\code{traits}}{Character vector of trait names that were tested.}
-
-  \item{\code{n_pcs_used}}{Integer. Number of GRM eigenvectors included as
-    fixed-effect covariates in the null model. \code{0L} when
-    \code{n_pcs = 0L} (pure EMMAX).}
-
-  \item{\code{alpha}}{Numeric. The significance threshold actually used
-    (either supplied or computed by Bonferroni).}
-
-  \item{\code{n_tests}}{Integer. Total number of allele-level Wald tests
-    performed across all blocks and traits (the Bonferroni denominator).}
+  \item{\code{allele_tests}}{Data frame with one row per allele per block
+    per trait. Always includes: \code{p_wald}, \code{p_fdr},
+    \code{Meff}, \code{alpha_simplem}, \code{alpha_simplem_sidak},
+    \code{p_simplem}, \code{p_simplem_sidak}, \code{significant}.}
+  \item{\code{block_tests}}{Data frame with one row per block per trait.
+    Always includes: \code{p_omnibus}, \code{p_omnibus_fdr},
+    \code{p_omnibus_adj} (backward-compat Bonferroni),
+    \code{Meff}, \code{alpha_simplem}, \code{alpha_simplem_sidak},
+    \code{p_omnibus_simplem}, \code{p_omnibus_simplem_sidak},
+    \code{significant_omnibus}.}
+  \item{\code{traits}}{Character vector of trait names tested.}
+  \item{\code{n_pcs_used}}{Integer. GRM PCs used in the null model.}
+  \item{\code{sig_threshold}}{Numeric. Significance cutoff used.}
+  \item{\code{sig_metric}}{Character. P-value used for significance flags.}
+  \item{\code{n_tests}}{Integer. Total allele-level tests performed.}
+  \item{\code{meff_scope}}{Character. simpleM estimation scope.}
+  \item{\code{meff_percent_cut}}{Numeric. Variance cutoff for simpleM.}
+  \item{\code{meff}}{Named list of \eqn{M_{\mathrm{eff}}} summaries per
+    trait, each with \code{$allele} (global/chromosome/block) and
+    \code{$block} (global/chromosome) components.}
 }
 }
 \description{
@@ -189,6 +142,13 @@ tests identify which specific haplotype alleles drive association, and an
 omnibus F-test evaluates the block as a whole. Population structure and
 kinship are corrected jointly through a unified mixed linear model.
 
+In addition to raw and FDR-adjusted p-values, this function applies
+\strong{simpleM}-style multiple-testing correction to account for
+correlation among tested haplotype alleles. simpleM estimates the effective
+number of independent tests (\eqn{M_{\mathrm{eff}}}) from the eigenvalues
+of the haplotype allele correlation matrix and derives either a
+Bonferroni-style or Sidak-style adjusted threshold.
+
 \strong{Statistical model (Q+K / EMMAX formulation):}
 
 \deqn{y = \mu + \alpha \cdot x_{\mathrm{hap}} +
@@ -196,74 +156,84 @@ kinship are corrected jointly through a unified mixed linear model.
 
 \describe{
   \item{\eqn{x_{\mathrm{hap}}}}{Haplotype allele dosage (0, 1, or 2 copies
-    for phased data; 0 or 1 for unphased) - the quantity being tested for
-    association.}
-  \item{\eqn{PC_k}}{The k-th eigenvector of the haplotype GRM, included as
-    a fixed-effect covariate to capture discrete population structure
-    explicitly. Derived from \code{eigen(G_hap)}, so both fixed-effect PCs
-    and the random-effect GRM use the same kinship model.}
-  \item{\eqn{g \sim MVN(0,\,\sigma_g^2 G)}}{Polygenic background - captures
-    residual continuous kinship (within-family, cryptic relatedness) as a
-    random effect after PC removal.}
+    for phased data; 0 or 1 for unphased).}
+  \item{\eqn{PC_k}}{k-th eigenvector of the haplotype GRM, as a
+    fixed-effect covariate for population structure.}
+  \item{\eqn{g \sim MVN(0,\,\sigma_g^2 G)}}{Polygenic background as a
+    random effect.}
   \item{\eqn{\varepsilon \sim MVN(0,\,\sigma_e^2 I)}}{Residual error.}
 }
 
-\strong{Implementation and scaling:}
-The GRM is inverted once per trait via \code{rrBLUP::mixed.solve()} (dominant
-cost, O(n^3)). Per-allele tests on the de-regressed residuals are then fully
-vectorised across all blocks simultaneously using a single
-\code{crossprod()} call (O(n x p), analogous to the BLAS DGEMV trick in
-marginal SNP screening). For 5,000 individuals and 51,000 haplotype allele
-columns across 17,000 blocks, the scan step takes seconds after the
-one-time GRM inversion (~30 s for n = 5,000).
+\strong{simpleM extension (Gao et al. 2008, 2010, 2011):}
+\eqn{M_{\mathrm{eff}}} is estimated from the eigenspectrum of the
+haplotype allele dosage correlation matrix - the number of principal
+components needed to explain \code{meff_percent_cut} of variance (default
+99.5\%). Two simpleM adjusted p-value paths are always computed:
+\itemize{
+  \item \code{p_simplem} - Bonferroni-style:
+    \eqn{\min(p \times M_{\mathrm{eff}},\,1)}.
+  \item \code{p_simplem_sidak} - Sidak-style:
+    \eqn{1 - (1 - p)^{M_{\mathrm{eff}}}}.
+}
+Because haplotype alleles are correlated within and across nearby blocks,
+simpleM is less conservative than raw Bonferroni while still providing
+family-wise error control.
 }
 \examples{
 \donttest{
 data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
 haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks)
 
-# Pure GRM correction (EMMAX, default - n_pcs = 0)
-assoc <- test_block_haplotypes(
-  haplotypes = haps,
-  blues      = setNames(ldx_blues$YLD, ldx_blues$id),
-  blocks     = ldx_blocks,
-  verbose    = FALSE
-)
-head(assoc$block_tests[order(assoc$block_tests$p_omnibus), ])
-
-# Q+K model (3 GRM-derived PCs + GRM, for structured populations)
-assoc_qk <- test_block_haplotypes(
-  haplotypes = haps,
-  blues      = setNames(ldx_blues$YLD, ldx_blues$id),
-  blocks     = ldx_blocks,
-  n_pcs      = 3L,
-  verbose    = FALSE
+# FDR-based discovery (default EMMAX model)
+assoc_fdr <- test_block_haplotypes(
+  haplotypes = haps, blues = setNames(ldx_blues$YLD, ldx_blues$id),
+  blocks = ldx_blocks, sig_metric = "p_fdr", verbose = FALSE
 )
 
-# Multi-trait
+# simpleM Sidak with 3 GRM PCs (Q+K), chromosome-wise Meff
+assoc_sm <- test_block_haplotypes(
+  haplotypes = haps, blues = setNames(ldx_blues$YLD, ldx_blues$id),
+  blocks = ldx_blocks, n_pcs = 3L,
+  sig_metric = "p_simplem_sidak", meff_scope = "chromosome",
+  verbose = FALSE
+)
+
+# Check per-trait Meff
+assoc_sm$meff$trait$allele$chromosome
+
+# Multi-trait with simpleM
 assoc_mt <- test_block_haplotypes(
-  haplotypes = haps,
-  blues      = ldx_blues,
-  blocks     = ldx_blocks,
-  id_col     = "id",
-  blue_cols  = c("YLD", "RES"),
-  n_pcs      = 3L,
-  verbose    = FALSE
+  haplotypes = haps, blues = ldx_blues,
+  blocks = ldx_blocks, id_col = "id", blue_cols = c("YLD","RES"),
+  sig_metric = "p_simplem", meff_scope = "chromosome", verbose = FALSE
 )
 }
+
 }
 \references{
 Endelman JB (2011). Ridge regression and other kernels for genomic
 selection with R package rrBLUP. \emph{Plant Genome} \strong{4}:250-255.
 \doi{10.3835/plantgenome2011.08.0024}
 
-Yu J, Pressoir G, Briggs WH, et al. (2006). A unified mixed-model method
-for association mapping that accounts for multiple levels of relatedness.
+Yu J et al. (2006). A unified mixed-model method for association mapping.
 \emph{Nature Genetics} \strong{38}(2):203-208. \doi{10.1038/ng1702}
 
-Kang HM, Sul JH, Service SK, et al. (2010). Variance component model to
-account for sample structure in genome-wide association studies.
+Kang HM et al. (2010). Variance component model to account for sample
+structure in genome-wide association studies.
 \emph{Nature Genetics} \strong{42}(4):348-354. \doi{10.1038/ng.548}
+
+Gao X et al. (2008). A multiple testing correction method for genetic
+association studies using correlated single nucleotide polymorphisms.
+\emph{Genetic Epidemiology} \strong{32}:361-369.
+\doi{10.1002/gepi.20310}
+
+Gao X et al. (2010). Avoiding the high Bonferroni penalty in genome-wide
+association studies. \emph{Genetic Epidemiology} \strong{34}:100-105.
+\doi{10.1002/gepi.20430}
+
+Gao X (2011). Multiple testing corrections for imputed SNPs.
+\emph{Genetic Epidemiology} \strong{35}:154-158.
+\doi{10.1002/gepi.20563}
 }
 \seealso{
 \code{\link{extract_haplotypes}},

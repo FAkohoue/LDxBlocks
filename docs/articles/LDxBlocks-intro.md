@@ -15,8 +15,8 @@ metrics are available:
   table.
 
 The C++/Armadillo computational core makes the algorithm approximately
-40x faster than the original Big-LD implementation (no compiled code)
-for typical window sizes.
+40x faster than the original Big-LD implementation for typical window
+sizes.
 
 This vignette covers the complete pipeline – reading genotype data,
 block detection, haplotype analysis, and parameter tuning – using the
@@ -28,13 +28,10 @@ simulated LD blocks).
 ## 2. Why LDxBlocks? Relationship to the original Big-LD
 
 LDxBlocks is built on the clique-based segmentation algorithm of Kim et
-al. (2018), which introduced interval graph modelling of LD bins as a
-principled alternative to sliding-window approaches. The mathematical
-core – CLQD bin assignment, maximum-weight independent set block
-construction, and Bron-Kerbosch clique enumeration – is preserved
-exactly. LDxBlocks extends that foundation to address three limitations
-of the original implementation that become critical for modern breeding
-and genomics programmes.
+al. (2018). The mathematical core – CLQD bin assignment, maximum-weight
+independent set block construction, and Bron-Kerbosch clique enumeration
+– is preserved exactly. LDxBlocks extends that foundation to address
+three limitations of the original implementation.
 
 ### 2.1 Computational bottleneck
 
@@ -42,39 +39,25 @@ The original `Big_LD()` calls
 [`cor()`](https://rdrr.io/r/stats/cor.html) inside the boundary-scan
 loop and once per
 [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md) call,
-with all matrix operations running through the R interpreter. For a
-50,000-SNP chromosome with the default `leng = 200` this amounts to
-approximately 150,000 small R-level matrix multiplications per
-chromosome. For a WGS rice panel with 3 million SNPs across 12
-chromosomes, the original implementation would take days on a
-workstation.
+with all matrix operations running through the R interpreter. For a WGS
+rice panel with 3 million SNPs across 12 chromosomes, the original
+implementation would take days on a workstation.
 
 LDxBlocks replaces the critical paths with eight compiled C++ functions:
 
 ``` r
-# These calls are now C++/Armadillo + OpenMP -- not R loops
 compute_r2_cpp(geno, digits = -1L, n_threads = 8L)   # ~40x faster
 maf_filter_cpp(geno, maf_cut = 0.05)                  # ~10x faster
 boundary_scan_cpp(geno, start, end, half_w, threshold) # ~20x faster
 build_hap_strings_cpp(blk_int, na_char)               # ~20-50x faster
 ```
 
-The outer loop of `compute_r2_cpp()` is parallelised with OpenMP. For a
-1,500-SNP window with 500 individuals, the r² matrix computes in
-milliseconds rather than seconds.
-
 ### 2.2 Memory wall
-
-The original `Big_LD()` requires the complete genotype matrix in RAM
-before detection begins. For a 10M-marker, 5,000-individual WGS dataset
-this is approximately 400 GB as an R `double` matrix – impossible on any
-workstation.
 
 LDxBlocks enforces a strict never-full-genome memory model. All six
 supported formats stream genotypes one chromosome window at a time:
 
 ``` r
-# VCF auto-converts to GDS cache; detection streams one window at a time
 be     <- read_geno("wgs_panel.vcf.gz")
 blocks <- run_Big_LD_all_chr(be, method = "r2", n_threads = 8L)
 # Peak RAM ~ n_samples x subSegmSize x 8 bytes = 60 MB for n=5000, w=1500
@@ -82,13 +65,10 @@ blocks <- run_Big_LD_all_chr(be, method = "r2", n_threads = 8L)
 
 ### 2.3 Pipeline gap
 
-The original Big-LD stops at the block table. For breeding programmes
-the immediate next questions are: What haplotypes exist? How diverse are
-they? Which blocks harbour QTLs? How do I build a multi-locus genomic
-prediction model? LDxBlocks provides a complete answer:
+The original Big-LD stops at the block table. LDxBlocks provides a
+complete downstream pipeline:
 
 ``` r
-# From blocks to genomic prediction features in four lines
 haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5)
 div  <- compute_haplotype_diversity(haps)
 qtl  <- define_qtl_regions(gwas_results, blocks, be$snp_info)
@@ -97,39 +77,17 @@ feat <- build_haplotype_feature_matrix(haps, top_n = 5, encoding = "additive_012
 
 ### 2.4 What is preserved from the original
 
-The following components are unchanged from Kim et al. (2018):
-
-- [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md)
-  (internal): bin vector assignment via maximal clique enumeration and
-  greedy density/maximal priority selection
-- `constructLDblock()` (internal): maximum-weight independent set via
-  dynamic programming on sorted interval sequences
+- [`CLQD()`](https://FAkohoue.github.io/LDxBlocks/reference/CLQD.md):
+  bin vector assignment via maximal clique enumeration
+- `constructLDblock()`: maximum-weight independent set via dynamic
+  programming
 - All `CLQmode`, `clstgap`, and `split` logic
-- Block table column format (`start`, `end`, `start.rsID`, `end.rsID`,
-  `start.bp`, `end.bp`) – drop-in compatible with tools that accept
+- Block table column format – drop-in compatible with tools that accept
   original Big-LD output
-
-### 2.5 Comparison with related tools
-
-| Feature | Original Big-LD | gpart (Bioconductor) | PLINK –blocks | LDxBlocks |
-|----|----|----|----|----|
-| Algorithm | Clique/MWIS | Clique/MWIS + GPART | Gabriel et al. | Clique/MWIS |
-| LD metric | r | r, D’ | r² | r², rV² |
-| C++ core | No | Partial | Yes | Yes (9 functions) |
-| WGS streaming | No | Partial | Yes | Yes (all formats) |
-| Kinship correction | No | No | No | Yes (rV²) |
-| Haplotype analysis | No | No | No | Yes |
-| Genomic prediction | No | No | No | Yes |
-| GWAS-driven tuning | No | No | No | Yes |
-| Input formats | R matrix | PLINK, VCF | PLINK | 6 formats |
-| Output | Block table | Block table + gene regions | Block table | Block table + 19 downstream functions |
 
 ------------------------------------------------------------------------
 
 ## 3. Example data
-
-Four datasets are shipped with the package, all generated by
-`data-raw/generate_example_data.R`:
 
 ``` r
 dim(ldx_geno)             # 120 individuals x 230 SNPs
@@ -150,32 +108,16 @@ nrow(ldx_gwas)            # toy GWAS markers
 #> [1] 20
 ```
 
-Each chromosome has three LD blocks separated by inter-block gaps and
-short stretches of low-LD singleton SNPs.
-
 ------------------------------------------------------------------------
 
 ## 4. Step 1 — Reading genotype data
-
-[`read_geno()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno.md)
-auto-detects the file format from the extension and returns an
-`LDxBlocks_backend` object. Six formats are supported:
-
-| Format             | Extension                 | `format =`  |
-|--------------------|---------------------------|-------------|
-| Numeric dosage     | `.csv`, `.txt`            | `"numeric"` |
-| HapMap             | `.hmp.txt`                | `"hapmap"`  |
-| VCF / bgzipped VCF | `.vcf`, `.vcf.gz`         | `"vcf"`     |
-| SNPRelate GDS      | `.gds`                    | `"gds"`     |
-| PLINK binary       | `.bed` (+ `.bim`, `.fam`) | `"bed"`     |
-| R matrix           | (in-memory)               | `"matrix"`  |
 
 ``` r
 be_vcf <- read_geno("mydata.vcf.gz")
 be_csv <- read_geno("mydata.csv")
 be_hmp <- read_geno("mydata.hmp.txt")
-be_gds <- read_geno("mydata.gds")    # SNPRelate GDS; streams SNP windows
-be_bed <- read_geno("mydata.bed")    # PLINK BED; memory-mapped
+be_gds <- read_geno("mydata.gds")
+be_bed <- read_geno("mydata.bed")
 ```
 
 ``` r
@@ -213,64 +155,32 @@ close_backend(be)
 
 ## 5. Step 2 — Phenotype input format
 
-The `blues` argument accepts pre-adjusted phenotype means from a mixed
-model. The format is flexible — any of four structures are accepted:
-
-**Format 1: Named numeric vector** (single trait, simplest)
+The `blues` argument accepts pre-adjusted phenotype means. Four formats
+are accepted:
 
 ``` r
+# Format 1: Named numeric vector
 blues <- c(ind001 = 4.21, ind002 = 3.87, ind003 = 5.14)
-# names = individual IDs matching rownames(geno_matrix)
-```
 
-**Format 2: Data frame, single trait**
-
-This is the most common format when reading output from ASReml-R, lme4,
-or SpATS. Any column names are accepted — just tell the function which
-columns to use:
-
-``` r
-blues <- read.csv("blues.csv")  # e.g. columns: "Genotype", "YLD_BLUE"
+# Format 2: Data frame, single trait
+blues <- read.csv("blues.csv")
 res   <- run_haplotype_prediction(geno, snp_info, blocks,
                                    blues    = blues,
-                                   id_col   = "Genotype",   # ID column name
-                                   blue_col = "YLD_BLUE")   # BLUE column name
-```
+                                   id_col   = "Genotype",
+                                   blue_col = "YLD_BLUE")
 
-**Format 3: Data frame, multiple traits**
+# Format 3: Data frame, multiple traits
+res_mt <- run_haplotype_prediction(geno, snp_info, blocks,
+                                    blues     = blues_mt,
+                                    id_col    = "id",
+                                    blue_cols = c("YLD", "DIS", "PHT"))
 
-``` r
-blues_mt <- read.csv("blues_mt.csv")  # columns: id, YLD, DIS, PHT
-res_mt   <- run_haplotype_prediction(geno, snp_info, blocks,
-                                      blues           = blues_mt,
-                                      id_col          = "id",
-                                      blue_cols       = c("YLD", "DIS", "PHT"),
-                                      importance_rule = "any")
-```
-
-When `blue_cols = NULL` (default), all numeric non-ID columns are used
-automatically.
-
-**Format 4: Named list** (different individuals per trait)
-
-``` r
+# Format 4: Named list (different individuals per trait)
 blues <- list(
   YLD = c(ind001 = 4.21, ind002 = 3.87),
-  DIS = c(ind001 = 0.32, ind003 = 0.28)  # ind002 missing, ind003 added
+  DIS = c(ind001 = 0.32, ind003 = 0.28)
 )
 ```
-
-**Column requirements and ID matching**
-
-| Element | Requirement |
-|----|----|
-| ID column | Any name — set via `id_col`. Must match `rownames(geno_matrix)` exactly (case-sensitive). |
-| BLUE column(s) | Any name — set via `blue_col` (single) or `blue_cols` (multi). Must be numeric. |
-| Missing values | `NA` BLUEs are silently dropped from GEBV estimation. |
-| ID mismatch | Intersection of phenotyped and genotyped individuals is used; unmatched individuals trigger an informative message. |
-
-The package ships with `ldx_blues` and `inst/extdata/example_blues.csv`
-showing the expected format (columns: `id`, `YLD`, `RES`):
 
 ``` r
 blues_file <- system.file("extdata", "example_blues.csv", package = "LDxBlocks")
@@ -280,14 +190,6 @@ head(blues, 3)
 #> 1 ind001 -0.5175  0.6771
 #> 2 ind002  0.7635  1.3764
 #> 3 ind003 -1.3093 -0.9946
-```
-
-The most common source of errors is an ID mismatch between the phenotype
-file and the genotype matrix. Verify with:
-
-``` r
-data(ldx_geno)
-all(blues$id %in% rownames(ldx_geno))  # should be TRUE
 ```
 
 ------------------------------------------------------------------------
@@ -321,12 +223,6 @@ head(blocks)
 
 ### 6.2 Single chromosome
 
-Use the `chr` parameter of
-[`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
-to restrict detection to one or more specific chromosomes. This uses the
-same streaming memory model and produces the same output columns as a
-genome-wide run.
-
 ``` r
 blocks_chr1 <- run_Big_LD_all_chr(
   ldx_geno,
@@ -335,33 +231,27 @@ blocks_chr1 <- run_Big_LD_all_chr(
   CLQcut      = 0.55,
   leng        = 15L,
   subSegmSize = 100L,
-  chr         = "1",         # restrict to chromosome 1 only
+  chr         = "1",
   n_threads   = 1L,
   verbose     = FALSE
 )
 nrow(blocks_chr1)
 #> [1] 3
-unique(blocks_chr1$CHR)      # confirms only chr 1 processed
+unique(blocks_chr1$CHR)
 #> [1] "1"
 ```
 
 ### 6.3 WGS panels: CLQmode = “Leiden” and max_bp_distance
 
-For WGS-density panels (\> 500k SNPs), the default `CLQmode = "Density"`
-(Bron-Kerbosch clique enumeration) can suffer exponential blowup — a
-single 1500-SNP window with dense LD can stall for hours. Two parameters
-fix this:
-
 ``` r
-# Recommended for WGS panels (> 500 k SNPs)
 blocks_wgs <- run_Big_LD_all_chr(
   be,
-  CLQmode         = "Leiden",    # polynomial O(n log n) — guaranteed connected
-  max_bp_distance = 500000L,     # skip r² for pairs > 500 kb (near-O(p))
-  CLQcut          = 0.70,        # sparser LD graph
-  subSegmSize     = 500L,        # smaller windows
-  leng            = 50L,         # narrower boundary scan at WGS density
-  checkLargest    = TRUE,        # belt-and-suspenders guard
+  CLQmode         = "Leiden",
+  max_bp_distance = 500000L,
+  CLQcut          = 0.70,
+  subSegmSize     = 500L,
+  leng            = 50L,
+  checkLargest    = TRUE,
   n_threads       = n_threads
 )
 ```
@@ -394,25 +284,7 @@ LD block structure coloured by block size
 
 ## 8. Step 5 — Haplotype extraction
 
-### 8.1 Unphased mode (default)
-
-[`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
-accepts either a numeric dosage matrix (0/1/2/NA) or a phased list from
-[`read_phased_vcf()`](https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.md)
-/
-[`phase_with_pedigree()`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_pedigree.md).
-In unphased mode each individual receives one diploid allele string per
-block:
-
 ``` r
-# For large real datasets, pass the backend object directly:
-#   haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5L)
-# This streams one chromosome at a time -- the full genome is never in RAM.
-# Haplotype strings are built via build_hap_strings_cpp() (C++), replacing
-# an R vapply() loop that incurred one call per individual per block.
-# For a 3M-SNP panel with 17k blocks x 204 individuals: ~20-50x speedup.
-#
-# For the small example dataset we use the in-memory matrix path:
 haps <- extract_haplotypes(
   geno     = ldx_geno,
   snp_info = ldx_snp_info,
@@ -442,38 +314,9 @@ head(haps[[1]])
 #> "2022222002222002220020220" "2022222002222002220020220"
 ```
 
-### 8.2 Phased mode
-
-When WGS data have been phased externally (Beagle, SHAPEIT, pedigree),
-load the phased VCF first and pass the resulting list to
-[`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md).
-Phased mode is detected automatically from the `hap1`/`hap2` structure:
-
-``` r
-# Statistical phasing via Beagle 5.x
-phase_with_beagle(input_vcf = "raw.vcf.gz", out_prefix = "phased",
-                  nthreads = 8L)
-phased <- read_phased_vcf("phased.vcf.gz", min_maf = 0.05)
-
-# Pedigree-based phasing
-ped    <- data.frame(id = c("off1","sire1","dam1"),
-                     sire = c("sire1", NA, NA),
-                     dam  = c("dam1",  NA, NA))
-phased <- phase_with_pedigree(ldx_geno, pedigree = ped)
-
-# Extract haplotypes — phased strings: "011|100"
-haps_p <- extract_haplotypes(phased, ldx_snp_info, blocks, min_snps = 5)
-head(haps_p[[1]])   # "011|100" format
-```
-
 ------------------------------------------------------------------------
 
 ## 9. Step 6 — Haplotype diversity
-
-[`compute_haplotype_diversity()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.md)
-works with both phased and unphased strings. For phased data each
-individual contributes two gamete observations, doubling the effective
-sample size for frequency estimates:
 
 ``` r
 div <- compute_haplotype_diversity(haps)
@@ -494,15 +337,6 @@ head(div)
 #> 6 2.642908        10.860     0.1500000      FALSE  FALSE
 ```
 
-| Metric             | Formula                | Interpretation              |
-|--------------------|------------------------|-----------------------------|
-| Richness ($`k`$)   | unique strings         | High = diverse              |
-| $`H_e`$            | Nei (1973) corrected   | Expected heterozygosity     |
-| Shannon ($`H'`$)   | $`-\sum p_i \log p_i`$ | Entropy                     |
-| $`n_{\text{eff}}`$ | $`1/\sum p_i^2`$       | Effective number of alleles |
-| $`f_{\max}`$       | $`\max_i p_i`$         | Near 1.0 = possible sweep   |
-| `sweep_flag`       | $`f_{\max} \geq 0.90`$ | Logical sweep indicator     |
-
 ``` r
 if (requireNamespace("ggplot2", quietly = TRUE)) {
   ggplot2::ggplot(div, ggplot2::aes(x = block_id, y = He)) +
@@ -518,37 +352,25 @@ block](LDxBlocks-intro_files/figure-html/diversity-plot-1.png)
 
 Expected heterozygosity per LD block
 
-Write diversity results to disk:
-
-``` r
-write_haplotype_diversity(div, "haplotype_diversity.csv", append_summary = TRUE)
-```
-
 ------------------------------------------------------------------------
 
 ## 10. Step 7 — Post-GWAS QTL region definition
 
-When GWAS results are available, map significant markers onto LD blocks
-to define QTL regions and flag pleiotropic blocks:
-
 ``` r
-# ldx_gwas has a `trait` column (TraitA / TraitB) enabling pleiotropic detection.
-# For single-trait GWAS simply omit trait_col — the function still works,
-# setting n_traits = 1 and pleiotropic = FALSE for all blocks.
 qtl <- define_qtl_regions(
   gwas_results = ldx_gwas,
   blocks       = blocks,
   snp_info     = ldx_snp_info,
   p_threshold  = 5e-8,
-  trait_col    = "trait"      # omit this argument for single-trait GWAS
+  trait_col    = "trait"
 )
 head(qtl[, c("block_id","CHR","n_snps_block","n_sig_markers",
              "lead_snp","traits","pleiotropic")])
 #>                block_id CHR n_snps_block n_sig_markers lead_snp traits
-#> 1 block_1_155368_179371   1           25             1   rs1070 TraitA
+#> 1 block_1_155368_179371   1           25             1   rs1070 TraitB
 #>   pleiotropic
 #> 1       FALSE
-subset(qtl, pleiotropic)      # blocks with hits from both TraitA and TraitB
+subset(qtl, pleiotropic)
 #>  [1] block_id                 CHR                      start_bp                
 #>  [4] end_bp                   search_start             search_end              
 #>  [7] ld_decay_bp              n_snps_block             n_sig_markers           
@@ -563,11 +385,7 @@ subset(qtl, pleiotropic)      # blocks with hits from both TraitA and TraitB
 
 ## 11. Step 8 — Feature matrix for genomic prediction
 
-[`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md)
-supports two encoding schemes and both phased and unphased input:
-
 ``` r
-# Additive 0/1/2 (phased) or 0/2 (unphased) — recommended for GBLUP/rrBLUP
 feat_add <- build_haplotype_feature_matrix(
   haplotypes = haps,
   top_n      = 5L,
@@ -576,90 +394,7 @@ feat_add <- build_haplotype_feature_matrix(
 )$matrix
 dim(feat_add)
 #> [1] 120  45
-
-# Presence/absence 0/1 — for kernel methods or random forest
-feat_pa <- build_haplotype_feature_matrix(
-  haplotypes = haps,
-  top_n      = 5L,
-  encoding   = "presence_01"
-)$matrix
-dim(feat_pa)
-#> [1] 120  45
 ```
-
-Write the feature matrix:
-
-``` r
-# Numeric: rows=haplotypes, cols=individuals, values=0/1/2/NA dosage
-write_haplotype_numeric(feat_add, "hap_matrix_numeric.csv",
-                         haplotypes = haps, snp_info = ldx_snp_info)
-
-# Character: nucleotide sequence per individual per haplotype allele
-write_haplotype_character(haplotypes = haps, snp_info = ldx_snp_info,
-                           out_file = "hap_matrix_character.txt")
-```
-
-### 11.1 Haplotype prediction pipeline (Tong et al. 2025)
-
-When pre-adjusted phenotype values (BLUEs or adjusted entry means) are
-available, the full Tong et al. (2025) haplotype stacking pipeline runs
-in a single call. `blues` accepts any of the four formats described in
-Step 2 (named numeric vector, single-trait data frame, multi-trait data
-frame, or named list). See Step 2 for column name requirements:
-
-``` r
-blues <- read.csv("blues.csv")  # columns: id, YLD
-pred  <- run_haplotype_prediction(
-  geno_matrix = ldx_geno,
-  snp_info    = ldx_snp_info,
-  blocks      = blocks,
-  blues       = blues,
-  id_col      = "id",
-  blue_col    = "YLD"
-)
-pred$block_importance[pred$block_importance$important, ]
-sort(pred$gebv, decreasing = TRUE)  # ranked GEBVs
-
-# Integrate GWAS + variance + diversity evidence
-priority <- rank_haplotype_blocks(
-  diversity   = pred$diversity,
-  qtl_regions = qtl,          # from define_qtl_regions()
-  pred_result = pred
-)
-priority$ranked_blocks[priority$ranked_blocks$rank_score >= 0.9, ]
-```
-
-### 11.2 Multi-trait prediction
-
-Pass a data frame with multiple trait columns — or a named list of named
-numeric vectors — to
-[`run_haplotype_prediction()`](https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_prediction.md)
-to analyse all traits simultaneously with a single shared GRM. All
-traits are fitted via
-[`rrBLUP::kin.blup()`](https://rdrr.io/pkg/rrBLUP/man/kin.blup.html) per
-trait using the shared GRM, making cross-trait block importance values
-directly comparable. Block importance is then aggregated across traits
-so rankings are not specific to any single trait:
-
-``` r
-blues_df <- read.csv("blues.csv")  # columns: id, YLD, DIS, PHT
-res_mt <- run_haplotype_prediction(
-  geno_matrix     = ldx_geno,
-  snp_info        = ldx_snp_info,
-  blocks          = blocks,
-  blues           = blues_df,
-  id_col          = "id",
-  blue_cols       = c("YLD", "DIS", "PHT"),
-  importance_rule = "any"   # flag block if important for >= 1 trait
-)
-res_mt$solver_used   # 'rrBLUP'
-# Cross-trait block importance
-res_mt$block_importance[res_mt$block_importance$important_any, 
-  c("block_id", "var_scaled_YLD", "var_scaled_DIS",
-    "var_scaled_mean", "n_traits_important")]
-```
-
-### 11.3 Building a haplotype GRM for GBLUP
 
 ``` r
 G_hap <- tcrossprod(feat_add) / ncol(feat_add)
@@ -667,50 +402,6 @@ dim(G_hap)
 #> [1] 120 120
 round(range(diag(G_hap)), 3)
 #> [1] 0.357 1.698
-```
-
-------------------------------------------------------------------------
-
-## 11. Step 8b — LD decay analysis
-
-[`compute_ld_decay()`](https://FAkohoue.github.io/LDxBlocks/reference/compute_ld_decay.md)
-estimates the chromosome-specific distance at which LD drops below a
-critical threshold. This decay distance can then be passed to
-[`define_qtl_regions()`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md)
-to replace fixed block boundaries with biologically justified candidate
-gene windows.
-
-``` r
-# Memory-efficient: loads only sampled SNP columns via read_chunk()
-# For the small example dataset:
-decay <- compute_ld_decay(
-  geno         = ldx_geno,
-  snp_info     = ldx_snp_info,
-  sampling     = "random",
-  r2_threshold = "both",        # fixed 0.1 + parametric (95th pctile unlinked)
-  fit_model    = "loess",
-  n_pairs      = 3000L,
-  verbose      = FALSE
-)
-decay$critical_r2_fixed   # 0.1 (standard GWAS threshold)
-decay$critical_r2_param   # background kinship-induced LD level
-decay$decay_dist          # per-chromosome decay distances
-
-# Pass decay distances to define_qtl_regions for LD-aware windows
-qtl_ld <- define_qtl_regions(
-  ldx_gwas, ldx_blocks, ldx_snp_info,
-  ld_decay    = decay,    # uses chromosome-specific decay distances
-  p_threshold = NULL,
-  trait_col   = "trait"
-)
-# New columns: candidate_region_start, candidate_region_end, candidate_region_size_kb
-head(qtl_ld[, c("block_id", "lead_snp", "candidate_region_start",
-                 "candidate_region_end", "candidate_region_size_kb")])
-```
-
-``` r
-if (requireNamespace("ggplot2", quietly = TRUE))
-  print(plot_ld_decay(decay, plot_threshold = TRUE, plot_decay_dist = TRUE))
 ```
 
 ------------------------------------------------------------------------
@@ -779,66 +470,7 @@ result$score_table[, c("CLQcut","n_unassigned","n_forced","n_blocks")]
 
 ------------------------------------------------------------------------
 
-## 13. Complete pipeline (one block)
-
-``` r
-library(LDxBlocks)
-
-# Step 1. Open streaming backend (VCF auto-converts to GDS cache on first call)
-be     <- read_geno("mydata.vcf.gz")
-
-# Step 2. Prepare phenotype data (BLUEs from mixed model — see Step 2 of this vignette)
-blues <- read.csv("blues.csv")  # columns: id (or any name), trait1, trait2 ...
-
-# Step 3. Block detection
-# Use Leiden for WGS panels: polynomial O(n log n) and guaranteed
-# connected communities (Traag et al. 2019). Louvain can produce
-# disconnected communities and is not recommended.
-blocks <- run_Big_LD_all_chr(
-  be,
-  method          = "r2",
-  CLQcut          = 0.70,
-  CLQmode         = "Leiden",     # polynomial; guaranteed connected communities
-  max_bp_distance = 500000L,      # skip pairs > 500 kb; near-O(p)
-  subSegmSize     = 500L,
-  leng            = 50L,
-  n_threads       = 8L
-)
-summarise_blocks(blocks)
-
-# 3. Haplotypes — pass backend directly: streams one chromosome at a time,
-#    full genome is NEVER loaded into RAM simultaneously.
-haps <- extract_haplotypes(be, be$snp_info, blocks, min_snps = 5)
-div  <- compute_haplotype_diversity(haps)
-write_haplotype_diversity(div, "diversity.csv")
-
-feat <- build_haplotype_feature_matrix(haps,
-                                        encoding = "additive_012",
-                                        scale_features = TRUE)$matrix
-
-# Numeric dosage matrix: rows=haplotypes, cols=individuals
-# values: 0/1/2/NA for phased data; 0/1/NA for unphased data
-write_haplotype_numeric(feat, "hap_matrix_numeric.csv",
-                         haplotypes = haps, snp_info = be$snp_info)
-
-# Nucleotide character matrix: shows actual allele sequence per individual
-write_haplotype_character(haplotypes = haps, snp_info = be$snp_info,
-                           out_file = "hap_matrix_character.txt")
-
-# Decode haplotype strings to nucleotide sequences (for biological interpretation)
-decoded <- decode_haplotype_strings(haps, snp_info = be$snp_info)
-head(decoded[, c("block_id","hap_rank","dosage_string",
-                  "nucleotide_sequence","frequency")])
-
-close_backend(be)
-```
-
-------------------------------------------------------------------------
-
-## 13. Step 10 — Advanced analysis: CV, population comparison, harmonisation
-
-The ten new analysis extension functions slot naturally after the main
-prediction pipeline.
+## 13. Advanced analyses
 
 ### 13.1 Cross-validation
 
@@ -854,7 +486,7 @@ cv <- cv_haplotype_prediction(
   blue_col    = "YLD",
   verbose     = FALSE
 )
-cv$pa_mean   # mean PA and RMSE per trait across folds and replications
+cv$pa_mean
 ```
 
 ### 13.2 Population comparison
@@ -871,108 +503,97 @@ cmp <- compare_haplotype_populations(
 cmp[cmp$divergent, c("block_id", "FST", "max_freq_diff", "chisq_p")]
 ```
 
-### 13.3 Haplotype network for one block
+### 13.3 Diplotype inference, rare-allele collapsing, and label harmonisation
 
 ``` r
-if (requireNamespace("igraph", quietly = TRUE))
-  plot_haplotype_network(haps, block_id = names(haps)[1])
-```
-
-### 13.4 Diplotype inference, rare-allele collapsing, and label harmonisation
-
-For training/validation workflows, collapse rare alleles then harmonise
-labels before building feature matrices to ensure allele identity
-transfers correctly:
-
-``` r
-# Build reference panel haplotypes and collapse rare alleles
 haps_ref  <- extract_haplotypes(ref_geno, ldx_snp_info, blocks)
 haps_ref  <- collapse_haplotypes(haps_ref, min_freq = 0.05, collapse = "nearest")
-
-# Match validation panel alleles to the reference dictionary
-haps_tgt  <- extract_haplotypes(val_geno,  ldx_snp_info, blocks)
+haps_tgt  <- extract_haplotypes(val_geno, ldx_snp_info, blocks)
 haps_harm <- harmonize_haplotypes(haps_tgt, haps_ref, max_hamming = 3L)
-attr(haps_harm, "harmonization_report")  # per-block matching quality
-
-# Structured diplotype table
+attr(haps_harm, "harmonization_report")
 dip <- infer_block_haplotypes(haps_harm)
 head(dip[, c("block_id","id","diplotype","heterozygous","phase_ambiguous")])
 ```
 
-### 13.5 Candidate region export and allele effect decomposition
+### 13.4 Candidate region export and effect decomposition
 
 ``` r
-# Export QTL windows as BED file
 export_candidate_regions(qtl, format = "bed", chr_prefix = "chr",
                           out_file = "candidate_regions.bed")
 
-# Decompose per-SNP effects into per-allele effects
 allele_tbl <- decompose_block_effects(haps, ldx_snp_info, blocks,
                                        snp_effects = pred$snp_effects[[1]])
 head(allele_tbl[order(-allele_tbl$allele_effect), ])
 
-# Sliding-window diversity scan (independent of block boundaries)
 scan <- scan_diversity_windows(ldx_geno, ldx_snp_info,
                                 window_bp = 50000L, step_bp = 25000L)
 ```
 
-### 13.6 Haplotype association testing
+### 13.5 Breeding decision tools: haplotype stacking
+
+``` r
+pred <- run_haplotype_prediction(
+  geno_matrix = ldx_geno, snp_info = ldx_snp_info, blocks = blocks,
+  blues = blues_vec, verbose = FALSE
+)
+ae <- decompose_block_effects(
+  haplotypes = haps, snp_info = ldx_snp_info,
+  blocks = blocks, snp_effects = pred$snp_effects[[1]]
+)
+scores <- score_favorable_haplotypes(haps, allele_effects = ae, normalize = TRUE)
+head(scores[, c("id","stacking_index","n_blocks_scored","rank")], 10)
+top10  <- scores$id[scores$rank <= 10]
+inv    <- summarize_parent_haplotypes(haps, candidate_ids = top10,
+                                       allele_effects = ae, min_freq = 0.02)
+inv[inv$dosage > 0 & inv$is_rare & !is.na(inv$allele_effect) & inv$allele_effect > 0,
+    c("id","block_id","allele","dosage","allele_freq","allele_effect")]
+```
+
+### 13.6 Haplotype association testing with simpleM correction
 
 [`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md)
-tests every LD block for association using a unified Q+K mixed linear
-model: y = μ + α·x_hap + Σβ_k·PC_k + g + ε. The GRM is built once from
-the haplotype feature matrix and inverted once per trait
-([`rrBLUP::mixed.solve()`](https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html)).
-Per-allele Wald tests across all blocks are then fully vectorised in a
-single BLAS call. An omnibus F-test per block identifies which blocks
-drive overall association.
+uses a unified Q+K mixed linear model. The **simpleM** procedure (Gao et
+al. 2008, 2010, 2011) estimates the effective number of independent
+tests (Meff) from the eigenspectrum of the haplotype allele dosage
+correlation matrix, providing family-wise error control that is less
+conservative than raw Bonferroni.
 
 ``` r
 blues_vec <- setNames(ldx_blues$YLD, ldx_blues$id)
 
-# EMMAX (pure GRM correction, n_pcs = 0 — default)
-assoc <- test_block_haplotypes(
+# EMMAX with FDR — recommended for discovery
+assoc_fdr <- test_block_haplotypes(
   haplotypes = haps,
   blues      = blues_vec,
   blocks     = blocks,
-  n_pcs      = 0L,       # 0 = EMMAX; >0 = Q+K model
-  min_freq   = 0.05,
+  n_pcs      = 0L,
+  sig_metric = "p_fdr",
   verbose    = FALSE
 )
+cat("Significant (FDR <= 0.05):", sum(assoc_fdr$allele_tests$significant), "\n")
 
-# Access results
-cat("Total allele tests:", assoc$n_tests, "\n")
-cat("Significant alleles (Bonferroni):", sum(assoc$allele_tests$significant), "\n")
-cat("Significant blocks (omnibus):", sum(assoc$block_tests$significant_omnibus), "\n")
-
-# Top blocks by omnibus p-value
-head(assoc$block_tests[order(assoc$block_tests$p_omnibus),
-                        c("block_id","CHR","start_bp","n_alleles_tested",
-                          "F_stat","p_omnibus","var_explained")], 5)
-
-# Significant per-allele associations with their effects
-assoc$allele_tests[assoc$allele_tests$significant,
-                   c("block_id","trait","allele","frequency","effect","SE","p_wald")]
-```
-
-When strong discrete population structure is present (e.g. multiple
-breeds or ecotypes), use the Q+K model by setting `n_pcs > 0`. The PCs
-are derived from the GRM itself, ensuring mathematical consistency
-between the fixed-effect population structure correction and the kinship
-random effect:
-
-``` r
-# Q+K model — 3 GRM-derived PCs as fixed effects + GRM kinship random effect
-assoc_qk <- test_block_haplotypes(
-  haplotypes = haps,
-  blues      = blues_vec,
-  blocks     = blocks,
-  n_pcs      = 3L,
-  verbose    = FALSE
+# Q+K with simpleM Šidák — recommended for family-wise error control
+assoc_sm <- test_block_haplotypes(
+  haplotypes       = haps,
+  blues            = blues_vec,
+  blocks           = blocks,
+  n_pcs            = 3L,                 # Q+K model
+  sig_metric       = "p_simplem_sidak",  # simpleM Šidák correction
+  meff_scope       = "chromosome",       # recommended: separate Meff per chr
+  meff_percent_cut = 0.995,              # 99.5% variance threshold (Gao default)
+  verbose          = FALSE
 )
-cat("PCs used:", assoc_qk$n_pcs_used, "\n")
 
-# Multi-trait: all traits share the same GRM — one call tests all
+# Per-chromosome Meff
+assoc_sm$meff$trait$allele$chromosome
+
+# All four p-value columns always present regardless of sig_metric
+# p_wald | p_fdr | p_simplem | p_simplem_sidak | Meff | alpha_simplem | ...
+head(assoc_sm$allele_tests[order(assoc_sm$allele_tests$p_wald),
+                            c("block_id","allele","effect","SE",
+                              "p_wald","p_simplem","p_simplem_sidak","Meff")], 5)
+
+# Multi-trait: all traits share the same GRM
 assoc_mt <- test_block_haplotypes(
   haplotypes = haps,
   blues      = ldx_blues,
@@ -980,192 +601,173 @@ assoc_mt <- test_block_haplotypes(
   id_col     = "id",
   blue_cols  = c("YLD", "RES"),
   n_pcs      = 3L,
+  sig_metric = "p_simplem_sidak",
   verbose    = FALSE
 )
-# Compare block significance across traits
-library(dplyr)
-assoc_mt$block_tests |>
-  filter(significant_omnibus) |>
-  select(block_id, CHR, trait, p_omnibus, var_explained)
 ```
 
 [`estimate_diplotype_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/estimate_diplotype_effects.md)
-decomposes phenotypic variation into additive and dominance components
-at each block. The dominance ratio d/a classifies gene action: 0 =
-purely additive; ±1 = complete dominance; \|d/a\| \> 1 = overdominance
-(heterozygote advantage, evidence for heterosis at this block).
+decomposes phenotypic variation into additive and dominance components:
 
 ``` r
 dip <- estimate_diplotype_effects(
-  haplotypes      = haps,
-  blues           = blues_vec,
-  blocks          = blocks,
-  min_n_diplotype = 3L,   # minimum individuals per diplotype class
-  verbose         = FALSE
+  haplotypes = haps, blues = blues_vec, blocks = blocks,
+  min_n_diplotype = 3L, verbose = FALSE
 )
-
-# Diplotype class means (de-regressed phenotype scale)
-head(dip$diplotype_means[order(dip$diplotype_means$mean_blue, decreasing=TRUE),
-                          c("block_id","diplotype","n","mean_blue","se_mean")], 8)
-
-# Dominance decomposition: a and d for each allele pair
-head(dip$dominance_table[, c("block_id","allele_A","allele_B",
-                               "a","d","d_over_a","overdominance")], 8)
-
-# Blocks showing overdominance — potential heterosis targets
-od <- dip$dominance_table[!is.na(dip$dominance_table$overdominance) &
-                           dip$dominance_table$overdominance, ]
-cat("Overdominant allele pairs:", nrow(od), "\n")
-
-# Statistically significant diplotype effects
-dip$omnibus_tests[dip$omnibus_tests$significant,
-                  c("block_id","n_diplotypes","F_stat","p_omnibus_adj")]
+dip$dominance_table[dip$dominance_table$overdominance,
+                    c("block_id","allele_A","allele_B","a","d","d_over_a")]
 ```
 
-### 13.7 Breeding decision tools: haplotype stacking
+### 13.7 Breeding decision summary
 
-Once per-allele effects are known,
-[`score_favorable_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/score_favorable_haplotypes.md)
-and
-[`summarize_parent_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/summarize_parent_haplotypes.md)
-translate genomic prediction results into actionable selection and
-crossing decisions.
+See section 13.5 above and the complete example in
+[`?score_favorable_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/score_favorable_haplotypes.md).
+
+### 13.8 Cross-population GWAS validation
+
+[`compare_block_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/compare_block_effects.md)
+validates whether haplotype effects from one population replicate in
+another. It computes IVW meta-analytic effects, Cochran Q heterogeneity
+(tests whether effect sizes differ between populations), I²
+inconsistency, and direction agreement per block.
+
+**Key distinction:** `boundary_overlap_ratio` is an **output column**
+automatically computed from the block tables you supply — you cannot set
+it. `boundary_overlap_warn` is an **input parameter** (default `0.80`)
+that controls when `boundary_warning = TRUE` is raised in the output.
 
 ``` r
-# Step 1: Get per-allele effects from the prediction pipeline
-pred <- run_haplotype_prediction(
-  geno_matrix = ldx_geno,
-  snp_info    = ldx_snp_info,
-  blocks      = blocks,
-  blues       = blues_vec,
-  verbose     = FALSE
+# Best practice: use Pop A's block boundaries for Pop B to maximise
+# shared alleles and ensure haplotype strings are directly comparable.
+haps_B_harm <- harmonize_haplotypes(
+  extract_haplotypes(geno_B, snp_info, blocks_A),  # same block coordinates
+  reference = haps_A
 )
 
-ae <- decompose_block_effects(
-  haplotypes  = haps,
-  snp_info    = ldx_snp_info,
-  blocks      = blocks,
-  snp_effects = pred$snp_effects[[1]]   # first trait
+assoc_A <- test_block_haplotypes(haps_A, blues = blues_A, blocks = blocks_A,
+                                  sig_metric = "p_simplem_sidak")
+assoc_B <- test_block_haplotypes(haps_B_harm, blues = blues_B, blocks = blocks_A,
+                                  sig_metric = "p_simplem_sidak")
+
+# block_match = "id" (default): match by block_id string
+# block_match = "position": match by genomic IoU -- use when blocks differ
+conc <- compare_block_effects(
+  assoc_A, assoc_B,
+  pop1_name             = "PopA",
+  pop2_name             = "PopB",
+  blocks_pop1           = blocks_A,
+  blocks_pop2           = blocks_B,   # Pop B own block table (may differ)
+  block_match           = "position", # recommended when blocks not identical
+  overlap_min           = 0.50,
+  direction_threshold   = 0.75,
+  boundary_overlap_warn = 0.80
 )
-cat("Allele effect table:", nrow(ae), "alleles across",
-    length(unique(ae$block_id)), "blocks\n")
-head(ae[order(-ae$allele_effect), c("block_id","allele","frequency","allele_effect")], 5)
+
+# $concordance — one row per block: IVW effect, Q_stat, I2, replicated, ...
+conc$concordance[conc$concordance$replicated,
+                 c("block_id","n_shared_alleles","direction_agreement",
+                   "meta_p","Q_p","I2","replicated")]
+
+# $shared_alleles — per-allele IVW detail
+head(conc$shared_alleles[, c("block_id","allele","effect_pop1","effect_pop2",
+                               "direction_agree","ivw_effect","ivw_SE")])
+
+print(conc)   # summary: n blocks compared, n replicated, median I²
 ```
+
+**Interpreting the output:**
+
+| Statistic | Strong replication | Concern |
+|----|----|----|
+| `direction_agreement` | ≥ 0.75 | \< 0.5 (effects inconsistent) |
+| `Q_p` | \> 0.05 (no heterogeneity) | \< 0.05 (effect sizes differ) |
+| `I2` | \< 25% | \> 50% (substantial heterogeneity) |
+| `boundary_warning` | FALSE | TRUE (LD structure may differ) |
+| `match_type` | `"exact"` or `"position"` | `"pop1_only"` (no overlapping Pop2 block) |
+
+------------------------------------------------------------------------
+
+### 13.9 Cross-population validation from external GWAS
+
+When GWAS was run outside LDxBlocks, use
+[`compare_gwas_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/compare_gwas_effects.md).
+It accepts either the output of
+[`define_qtl_regions()`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md)
+(recommended, most auditable) or raw GWAS data frames plus block tables
+(convenience path).
 
 ``` r
-# Step 2: Score every individual's genome-wide haplotype portfolio
-scores <- score_favorable_haplotypes(
-  haplotypes     = haps,
-  allele_effects = ae,
-  min_freq       = 0.02,   # exclude private alleles
-  normalize      = TRUE    # [0,1] scale within this panel
+# Path 1: pre-mapped (recommended)
+# define_qtl_regions() maps each marker to its LD block and identifies
+# the lead SNP (smallest p-value) as the block representative.
+qtl_A <- define_qtl_regions(gwas_A, blocks, snp_info, p_threshold = 5e-8)
+qtl_B <- define_qtl_regions(gwas_B, blocks, snp_info, p_threshold = 5e-8)
+
+conc_gwas <- compare_gwas_effects(
+  qtl_pop1    = qtl_A,
+  qtl_pop2    = qtl_B,
+  blocks_pop1 = blocks_A,
+  blocks_pop2 = blocks_B,
+  block_match = "position",
+  overlap_min = 0.50,
+  pop1_name   = "PopA",
+  pop2_name   = "PopB"
 )
 
-# Top 10 selection candidates
-head(scores[, c("id","stacking_index","n_blocks_scored","rank")], 10)
-
-# Which blocks drive the top candidate's genome-wide score?
-top_candidate <- scores$id[1]
-block_scores  <- scores[scores$id == top_candidate,
-                         grepl("^score_", names(scores))]
-top5_blocks   <- names(sort(as.numeric(block_scores), decreasing=TRUE))[1:5]
-cat("Top 5 contributing blocks for", top_candidate, ":\n")
-print(top5_blocks)
-```
-
-``` r
-# Step 3: Allele inventory for candidate parents
-# — who carries what, at which blocks, in what dosage?
-top10 <- scores$id[scores$rank <= 10]
-
-inv <- summarize_parent_haplotypes(
-  haplotypes     = haps,
-  candidate_ids  = top10,
-  allele_effects = ae,
-  min_freq       = 0.02
+# Path 2: raw GWAS + blocks (calls define_qtl_regions internally)
+# When SE is absent, it is derived from BETA and P via z-score.
+# Column names are flexible: use beta_col, se_col, p_col arguments.
+conc_raw <- compare_gwas_effects(
+  gwas_pop1     = gwas_A,
+  gwas_pop2     = gwas_B,
+  blocks_pop1   = blocks,
+  blocks_pop2   = blocks,
+  snp_info_pop1 = snp_info,   # snp_info_pop2 reuses this when NULL (shared panel)
+  pop1_name     = "PopA",
+  pop2_name     = "PopB",
+  p_threshold   = 5e-8,
+  beta_col      = "BETA",     # change if named differently in your GWAS output
+  se_col        = "SE",       # NULL or absent: derived from z-score automatically
+  p_col         = "P"
 )
 
-# Candidates carrying rare favourable alleles (freq < 10%)
-inv_rare <- inv[inv$dosage > 0 & inv$is_rare & !is.na(inv$allele_effect) &
-                inv$allele_effect > 0, ]
-cat("Rare favourable allele carriers:\n")
-print(inv_rare[order(-inv_rare$allele_effect),
-               c("id","block_id","CHR","allele","dosage","allele_freq","allele_effect")])
+# Same output class as compare_block_effects()
+# Extra columns: lead_snp_pop1/pop2, lead_p_pop1/pop2,
+#                se_derived_pop1/pop2, both_pleiotropic
+conc_gwas$concordance[conc_gwas$concordance$replicated, ]
+print(conc_gwas)
 ```
 
-``` r
-# Step 4: Identify blocks where top candidates carry different alleles
-# — these are the most promising crossing targets for allele stacking
-library(dplyr)
-inv |>
-  filter(dosage > 0) |>
-  group_by(block_id, CHR, start_bp) |>
-  summarise(
-    n_unique_alleles = n_distinct(allele),
-    carriers         = paste(unique(id), collapse=","),
-    max_effect       = max(allele_effect, na.rm = TRUE),
-    .groups          = "drop"
-  ) |>
-  filter(n_unique_alleles > 1) |>            # complementary alleles present
-  arrange(desc(max_effect)) |>               # rank by largest effect available
-  head(10)
-```
-
-This workflow — prediction → effect decomposition → portfolio scoring →
-parent inventory → crossing design — forms the complete haplotype-based
-breeding decision layer implemented in LDxBlocks.
+Note that because external GWAS provides one lead SNP per block (not
+multiple haplotype alleles), `effect_correlation` and Cochran Q are
+always `NA`. Replication is judged by direction agreement and
+`meta_p ≤ 0.05`.
 
 ## 14. References
 
-- Kim S-A, Cho C-S, Kim S-R, Bull SB, Yoo Y-J (2018). A new haplotype
-  block detection method for dense genome sequencing data based on
-  interval graph modeling and dynamic programming. *Bioinformatics*
-  **34**(4):588-596. <https://doi.org/10.1093/bioinformatics/btx609>
-- Difabachew YF, Frisch M, Langstroff AL, Stahl A, Wittkop B, Snowdon
-  RJ, Koch M, Kirchhoff M, Csélényi L, Wolf M, Förster J, Weber S, Okoye
-  UJ, Zenke-Philippi C (2023). Genomic prediction with haplotype blocks
-  in wheat. *Frontiers in Plant Science* **14**:1168547.
-  <https://doi.org/10.3389/fpls.2023.1168547>
-- Weber SE, Frisch M, Snowdon RJ, Voss-Fels KP (2023). Haplotype blocks
-  for genomic prediction: a comparative evaluation in multiple crop
-  datasets. *Frontiers in Plant Science* **14**:1217589.
-  <https://doi.org/10.3389/fpls.2023.1217589>
-- Pook T, Schlather M, de los Campos G, Mayer M, Schoen CC, Simianer H
-  (2019). HaploBlocker: Creation of subgroup-specific haplotype blocks
-  and libraries. *Genetics* **212**(4):1045-1061.
-  <https://doi.org/10.1534/genetics.119.302283>
-- Tong J, Tarekegn ZT, Jambuthenne D, Alahmad S, Periyannan S, Hickey L,
-  Dinglasan E, Hayes B (2024). Stacking beneficial haplotypes from the
-  Vavilov wheat collection to accelerate breeding for multiple disease
-  resistance. *Theoretical and Applied Genetics* **137**:274.
+- Kim S-A et al. (2018). *Bioinformatics* **34**(4):588-596.
+  <https://doi.org/10.1093/bioinformatics/btx609>
+- Gao X, Starmer J, Martin ER (2008). A multiple testing correction
+  method for genetic association studies using correlated SNPs. *Genetic
+  Epidemiology* **32**:361-369. <https://doi.org/10.1002/gepi.20310>
+- Gao X et al. (2010). Avoiding the high Bonferroni penalty in GWAS.
+  *Genetic Epidemiology* **34**:100-105.
+  <https://doi.org/10.1002/gepi.20430>
+- Gao X (2011). Multiple testing corrections for imputed SNPs. *Genetic
+  Epidemiology* **35**:154-158. <https://doi.org/10.1002/gepi.20563>
+- Borenstein M et al. (2009). *Introduction to Meta-Analysis*. Wiley.
+- Higgins JPT, Thompson SG (2002). Quantifying heterogeneity in a
+  meta-analysis. *Statistics in Medicine* **21**:1539-1558.
+  <https://doi.org/10.1002/sim.1186>
+- Tong J et al. (2025). *Theor Appl Genet* **138**:267.
+  <https://doi.org/10.1007/s00122-025-05045-0>
+- Tong J et al. (2024). *Theor Appl Genet* **137**:274.
   <https://doi.org/10.1007/s00122-024-04784-w>
-- Tong J et al. (2025). Haplotype stacking to improve stability of
-  stripe rust resistance in wheat. *Theoretical and Applied Genetics*
-  **138**:267. <https://doi.org/10.1007/s00122-025-05045-0>
-- Mangin B, Siberchicot A, Nicolas S, Doligez A, This P, Cierco-Ayrolles
-  C (2012). Novel measures of linkage disequilibrium that correct the
-  bias due to population structure and relatedness. *Heredity*
-  **108**(3):285-291. <https://doi.org/10.1038/hdy.2011.73>
-- VanRaden PM (2008). Efficient methods to compute genomic predictions.
-  *Journal of Dairy Science* **91**(11):4414-4423.
+- Mangin B et al. (2012). *Heredity* **108**(3):285-291.
+  <https://doi.org/10.1038/hdy.2011.73>
+- VanRaden PM (2008). *Journal of Dairy Science* **91**(11):4414-4423.
   <https://doi.org/10.3168/jds.2007-0980>
-- Covarrubias-Pazaran G (2016). Genome-assisted prediction of
-  quantitative traits using the R package sommer. *PLOS ONE*
-  **11**:e0156744. <https://doi.org/10.1371/journal.pone.0156744>
-- Calus MPL, Meuwissen THE, de Roos APW, Veerkamp RF (2008). Accuracy of
-  genomic selection using different methods to define haplotypes.
-  *Genetics* **178**(1):553-561.
-  <https://doi.org/10.1534/genetics.107.080838>
-- de Roos APW, Hayes BJ, Goddard ME (2009). Reliability of genomic
-  predictions across multiple populations. *Genetics*
-  **183**(4):1545-1553. <https://doi.org/10.1534/genetics.109.104935>
-- Nei M (1973). Analysis of gene diversity in subdivided populations.
-  *Proceedings of the National Academy of Sciences*
-  **70**(12):3321-3323. <https://doi.org/10.1073/pnas.70.12.3321>
-- Blondel VD, Guillaume J-L, Lambiotte R, Lefebvre E (2008). Fast
-  unfolding of communities in large networks. *Journal of Statistical
-  Mechanics: Theory and Experiment* **2008**:P10008.
-  <https://doi.org/10.1088/1742-5468/2008/10/P10008>
-- Traag VA, Waltman L, van Eck NJ (2019). From Louvain to Leiden:
-  guaranteeing well-connected communities. *Scientific Reports*
-  **9**:5233. <https://doi.org/10.1038/s41598-019-41695-z>
+- Nei M (1973). *PNAS* **70**(12):3321-3323.
+  <https://doi.org/10.1073/pnas.70.12.3321>
+- Traag VA et al. (2019). *Scientific Reports* **9**:5233.
+  <https://doi.org/10.1038/s41598-019-41695-z>

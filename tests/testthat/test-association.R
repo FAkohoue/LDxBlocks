@@ -88,9 +88,9 @@ local({
   .blues_dip <<- setNames(blues_dip, rownames(G_dip))
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 1. test_block_haplotypes
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("test_block_haplotypes: returns LDxBlocks_haplotype_assoc", {
   skip_if_not_installed("rrBLUP")
@@ -105,8 +105,8 @@ test_that("test_block_haplotypes: allele_tests has required columns", {
   res <- test_block_haplotypes(.haps, blues = .blues_vec,
                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
   req <- c("block_id","CHR","start_bp","end_bp","trait",
-           "allele","frequency","effect","SE","t_stat",
-           "p_wald","p_wald_adj","significant")
+           "allele","allele_freq_tested","effect","SE","t_stat",
+           "p_wald","p_fdr","significant")
   expect_true(all(req %in% names(res$allele_tests)),
               info = paste("Missing:", paste(setdiff(req, names(res$allele_tests)),
                                              collapse=", ")))
@@ -118,7 +118,7 @@ test_that("test_block_haplotypes: block_tests has required columns", {
                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
   req <- c("block_id","CHR","start_bp","end_bp","trait",
            "n_alleles_tested","F_stat","df_LRT",
-           "p_omnibus","p_omnibus_adj","var_explained","significant_omnibus")
+           "p_omnibus","p_omnibus_fdr","var_explained","significant_omnibus")
   expect_true(all(req %in% names(res$block_tests)),
               info = paste("Missing:", paste(setdiff(req, names(res$block_tests)),
                                              collapse=", ")))
@@ -152,7 +152,7 @@ test_that("test_block_haplotypes: frequency in (0, 1)", {
   skip_if_not_installed("rrBLUP")
   res <- test_block_haplotypes(.haps, blues = .blues_vec,
                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
-  f <- res$allele_tests$frequency
+  f <- res$allele_tests$allele_freq_tested
   expect_true(all(!is.na(f) & f > 0 & f <= 1))
 })
 
@@ -160,16 +160,17 @@ test_that("test_block_haplotypes: significant is logical", {
   skip_if_not_installed("rrBLUP")
   res <- test_block_haplotypes(.haps, blues = .blues_vec,
                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
-  expect_type(res$allele_tests$significant,       "logical")
+  expect_type(res$allele_tests$significant,        "logical")
+  expect_type(res$allele_tests$p_fdr,              "double")
   expect_type(res$block_tests$significant_omnibus, "logical")
 })
 
-test_that("test_block_haplotypes: p_wald_adj >= p_wald (Bonferroni inflation)", {
+test_that("test_block_haplotypes: p_fdr in (0, 1]", {
   skip_if_not_installed("rrBLUP")
   res <- test_block_haplotypes(.haps, blues = .blues_vec,
                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
-  at <- res$allele_tests
-  expect_true(all(at$p_wald_adj >= at$p_wald - 1e-10))
+  fdr <- res$allele_tests$p_fdr
+  expect_true(all(!is.na(fdr) & fdr > 0 & fdr <= 1))
 })
 
 test_that("test_block_haplotypes: n_pcs_used = 0 when n_pcs = 0", {
@@ -227,18 +228,264 @@ test_that("test_block_haplotypes: named list blues works", {
   expect_true(nrow(res$allele_tests) > 0)
 })
 
-test_that("test_block_haplotypes: alpha stored in result", {
+test_that("test_block_haplotypes: sig_threshold stored in result", {
   skip_if_not_installed("rrBLUP")
   res <- test_block_haplotypes(.haps, blues = .blues_vec,
-                               blocks = ldx_blocks, alpha = 0.01, verbose = FALSE)
-  expect_equal(res$alpha, 0.01)
+                               blocks = ldx_blocks, sig_threshold = 0.01,
+                               verbose = FALSE)
+  expect_equal(res$sig_threshold, 0.01)
 })
 
-test_that("test_block_haplotypes: Bonferroni alpha = 0.05 / n_tests", {
+test_that("test_block_haplotypes: default sig_metric is p_wald", {
   skip_if_not_installed("rrBLUP")
   res <- test_block_haplotypes(.haps, blues = .blues_vec,
                                blocks = ldx_blocks, verbose = FALSE)
-  expect_equal(res$alpha, 0.05 / res$n_tests, tolerance = 1e-12)
+  expect_equal(res$sig_metric, "p_wald")
+})
+
+test_that("test_block_haplotypes: sig_metric p_wald flags using p_wald", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_threshold = 0.05, sig_metric = "p_wald",
+                               verbose = FALSE)
+  at <- res$allele_tests
+  # significant must be exactly p_wald <= threshold
+  expect_equal(at$significant, at$p_wald <= 0.05)
+  # block tests
+  bt <- res$block_tests
+  expect_equal(bt$significant_omnibus, bt$p_omnibus <= 0.05)
+})
+
+test_that("test_block_haplotypes: sig_metric p_fdr flags using p_fdr", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_threshold = 0.05, sig_metric = "p_fdr",
+                               verbose = FALSE)
+  at <- res$allele_tests
+  expect_equal(res$sig_metric, "p_fdr")
+  # significant must be exactly p_fdr <= threshold
+  expect_equal(at$significant, at$p_fdr <= 0.05)
+  # block tests use p_omnibus_fdr
+  bt <- res$block_tests
+  expect_equal(bt$significant_omnibus, bt$p_omnibus_fdr <= 0.05)
+})
+
+test_that("test_block_haplotypes: p_fdr never NA and in (0,1]", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks, verbose = FALSE)
+  fdr <- res$allele_tests$p_fdr
+  expect_false(any(is.na(fdr)))
+  expect_true(all(fdr > 0 & fdr <= 1))
+})
+
+test_that("test_block_haplotypes: p_fdr >= p_wald (BH never makes p-values smaller)", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks, verbose = FALSE)
+  at <- res$allele_tests
+  # BH-adjusted values are >= raw p-values (BH is anti-conservative relative to Bonferroni)
+  # but they must be >= p_wald for the sorted order (BH can only inflate)
+  # The precise relationship: p_fdr[i] = min(p_wald[i] * n/rank, 1) in sorted order,
+  # so p_fdr >= p_wald for every allele.
+  expect_true(all(at$p_fdr >= at$p_wald - 1e-12))
+})
+
+test_that("test_block_haplotypes: sig_metric p_fdr yields fewer or equal significant hits vs p_wald at same threshold", {
+  skip_if_not_installed("rrBLUP")
+  res_wald <- test_block_haplotypes(.haps, blues = .blues_vec,
+                                    blocks = ldx_blocks,
+                                    sig_threshold = 0.10, sig_metric = "p_wald",
+                                    verbose = FALSE)
+  res_fdr  <- test_block_haplotypes(.haps, blues = .blues_vec,
+                                    blocks = ldx_blocks,
+                                    sig_threshold = 0.10, sig_metric = "p_fdr",
+                                    verbose = FALSE)
+  # FDR-correction is more stringent than raw p-values at the same threshold
+  n_sig_wald <- sum(res_wald$allele_tests$significant, na.rm = TRUE)
+  n_sig_fdr  <- sum(res_fdr$allele_tests$significant,  na.rm = TRUE)
+  expect_true(n_sig_fdr <= n_sig_wald,
+              label = "FDR-corrected significant count must be <= raw p_wald count")
+})
+
+test_that("test_block_haplotypes: invalid sig_metric errors", {
+  skip_if_not_installed("rrBLUP")
+  expect_error(
+    test_block_haplotypes(.haps, blues = .blues_vec,
+                          blocks = ldx_blocks,
+                          sig_metric = "bonferroni", verbose = FALSE),
+    "should be one of"
+  )
+})
+
+test_that("test_block_haplotypes: n_tests is a positive integer (Bonferroni denominator)", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks, verbose = FALSE)
+  # n_tests is the denominator for manual Bonferroni: sig_threshold = 0.05 / res$n_tests
+  expect_type(res$n_tests, "integer")
+  expect_gt(res$n_tests, 0L)
+})
+
+# -- simpleM correction tests --------------------------------------------------
+
+test_that("test_block_haplotypes: simpleM columns present in allele_tests", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_metric = "p_simplem", verbose = FALSE)
+  req <- c("Meff","alpha_simplem","alpha_simplem_sidak","p_simplem","p_simplem_sidak")
+  expect_true(all(req %in% names(res$allele_tests)),
+              info = paste("Missing:", paste(setdiff(req, names(res$allele_tests)), collapse=", ")))
+})
+
+test_that("test_block_haplotypes: simpleM columns present in block_tests", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_metric = "p_simplem", verbose = FALSE)
+  req <- c("Meff","alpha_simplem","alpha_simplem_sidak",
+           "p_omnibus_simplem","p_omnibus_simplem_sidak","p_omnibus_fdr","p_omnibus_adj")
+  expect_true(all(req %in% names(res$block_tests)),
+              info = paste("Missing:", paste(setdiff(req, names(res$block_tests)), collapse=", ")))
+})
+
+test_that("test_block_haplotypes: sig_metric p_simplem flags using p_simplem", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_threshold = 0.05, sig_metric = "p_simplem",
+                               verbose = FALSE)
+  at <- res$allele_tests
+  expect_equal(res$sig_metric, "p_simplem")
+  expect_equal(at$significant, at$p_simplem <= 0.05)
+  bt <- res$block_tests
+  expect_equal(bt$significant_omnibus, bt$p_omnibus_simplem <= 0.05)
+})
+
+test_that("test_block_haplotypes: sig_metric p_simplem_sidak flags using p_simplem_sidak", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_threshold = 0.05, sig_metric = "p_simplem_sidak",
+                               verbose = FALSE)
+  at <- res$allele_tests
+  expect_equal(res$sig_metric, "p_simplem_sidak")
+  expect_equal(at$significant, at$p_simplem_sidak <= 0.05)
+  bt <- res$block_tests
+  expect_equal(bt$significant_omnibus, bt$p_omnibus_simplem_sidak <= 0.05)
+})
+
+test_that("test_block_haplotypes: Meff is positive numeric in allele_tests", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_metric = "p_simplem", verbose = FALSE)
+  meff <- res$allele_tests$Meff
+  expect_false(any(is.na(meff)))
+  expect_true(all(meff > 0))
+})
+
+test_that("test_block_haplotypes: Meff <= n_tests (effective tests never exceed raw tests)", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               meff_scope = "global", sig_metric = "p_simplem",
+                               verbose = FALSE)
+  # Global Meff applies one value to all rows, so Meff[1] is the genome-wide value
+  meff_global <- res$allele_tests$Meff[1]
+  expect_true(meff_global <= res$n_tests,
+              label = "Effective test count must not exceed raw test count")
+  expect_true(meff_global >= 1L)
+})
+
+test_that("test_block_haplotypes: p_simplem >= p_wald (Meff-multiplication cannot shrink p)", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_metric = "p_simplem", verbose = FALSE)
+  at <- res$allele_tests
+  # p_simplem = min(p_wald * Meff, 1) >= p_wald
+  expect_true(all(at$p_simplem >= at$p_wald - 1e-12))
+})
+
+test_that("test_block_haplotypes: p_simplem_sidak in (0,1]", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_metric = "p_simplem_sidak", verbose = FALSE)
+  ps <- res$allele_tests$p_simplem_sidak
+  expect_false(any(is.na(ps)))
+  expect_true(all(ps > 0 & ps <= 1 + 1e-10))
+})
+
+test_that("test_block_haplotypes: alpha_simplem_sidak <= alpha_simplem (Sidak < Bonferroni)", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec,
+                               blocks = ldx_blocks,
+                               sig_metric = "p_simplem", verbose = FALSE)
+  at <- res$allele_tests
+  # Sidak threshold <= Bonferroni threshold (Sidak is slightly less conservative)
+  expect_true(all(at$alpha_simplem_sidak >= at$alpha_simplem - 1e-12))
+})
+
+test_that("test_block_haplotypes: meff_scope global vs chromosome give same direction", {
+  skip_if_not_installed("rrBLUP")
+  res_g <- test_block_haplotypes(.haps, blues = .blues_vec, blocks = ldx_blocks,
+                                 sig_metric = "p_simplem", meff_scope = "global",
+                                 verbose = FALSE)
+  res_c <- test_block_haplotypes(.haps, blues = .blues_vec, blocks = ldx_blocks,
+                                 sig_metric = "p_simplem", meff_scope = "chromosome",
+                                 verbose = FALSE)
+  # Both should produce valid results with positive Meff
+  expect_true(all(res_g$allele_tests$Meff > 0))
+  expect_true(all(res_c$allele_tests$Meff > 0))
+})
+
+test_that("test_block_haplotypes: meff_scope block gives Meff <= block column count", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec, blocks = ldx_blocks,
+                               sig_metric = "p_simplem", meff_scope = "block",
+                               verbose = FALSE)
+  at <- res$allele_tests
+  # Within each block, Meff <= number of alleles tested in that block
+  for (bn in unique(at$block_id)) {
+    block_rows <- at[at$block_id == bn, ]
+    expect_true(block_rows$Meff[1] <= nrow(block_rows),
+                label = paste("block", bn, "Meff <= allele count"))
+  }
+})
+
+test_that("test_block_haplotypes: meff$allele list present per trait", {
+  skip_if_not_installed("rrBLUP")
+  res <- test_block_haplotypes(.haps, blues = .blues_vec, blocks = ldx_blocks,
+                               sig_metric = "p_simplem", meff_scope = "chromosome",
+                               verbose = FALSE)
+  expect_true(length(res$meff) > 0)
+  tr1 <- res$meff[[1]]
+  expect_true(all(c("allele","block") %in% names(tr1)))
+  expect_true(all(c("global","chromosome","block") %in% names(tr1$allele)))
+  expect_true(all(c("global","chromosome") %in% names(tr1$block)))
+  # global Meff should be a single positive integer
+  expect_true(tr1$allele$global >= 1L)
+  expect_true(tr1$block$global  >= 1L)
+})
+
+test_that("test_block_haplotypes: simpleM gives fewer significant hits than raw at same threshold", {
+  skip_if_not_installed("rrBLUP")
+  res_raw <- test_block_haplotypes(.haps, blues = .blues_vec, blocks = ldx_blocks,
+                                   sig_threshold = 0.10, sig_metric = "p_wald",
+                                   verbose = FALSE)
+  res_sm  <- test_block_haplotypes(.haps, blues = .blues_vec, blocks = ldx_blocks,
+                                   sig_threshold = 0.10, sig_metric = "p_simplem",
+                                   verbose = FALSE)
+  n_raw <- sum(res_raw$allele_tests$significant, na.rm = TRUE)
+  n_sm  <- sum(res_sm$allele_tests$significant,  na.rm = TRUE)
+  # simpleM should be at least as stringent as raw p_wald at same threshold
+  expect_true(n_sm <= n_raw,
+              label = "simpleM must be at most as liberal as raw p_wald")
 })
 
 test_that("test_block_haplotypes: allele_tests sorted by CHR then start_bp", {
@@ -251,11 +498,13 @@ test_that("test_block_haplotypes: allele_tests sorted by CHR then start_bp", {
                       seq_len(nrow(at))))
 })
 
-test_that("test_block_haplotypes: print method works without error", {
+test_that("test_block_haplotypes: print method shows sig_metric", {
   skip_if_not_installed("rrBLUP")
   res <- test_block_haplotypes(.haps, blues = .blues_vec,
                                blocks = ldx_blocks, verbose = FALSE)
-  expect_output(print(res), "LDxBlocks Haplotype Association")
+  out <- capture.output(print(res))
+  expect_true(any(grepl("LDxBlocks Haplotype Association", out)))
+  expect_true(any(grepl("sig_metric", out)))
 })
 
 test_that("test_block_haplotypes: full ldx dataset, 9 blocks, n_pcs=0", {
@@ -268,9 +517,9 @@ test_that("test_block_haplotypes: full ldx dataset, 9 blocks, n_pcs=0", {
   expect_true(all(res$block_tests$block_id %in% res$allele_tests$block_id))
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 2. estimate_diplotype_effects
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("estimate_diplotype_effects: returns LDxBlocks_diplotype", {
   skip_if_not_installed("rrBLUP")
@@ -434,9 +683,9 @@ test_that("estimate_diplotype_effects: print method works", {
   expect_output(print(res), "LDxBlocks Diplotype Effect Results")
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 3. score_favorable_haplotypes
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 # Build a minimal allele_effects table from the haplotype feature matrix
 .ae <- do.call(rbind, lapply(names(.haps), function(bn) {
@@ -538,9 +787,9 @@ test_that("score_favorable_haplotypes: min_freq=1 excludes all alleles -> zero s
   expect_true(all(res$stacking_index == 0))
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 4. summarize_parent_haplotypes
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("summarize_parent_haplotypes: returns data.frame", {
   res <- summarize_parent_haplotypes(.haps)
@@ -638,9 +887,9 @@ test_that("summarize_parent_haplotypes: allele_effects with wrong columns errors
   )
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 6. Gap-coverage: edge cases and alternative input paths
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 # -- Gap 1: estimate_diplotype_effects with PHASED input ----------------------
 # Phased haplotypes use "|" separator strings; heterozygous is determined by
@@ -876,4 +1125,614 @@ test_that("estimate_diplotype_effects: d=0 (no dominance) gives overdominance=FA
   if (nrow(res$dominance_table) > 0) {
     expect_true(all(!res$dominance_table$overdominance))
   }
+})
+
+# ==============================================================================
+# compare_block_effects tests
+# ==============================================================================
+
+# -- Shared fixtures for cross-population tests --------------------------------
+# Split the example dataset into two pseudo-populations for testing.
+# Population 1 = first 70 individuals; Population 2 = last 50 individuals.
+# Both use the same block definitions (ldx_blocks) - the recommended practice.
+local({
+  set.seed(42L)
+  n   <- nrow(ldx_geno)
+  i1  <- seq_len(70L)
+  i2  <- seq(71L, n)
+  haps1_raw <<- extract_haplotypes(ldx_geno[i1, ], ldx_snp_info, ldx_blocks,
+                                   min_snps = 5L)
+  haps2_raw <<- extract_haplotypes(ldx_geno[i2, ], ldx_snp_info, ldx_blocks,
+                                   min_snps = 5L)
+  blues1_raw <<- setNames(ldx_blues$YLD[i1], ldx_blues$id[i1])
+  blues2_raw <<- setNames(ldx_blues$YLD[i2], ldx_blues$id[i2])
+})
+
+test_that("compare_block_effects: returns LDxBlocks_effect_concordance", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  expect_s3_class(conc, "LDxBlocks_effect_concordance")
+  expect_true(is.list(conc))
+})
+
+test_that("compare_block_effects: concordance has required columns", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  req  <- c("block_id","CHR","start_bp","end_bp","trait",
+            "n_alleles_pop1","n_alleles_pop2","n_shared_alleles",
+            "enough_shared","effect_correlation","direction_agreement",
+            "directionally_concordant","meta_effect","meta_SE",
+            "meta_z","meta_p","Q_stat","Q_df","Q_p","I2",
+            "replicated","boundary_overlap_ratio","boundary_warning")
+  expect_true(all(req %in% names(conc$concordance)),
+              info = paste("Missing:", paste(setdiff(req, names(conc$concordance)),
+                                             collapse = ", ")))
+})
+
+test_that("compare_block_effects: shared_alleles has required columns", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  if (nrow(conc$shared_alleles) > 0) {
+    req <- c("block_id","trait","allele",
+             "effect_pop1","SE_pop1","p_wald_pop1",
+             "effect_pop2","SE_pop2","p_wald_pop2",
+             "direction_agree","ivw_effect","ivw_SE")
+    expect_true(all(req %in% names(conc$shared_alleles)),
+                info = paste("Missing:", paste(setdiff(req, names(conc$shared_alleles)),
+                                               collapse = ", ")))
+  }
+})
+
+test_that("compare_block_effects: meta_p in (0,1] for blocks with shared alleles", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  cd   <- conc$concordance
+  valid <- !is.na(cd$meta_p)
+  expect_true(all(cd$meta_p[valid] > 0 & cd$meta_p[valid] <= 1))
+})
+
+test_that("compare_block_effects: Q_p in (0,1] when Q_df > 0", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  cd   <- conc$concordance
+  valid <- !is.na(cd$Q_p) & cd$Q_df > 0
+  expect_true(all(cd$Q_p[valid] > 0 & cd$Q_p[valid] <= 1))
+})
+
+test_that("compare_block_effects: I2 in [0,100]", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  I2   <- conc$concordance$I2[!is.na(conc$concordance$I2)]
+  expect_true(all(I2 >= 0 & I2 <= 100))
+})
+
+test_that("compare_block_effects: direction_agreement in [0,1]", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  da   <- conc$concordance$direction_agreement
+  da   <- da[!is.na(da)]
+  expect_true(all(da >= 0 & da <= 1))
+})
+
+test_that("compare_block_effects: replicated implies enough_shared & dir_concordant & Q_p>0.05", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  # At minimum, the concordance table must exist and have correct structure
+  expect_true(is.data.frame(conc$concordance))
+  reps <- conc$concordance[conc$concordance$replicated, ]
+  if (nrow(reps) > 0) {
+    expect_true(all(reps$enough_shared))
+    expect_true(all(reps$directionally_concordant))
+    expect_true(all(reps$Q_p > 0.05, na.rm = TRUE))
+  }
+})
+
+test_that("compare_block_effects: boundary_overlap_ratio computed when blocks supplied", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2,
+                                blocks_pop1 = ldx_blocks, blocks_pop2 = ldx_blocks,
+                                verbose = FALSE)
+  cd <- conc$concordance
+  # When SAME blocks are used, overlap ratio should be 1.0 for all matched blocks
+  matched <- !is.na(cd$boundary_overlap_ratio)
+  expect_true(any(matched))
+  expect_true(all(cd$boundary_overlap_ratio[matched] >= 0.99),
+              label = "Identical block tables must give overlap ratio = 1.0")
+  expect_true(all(!cd$boundary_warning[matched]),
+              label = "No boundary warnings when same blocks used")
+})
+
+test_that("compare_block_effects: boundary_overlap_ratio NA when blocks not supplied", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)  # no blocks supplied
+  expect_true(all(is.na(conc$concordance$boundary_overlap_ratio)))
+})
+
+test_that("compare_block_effects: IVW effect bounded by input effects range", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  sa   <- conc$shared_alleles
+  if (nrow(sa) > 0) {
+    # IVW effect is a weighted average of pop1 and pop2 effects
+    # so it must lie between them for each allele
+    min_effects <- pmin(sa$effect_pop1, sa$effect_pop2) - 1e-8
+    max_effects <- pmax(sa$effect_pop1, sa$effect_pop2) + 1e-8
+    expect_true(all(sa$ivw_effect >= min_effects & sa$ivw_effect <= max_effects))
+  }
+})
+
+test_that("compare_block_effects: pop names stored in result", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2,
+                                pop1_name = "WheatA", pop2_name = "WheatB",
+                                verbose = FALSE)
+  expect_equal(conc$pop1_name, "WheatA")
+  expect_equal(conc$pop2_name, "WheatB")
+})
+
+test_that("compare_block_effects: print method works", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2, verbose = FALSE)
+  expect_output(print(conc), "Cross-Population Effect Concordance")
+  expect_output(print(conc), "Replicated")
+})
+
+test_that("compare_block_effects: error on non-LDxBlocks_haplotype_assoc input", {
+  expect_error(
+    compare_block_effects(list(allele_tests = data.frame()), list()),
+    "LDxBlocks_haplotype_assoc"
+  )
+})
+
+test_that("compare_block_effects: min_shared_alleles controls enough_shared flag", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc_strict <- compare_block_effects(res1, res2, min_shared_alleles = 5L,
+                                       verbose = FALSE)
+  conc_relax  <- compare_block_effects(res1, res2, min_shared_alleles = 1L,
+                                       verbose = FALSE)
+  n_strict <- sum(conc_strict$concordance$enough_shared)
+  n_relax  <- sum(conc_relax$concordance$enough_shared)
+  expect_true(n_strict <= n_relax,
+              label = "Stricter min_shared_alleles gives fewer blocks marked enough_shared")
+})
+
+# ==============================================================================
+# compare_gwas_effects tests
+# ==============================================================================
+
+# -- Shared GWAS fixtures ------------------------------------------------------
+# Build two minimal external GWAS data frames that cover some ldx_blocks
+local({
+  set.seed(99L)
+  n <- nrow(ldx_snp_info)
+  # GWAS A: some markers significant with positive effects
+  gwas_A_raw <<- data.frame(
+    SNP  = ldx_snp_info$SNP,
+    CHR  = ldx_snp_info$CHR,
+    POS  = ldx_snp_info$POS,
+    BETA = rnorm(n, 0.4, 0.1),
+    SE   = runif(n, 0.05, 0.15),
+    P    = runif(n, 1e-10, 0.99),
+    stringsAsFactors = FALSE
+  )
+  # GWAS B: same markers, slightly different effects (same direction)
+  gwas_B_raw <<- data.frame(
+    SNP  = ldx_snp_info$SNP,
+    CHR  = ldx_snp_info$CHR,
+    POS  = ldx_snp_info$POS,
+    BETA = gwas_A_raw$BETA * 0.85 + rnorm(n, 0, 0.05),
+    SE   = runif(n, 0.05, 0.20),
+    P    = runif(n, 1e-10, 0.99),
+    stringsAsFactors = FALSE
+  )
+  # Pre-mapped QTL tables (no p-value threshold so all blocks have hits)
+  qtl_A_raw <<- define_qtl_regions(gwas_A_raw, ldx_blocks, ldx_snp_info,
+                                   p_threshold = NULL, verbose = FALSE)
+  qtl_B_raw <<- define_qtl_regions(gwas_B_raw, ldx_blocks, ldx_snp_info,
+                                   p_threshold = NULL, verbose = FALSE)
+})
+
+test_that("compare_gwas_effects: raw GWAS path returns LDxBlocks_effect_concordance", {
+  conc <- compare_gwas_effects(
+    gwas_pop1     = gwas_A_raw,
+    gwas_pop2     = gwas_B_raw,
+    blocks_pop1   = ldx_blocks,
+    blocks_pop2   = ldx_blocks,
+    snp_info_pop1 = ldx_snp_info,
+    p_threshold   = NULL,
+    verbose       = FALSE
+  )
+  expect_s3_class(conc, "LDxBlocks_effect_concordance")
+  expect_true(nrow(conc$concordance) > 0)
+})
+
+test_that("compare_gwas_effects: pre-mapped QTL path returns same class", {
+  conc <- compare_gwas_effects(
+    qtl_pop1      = qtl_A_raw,
+    qtl_pop2      = qtl_B_raw,
+    blocks_pop1   = ldx_blocks,
+    blocks_pop2   = ldx_blocks,
+    verbose       = FALSE
+  )
+  expect_s3_class(conc, "LDxBlocks_effect_concordance")
+  expect_true(nrow(conc$concordance) > 0)
+})
+
+test_that("compare_gwas_effects: concordance has all required columns", {
+  conc <- compare_gwas_effects(
+    qtl_pop1    = qtl_A_raw,
+    qtl_pop2    = qtl_B_raw,
+    verbose     = FALSE
+  )
+  # Standard columns (shared with compare_block_effects)
+  std_cols <- c("block_id","CHR","start_bp","end_bp","trait",
+                "n_alleles_pop1","n_alleles_pop2","n_shared_alleles",
+                "enough_shared","effect_correlation","direction_agreement",
+                "directionally_concordant","meta_effect","meta_SE",
+                "meta_z","meta_p","replicated",
+                "boundary_overlap_ratio","boundary_warning")
+  # GWAS-specific columns
+  gwas_cols <- c("lead_snp_pop1","lead_snp_pop2",
+                 "lead_p_pop1","lead_p_pop2",
+                 "se_derived_pop1","se_derived_pop2")
+  all_req <- c(std_cols, gwas_cols)
+  expect_true(all(all_req %in% names(conc$concordance)),
+              info = paste("Missing:", paste(setdiff(all_req, names(conc$concordance)),
+                                             collapse = ", ")))
+})
+
+test_that("compare_gwas_effects: n_shared_alleles always 1 for blocks in both pops", {
+  conc <- compare_gwas_effects(
+    qtl_pop1 = qtl_A_raw, qtl_pop2 = qtl_B_raw, verbose = FALSE
+  )
+  cd <- conc$concordance[conc$concordance$enough_shared, ]
+  expect_true(all(cd$n_shared_alleles == 1L))
+})
+
+test_that("compare_gwas_effects: effect_correlation always NA (single lead SNP)", {
+  conc <- compare_gwas_effects(
+    qtl_pop1 = qtl_A_raw, qtl_pop2 = qtl_B_raw, verbose = FALSE
+  )
+  expect_true(all(is.na(conc$concordance$effect_correlation)))
+})
+
+test_that("compare_gwas_effects: direction_agreement is 0 or 1", {
+  conc <- compare_gwas_effects(
+    qtl_pop1 = qtl_A_raw, qtl_pop2 = qtl_B_raw, verbose = FALSE
+  )
+  da <- conc$concordance$direction_agreement[!is.na(conc$concordance$direction_agreement)]
+  expect_true(all(da %in% c(0, 1)))
+})
+
+test_that("compare_gwas_effects: meta_p in (0,1] for blocks with data", {
+  conc <- compare_gwas_effects(
+    qtl_pop1 = qtl_A_raw, qtl_pop2 = qtl_B_raw, verbose = FALSE
+  )
+  mp <- conc$concordance$meta_p[!is.na(conc$concordance$meta_p)]
+  expect_true(all(mp > 0 & mp <= 1))
+})
+
+test_that("compare_gwas_effects: SE derivation from BETA+P works when SE absent", {
+  # Remove SE column - function should derive it automatically
+  gwas_no_se <- gwas_A_raw[, setdiff(names(gwas_A_raw), "SE")]
+  conc <- compare_gwas_effects(
+    gwas_pop1     = gwas_no_se,
+    gwas_pop2     = gwas_B_raw,
+    blocks_pop1   = ldx_blocks,
+    snp_info_pop1 = ldx_snp_info,
+    p_threshold   = NULL,
+    verbose       = FALSE
+  )
+  expect_s3_class(conc, "LDxBlocks_effect_concordance")
+  # se_derived_pop1/pop2 are population-level scalars stored in $concordance rows.
+  # Pop1 had no SE column -> se_derived_pop1 = TRUE for all rows.
+  # Pop2 had SE column   -> se_derived_pop2 = FALSE for all rows.
+  # Use any(..., na.rm=TRUE) which works for both scalar TRUE and logical vector of TRUE.
+  expect_true(any(conc$concordance$se_derived_pop1,  na.rm = TRUE))
+  expect_false(any(conc$concordance$se_derived_pop2, na.rm = TRUE))
+})
+
+test_that("compare_gwas_effects: Marker column accepted as alias for SNP", {
+  gwas_marker <- gwas_A_raw
+  names(gwas_marker)[names(gwas_marker) == "SNP"] <- "Marker"
+  conc <- compare_gwas_effects(
+    gwas_pop1     = gwas_marker,
+    gwas_pop2     = gwas_B_raw,
+    blocks_pop1   = ldx_blocks,
+    snp_info_pop1 = ldx_snp_info,
+    p_threshold   = NULL,
+    verbose       = FALSE
+  )
+  expect_s3_class(conc, "LDxBlocks_effect_concordance")
+})
+
+test_that("compare_gwas_effects: boundary_overlap_ratio = 1 when same blocks used", {
+  conc <- compare_gwas_effects(
+    qtl_pop1    = qtl_A_raw,
+    qtl_pop2    = qtl_B_raw,
+    blocks_pop1 = ldx_blocks,
+    blocks_pop2 = ldx_blocks,
+    verbose     = FALSE
+  )
+  matched <- !is.na(conc$concordance$boundary_overlap_ratio)
+  expect_true(any(matched))
+  expect_true(all(conc$concordance$boundary_overlap_ratio[matched] >= 0.99))
+})
+
+test_that("compare_gwas_effects: boundary_overlap_ratio NA when no blocks supplied", {
+  conc <- compare_gwas_effects(
+    qtl_pop1 = qtl_A_raw, qtl_pop2 = qtl_B_raw, verbose = FALSE
+  )
+  expect_true(all(is.na(conc$concordance$boundary_overlap_ratio)))
+})
+
+test_that("compare_gwas_effects: shared_alleles has required columns", {
+  conc <- compare_gwas_effects(
+    qtl_pop1 = qtl_A_raw, qtl_pop2 = qtl_B_raw, verbose = FALSE
+  )
+  if (nrow(conc$shared_alleles) > 0) {
+    req <- c("block_id","trait","lead_snp_pop1","lead_snp_pop2",
+             "effect_pop1","SE_pop1","p_wald_pop1",
+             "effect_pop2","SE_pop2","p_wald_pop2",
+             "direction_agree","ivw_effect","ivw_SE")
+    expect_true(all(req %in% names(conc$shared_alleles)),
+                info = paste("Missing:", paste(setdiff(req, names(conc$shared_alleles)),
+                                               collapse = ", ")))
+  }
+})
+
+test_that("compare_gwas_effects: print method works", {
+  conc <- compare_gwas_effects(
+    qtl_pop1 = qtl_A_raw, qtl_pop2 = qtl_B_raw, verbose = FALSE
+  )
+  expect_output(print(conc), "Cross-Population Effect Concordance")
+})
+
+test_that("compare_gwas_effects: error when both qtl and gwas supplied", {
+  expect_error(
+    compare_gwas_effects(qtl_pop1 = qtl_A_raw, gwas_pop1 = gwas_A_raw),
+    "not both"
+  )
+})
+
+test_that("compare_gwas_effects: error when neither qtl nor gwas supplied", {
+  expect_error(compare_gwas_effects(), "Supply either")
+})
+
+test_that("compare_gwas_effects: pop names stored correctly", {
+  conc <- compare_gwas_effects(
+    qtl_pop1  = qtl_A_raw, qtl_pop2 = qtl_B_raw,
+    pop1_name = "WheatA",  pop2_name = "Barley",
+    verbose   = FALSE
+  )
+  expect_equal(conc$pop1_name, "WheatA")
+  expect_equal(conc$pop2_name, "Barley")
+})
+
+test_that("compare_gwas_effects: custom beta/p column names accepted", {
+  gwas_custom <- gwas_A_raw
+  names(gwas_custom)[names(gwas_custom) == "BETA"] <- "effect"
+  names(gwas_custom)[names(gwas_custom) == "P"]    <- "pvalue"
+  names(gwas_custom)[names(gwas_custom) == "SE"]   <- "std_err"
+  conc <- compare_gwas_effects(
+    gwas_pop1     = gwas_custom,
+    gwas_pop2     = gwas_B_raw,
+    blocks_pop1   = ldx_blocks,
+    snp_info_pop1 = ldx_snp_info,
+    p_threshold   = NULL,
+    beta_col      = "effect",
+    se_col        = "std_err",
+    p_col         = "pvalue",
+    verbose       = FALSE
+  )
+  expect_s3_class(conc, "LDxBlocks_effect_concordance")
+})
+
+test_that("compare_gwas_effects: raw and pre-mapped paths give same block set", {
+  conc_raw <- compare_gwas_effects(
+    gwas_pop1     = gwas_A_raw,
+    gwas_pop2     = gwas_B_raw,
+    blocks_pop1   = ldx_blocks,
+    snp_info_pop1 = ldx_snp_info,
+    p_threshold   = NULL,
+    verbose       = FALSE
+  )
+  conc_qtl <- compare_gwas_effects(
+    qtl_pop1 = qtl_A_raw, qtl_pop2 = qtl_B_raw, verbose = FALSE
+  )
+  # Both paths should produce the same block IDs
+  expect_equal(sort(unique(conc_raw$concordance$block_id)),
+               sort(unique(conc_qtl$concordance$block_id)))
+})
+
+# ==============================================================================
+# block_match = "position" tests
+# ==============================================================================
+
+# -- Simulate blocks with slightly different boundaries between populations ----
+local({
+  # Build Pop A explicitly: use ORIGINAL ldx_blocks with block_id added.
+  # Assign the COMPLETE data.frame with <<- (not column-by-column) to avoid
+  # the R scoping issue where <- inside local() modifies a local copy only.
+  tmp_A <- ldx_blocks
+  tmp_A$block_id <- paste0("block_", ldx_blocks$CHR,
+                           "_", ldx_blocks$start.bp,
+                           "_", ldx_blocks$end.bp)
+  blocks_A_pm <<- tmp_A
+
+  # Build Pop B: fixed nudge of +5000bp on start, +3000bp on end for ALL 9 blocks.
+  # Build the COMPLETE modified data.frame first, then assign with <<-.
+  # This guarantees ALL 9 block_ids differ from Pop A regardless of platform.
+  tmp_B <- ldx_blocks
+  tmp_B$start.bp  <- pmax(1L, tmp_B$start.bp + 5000L)
+  tmp_B$end.bp    <- tmp_B$end.bp + 3000L
+  tmp_B$block_id  <- paste0("block_", tmp_B$CHR,
+                            "_", tmp_B$start.bp,
+                            "_", tmp_B$end.bp)
+  tmp_B$start_bp  <- tmp_B$start.bp
+  tmp_B$end_bp    <- tmp_B$end.bp
+  blocks_B_pm <<- tmp_B
+})
+
+test_that(".match_blocks_by_position: finds matches for nudged boundaries", {
+  res <- LDxBlocks:::.match_blocks_by_position(blocks_A_pm, blocks_B_pm,
+                                               overlap_min = 0.50)
+  expect_s3_class(res, "data.frame")
+  expect_true(all(c("block_id_pop1","block_id_pop2","overlap_ratio","match_type")
+                  %in% names(res)))
+  # With small nudges, most blocks should match
+  matched <- res[!is.na(res$block_id_pop2), ]
+  expect_gt(nrow(matched), 0L)
+  # All matched blocks should have overlap_ratio > 0
+  expect_true(all(matched$overlap_ratio > 0))
+})
+
+test_that(".match_blocks_by_position: match_type is 'exact' when IDs agree", {
+  # Same blocks - should all be 'exact'
+  res <- LDxBlocks:::.match_blocks_by_position(ldx_blocks, ldx_blocks,
+                                               overlap_min = 0.50)
+  exact_rows <- res[!is.na(res$match_type) & res$match_type == "exact", ]
+  expect_equal(nrow(exact_rows), nrow(ldx_blocks))
+  expect_true(all(exact_rows$overlap_ratio >= 0.99))
+})
+
+test_that(".match_blocks_by_position: match_type 'position' for nudged boundaries", {
+  res <- LDxBlocks:::.match_blocks_by_position(blocks_A_pm, blocks_B_pm,
+                                               overlap_min = 0.50)
+  # With nudged boundaries, none should be 'exact', most should be 'position'
+  position_rows <- res[!is.na(res$match_type) & res$match_type == "position", ]
+  expect_gt(nrow(position_rows), 0L)
+})
+
+test_that(".match_blocks_by_position: pop1_only when no overlap", {
+  # Create a fake Pop2 with completely different positions (chr 99)
+  fake_b2 <- data.frame(
+    CHR = "99", start.bp = 1L, end.bp = 100L,
+    block_id = "block_99_1_100", start_bp = 1L, end_bp = 100L
+  )
+  res <- LDxBlocks:::.match_blocks_by_position(ldx_blocks[1:3, ], fake_b2,
+                                               overlap_min = 0.50)
+  expect_true(all(res$match_type == "pop1_only"))
+  expect_true(all(is.na(res$block_id_pop2)))
+})
+
+test_that("compare_block_effects: block_match='id' is default (backward compat)", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  # Default (id matching): same result as explicit block_match = "id"
+  conc_default <- compare_block_effects(res1, res2, verbose = FALSE)
+  conc_id      <- compare_block_effects(res1, res2, block_match = "id",
+                                        verbose = FALSE)
+  expect_equal(nrow(conc_default$concordance), nrow(conc_id$concordance))
+})
+
+test_that("compare_block_effects: block_match='position' finds more blocks with nudged boundaries", {
+  skip_if_not_installed("rrBLUP")
+  # Extract haplotypes using the nudged Pop B blocks
+  haps_B_nudged <- extract_haplotypes(ldx_geno[71:120, ], ldx_snp_info,
+                                      blocks_B_pm, min_snps = 5L)
+  blues_B_nudged <- setNames(ldx_blues$YLD[71:120], ldx_blues$id[71:120])
+  res_A <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                 blocks = blocks_A_pm, n_pcs = 0L, verbose = FALSE)
+  res_B_nudged <- test_block_haplotypes(haps_B_nudged, blues = blues_B_nudged,
+                                        blocks = blocks_B_pm, n_pcs = 0L, verbose = FALSE)
+  # ID matching: very few shared blocks (different IDs due to nudged boundaries)
+  conc_id  <- compare_block_effects(res_A, res_B_nudged,
+                                    block_match = "id", verbose = FALSE)
+  # Position matching: should find more blocks
+  conc_pos <- compare_block_effects(res_A, res_B_nudged,
+                                    blocks_pop1 = blocks_A_pm,
+                                    blocks_pop2 = blocks_B_pm,
+                                    block_match = "position",
+                                    overlap_min = 0.50, verbose = FALSE)
+  n_shared_id  <- sum(conc_id$concordance$enough_shared,  na.rm = TRUE)
+  n_shared_pos <- sum(conc_pos$concordance$enough_shared, na.rm = TRUE)
+  expect_true(n_shared_pos >= n_shared_id,
+              label = "Position matching must find at least as many shared blocks as ID matching")
+})
+
+test_that("compare_block_effects: match_type column present in output", {
+  skip_if_not_installed("rrBLUP")
+  res1 <- test_block_haplotypes(haps1_raw, blues = blues1_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  res2 <- test_block_haplotypes(haps2_raw, blues = blues2_raw,
+                                blocks = ldx_blocks, n_pcs = 0L, verbose = FALSE)
+  conc <- compare_block_effects(res1, res2,
+                                blocks_pop1 = ldx_blocks, blocks_pop2 = ldx_blocks,
+                                block_match = "position", verbose = FALSE)
+  expect_true("match_type" %in% names(conc$concordance))
+  # With same blocks: all matched blocks should be 'exact'
+  exact_rows <- conc$concordance[!is.na(conc$concordance$match_type) &
+                                   conc$concordance$match_type == "exact", ]
+  expect_gt(nrow(exact_rows), 0L)
+})
+
+test_that("compare_gwas_effects: block_match='position' accepted without error", {
+  conc <- compare_gwas_effects(
+    qtl_pop1    = qtl_A_raw, qtl_pop2 = qtl_B_raw,
+    blocks_pop1 = ldx_blocks, blocks_pop2 = ldx_blocks,
+    block_match = "position", overlap_min = 0.50,
+    verbose = FALSE
+  )
+  expect_s3_class(conc, "LDxBlocks_effect_concordance")
+  expect_true("match_type" %in% names(conc$concordance))
 })

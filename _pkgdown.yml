@@ -30,8 +30,12 @@ home:
     computation (max_bp_distance), and a bigmemory file-backed matrix store.
     Complete downstream pipeline: haplotype analysis (phased and unphased),
     diversity metrics, post-GWAS QTL mapping, single and multi-trait
-    haplotype-based genomic prediction (rrBLUP per trait, shared GRM), and three-evidence
-    block ranking for haplotype stacking.
+    haplotype-based genomic prediction (rrBLUP per trait, shared GRM),
+    three-evidence block ranking for haplotype stacking, and cross-population
+    effect concordance from haplotype association results (compare_block_effects)
+    or any external GWAS tool (compare_gwas_effects, with automatic SE derivation
+    from z-score and block_match = "position" for populations with different
+    LD block boundaries).
   links:
     - text: Browse source code
       href: https://github.com/FAkohoue/LDxBlocks
@@ -50,127 +54,232 @@ articles:
     navbar: "Advanced"
     contents:
       - LDxBlocks-large-scale
+  - title: "Advanced"
+    navbar: "Advanced"
+    contents:
+      - LDxBlocks-phasing
+  - title: "Advanced"
+    navbar: "Advanced"
+    contents:
+      - LDxBlocks-workflow
+
 reference:
-  - title: "Package"
-    desc: Package-level documentation and overview.
+
+# ------------------------------------------------------------
+# Package overview
+# ------------------------------------------------------------
+
+  - title: "Package overview"
+    desc: >
+      Main documentation entry point for LDxBlocks.
     contents:
       - LDxBlocks-package
-  - title: "Main pipeline"
+
+
+# ------------------------------------------------------------
+# Main workflows
+# ------------------------------------------------------------
+
+  - title: "Main workflows"
     desc: >
-      High-level functions for genome-wide LD block detection.
-      run_Big_LD_all_chr() is the recommended entry point.
-      run_ldx_pipeline() runs the complete end-to-end workflow from
-      a single file path.
+      High-level functions covering the full LDxBlocks pipeline,
+      from genotype input to LD block detection, haplotype construction,
+      and genomic prediction.
     contents:
+      - run_ldx_pipeline
       - run_Big_LD_all_chr
       - tune_LD_params
-      - run_ldx_pipeline
-  - title: "Genotype I/O"
+
+
+# ------------------------------------------------------------
+# Genotype input and backend management
+# ------------------------------------------------------------
+
+  - title: "Genotype input and backend"
     desc: >
-      Read genotype data from six formats (numeric dosage CSV, HapMap,
-      VCF, GDS, PLINK BED, R matrix) through a unified backend interface.
-      For WGS-scale panels where peak RAM is a constraint,
-      read_geno_bigmemory() creates a file-backed memory-mapped store
-      (requires bigmemory) with OS-page-fault column access.
+      Import genotype data from multiple formats and manage the LDxBlocks
+      memory-efficient backend for large genomic datasets.
     contents:
       - read_geno
+      - read_geno_bigmemory
       - read_chunk
+      - prepare_geno
       - close_backend
       - print.LDxBlocks_backend
       - summary.LDxBlocks_backend
-      - read_geno_bigmemory
-  - title: "LD computation"
+
+
+# ------------------------------------------------------------
+# LD computation and block detection
+# ------------------------------------------------------------
+
+  - title: "LD computation and block detection"
     desc: >
-      LD matrix computation, decay analysis, and threshold estimation.
+      Core algorithms for LD estimation, LD decay analysis, and
+      genome-wide LD block segmentation using clique-based and
+      community-detection approaches.
     contents:
       - compute_r2
       - compute_rV2
+      - get_V_inv_sqrt
       - compute_ld_decay
       - plot_ld_decay
-      - prepare_geno
-      - get_V_inv_sqrt
-  - title: "Phasing"
+      - summarise_blocks
+      - plot_ld_blocks
+
+
+# ------------------------------------------------------------
+# Phasing tools
+# ------------------------------------------------------------
+
+  - title: "Phasing tools"
     desc: >
-      Functions for obtaining gametic phase from WGS data (Beagle),
-      pedigree records, or pre-phased VCF files.
+      Functions for obtaining gametic phase from WGS data (Beagle)
+      or pre-phased VCF files.
     contents:
       - read_phased_vcf
       - phase_with_beagle
-      - phase_with_pedigree
-  - title: "Haplotype analysis"
+
+
+# ------------------------------------------------------------
+# Haplotype construction and diversity analysis
+# ------------------------------------------------------------
+
+  - title: "Haplotype construction and diversity"
     desc: >
-      Extract haplotypes within LD blocks (phased or unphased), decode
-      haplotype strings to nucleotide sequences, compute diversity metrics,
-      map GWAS hits to QTL regions, and build feature matrices for
-      genomic prediction.
+      Extract haplotypes within LD blocks, decode nucleotide sequences,
+      compute haplotype diversity statistics, and construct genomic
+      prediction features.
     contents:
       - extract_haplotypes
       - decode_haplotype_strings
       - compute_haplotype_diversity
-      - define_qtl_regions
       - build_haplotype_feature_matrix
       - compute_haplotype_grm
-  - title: "Haplotype output writers"
+      - define_qtl_regions
+
+
+# ------------------------------------------------------------
+# Haplotype harmonisation and inference
+# ------------------------------------------------------------
+
+  - title: "Haplotype harmonisation"
     desc: >
-      Write haplotype matrices and diversity tables to disk.
-      Numeric format: phased=0/1/2/NA, unphased=0/1/NA dosage;
-      rows=haplotypes, cols=individuals.
-      Character format: nucleotide sequences with IUPAC ambiguity codes
-      for heterozygous positions; rows=haplotypes, cols=individuals.
-    contents:
-      - write_haplotype_numeric
-      - write_haplotype_character
-      - write_haplotype_diversity
-  - title: "Genomic prediction pipeline (Tong et al. 2024/2025)"
-    desc: >
-      Haplotype-based genomic prediction following Tong et al. (2024/2025).
-      run_haplotype_prediction() accepts a single trait (named vector or
-      one-column data frame) or multiple traits (wide data frame or named
-      list). All traits are fitted via rrBLUP::kin.blup() per trait using
-      a shared GRM. Block importance is aggregated across traits
-      for robust haplotype stacking candidate identification.
-    contents:
-      - prepare_gblup_inputs
-      - run_haplotype_prediction
-      - backsolve_snp_effects
-      - compute_local_gebv
-      - integrate_gwas_haplotypes
-      - rank_haplotype_blocks
-  - title: Analysis extensions
-    desc: Cross-validation, population comparison, stability, export, and effect decomposition
-    contents:
-      - cv_haplotype_prediction
-      - compare_haplotype_populations
-      - plot_haplotype_network
-      - run_haplotype_stability
-      - export_candidate_regions
-      - decompose_block_effects
-      - scan_diversity_windows
-  - title: Haplotype inference and harmonisation
-    desc: True diplotype inference, rare-allele collapsing, and cross-panel label harmonisation
+      Harmonise haplotypes across populations, infer diplotypes,
+      and collapse rare alleles into biologically meaningful groups.
     contents:
       - infer_block_haplotypes
       - collapse_haplotypes
       - harmonize_haplotypes
-  - title: Haplotype association testing
-    desc: Block-level association tests and diplotype effect estimation (Q+K mixed model)
+
+
+# ------------------------------------------------------------
+# Haplotype output writers
+# ------------------------------------------------------------
+
+  - title: "Haplotype export"
+    desc: >
+      Export haplotype dosage matrices and diversity summaries
+      for downstream statistical analyses.
+    contents:
+      - write_haplotype_numeric
+      - write_haplotype_character
+      - write_haplotype_diversity
+
+
+# ------------------------------------------------------------
+# Association and QTL interpretation
+# ------------------------------------------------------------
+
+  - title: "Association and QTL interpretation"
+    desc: >
+      Block-level association tests (Q+K mixed model with simpleM
+      multiple-testing correction), diplotype effect decomposition,
+      cross-population effect concordance from haplotype association results
+      (compare_block_effects) or external GWAS tools (compare_gwas_effects),
+      and GWAS integration.
     contents:
       - test_block_haplotypes
       - estimate_diplotype_effects
-  - title: Breeding decision tools
-    desc: Haplotype portfolio scoring and parent allele inventory for stacking decisions
+      - compare_block_effects
+      - compare_gwas_effects
+      - integrate_gwas_haplotypes
+
+
+# ------------------------------------------------------------
+# Genomic prediction tools
+# ------------------------------------------------------------
+
+  - title: "Genomic prediction"
+    desc: >
+      Haplotype-based genomic prediction following Tong et al. (2024-2025),
+      including GBLUP integration and local GEBV estimation.
     contents:
+      - prepare_gblup_inputs
+      - run_haplotype_prediction
+      - compute_local_gebv
+      - backsolve_snp_effects
+
+
+# ------------------------------------------------------------
+# Breeding decision tools
+# ------------------------------------------------------------
+
+  - title: "Breeding decision support"
+    desc: >
+      Identify favourable haplotypes and rank LD blocks for
+      haplotype stacking strategies.
+    contents:
+      - rank_haplotype_blocks
       - score_favorable_haplotypes
       - summarize_parent_haplotypes
-  - title: "Utilities"
-    desc: Summary statistics and visualisation.
-    contents:
-      - summarise_blocks
-      - plot_ld_blocks
-  - title: "Example data"
+
+
+# ------------------------------------------------------------
+# Population comparison and stability analysis
+# ------------------------------------------------------------
+
+  - title: "Population and stability analysis"
     desc: >
-      Simulated datasets (120 individuals, 230 SNPs, 3 chromosomes,
-      9 LD blocks) for examples and tests.
+      Compare haplotype distributions across populations and evaluate
+      stability across environments.
+    contents:
+      - compare_haplotype_populations
+      - run_haplotype_stability
+      - scan_diversity_windows
+      - decompose_block_effects
+      - export_candidate_regions
+
+
+# ------------------------------------------------------------
+# Cross-validation tools
+# ------------------------------------------------------------
+
+  - title: "Cross-validation"
+    desc: >
+      Evaluate predictive ability of haplotype-based genomic models.
+    contents:
+      - cv_haplotype_prediction
+
+
+# ------------------------------------------------------------
+# Visualisation tools
+# ------------------------------------------------------------
+
+  - title: "Visualisation"
+    desc: >
+      Plot LD structure and haplotype relationships.
+    contents:
+      - plot_haplotype_network
+
+
+# ------------------------------------------------------------
+# Example datasets
+# ------------------------------------------------------------
+
+  - title: "Example datasets"
+    desc: >
+      Simulated datasets for tutorials and reproducible examples.
     contents:
       - ldx_geno
       - ldx_snp_info
@@ -178,6 +287,7 @@ reference:
       - ldx_gwas
       - ldx_blues
       - ldx_blues_list
+
 news:
   releases:
     - text: "LDxBlocks 0.3.1 (development)"

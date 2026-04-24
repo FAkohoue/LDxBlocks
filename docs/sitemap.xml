@@ -4,6 +4,8 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/articles/LDxBlocks-intro.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/articles/LDxBlocks-large-scale.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/articles/LDxBlocks-ld-metrics.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/articles/LDxBlocks-phasing.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/articles/LDxBlocks-workflow.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/authors.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/favicon.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/index.html</loc></url>
@@ -16,6 +18,8 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/close_backend.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/CLQD.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/collapse_haplotypes.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compare_block_effects.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compare_gwas_effects.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compare_haplotype_populations.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_diversity.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_grm.html</loc></url>

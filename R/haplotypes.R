@@ -45,6 +45,22 @@ read_phased_vcf <- function(vcf_file, min_maf=0.0, verbose=TRUE) {
   }
   rownames(h1) <- rownames(h2) <- sid; colnames(h1) <- colnames(h2) <- sids
   dos <- h1+h2
+
+  # Synthesise CHR_POS IDs for missing/dot ID columns, matching read_geno.R
+  # behaviour.  Standard VCF files frequently use "." in the ID (column 3)
+  # when no rsID is assigned.  Beagle preserves whatever ID was in the input,
+  # so a VCF written externally may arrive here with all-dot IDs.
+  # Duplicate rownames (".", ".", ...) would break extract_haplotypes() which
+  # uses colnames to slice the genotype matrix by SNP name.
+  dot_or_empty <- is.na(sid) | sid == "." | !nzchar(sid)
+  if (any(dot_or_empty)) {
+    sid[dot_or_empty] <- paste0(sc[dot_or_empty], "_", sp[dot_or_empty])
+    rownames(h1) <- rownames(h2) <- rownames(dos) <- sid
+    if (verbose)
+      message("[read_phased_vcf] Synthesised ", sum(dot_or_empty),
+              " SNP ID(s) as CHR_POS (original ID was '.' or empty)")
+  }
+
   snp_info <- data.frame(SNP=sid,CHR=sc,POS=sp,REF=sr,ALT=sa,stringsAsFactors=FALSE)
   if (min_maf>0) {
     af <- rowMeans(dos,na.rm=TRUE)/2; maf <- pmin(af,1-af)
@@ -53,94 +69,178 @@ read_phased_vcf <- function(vcf_file, min_maf=0.0, verbose=TRUE) {
     dos <- dos[ok,,drop=FALSE]; snp_info <- snp_info[ok,]
     if (verbose) message("[read_phased_vcf] After MAF>=",min_maf,": ",sum(ok))
   }
-  list(hap1=h1, hap2=h2, dosage=dos, snp_info=snp_info, sample_ids=sids, phased=TRUE)
+  list(hap1=h1, hap2=h2, dosage=dos, snp_info=snp_info,
+       sample_ids=sids, phased=TRUE, phase_method="vcf_phased")
 }
 
 #' Statistical Phasing via Beagle 5.x
-#' @param input_vcf Unphased VCF path.
-#' @param out_prefix Output prefix (Beagle appends .vcf.gz).
-#' @param beagle_jar Path to beagle.jar. Default: auto-detected.
-#' @param java_path Java executable. Default "java".
-#' @param nthreads Threads. Default 1L.
-#' @param ref_panel Optional phased reference VCF. Default NULL.
-#' @param beagle_args Additional Beagle arguments string.
-#' @param verbose Logical. Default TRUE.
-#' @return Path to phased VCF.gz. Load with read_phased_vcf().
+#'
+#' @description
+#' Wrapper around Beagle 5.x for statistical haplotype phasing. Calls
+#' \code{java -jar beagle.jar} and writes the phased VCF.gz to disk.
+#' This is the recommended phasing method in LDxBlocks: Beagle performs
+#' chromosome-level statistical phasing using population-LD across all
+#' markers simultaneously, producing true inferred haplotypes suitable
+#' for block-level frequency estimation and diversity analysis.
+#'
+#' @param input_vcf   Path to input VCF or VCF.gz (unphased).
+#' @param out_prefix  Output path prefix. Beagle appends \code{.vcf.gz}.
+#' @param beagle_jar  Path to \code{beagle.jar}. Default: searched in
+#'   \code{dirname(out_prefix)}, then standard locations.
+#' @param java_path   Java executable. Default \code{"java"}.
+#' @param java_mem_gb Java heap size in GB (e.g. \code{8} sets \code{-Xmx8g}).
+#'   Default \code{NULL} (uses JVM default). Increase for large VCFs.
+#' @param nthreads    Beagle threads. Default \code{1L}.
+#' @param ref_panel   Optional path to phased reference VCF. Default \code{NULL}.
+#' @param map_file    Optional genetic map file for more accurate phasing
+#'   in structured populations. Default \code{NULL}.
+#' @param chrom       Optional chromosome string passed to Beagle
+#'   (e.g. \code{"chr1"} or \code{"1"}). Default \code{NULL} (all chromosomes).
+#' @param seed        Integer random seed for reproducibility. Default \code{NULL}.
+#' @param burnin      Beagle burn-in iterations. Default \code{NULL} (Beagle default).
+#' @param iterations  Beagle phasing iterations. Default \code{NULL} (Beagle default).
+#' @param window      Beagle window size. Default \code{NULL} (Beagle default).
+#' @param overlap     Beagle window overlap. Default \code{NULL} (Beagle default).
+#' @param beagle_args Additional Beagle arguments string, space-separated.
+#'   Default \code{""}.
+#' @param verbose     Logical. Default \code{TRUE}.
+#' @return Invisibly returns the path to the phased VCF.gz.
+#'   Beagle stdout and stderr are written to \code{out_prefix.log}.
+#' @note \code{Sys.which("beagle.jar")} typically fails to find \code{.jar}
+#'   files on PATH. Supply \code{beagle_jar} explicitly or place
+#'   \code{beagle.jar} next to \code{out_prefix}.
+#'   Download: \url{https://faculty.washington.edu/browning/beagle/beagle.html}
 #' @references Browning et al. (2018) Am J Hum Genet 103:338-348.
 #' @export
-phase_with_beagle <- function(input_vcf, out_prefix, beagle_jar=NULL,
-                              java_path="java", nthreads=1L,
-                              ref_panel=NULL, beagle_args="", verbose=TRUE) {
-  if (!file.exists(input_vcf)) stop("VCF not found: ",input_vcf,call.=FALSE)
+phase_with_beagle <- function(
+    input_vcf,
+    out_prefix,
+    beagle_jar  = NULL,
+    java_path   = "java",
+    java_mem_gb = NULL,
+    nthreads    = 1L,
+    ref_panel   = NULL,
+    map_file    = NULL,
+    chrom       = NULL,
+    seed        = NULL,
+    burnin      = NULL,
+    iterations  = NULL,
+    window      = NULL,
+    overlap     = NULL,
+    beagle_args = "",
+    verbose     = TRUE
+) {
+  if (!is.character(input_vcf) || length(input_vcf) != 1L || !file.exists(input_vcf))
+    stop("input_vcf not found: ", input_vcf, call. = FALSE)
+  if (!grepl("\\.vcf(\\.gz)?$", input_vcf, ignore.case = TRUE))
+    stop("input_vcf must be a .vcf or .vcf.gz file.", call. = FALSE)
+  if (!is.null(ref_panel) && !file.exists(ref_panel))
+    stop("ref_panel not found: ", ref_panel, call. = FALSE)
+  if (!is.null(map_file) && !file.exists(map_file))
+    stop("map_file not found: ", map_file, call. = FALSE)
+
+  out_dir <- dirname(out_prefix)
+  if (!dir.exists(out_dir))
+    dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
   if (is.null(beagle_jar)) {
-    cands <- c(Sys.which("beagle.jar"),"/usr/local/bin/beagle.jar",
-               file.path(Sys.getenv("HOME"),"beagle.jar"))
-    found <- cands[nzchar(cands)&file.exists(cands)]
+    cands <- c(
+      file.path(out_dir, "beagle.jar"),
+      Sys.which("beagle.jar"),
+      "/usr/local/bin/beagle.jar",
+      file.path(Sys.getenv("HOME"), "beagle.jar")
+    )
+    found <- cands[nzchar(cands) & file.exists(cands)]
     if (!length(found))
-      stop("beagle.jar not found.\nDownload: https://faculty.washington.edu/browning/beagle/beagle.html",call.=FALSE)
+      stop(
+        "beagle.jar not found.\n",
+        "Place beagle.jar in out_dir ('", out_dir, "') or pass beagle_jar explicitly.\n",
+        "Download: https://faculty.washington.edu/browning/beagle/beagle.html",
+        call. = FALSE
+      )
     beagle_jar <- found[1]
   }
-  cmd <- paste(java_path,"-jar",shQuote(beagle_jar),
-               paste0("gt=",shQuote(input_vcf)),
-               paste0("out=",shQuote(out_prefix)),
-               paste0("nthreads=",nthreads),
-               if (!is.null(ref_panel)) paste0("ref=",shQuote(ref_panel)) else "",
-               beagle_args)
-  if (verbose) message("[phase_with_beagle] ",cmd)
-  ret <- system(cmd)
-  if (ret!=0L) stop("Beagle exited with status ",ret,call.=FALSE)
-  out <- paste0(out_prefix,".vcf.gz")
-  if (!file.exists(out)) stop("Beagle output not found: ",out,call.=FALSE)
-  if (verbose) message("[phase_with_beagle] Done: ",out)
-  invisible(out)
-}
 
-#' Pedigree-Based Allele Transmission Phasing
-#' @description Assigns gametic phase using Mendelian transmission within
-#'   parent-offspring trios. Exact when parents are homozygous; ambiguous
-#'   positions are NA or randomly resolved when resolve_het=TRUE.
-#' @param dosage_mat Numeric matrix (individuals x SNPs, 0/1/2/NA). Rownames must match pedigree$id.
-#' @param pedigree Data frame with columns id, sire, dam. Use NA or "0" for unknown parents.
-#' @param resolve_het Randomly resolve ambiguous het transmissions. Default FALSE.
-#' @param seed RNG seed when resolve_het=TRUE. Default 1L.
-#' @param verbose Logical. Default TRUE.
-#' @return List: hap1 (sire gamete), hap2 (dam gamete), dosage, n_resolved, n_ambiguous, phased=TRUE.
-#' @export
-phase_with_pedigree <- function(dosage_mat, pedigree, resolve_het=FALSE,
-                                seed=1L, verbose=TRUE) {
-  if (!is.matrix(dosage_mat)) dosage_mat <- as.matrix(dosage_mat)
-  miss <- setdiff(c("id","sire","dam"),names(pedigree))
-  if (length(miss)) stop("pedigree missing: ",paste(miss,collapse=","),call.=FALSE)
-  ped <- as.data.frame(lapply(pedigree[c("id","sire","dam")],as.character),stringsAsFactors=FALSE)
-  ped[ped%in%c("0","NA","")] <- NA_character_
-  ni <- nrow(dosage_mat); nk <- ncol(dosage_mat)
-  h1 <- matrix(NA_real_,ni,nk,dimnames=dimnames(dosage_mat))
-  h2 <- matrix(NA_real_,ni,nk,dimnames=dimnames(dosage_mat))
-  set.seed(seed); nr <- 0L; na_ <- 0L
-  for (id in rownames(dosage_mat)) {
-    row <- ped[ped$id==id,,drop=FALSE]
-    if (!nrow(row)||is.na(row$sire)||is.na(row$dam)||
-        !row$sire%in%rownames(dosage_mat)||!row$dam%in%rownames(dosage_mat)) {
-      g <- dosage_mat[id,]; h1[id,!is.na(g)] <- ceiling(g[!is.na(g)]/2)
-      h2[id,!is.na(g)] <- floor(g[!is.na(g)]/2); next
-    }
-    go <- dosage_mat[id,]; gs <- dosage_mat[row$sire,]; gd <- dosage_mat[row$dam,]
-    for (k in seq_len(nk)) {
-      if (is.na(go[k])||is.na(gs[k])||is.na(gd[k])) next
-      sa <- unique(if(gs[k]==0)c(0,0) else if(gs[k]==1)c(0,1) else c(1,1))
-      da <- unique(if(gd[k]==0)c(0,0) else if(gd[k]==1)c(0,1) else c(1,1))
-      vl <- expand.grid(a1=sa,a2=da); vl <- vl[vl$a1+vl$a2==go[k],,drop=FALSE]
-      if (nrow(vl)==1L){h1[id,k]<-vl$a1;h2[id,k]<-vl$a2;nr<-nr+1L}
-      else if(nrow(vl)>1L&&resolve_het){pk<-vl[sample.int(nrow(vl),1L),];h1[id,k]<-pk$a1;h2[id,k]<-pk$a2;nr<-nr+1L}
-      else{na_<-na_+1L}
-    }
+  log_file <- paste0(out_prefix, ".log")
+  out_vcf  <- paste0(out_prefix, ".vcf.gz")
+
+  args <- character(0)
+
+  if (!is.null(java_mem_gb)) {
+    java_mem_gb <- as.numeric(java_mem_gb)
+    if (!is.finite(java_mem_gb) || java_mem_gb <= 0)
+      stop("java_mem_gb must be a positive number.", call. = FALSE)
+    args <- c(args, paste0("-Xmx", format(java_mem_gb, trim = TRUE), "g"))
   }
-  if (verbose) message("[phase_with_pedigree] Resolved: ",nr," | Ambiguous: ",na_)
-  list(hap1=h1,hap2=h2,dosage=h1+h2,n_resolved=nr,n_ambiguous=na_,phased=TRUE)
+
+  args <- c(
+    args,
+    "-jar", normalizePath(beagle_jar, mustWork = TRUE),
+    paste0("gt=",       normalizePath(input_vcf, mustWork = TRUE)),
+    paste0("out=",      out_prefix),
+    paste0("nthreads=", as.integer(nthreads))
+  )
+
+  if (!is.null(ref_panel))
+    args <- c(args, paste0("ref=",        normalizePath(ref_panel, mustWork = TRUE)))
+  if (!is.null(map_file))
+    args <- c(args, paste0("map=",        normalizePath(map_file, mustWork = TRUE)))
+  if (!is.null(chrom))
+    args <- c(args, paste0("chrom=",      as.character(chrom)))
+  if (!is.null(seed))
+    args <- c(args, paste0("seed=",       as.integer(seed)))
+  if (!is.null(burnin))
+    args <- c(args, paste0("burnin=",     as.integer(burnin)))
+  if (!is.null(iterations))
+    args <- c(args, paste0("iterations=", as.integer(iterations)))
+  if (!is.null(window))
+    args <- c(args, paste0("window=",     window))
+  if (!is.null(overlap))
+    args <- c(args, paste0("overlap=",    overlap))
+
+  if (nzchar(beagle_args)) {
+    extra_args <- strsplit(beagle_args, "[[:space:]]+")[[1L]]
+    args <- c(args, extra_args[nzchar(extra_args)])
+  }
+
+  if (verbose) {
+    message("[phase_with_beagle] Running Beagle")
+    message("[phase_with_beagle]   input_vcf : ", input_vcf)
+    message("[phase_with_beagle]   out_prefix: ", out_prefix)
+    message("[phase_with_beagle]   beagle_jar: ", beagle_jar)
+    if (!is.null(map_file))  message("[phase_with_beagle]   map_file  : ", map_file)
+    if (!is.null(ref_panel)) message("[phase_with_beagle]   ref_panel : ", ref_panel)
+    if (!is.null(chrom))     message("[phase_with_beagle]   chrom     : ", chrom)
+    message("[phase_with_beagle]   threads   : ", as.integer(nthreads))
+    message("[phase_with_beagle]   log       : ", log_file)
+  }
+
+  status <- system2(command = java_path, args = args,
+                    stdout = log_file, stderr = log_file)
+
+  if (!identical(status, 0L)) {
+    log_tail <- tryCatch({
+      lns <- readLines(log_file, warn = FALSE)
+      tail_lns <- tail(lns[nzchar(lns)], 10L)
+      if (length(tail_lns)) paste0("\n  Log (last 10 lines):\n  ",
+                                   paste(tail_lns, collapse = "\n  "))
+      else ""
+    }, error = function(e) "")
+    stop("Beagle exited with status ", status, ". Log: ", log_file,
+         log_tail, call. = FALSE)
+  }
+  if (!file.exists(out_vcf))
+    stop("Beagle output not found: ", out_vcf, call. = FALSE)
+  if (!file.exists(paste0(out_vcf, ".tbi")) && verbose)
+    message("[phase_with_beagle] Note: phased VCF index (.tbi) not found.")
+  if (verbose)
+    message("[phase_with_beagle] Done: ", out_vcf)
+
+  invisible(out_vcf)
 }
 
 #' Collapse Phased Gametes to 0/1/2 Dosage
-#' @param phased_list List from read_phased_vcf() or phase_with_pedigree().
+#' @param phased_list List from \code{\link{read_phased_vcf}}.
 #' @return Numeric matrix (individuals x SNPs, 0/1/2/NA).
 #' @keywords internal
 unphase_to_dosage <- function(phased_list) {
@@ -563,10 +663,15 @@ compute_haplotype_diversity <- function(haplotypes, missing_string=".") {
                                         n_ind=0L, n_haplotypes=NA, He=NA, Shannon=NA,
                                         n_eff_alleles=NA, freq_dominant=NA, sweep_flag=NA,
                                         phased=phased, stringsAsFactors=FALSE))
-    tbl <- table(obs); freq <- as.numeric(tbl)/sum(tbl)
-    He  <- 1 - sum(freq^2)
-    # Nei (1973) sample-size correction
-    He_corr <- if (ni > 1L) (ni / (ni - 1L)) * He else He
+    tbl  <- table(obs); freq <- as.numeric(tbl)/sum(tbl)
+    He   <- 1 - sum(freq^2)
+    # Nei (1973) sample-size correction.
+    # The correction must use the number of HAPLOTYPE OBSERVATIONS (n_obs),
+    # not the number of individuals (ni). For phased data n_obs = 2*ni
+    # (two gametes per individual), which gives the correct correction.
+    # Using ni for phased data would under-correct He.
+    n_obs   <- length(obs)
+    He_corr <- if (n_obs > 1L) (n_obs / (n_obs - 1L)) * He else He
     Sh  <- -sum(freq * log(pmax(freq, .Machine$double.eps)))
     # Effective number of alleles: reciprocal of homozygosity (Hill 1973)
     # Ranges from 1 (monomorphic) to n_haplotypes (equal frequencies)
@@ -650,10 +755,12 @@ compute_haplotype_diversity <- function(haplotypes, missing_string=".") {
 #' Yang J et al. (2012). Conditional and joint multiple-SNP analysis of GWAS
 #' summary statistics identifies additional variants influencing complex traits.
 #' \emph{Nature Genetics} \strong{44}(4):369-375. \doi{10.1038/ng.2213}
+#' @param verbose Logical. Print progress messages. Default \code{TRUE}.
 #' @export
 define_qtl_regions <- function(gwas_results, blocks, snp_info,
                                p_threshold = 5e-8, trait_col = "trait",
-                               min_snps = 3L, ld_decay = NULL) {
+                               min_snps = 3L, ld_decay = NULL,
+                               verbose = TRUE) {
   # Accept "Marker" as an alias for "SNP" (OptSLDP / GWAS convention)
   if (!"SNP" %in% names(gwas_results) && "Marker" %in% names(gwas_results))
     gwas_results$SNP <- gwas_results$Marker
@@ -777,23 +884,42 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
 #'   highly diverse haplotypes (many rare alleles above \code{min_freq}).
 #' @param encoding     Dosage encoding for the feature matrix:
 #'   \itemize{
-#'     \item \code{"additive_012"} (default): values are 0, 1, or 2 for
-#'       \strong{phased} data (0 = neither gamete, 1 = one gamete,
-#'       2 = both gametes carry this allele); values are 0 or 2 for
-#'       \strong{unphased} data (0 = absent, 2 = homozygous for this allele).
-#'       For \strong{unphased} data the value is 0 or 1/NA: 1 = the
-#'       individual's haplotype string matches this allele exactly,
-#'       0 = it does not. The value 2 is not used for unphased data
-#'       because we cannot confirm both chromosomes carry the same
-#'       allele from unphased dosage strings. Compatible with
-#'       rrBLUP, BGLR, sommer, ASReml-R.
-#'     \item \code{"presence_01"}: values are 0 or 1 -- clean presence/absence
-#'       encoding. For phased data: 1 if either gamete carries the allele.
-#'       For unphased data: 1 if the individual's allele string matches.
-#'       Loses copy-number information compared to \code{"additive_012"}
-#'       but may be preferable for Bayesian variable selection models
-#'       (BayesB, BayesC) where the prior expects binary indicators.
+#'     \item \code{"additive_012"} (default):
+#'       \strong{Phased data}: values are 0 (neither gamete carries the allele),
+#'       1 (one gamete carries it - heterozygous), or 2 (both gametes - homozygous).
+#'       This gives true allele dosage on the standard 0/1/2 scale.
+#'       \strong{Unphased data}: values are 0 or 1 only (presence/absence of the
+#'       dosage-pattern haplotype). The value 2 is never produced for unphased
+#'       data because it is impossible to confirm that both chromosomes carry
+#'       the same haplotype string without phase information.
+#'       Compatible with rrBLUP, BGLR, sommer, ASReml-R.
+#'     \item \code{"presence_01"}: values are 0 or 1 for both phased and unphased
+#'       data. For phased data: 1 if either gamete carries the allele (loses
+#'       copy-number information vs \code{"additive_012"}). For unphased data:
+#'       identical to \code{"additive_012"} since that already gives 0/1.
+#'       May be preferable for Bayesian variable selection models (BayesB,
+#'       BayesC) where the prior expects binary indicators.
 #'   }
+#'
+#' @section Phased vs unphased haplotypes:
+#' \strong{Phased data} (from \code{\link{read_phased_vcf}},
+#' \code{\link{phase_with_beagle}}):
+#' each individual's block string is \code{"g1|g2"} where \code{g1} and \code{g2}
+#' are the two gametic sequences. Haplotype alleles are identified at the
+#' \emph{gamete} level - true haplotypes in the biological sense. Frequencies
+#' are gamete frequencies (each individual contributes two observations).
+#' Dosage values 0, 1, 2 measure actual allele copy number.
+#'
+#' \strong{Unphased data} (from an unphased VCF or dosage matrix): each
+#' individual's block string is a single multi-SNP dosage string (e.g.
+#' \code{"021002"}). Haplotype \emph{alleles} are distinct dosage patterns,
+#' not true gametic haplotypes. Frequencies measure the proportion of
+#' \emph{individuals} carrying each dosage pattern. This is biologically
+#' meaningful (distinct genotypic patterns at the block level) but should not
+#' be equated with true haplotype allele frequency without phasing.
+#' The recommended workflow for true haplotype analysis is:
+#' phase first with Beagle, then call
+#' \code{extract_haplotypes()} on the phased output.
 #' @param missing_string Missing data marker. Default ".".
 #' @param scale_features Center and scale columns. Default FALSE.
 #' @param min_freq Minimum allele frequency to include. Default 0.01.
@@ -959,6 +1085,14 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
 #' @param bend Logical. If \code{TRUE}, add a small constant to the diagonal
 #'   to ensure positive-definiteness: \code{diag(G) + 0.001}. Useful when
 #'   passing G to mixed model solvers. Default \code{FALSE}.
+#' @param phased Logical or \code{NULL} (default). Whether the haplotype
+#'   feature matrix uses \code{additive_012} encoding for phased data
+#'   (dosage values 0/1/2, dose scale = 2) or unphased data (presence/absence
+#'   0/1, dose scale = 1). \code{NULL} auto-detects from column maxima:
+#'   any column with a value > 1 implies phased encoding. For guaranteed
+#'   correctness when all haplotype alleles lack homozygous carriers (max=1
+#'   even in phased data), supply \code{phased = TRUE} or \code{FALSE}
+#'   explicitly.
 #'
 #' @return Symmetric n x n numeric matrix (individuals x individuals).
 #'   Row and column names match \code{rownames(hap_matrix)}.
@@ -982,7 +1116,7 @@ build_haplotype_feature_matrix <- function(haplotypes, top_n=NULL,
 #' round(range(diag(G)), 3)  # diagonal ~= 1 for typical populations
 #'
 #' @export
-compute_haplotype_grm <- function(hap_matrix, bend = FALSE) {
+compute_haplotype_grm <- function(hap_matrix, bend = FALSE, phased = NULL) {
   if (!is.matrix(hap_matrix))
     hap_matrix <- as.matrix(hap_matrix)
 
@@ -993,14 +1127,38 @@ compute_haplotype_grm <- function(hap_matrix, bend = FALSE) {
       hap_matrix[na_j, j] <- mean(hap_matrix[, j], na.rm = TRUE)
   }
 
-  # Haplotype allele frequencies (dosage scale: 0/1/2 -> p = mean/2)
-  p <- colMeans(hap_matrix) / 2
+  # Detect encoding scale:
+  #   Phased data   -> additive_012 gives 0/1/2 dosage -> dose_scale = 2
+  #   Unphased data -> additive_012 gives 0/1 presence -> dose_scale = 1
+  #
+  # VanRaden (2008) centres by 2p and scales by 2*sum(p*(1-p)), where p is
+  # the allele frequency on the [0,1] scale. For 0/1/2 dosage p = mean/2;
+  # for 0/1 presence/absence p = mean (no division needed).
+  # Using the wrong dose_scale produces a GRM scaled by a constant factor,
+  # which does not affect eigenvectors (PCs) but mis-scales relationship values.
+  #
+  # phased=NULL: auto-detect from column maxima.
+  #   max > 1 in any column -> phased 0/1/2 encoding -> dose_scale = 2
+  #   max <= 1 everywhere   -> unphased 0/1 encoding  -> dose_scale = 1
+  #   Caveat: phased alleles with NO homozygous carriers also have max=1.
+  #   Prefer supplying phased=TRUE/FALSE explicitly for guaranteed correctness.
+  if (is.null(phased)) {
+    col_max    <- apply(hap_matrix, 2, max, na.rm = TRUE)
+    dose_scale <- if (any(col_max > 1 + .Machine$double.eps)) 2 else 1
+  } else {
+    dose_scale <- if (isTRUE(phased)) 2L else 1L
+  }
+
+  # Allele frequencies on [0,1] scale
+  p <- colMeans(hap_matrix) / dose_scale
   p <- pmax(pmin(p, 1 - 1e-6), 1e-6)  # clamp for numerical safety
 
-  # Centre: Z_ij = x_ij - 2*p_j
-  Z <- sweep(hap_matrix, 2, 2 * p, "-")
+  # Centre: Z_ij = x_ij - dose_scale * p_j
+  # (= x_ij - E[x_ij] for both encodings since E[x_j] = dose_scale * p_j)
+  Z <- sweep(hap_matrix, 2, dose_scale * p, "-")
 
-  # Scaling denominator
+  # Scaling denominator: 2 * sum(p*(1-p))  [VanRaden 2008, eq. 3]
+  # Correct for both encodings because p is on [0,1] scale in both cases.
   denom <- 2 * sum(p * (1 - p))
   if (denom < .Machine$double.eps)
     stop("All haplotype alleles are monomorphic. Cannot compute GRM.",
@@ -1106,9 +1264,23 @@ write_haplotype_character <- function(haplotypes, snp_info, out_file,
     # Alleles string for metadata column: REF1/ALT1;REF2/ALT2;...
     alleles_str <- paste(paste0(ref_v, "/", alt_v), collapse = ";")
 
-    # Frequency table
-    miss <- grepl(missing_string, hap, fixed = TRUE)
-    gam  <- hap[!miss]
+    # Frequency table - must split phased "g1|g2" strings into gametes before
+    # tabulating. Without splitting, phased entries like "010|111" would be
+    # treated as a single string and ranked as diplotypes, not haplotype alleles.
+    brow_w    <- if (!is.null(bi)) bi[bi$block_id == bn, , drop = FALSE] else NULL
+    is_phased_w <- isTRUE(brow_w$phased[1L])
+    if (is_phased_w) {
+      parts_w <- strsplit(hap, "|", fixed = TRUE)
+      g1_w <- vapply(parts_w, `[`, character(1L), 1L)
+      g2_w <- vapply(parts_w, `[`, character(1L), 2L)
+      miss <- grepl(missing_string, g1_w, fixed = TRUE) |
+        grepl(missing_string, g2_w, fixed = TRUE)
+      gam  <- c(g1_w[!grepl(missing_string, g1_w, fixed = TRUE)],
+                g2_w[!grepl(missing_string, g2_w, fixed = TRUE)])
+    } else {
+      miss <- grepl(missing_string, hap, fixed = TRUE)
+      gam  <- hap[!miss]
+    }
     if (!length(gam)) next
     tbl  <- sort(table(gam), decreasing = TRUE)
     fv   <- as.numeric(tbl) / sum(tbl)

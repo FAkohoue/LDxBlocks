@@ -43,22 +43,22 @@ build_haplotype_feature_matrix(
 
   Dosage encoding for the feature matrix:
 
-  - `"additive_012"` (default): values are 0, 1, or 2 for **phased**
-    data (0 = neither gamete, 1 = one gamete, 2 = both gametes carry
-    this allele); values are 0 or 2 for **unphased** data (0 = absent, 2
-    = homozygous for this allele). For **unphased** data the value is 0
-    or 1/NA: 1 = the individual's haplotype string matches this allele
-    exactly, 0 = it does not. The value 2 is not used for unphased data
-    because we cannot confirm both chromosomes carry the same allele
-    from unphased dosage strings. Compatible with rrBLUP, BGLR, sommer,
-    ASReml-R.
+  - `"additive_012"` (default): **Phased data**: values are 0 (neither
+    gamete carries the allele), 1 (one gamete carries it -
+    heterozygous), or 2 (both gametes - homozygous). This gives true
+    allele dosage on the standard 0/1/2 scale. **Unphased data**: values
+    are 0 or 1 only (presence/absence of the dosage-pattern haplotype).
+    The value 2 is never produced for unphased data because it is
+    impossible to confirm that both chromosomes carry the same haplotype
+    string without phase information. Compatible with rrBLUP, BGLR,
+    sommer, ASReml-R.
 
-  - `"presence_01"`: values are 0 or 1 – clean presence/absence
-    encoding. For phased data: 1 if either gamete carries the allele.
-    For unphased data: 1 if the individual's allele string matches.
-    Loses copy-number information compared to `"additive_012"` but may
-    be preferable for Bayesian variable selection models (BayesB,
-    BayesC) where the prior expects binary indicators.
+  - `"presence_01"`: values are 0 or 1 for both phased and unphased
+    data. For phased data: 1 if either gamete carries the allele (loses
+    copy-number information vs `"additive_012"`). For unphased data:
+    identical to `"additive_012"` since that already gives 0/1. May be
+    preferable for Bayesian variable selection models (BayesB, BayesC)
+    where the prior expects binary indicators.
 
 - missing_string:
 
@@ -75,6 +75,29 @@ build_haplotype_feature_matrix(
 ## Value
 
 Numeric matrix (individuals x haplotype allele columns).
+
+## Phased vs unphased haplotypes
+
+**Phased data** (from
+[`read_phased_vcf`](https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.md),
+[`phase_with_beagle`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_beagle.md)):
+each individual's block string is `"g1|g2"` where `g1` and `g2` are the
+two gametic sequences. Haplotype alleles are identified at the *gamete*
+level - true haplotypes in the biological sense. Frequencies are gamete
+frequencies (each individual contributes two observations). Dosage
+values 0, 1, 2 measure actual allele copy number.
+
+**Unphased data** (from an unphased VCF or dosage matrix): each
+individual's block string is a single multi-SNP dosage string (e.g.
+`"021002"`). Haplotype *alleles* are distinct dosage patterns, not true
+gametic haplotypes. Frequencies measure the proportion of *individuals*
+carrying each dosage pattern. This is biologically meaningful (distinct
+genotypic patterns at the block level) but should not be equated with
+true haplotype allele frequency without phasing. The recommended
+workflow for true haplotype analysis is: phase first with Beagle, then
+call
+[`extract_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md)
+on the phased output.
 
 ## References
 

@@ -84,7 +84,7 @@ per block reporting `n_exact`, `n_nearest`, `n_novel`, and
 ``` r
 # \donttest{
 data(ldx_geno, ldx_snp_info, ldx_blocks, package = "LDxBlocks")
-# Split into training (70\%) and validation (30\%)
+# Split into training (70 pct) and validation (30 pct)
 n    <- nrow(ldx_geno)
 idx  <- sample(n)
 ref_geno  <- ldx_geno[idx[1:round(n*0.7)], ]

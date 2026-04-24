@@ -1,0 +1,507 @@
+---
+title: "Statistical Phasing with Beagle 5.x in LDxBlocks"
+author: "LDxBlocks Development Team"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Statistical Phasing with Beagle 5.x in LDxBlocks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  eval    = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  comment = "#>"
+)
+```
+
+# Why phase?
+
+`extract_haplotypes()` in its default mode produces *diploid allele strings* —
+the concatenation of each individual's allele codes (0, 1, or 2) at every SNP
+in a block. Within a high-LD block these strings are nearly 1:1 with true
+haplotype classes (Calus et al. 2008) and are sufficient for most diversity
+analyses and genomic prediction tasks.
+
+However, several analyses require knowledge of which alleles reside on the same
+chromosome (gametic phase):
+
+- **True gametic haplotype dosage**: counting how many copies of a haplotype
+  allele an individual carries on separate chromosomes (0, 1, or 2) rather than
+  whether the combined diploid string matches a pattern.
+- **Inbreeding estimation**: fine-scale runs of homozygosity require gametic
+  phasing.
+- **Heterosis modelling**: identifying heterozygous diplotypes unambiguously.
+
+LDxBlocks provides true statistical phasing via Beagle 5.x integration through
+`run_ldx_pipeline(phase = TRUE)`.
+
+---
+
+# Requirements
+
+## Beagle 5.x
+
+Download the Beagle JAR file from <https://faculty.washington.edu/browning/beagle/beagle.html>:
+
+```bash
+wget https://faculty.washington.edu/browning/beagle/beagle.22Jul22.46e.jar -O beagle.jar
+```
+
+Place `beagle.jar` in your `out_dir` (the same directory you pass to
+`run_ldx_pipeline()`), or supply the full path via `beagle_jar`.
+
+## Java
+
+Java 8 or later is required. Verify installation:
+
+```bash
+java -version
+# openjdk version "11.0.21" ...
+```
+
+If `java` is not on the system PATH, supply the full path via the `java_path`
+argument.
+
+## Input format
+
+Beagle requires VCF or VCF.gz input with an index file (`.tbi`). The
+`geno_source` argument to `run_ldx_pipeline()` must therefore point to a VCF
+or VCF.gz file — GDS, BED, and numeric CSV formats are not accepted when
+`phase = TRUE`.
+
+```{r input-check}
+# Check: this will error early with a clear message if geno_source is not VCF
+run_ldx_pipeline(
+  geno_source = "mydata.bed",   # ERROR: phase = TRUE requires VCF input
+  phase       = TRUE,
+  ...
+)
+```
+
+---
+
+# Phasing workflow
+
+## What happens when `phase = TRUE`
+
+Calling `run_ldx_pipeline(phase = TRUE)` triggers the following sequence,
+transparently within the pipeline:
+
+1. **LD block detection** runs on the unphased dosage matrix (correct for LD
+   computation — phasing does not change allele correlations).
+2. **Beagle phasing** is called on the original VCF via `phase_with_beagle()`.
+   The phased VCF is written to `out_prefix.vcf.gz` in `out_dir`.
+3. **Phased VCF reading** via `read_phased_vcf()` parses the `0|1` GT fields
+   into three matrices: `hap1` (gamete 1), `hap2` (gamete 2), and `dosage =
+   hap1 + hap2`.
+4. **Sample and SNP alignment** aligns the phased data to the cleaned/imputed
+   marker set using a composite key (CHR + POS + REF + ALT + SNP ID). This is
+   robust to VCF-to-VCF minor header differences.
+5. **Bigmemory caching** (when `use_bigmemory = TRUE`): hap1, hap2, and dosage
+   are written as three binary-backed matrices in `bigmemory_path`. On the next
+   run with the same `bigmemory_path` and unchanged phased VCF, the pipeline
+   reattaches from disk instantly without re-reading the VCF or re-running Beagle.
+6. **Phased haplotype extraction** passes `list(hap1, hap2, dosage)` to
+   `extract_haplotypes()`, which produces gametic allele strings (`g1|g2`) per
+   block per individual.
+
+## Simple example
+
+```{r phase-simple}
+library(LDxBlocks)
+
+result <- run_ldx_pipeline(
+  geno_source        = "mydata.vcf.gz",
+  out_dir            = "ldx_results",
+  out_blocks         = "ldx_results/blocks.csv",
+  out_diversity      = "ldx_results/diversity.csv",
+  out_hap_matrix     = "ldx_results/hap_matrix.csv",
+
+  # Phasing
+  phase              = TRUE,
+  beagle_jar         = "ldx_results/beagle.jar",  # or NULL to auto-find
+  beagle_threads     = 8L,
+  beagle_java_mem_gb = 16L,    # -Xmx16g; NULL = JVM default (~256 MB — too small for WGS)
+  beagle_seed        = 42L,    # integer seed for reproducibility
+
+  # Block detection
+  CLQcut         = 0.70,
+  CLQmode        = "Leiden",
+  max_bp_distance = 500000L,
+  subSegmSize    = 500L,
+  leng           = 50L,
+  n_threads      = 8L,
+
+  # Haplotype extraction
+  min_snps_block = 3L,
+  top_n          = 5L,
+
+  # Bigmemory caching (fast restart)
+  use_bigmemory  = TRUE,
+  bigmemory_path = "ldx_results/bm_cache",
+
+  verbose = TRUE
+)
+
+result$phase_method   # "beagle"
+result$phased_vcf     # "ldx_results/mydata_phased.vcf.gz"
+```
+
+## Verifying phased output
+
+```{r phase-verify}
+# Phase method
+result$phase_method
+# [1] "beagle"
+
+# Path to phased VCF
+result$phased_vcf
+# [1] "ldx_results/mydata_phased.vcf.gz"
+
+# Haplotype strings now contain "|" separating gamete 1 and gamete 2
+result$haplotypes[[1]][1:4]
+# [1] "0010|1010"  "1100|0100"  "0000|0110"  "1010|0000"
+
+# Diversity table: phased = TRUE
+head(result$diversity[, c("block_id","He","phased")])
+```
+
+---
+
+# Bigmemory caching for phased data
+
+For WGS datasets, reading a phased VCF with 3M SNPs and 204 individuals through
+the R `read_phased_vcf()` parser takes several minutes. The bigmemory caching
+mechanism eliminates this cost on all runs after the first.
+
+## How the cache works
+
+When `use_bigmemory = TRUE` and `phase = TRUE`, after reading the phased VCF,
+three binary-backed matrices are written to `bigmemory_path`:
+
+| File | Content | Type |
+|------|---------|------|
+| `ldxblocks_bm_phased_hap1.bin` | Gamete 1 alleles (individuals × SNPs) | `char` (0/1) |
+| `ldxblocks_bm_phased_hap2.bin` | Gamete 2 alleles (individuals × SNPs) | `char` (0/1) |
+| `ldxblocks_bm_phased_dos.bin` | Dosage = hap1 + hap2 (individuals × SNPs) | `char` (0/1/2) |
+
+These are accompanied by `.desc` descriptor files, `_snpinfo.rds`,
+`_sampleids.rds`, and `_params.rds` (the fingerprint).
+
+**Fingerprint:** VCF path + mtime + target SNP count + sample count. If all
+cache files exist and the fingerprint matches, the VCF is not re-read.
+
+**Disk space:** For 204 individuals × 2.96M SNPs at 1 byte per cell, each
+matrix requires ~600 MB. Total for three matrices: ~1.8 GB.
+
+## Forcing a cache rebuild
+
+To invalidate the cache (e.g., after re-running Beagle with different
+parameters), delete the `ldxblocks_bm_phased_*` files from `bigmemory_path`:
+
+```{r cache-invalidate}
+# From R
+files <- list.files("ldx_results/bm_cache", pattern = "ldxblocks_bm_phased",
+                    full.names = TRUE)
+file.remove(files)
+
+# Then rerun — will re-read the phased VCF and rebuild the cache
+result <- run_ldx_pipeline(..., phase = TRUE, use_bigmemory = TRUE, ...)
+```
+
+---
+
+# Using `phase_with_beagle()` directly
+
+If you need finer control over the phasing step (e.g., chromosome-by-chromosome
+phasing, or phasing with a reference panel), you can call `phase_with_beagle()`
+directly:
+
+```{r beagle-direct}
+phased_vcf <- phase_with_beagle(
+  input_vcf   = "mydata.vcf.gz",
+  out_prefix  = "ldx_results/mydata_phased",
+  beagle_jar  = "ldx_results/beagle.jar",
+  java_path   = "java",
+  java_mem_gb = 16L,            # -Xmx16g JVM heap
+  nthreads    = 8L,
+  ref_panel   = NULL,           # phased reference VCF (optional)
+  map_file    = NULL,           # genetic map for improved accuracy (optional)
+  chrom       = "1",            # restrict to chromosome 1 (optional)
+  seed        = 42L,
+  burnin      = 6L,             # Beagle default: 6
+  iterations  = 12L,            # Beagle default: 12
+  window      = 25.0,           # window size in cM (Beagle default: 25)
+  overlap     = 2.5,            # window overlap in cM (Beagle default: 2.5)
+  verbose     = TRUE
+)
+
+phased_vcf
+# [1] "ldx_results/mydata_phased.vcf.gz"
+```
+
+The Beagle log is written to `ldx_results/mydata_phased.log`.
+
+## Using a reference panel
+
+A phased reference VCF substantially improves phasing accuracy, especially for
+rare variants. Reference panels are available from the 1000 Genomes Project,
+HapMap, or species-specific databases:
+
+```{r beagle-ref}
+phased_vcf <- phase_with_beagle(
+  input_vcf   = "mydata.vcf.gz",
+  out_prefix  = "ldx_results/mydata_phased",
+  beagle_jar  = "ldx_results/beagle.jar",
+  ref_panel   = "reference_panel.vcf.gz",   # must be phased (0|1 GT fields)
+  java_mem_gb = 32L,
+  nthreads    = 8L
+)
+```
+
+## Chromosome-by-chromosome phasing
+
+For very large datasets, phasing one chromosome at a time reduces peak memory:
+
+```{r beagle-chr}
+chrs <- as.character(1:12)
+
+phased_vcfs <- lapply(chrs, function(chr) {
+  phase_with_beagle(
+    input_vcf   = "mydata.vcf.gz",
+    out_prefix  = sprintf("ldx_results/mydata_phased_chr%s", chr),
+    beagle_jar  = "ldx_results/beagle.jar",
+    chrom       = chr,
+    java_mem_gb = 8L,
+    nthreads    = 8L,
+    seed        = 42L
+  )
+})
+```
+
+---
+
+# Reading a pre-phased VCF
+
+If your data are already phased (from Beagle, SHAPEIT, or another tool),
+use `read_phased_vcf()` directly:
+
+```{r read-phased}
+gp <- read_phased_vcf("mydata_phased.vcf.gz", min_maf = 0.01, verbose = TRUE)
+
+# Returns a list:
+names(gp)
+# [1] "hap1"       "hap2"       "dosage"     "snp_info"   "sample_ids" "phased"     "phase_method"
+
+dim(gp$hap1)     # SNPs × individuals
+dim(gp$hap2)     # SNPs × individuals
+dim(gp$dosage)   # SNPs × individuals (= hap1 + hap2)
+
+gp$phased        # TRUE
+gp$phase_method  # "vcf_phased"
+```
+
+Pass the resulting list directly to `extract_haplotypes()`:
+
+```{r extract-phased}
+haps <- extract_haplotypes(
+  geno     = gp,           # list with hap1 and hap2 elements
+  snp_info = gp$snp_info,
+  blocks   = blocks,
+  min_snps = 3L
+)
+
+# Haplotype strings contain gametic phase
+haps[[1]][1:3]
+# [1] "0010|1010"  "1100|0100"  "0000|0110"
+```
+
+---
+
+# Phased haplotype feature matrix
+
+When gametic phase is available, `build_haplotype_feature_matrix()` produces
+true allele copy number (0, 1, or 2):
+
+```{r phased-features}
+feat_phased <- build_haplotype_feature_matrix(
+  haplotypes     = haps,          # from phased extraction
+  top_n          = 5L,
+  scale_features = TRUE
+)$matrix
+
+# Each column encodes: 0 = neither gamete, 1 = heterozygous, 2 = homozygous
+# This is true allele copy number — not present/absent
+range(feat_phased)   # [0, 2] (before scaling)
+```
+
+Compare to unphased:
+
+```{r unphased-features}
+feat_unphased <- build_haplotype_feature_matrix(
+  haplotypes     = haps_unphased,   # from dosage-string extraction
+  top_n          = 5L,
+  scale_features = FALSE
+)$matrix
+
+range(feat_unphased)   # [0, 1] — presence/absence only
+```
+
+---
+
+# Diversity metrics with phased data
+
+The `compute_haplotype_diversity()` function automatically detects phased input
+and sets the `phased` column to `TRUE`. He correction uses the number of
+gametes (2N) rather than individuals (N):
+
+```{r phased-diversity}
+div_phased <- compute_haplotype_diversity(haps)
+
+# phased column
+head(div_phased[, c("block_id","n_ind","He","phased")])
+#         block_id n_ind      He phased
+# block_1_1000_103000   204  0.891   TRUE
+```
+
+---
+
+# Haplotype association with phased data
+
+`test_block_haplotypes()` uses phased dosage (0/1/2) when phased haplotype
+strings are passed, giving unambiguous allele copy-number encoding for the
+association model. Use `sig_metric = "p_simplem_sidak"` for family-wise error
+control with correlated haplotype predictors (recommended):
+
+```{r assoc-phased}
+blues_vec <- setNames(my_blues$YLD, my_blues$id)
+
+assoc_phased <- test_block_haplotypes(
+  haplotypes       = haps,              # phased (contains "|")
+  blues            = blues_vec,
+  blocks           = blocks,
+  n_pcs            = 3L,               # Q+K: GRM PCs as fixed effects
+  sig_metric       = "p_simplem_sidak", # simpleM Šidák correction
+  meff_scope       = "chromosome",      # separate Meff per chromosome
+  meff_percent_cut = 0.995,
+  verbose          = FALSE
+)
+
+# Effect estimates reflect true additive copy-number dosage (0/1/2)
+head(assoc_phased$allele_tests[order(assoc_phased$allele_tests$p_wald),
+                                c("block_id","allele","effect","SE",
+                                  "p_wald","p_simplem","p_simplem_sidak","Meff")])
+
+# All four p-value columns are always present in the output
+# (p_wald, p_fdr, p_simplem, p_simplem_sidak) regardless of sig_metric
+```
+
+---
+
+# Troubleshooting
+
+## `beagle.jar` not found
+
+```
+Error: beagle.jar not found at ldx_results/beagle.jar.
+  Download from https://faculty.washington.edu/browning/beagle/beagle.html
+  and place in out_dir, or supply the full path via beagle_jar.
+```
+
+**Fix:** Download `beagle.jar` and either place it in `out_dir` or pass its
+full path via `beagle_jar = "/path/to/beagle.jar"`.
+
+Note: `Sys.which("beagle.jar")` typically returns `""` — Java `.jar` files are
+not executables and are not found by `which`. Always supply the path explicitly.
+
+## Out-of-memory error in Beagle
+
+```
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+```
+
+**Fix:** Increase `beagle_java_mem_gb`. For WGS data (3M SNPs), 16–32 GB is
+recommended:
+
+```{r oom-fix}
+result <- run_ldx_pipeline(
+  ...,
+  beagle_java_mem_gb = 32L,   # -Xmx32g
+  ...
+)
+```
+
+## VCF index missing
+
+```
+Error: .tbi index not found for mydata.vcf.gz.
+  Run: tabix -p vcf mydata.vcf.gz
+```
+
+**Fix:** Index the VCF with tabix (requires htslib):
+
+```bash
+tabix -p vcf mydata.vcf.gz
+```
+
+## Phased SNP count mismatch after alignment
+
+```
+Error: Phased VCF missing 1234 SNP(s) from the cleaned/imputed marker set
+  after CHR+POS+REF+ALT+SNP matching.
+```
+
+**Fix:** This occurs when the phased VCF's marker set differs from the cleaned
+set (e.g., Beagle removed some SNPs). Check `result$snp_info_filtered` against
+the SNPs in the phased VCF. Consider using `clean_malformed = FALSE` in
+`run_ldx_pipeline()` if malformed-record removal is removing too many markers.
+
+## Cache not reattaching
+
+If the phased VCF has been modified or re-generated, the fingerprint will
+not match and the pipeline will rebuild the cache. This is the expected
+behaviour. If you want to force a rebuild explicitly:
+
+```{r force-rebuild}
+# Delete cache files
+unlink(list.files("ldx_results/bm_cache",
+                   pattern = "ldxblocks_bm_phased", full.names = TRUE))
+```
+
+---
+
+# Summary of phasing parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `phase` | logical | `FALSE` | Enable Beagle phasing |
+| `beagle_jar` | character | `file.path(out_dir, "beagle.jar")` | Path to `beagle.jar` |
+| `beagle_threads` | integer | `1L` | Beagle CPU threads |
+| `java_path` | character | `"java"` | Path to Java executable |
+| `beagle_java_mem_gb` | integer or NULL | `NULL` | JVM heap size (GB). `NULL` = JVM default. WGS: use 16–32. |
+| `beagle_seed` | integer or NULL | `NULL` | Random seed for reproducibility |
+| `beagle_ref_panel` | character or NULL | `NULL` | Phased reference VCF (improves rare-variant phasing) |
+| `beagle_map_file` | character or NULL | `NULL` | Genetic map file for improved recombination modelling |
+| `beagle_chrom` | character or NULL | `NULL` | Restrict phasing to one chromosome |
+| `beagle_burnin` | integer or NULL | `NULL` | Beagle burnin iterations (default: 6) |
+| `beagle_iterations` | integer or NULL | `NULL` | Beagle phasing iterations (default: 12) |
+| `beagle_window` | numeric or NULL | `NULL` | Window size in cM (default: 25) |
+| `beagle_overlap` | numeric or NULL | `NULL` | Window overlap in cM (default: 2.5) |
+| `beagle_args` | character | `""` | Additional Beagle command-line arguments |
+
+---
+
+# Session information
+
+```{r session-info, eval=TRUE}
+sessionInfo()
+```

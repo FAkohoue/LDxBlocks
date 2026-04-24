@@ -9,34 +9,75 @@ phase_with_beagle(
   out_prefix,
   beagle_jar = NULL,
   java_path = "java",
+  java_mem_gb = NULL,
   nthreads = 1L,
   ref_panel = NULL,
+  map_file = NULL,
+  chrom = NULL,
+  seed = NULL,
+  burnin = NULL,
+  iterations = NULL,
+  window = NULL,
+  overlap = NULL,
   beagle_args = "",
   verbose = TRUE
 )
 }
 \arguments{
-\item{input_vcf}{Unphased VCF path.}
+\item{input_vcf}{Path to input VCF or VCF.gz (unphased).}
 
-\item{out_prefix}{Output prefix (Beagle appends .vcf.gz).}
+\item{out_prefix}{Output path prefix. Beagle appends \code{.vcf.gz}.}
 
-\item{beagle_jar}{Path to beagle.jar. Default: auto-detected.}
+\item{beagle_jar}{Path to \code{beagle.jar}. Default: searched in
+\code{dirname(out_prefix)}, then standard locations.}
 
-\item{java_path}{Java executable. Default "java".}
+\item{java_path}{Java executable. Default \code{"java"}.}
 
-\item{nthreads}{Threads. Default 1L.}
+\item{java_mem_gb}{Java heap size in GB (e.g. \code{8} sets \code{-Xmx8g}).
+Default \code{NULL} (uses JVM default). Increase for large VCFs.}
 
-\item{ref_panel}{Optional phased reference VCF. Default NULL.}
+\item{nthreads}{Beagle threads. Default \code{1L}.}
 
-\item{beagle_args}{Additional Beagle arguments string.}
+\item{ref_panel}{Optional path to phased reference VCF. Default \code{NULL}.}
 
-\item{verbose}{Logical. Default TRUE.}
+\item{map_file}{Optional genetic map file for more accurate phasing
+in structured populations. Default \code{NULL}.}
+
+\item{chrom}{Optional chromosome string passed to Beagle
+(e.g. \code{"chr1"} or \code{"1"}). Default \code{NULL} (all chromosomes).}
+
+\item{seed}{Integer random seed for reproducibility. Default \code{NULL}.}
+
+\item{burnin}{Beagle burn-in iterations. Default \code{NULL} (Beagle default).}
+
+\item{iterations}{Beagle phasing iterations. Default \code{NULL} (Beagle default).}
+
+\item{window}{Beagle window size. Default \code{NULL} (Beagle default).}
+
+\item{overlap}{Beagle window overlap. Default \code{NULL} (Beagle default).}
+
+\item{beagle_args}{Additional Beagle arguments string, space-separated.
+Default \code{""}.}
+
+\item{verbose}{Logical. Default \code{TRUE}.}
 }
 \value{
-Path to phased VCF.gz. Load with read_phased_vcf().
+Invisibly returns the path to the phased VCF.gz.
+  Beagle stdout and stderr are written to \code{out_prefix.log}.
 }
 \description{
-Statistical Phasing via Beagle 5.x
+Wrapper around Beagle 5.x for statistical haplotype phasing. Calls
+\code{java -jar beagle.jar} and writes the phased VCF.gz to disk.
+This is the recommended phasing method in LDxBlocks: Beagle performs
+chromosome-level statistical phasing using population-LD across all
+markers simultaneously, producing true inferred haplotypes suitable
+for block-level frequency estimation and diversity analysis.
+}
+\note{
+\code{Sys.which("beagle.jar")} typically fails to find \code{.jar}
+  files on PATH. Supply \code{beagle_jar} explicitly or place
+  \code{beagle.jar} next to \code{out_prefix}.
+  Download: \url{https://faculty.washington.edu/browning/beagle/beagle.html}
 }
 \references{
 Browning et al. (2018) Am J Hum Genet 103:338-348.

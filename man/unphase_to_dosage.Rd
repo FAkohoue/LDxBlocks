@@ -7,7 +7,7 @@
 unphase_to_dosage(phased_list)
 }
 \arguments{
-\item{phased_list}{List from read_phased_vcf() or phase_with_pedigree().}
+\item{phased_list}{List from \code{\link{read_phased_vcf}}.}
 }
 \value{
 Numeric matrix (individuals x SNPs, 0/1/2/NA).

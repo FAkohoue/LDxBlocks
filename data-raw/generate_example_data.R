@@ -215,18 +215,36 @@ gwas_snp_idx <- c(
 )
 gwas_snp_idx <- sort(unique(gwas_snp_idx))[1:20]
 
+# P values: 8 clearly significant, 7 suggestive, 5 sub-threshold
+gwas_P <- c(runif(8, 1e-10, 9e-7),
+            runif(7, 1e-5, 1e-3),
+            runif(5, 1e-3, 0.05))
+
+# Effect sizes (BETA): derived from P via z-score + realistic noise.
+# |BETA| ~ |z| * 0.05 so that SE values are plausible for a panel of 120 ind.
+# Signs: first 10 markers positive, last 10 negative - creates a testable
+# direction-concordance signal for compare_gwas_effects() examples.
+gwas_z    <- abs(qnorm(gwas_P / 2))
+gwas_BETA <- gwas_z * 0.05 * c(rep(1, 10), rep(-1, 10)) *
+  (1 + rnorm(20, 0, 0.05))    # 5% noise
+gwas_BETA <- round(gwas_BETA, 4)
+
+# SE: |BETA| / |z| inflated by 10% (mimics standard mixed-model output)
+gwas_SE   <- round(abs(gwas_BETA) / gwas_z * 1.10, 4)
+gwas_SE   <- pmax(gwas_SE, 0.001)          # floor at 0.001
+
 ldx_gwas <- data.frame(
   Marker = ldx_snp_info$SNP[gwas_snp_idx],
   CHR    = ldx_snp_info$CHR[gwas_snp_idx],
   POS    = ldx_snp_info$POS[gwas_snp_idx],
-  P      = c(runif(8, 1e-10, 9e-7),   # 8 markers clearly below 1e-6
-             runif(7, 1e-5, 1e-3),   # 7 suggestive
-             runif(5, 1e-3, 0.05)),  # 5 sub-threshold
+  BETA   = gwas_BETA,                      # signed effect size
+  SE     = gwas_SE,                         # standard error
+  P      = gwas_P,
   trait  = sample(c("TraitA", "TraitB"), 20, replace = TRUE, prob = c(0.6, 0.4)),
   stringsAsFactors = FALSE
 )
 
-message("GWAS marker table: ", nrow(ldx_gwas), " markers")
+message("GWAS marker table: ", nrow(ldx_gwas), " markers (columns: Marker CHR POS BETA SE P trait)")
 
 
 

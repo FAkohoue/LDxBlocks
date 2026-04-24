@@ -156,7 +156,8 @@
 #'   \code{run_Big_LD_all_chr(ldx_geno, ldx_snp_info, CLQcut = 0.6)} output.
 #'
 #' @seealso \code{\link{ldx_geno}}, \code{\link{run_Big_LD_all_chr}},
-#'   \code{\link{summarise_blocks}}
+#'   \code{\link{summarise_blocks}}, \code{\link{compare_block_effects}},
+#'   \code{\link{compare_gwas_effects}}
 #'
 #' @examples
 #' data(ldx_blocks)
@@ -176,6 +177,36 @@
 #'   group2_name = "cycle2"
 #' )
 #' head(cmp[, c("block_id","n1","n2","FST","divergent")])
+#'
+#' # Cross-population haplotype effect concordance.
+#' # test_block_haplotypes() produces LDxBlocks_haplotype_assoc objects;
+#' # compare_block_effects() compares their allele effects block by block.
+#' data(ldx_blues)
+#' blues_vec <- setNames(ldx_blues$YLD, ldx_blues$id)
+#' # Simulate two populations by splitting the 120 individuals
+#' set.seed(2L)
+#' idx1 <- sample(ids, 70L);  idx2 <- setdiff(ids, idx1)
+#' haps1 <- extract_haplotypes(ldx_geno[idx1, ], ldx_snp_info, ldx_blocks)
+#' haps2 <- extract_haplotypes(ldx_geno[idx2, ], ldx_snp_info, ldx_blocks)
+#' assoc1 <- test_block_haplotypes(haps1, blues = blues_vec[idx1],
+#'                                  blocks = ldx_blocks, n_pcs = 0L,
+#'                                  verbose = FALSE)
+#' assoc2 <- test_block_haplotypes(haps2, blues = blues_vec[idx2],
+#'                                  blocks = ldx_blocks, n_pcs = 0L,
+#'                                  verbose = FALSE)
+#' # block_match = "position" handles different block boundaries;
+#' # use "id" (default) when both populations share the same block table.
+#' conc <- compare_block_effects(
+#'   assoc1, assoc2,
+#'   pop1_name   = "Pop1",
+#'   pop2_name   = "Pop2",
+#'   blocks_pop1 = ldx_blocks,
+#'   blocks_pop2 = ldx_blocks,
+#'   block_match = "id",
+#'   verbose     = FALSE
+#' )
+#' conc$concordance[, c("block_id","n_shared_alleles",
+#'                      "direction_agreement","meta_p","replicated")]
 #' }
 "ldx_blocks"
 
@@ -184,19 +215,31 @@
 #'
 #' @description
 #' Twenty toy GWAS markers drawn from simulated LD blocks for use with
-#' \code{\link{tune_LD_params}} and \code{\link{define_qtl_regions}}.
+#' \code{\link{tune_LD_params}}, \code{\link{define_qtl_regions}}, and
+#' \code{\link{compare_gwas_effects}}.
 #' All 20 markers fall within LD blocks, but not all nine blocks are
 #' represented: chromosome 3 contributes markers only from its first block;
 #' blocks 2 and 3 of chromosome 3 have no GWAS markers.
 #' A correctly parameterised run of \code{tune_LD_params} should return
 #' zero unassigned markers.
 #'
-#' @format A \code{data.frame} with 20 rows and 5 columns:
+#' The dataset includes effect sizes (\code{BETA}, \code{SE}) so that it
+#' can serve as a minimal external GWAS result for \code{compare_gwas_effects}
+#' demonstrations without requiring a full association analysis.
+#'
+#' @format A \code{data.frame} with 20 rows and 7 columns:
 #' \describe{
 #'   \item{\code{Marker}}{Character. SNP identifier, matching entries in
 #'     \code{ldx_snp_info$SNP}.}
 #'   \item{\code{CHR}}{Character. Chromosome label.}
 #'   \item{\code{POS}}{Integer. Base-pair position.}
+#'   \item{\code{BETA}}{Numeric. Simulated effect size. Derived from the
+#'     z-score of \code{P} with 5\% random noise. Positive for the first
+#'     10 markers, negative for the last 10, providing a testable directional
+#'     signal for \code{\link{compare_gwas_effects}} demonstrations.}
+#'   \item{\code{SE}}{Numeric. Standard error of \code{BETA}. Derived as
+#'     \code{|BETA|/|z|} inflated by 10\%, consistent with standard
+#'     mixed-model GWAS output.}
 #'   \item{\code{P}}{Numeric. Toy p-value. Eight markers have P < 1e-6
 #'     (clearly significant), seven have P in (1e-5, 1e-3) (suggestive),
 #'     and five have P in (1e-3, 0.05) (sub-threshold).}
@@ -211,6 +254,7 @@
 #'   Seed: \code{set.seed(42)}.
 #'
 #' @seealso \code{\link{tune_LD_params}}, \code{\link{define_qtl_regions}},
+#'   \code{\link{compare_gwas_effects}},
 #'   \code{\link{ldx_geno}}, \code{\link{ldx_snp_info}}
 #'
 #' @examples
@@ -220,6 +264,55 @@
 #' data(ldx_blocks)
 #' data(ldx_snp_info)
 #' all(is.element(ldx_gwas$Marker, ldx_snp_info$SNP))
+#'
+#' \donttest{
+#' # Map markers to LD blocks and identify lead SNPs per block
+#' qtl <- define_qtl_regions(
+#'   gwas_results = ldx_gwas,
+#'   blocks       = ldx_blocks,
+#'   snp_info     = ldx_snp_info,
+#'   p_threshold  = 1e-5,
+#'   verbose      = FALSE
+#' )
+#' qtl[, c("block_id", "CHR", "lead_snp", "lead_p", "lead_beta", "n_sig_markers")]
+#'
+#' # Cross-population effect concordance from external GWAS results.
+#' # Here ldx_gwas is used for both populations; in practice these
+#' # would be independent GWAS runs on separate cohorts.
+#' set.seed(1L)
+#' gwas_pop2        <- ldx_gwas
+#' gwas_pop2$BETA   <- ldx_gwas$BETA * 0.8 + rnorm(20, 0, 0.02)
+#' gwas_pop2$SE     <- ldx_gwas$SE   * 0.9 + runif(20, 0, 0.005)
+#' gwas_pop2$P      <- 2 * pnorm(-abs(gwas_pop2$BETA / gwas_pop2$SE))
+#'
+#' # Path 1: pre-mapped (recommended for auditability)
+#' qtl1 <- define_qtl_regions(ldx_gwas,  ldx_blocks, ldx_snp_info,
+#'                            p_threshold = NULL, verbose = FALSE)
+#' qtl2 <- define_qtl_regions(gwas_pop2, ldx_blocks, ldx_snp_info,
+#'                            p_threshold = NULL, verbose = FALSE)
+#' conc <- compare_gwas_effects(
+#'   qtl_pop1    = qtl1,
+#'   qtl_pop2    = qtl2,
+#'   blocks_pop1 = ldx_blocks,
+#'   blocks_pop2 = ldx_blocks,
+#'   pop1_name   = "DiscoveryPop",
+#'   pop2_name   = "ReplicationPop",
+#'   verbose     = FALSE
+#' )
+#' conc$concordance[, c("block_id","direction_agreement","meta_p","replicated")]
+#'
+#' # Path 2: raw GWAS + blocks (calls define_qtl_regions internally)
+#' conc2 <- compare_gwas_effects(
+#'   gwas_pop1     = ldx_gwas,
+#'   gwas_pop2     = gwas_pop2,
+#'   blocks_pop1   = ldx_blocks,
+#'   blocks_pop2   = ldx_blocks,
+#'   snp_info_pop1 = ldx_snp_info,
+#'   p_threshold   = NULL,
+#'   verbose       = FALSE
+#' )
+#' print(conc2)
+#' }
 "ldx_gwas"
 
 

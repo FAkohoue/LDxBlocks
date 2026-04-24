@@ -51,6 +51,31 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.
     \code{\link{backsolve_snp_effects}},
     \code{\link{compute_local_gebv}},
     \code{\link{rank_haplotype_blocks}}.
+  \item Haplotype association testing with simpleM correction
+    (Gao et al. 2008, 2010, 2011): \code{\link{test_block_haplotypes}}.
+    \code{sig_metric} selects among \code{p_wald}, \code{p_fdr},
+    \code{p_simplem} (Bonferroni-style), and \code{p_simplem_sidak}
+    (Sidak-style, recommended). All four p-value columns always present.
+    \code{meff_scope} controls Meff estimation scope.
+  \item Cross-population GWAS validation - two functions depending on
+    how the association analysis was performed:
+    \itemize{
+      \item \code{\link{compare_block_effects}} - for results from
+        \code{\link{test_block_haplotypes}}. IVW meta-analysis, Cochran Q,
+        I-squared, direction agreement per block.
+      \item \code{\link{compare_gwas_effects}} - for results from external
+        GWAS tools (GAPIT, TASSEL, FarmCPU, PLINK, etc.). Accepts raw GWAS
+        data frames or \code{\link{define_qtl_regions}} output. Derives SE
+        from z-score when absent.
+      \item Both functions support \code{block_match = "position"} to match
+        LD blocks by genomic interval overlap (Intersection-over-Union) rather
+        than \code{block_id} string equality. This handles the common case
+        where block boundaries differ between populations due to different
+        ancestral LD structures. \code{overlap_min} (default 0.50) sets the
+        minimum IoU for a valid positional match. The \code{match_type} output
+        column reports \code{"exact"}, \code{"position"}, or
+        \code{"pop1_only"} for every block.
+    }
   \item Write outputs: \code{\link{write_haplotype_numeric}},
     \code{\link{write_haplotype_character}},
     \code{\link{write_haplotype_diversity}}.
@@ -125,13 +150,33 @@ disequilibria in finite populations. \emph{Theoretical Population Biology}
 Remington DL et al. (2001). Structure of linkage disequilibrium and
 phenotypic associations in the maize genome. \emph{PNAS}
 \strong{98}(20):11479-11484. \doi{10.1073/pnas.201394398}
+
+Gao X, Starmer J, Martin ER (2008). A multiple testing correction method
+for genetic association studies using correlated single nucleotide
+polymorphisms. \emph{Genetic Epidemiology} \strong{32}:361-369.
+\doi{10.1002/gepi.20310}
+
+Gao X, Becker LC, Becker DM, Starmer JD, Province MA (2010). Avoiding
+the high Bonferroni penalty in genome-wide association studies.
+\emph{Genetic Epidemiology} \strong{34}:100-105.
+\doi{10.1002/gepi.20430}
+
+Gao X (2011). Multiple testing corrections for imputed SNPs.
+\emph{Genetic Epidemiology} \strong{35}:154-158.
+\doi{10.1002/gepi.20563}
+
+Borenstein M, Hedges LV, Higgins JPT, Rothstein HR (2009).
+\emph{Introduction to Meta-Analysis}. Wiley.
+
+Higgins JPT, Thompson SG (2002). Quantifying heterogeneity in a
+meta-analysis. \emph{Statistics in Medicine} \strong{21}(11):1539-1558.
+\doi{10.1002/sim.1186}
 }
 \seealso{
 Useful links:
 \itemize{
   \item \url{https://github.com/FAkohoue/LDxBlocks}
   \item \url{https://FAkohoue.github.io/LDxBlocks/}
-  \item \url{https://github.com/FAkohoue}
   \item Report bugs at \url{https://github.com/FAkohoue/LDxBlocks/issues}
 }
 

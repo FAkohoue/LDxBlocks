@@ -1,608 +1,654 @@
 # ==============================================================================
-# pipeline.R
-# End-to-end haplotype block pipeline: one file in, analysis outputs out.
+# pipeline.R  --  End-to-end haplotype block pipeline
 #
-# run_ldx_pipeline() wraps the full workflow:
-#   1. Open genotype backend (file path, bigmemory, or pre-built backend)
-#   2. MAF filtering in C++ chromosome by chromosome
-#   3. Optional chromosome subset
-#   4. Load MAF-filtered genotype matrix
-#   5. Genome-wide LD block detection via run_Big_LD_all_chr()
-#   6. Haplotype extraction via extract_haplotypes() (C++ string builder)
-#   7. Haplotype diversity via compute_haplotype_diversity()
-#   8. Build haplotype feature matrix via build_haplotype_feature_matrix()
-#   9. Write all outputs to user-specified paths
-#
-# The user provides only a file path. Format detection and GDS conversion
-# are handled internally, mirroring the OptSLDP scale-aware architecture.
+# Steps:
+#   1. Open genotype backend
+#   2. Streaming MAF pre-screen
+#   3. Chromosome subset
+#   4. Load genotype matrix
+#   4.5 Call-rate -> MAF (authoritative) -> Imputation (all C++)
+#   4.6 Build post-imputation backend
+#   5. Genome-wide LD block detection
+#   5b. Optional Beagle phasing (phase = TRUE only)
+#   6. Haplotype extraction
+#   7. Haplotype diversity
+#   8. Haplotype feature matrix
+#   9. Write outputs
 # ==============================================================================
 
-
-
-# -- Internal: MAF filter for backend ------------------------------------------
-
-#' Filter SNPs by MAF using a backend object
-#'
-#' Reads all genotype data from the backend in chromosome chunks and removes
-#' SNPs with MAF < maf_cut or that are monomorphic.
-#'
-#' @param be       LDxBlocks_backend object.
-#' @param maf_cut  Minimum MAF. Default 0.05.
-#' @param verbose  Logical.
-#' @return Updated snp_info data.frame with passing SNPs only.
-#' @keywords internal
 #' @noRd
 .maf_filter_backend <- function(be, maf_cut = 0.05, verbose = TRUE) {
   if (verbose) message("[MAF filter] Computing MAF for ", be$n_snps, " SNPs ...")
-
-  chrs     <- unique(be$snp_info$CHR)
-  keep_ids <- character(0)
-
+  chrs <- unique(be$snp_info$CHR); keep_ids <- character(0)
   for (chr in chrs) {
-    idx      <- which(be$snp_info$CHR == chr)
-    geno_chr <- read_chunk(be, idx)                      # individuals x SNPs
-    # maf_filter_cpp expects individuals x SNPs (same orientation)
-    keep_lgl <- maf_filter_cpp(geno_chr, maf_cut = maf_cut)
-    keep_ids <- c(keep_ids, be$snp_info$SNP[idx][keep_lgl])
+    idx <- which(be$snp_info$CHR == chr); geno_chr <- read_chunk(be, idx)
+    keep_ids <- c(keep_ids, be$snp_info$SNP[idx][maf_filter_cpp(geno_chr, maf_cut)])
     rm(geno_chr); gc(FALSE)
   }
+  if (verbose) message("[MAF filter] ", length(keep_ids), " / ", be$n_snps, " SNPs pass MAF >= ", maf_cut)
+  be$snp_info[be$snp_info$SNP %in% keep_ids, , drop = FALSE]
+}
 
-  n_pass <- length(keep_ids)
-  if (verbose)
-    message("[MAF filter] ", n_pass, " / ", be$n_snps,
-            " SNPs pass MAF >= ", maf_cut)
+#' @noRd
+.make_backed_backend_impl <- function(geno_mat, snp_info, sample_ids,
+                                      stem_name, fingerprint = NULL,
+                                      use_bigmemory = FALSE,
+                                      bigmemory_path = tempdir(),
+                                      bigmemory_type = "char",
+                                      verbose = TRUE) {
+  if (!is.matrix(geno_mat)) geno_mat <- as.matrix(geno_mat)
+  rownames(geno_mat) <- sample_ids; colnames(geno_mat) <- snp_info$SNP
+  if (!isTRUE(use_bigmemory) || !requireNamespace("bigmemory", quietly = TRUE))
+    return(read_geno(path = geno_mat, format = "matrix",
+                     snp_info = snp_info, sample_ids = sample_ids, verbose = FALSE))
+  bigmemory_path <- gsub("\\\\", "/", normalizePath(bigmemory_path, mustWork = FALSE))
+  stem <- file.path(bigmemory_path, stem_name)
+  bin_file <- paste0(stem, ".bin"); desc_file <- paste0(stem, ".desc")
+  si_file <- paste0(stem, "_snpinfo.rds"); sid_file <- paste0(stem, "_sampleids.rds")
+  fp_file <- paste0(stem, "_params.rds"); bin_noext <- sub("[.]bin$", "", bin_file)
+  bin_ok <- file.exists(bin_file) || file.exists(bin_noext)
+  all_ok <- bin_ok && file.exists(desc_file) && file.exists(si_file) && file.exists(sid_file)
+  if (all_ok && !is.null(fingerprint) && file.exists(fp_file)) {
+    saved_fp <- tryCatch(readRDS(fp_file), error = function(e) NULL)
+    if (identical(saved_fp, fingerprint)) {
+      if (verbose) message("[", stem_name, "] Reattaching existing backend.")
+      return(read_geno_bigmemory(source = desc_file, snp_info = readRDS(si_file),
+                                 backingfile = basename(stem), backingpath = bigmemory_path))
+    }
+  }
+  for (f in c(bin_file, bin_noext, desc_file, si_file, sid_file, fp_file))
+    if (file.exists(f)) file.remove(f)
+  if (verbose) message("[", stem_name, "] Building file-backed backend.")
+  be_out <- read_geno_bigmemory(source = geno_mat, snp_info = snp_info,
+                                backingfile = basename(stem), backingpath = bigmemory_path,
+                                type = bigmemory_type, verbose = verbose)
+  saveRDS(snp_info, si_file); saveRDS(sample_ids, sid_file)
+  if (!is.null(fingerprint)) saveRDS(fingerprint, fp_file)
+  be_out
+}
 
-  be$snp_info[be$snp_info$SNP %in% keep_ids, ]
+#' @noRd
+.make_imputed_backend <- function(geno_mat, snp_info, sample_ids,
+                                  use_bigmemory = FALSE, bigmemory_path = tempdir(),
+                                  bigmemory_type = "char", maf_cut = 0.05,
+                                  min_callrate = 0.0, impute_method = "none",
+                                  verbose = TRUE) {
+  .make_backed_backend_impl(geno_mat, snp_info, sample_ids,
+                            stem_name = "ldxblocks_bm_imputed",
+                            fingerprint = list(maf_cut=maf_cut, min_callrate=min_callrate,
+                                               impute_method=impute_method, n_snps=nrow(snp_info)),
+                            use_bigmemory=use_bigmemory, bigmemory_path=bigmemory_path,
+                            bigmemory_type=bigmemory_type, verbose=verbose)
 }
 
 
-# -- Internal: build post-filter/post-imputation backend -----------------------
-# Called after call-rate filter + MAF filter + imputation.
-# Creates a new backend whose columns exactly match the filtered/imputed
-# snp_info, so read_chunk() and extract_haplotypes() are always aligned.
-.make_imputed_backend <- function(geno_mat, snp_info, sample_ids,
-                                  use_bigmemory  = FALSE,
-                                  bigmemory_path = tempdir(),
-                                  bigmemory_type = "char",
-                                  maf_cut        = 0.05,
-                                  min_callrate   = 0.0,
-                                  impute_method  = "none",
-                                  verbose        = TRUE) {
-  if (!is.matrix(geno_mat)) geno_mat <- as.matrix(geno_mat)
-  rownames(geno_mat) <- sample_ids
-  colnames(geno_mat) <- snp_info$SNP
+# -- Internal: write filtered/cleaned genotype data as VCF.gz for Beagle ------
+#
+# After MAF filtering, call-rate filtering, chr subsetting, and optional
+# malformed-line removal, the in-memory geno_mat represents a different SNP
+# set than geno_source on disk. Passing geno_source directly to Beagle would:
+#   a) include malformed records that were removed by clean_malformed = TRUE
+#   b) include SNPs that failed MAF or call-rate filters
+#   c) include chromosomes excluded by the chr= argument
+#   d) cause SNP-count mismatches in .read_and_cache_phased_vcf() alignment
+#
+# This function writes geno_mat (post-filtering, imputed 0/1/2) as a minimal
+# valid VCF.gz that Beagle 5.x can read directly. The output contains
+# exactly the SNPs in snp_info_filtered, sorted by CHR then POS.
+#
+# Dosage encoding:
+#   0  -> 0/0  (homozygous REF)
+#   1  -> 0/1  (heterozygous)
+#   2  -> 1/1  (homozygous ALT)
+#   NA -> ./.  (missing)
+#
+# Beagle 5.x accepts plain gzip-compressed VCF (no tabix index required for
+# the input file). gzfile() produces standard gzip compatible with Beagle.
+#
+# Returns the path to the written .vcf.gz file.
+#' @noRd
+.write_cleaned_vcf <- function(geno_mat,
+                               snp_info,
+                               sample_ids,
+                               out_file,
+                               verbose = TRUE) {
+  # snp_info must have: CHR, POS, SNP (used as ID), REF, ALT
+  # REF/ALT fall back to "A"/"T" if absent (Beagle does not use them for phasing)
+  has_ref <- "REF" %in% names(snp_info)
+  has_alt <- "ALT" %in% names(snp_info)
 
-  if (isTRUE(use_bigmemory) &&
-      requireNamespace("bigmemory", quietly = TRUE)) {
+  # Sort by CHR then POS (Beagle requires sorted input)
+  ord   <- order(snp_info$CHR, as.integer(snp_info$POS))
+  si    <- snp_info[ord, , drop = FALSE]
+  gm    <- geno_mat[, ord, drop = FALSE]   # individuals x sorted SNPs
 
-    bigmemory_path <- normalizePath(bigmemory_path, mustWork = FALSE)
-    bigmemory_path <- gsub("\\", "/", bigmemory_path, fixed = TRUE)
-    imp_stem     <- file.path(bigmemory_path, "ldxblocks_bm_imputed")
-    imp_bin      <- paste0(imp_stem, ".bin")
-    imp_desc     <- paste0(imp_stem, ".desc")
-    imp_si_file  <- paste0(imp_stem, "_snpinfo.rds")
-    imp_sid_file <- paste0(imp_stem, "_sampleids.rds")
+  ns  <- nrow(gm)   # n samples
+  np  <- ncol(gm)   # n SNPs
 
-    # Reattach if all four imputed backend files already exist from a
-    # previous run in the same bigmemory_path.  This mirrors the main
-    # backend reattach logic and avoids the "Backing file already exists"
-    # error that bigmemory raises when trying to create over an existing file.
-    imp_bin_noext <- sub("[.]bin$", "", imp_bin)
-    imp_bin_ok    <- file.exists(imp_bin) || file.exists(imp_bin_noext)
-    imp_all_ok    <- imp_bin_ok && file.exists(imp_desc) &&
-      file.exists(imp_si_file) && file.exists(imp_sid_file)
+  if (verbose)
+    message("[write_cleaned_vcf] Writing ", np, " SNPs x ", ns,
+            " samples -> ", basename(out_file))
 
-    # Fingerprint: maf, callrate, impute method. Refuse reattach if params changed.
-    imp_fp_file <- paste0(imp_stem, "_params.rds")
-    curr_fp     <- list(maf_cut = maf_cut, min_callrate = min_callrate,
-                        impute_method = impute_method, n_snps = nrow(snp_info))
+  # Dosage to GT lookup (vectorised)
+  gt_lookup <- c("0" = "0/0", "1" = "0/1", "2" = "1/1")
 
-    if (imp_all_ok) {
-      stale <- FALSE
-      if (file.exists(imp_fp_file)) {
-        saved_fp <- tryCatch(readRDS(imp_fp_file), error = function(e) NULL)
-        if (is.null(saved_fp) || !identical(saved_fp, curr_fp)) {
-          if (verbose)
-            message("[imputed backend] Filtering parameters changed ",
-                    "(maf/callrate/impute/n_snps). Rebuilding imputed backend.")
-          stale <- TRUE
-        }
-      } else {
-        # No fingerprint file: old-format cache; rebuild to add fingerprint
-        if (verbose)
-          message("[imputed backend] No parameter fingerprint found. Rebuilding.")
-        stale <- TRUE
-      }
+  con <- gzfile(out_file, "wb")
+  on.exit(try(close(con), silent = TRUE), add = TRUE)
 
-      if (!stale) {
-        if (verbose) message("[imputed backend] Reattaching existing imputed backend.")
-        si_imp  <- readRDS(imp_si_file)
-        be_imp  <- read_geno_bigmemory(
-          source      = imp_desc,
-          snp_info    = si_imp,
-          backingfile = basename(imp_stem),
-          backingpath = bigmemory_path
-        )
-        return(be_imp)
-      }
-      # Stale: fall through to rebuild after cleaning
-    }
+  # VCF header
+  writeLines(c(
+    "##fileformat=VCFv4.2",
+    paste0("##source=LDxBlocks_write_cleaned_vcf"),
+    paste0("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">"),
+    paste(c("#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
+            "INFO", "FORMAT", sample_ids), collapse = "\t")
+  ), con = con)
 
-    # Remove any partial or stale imputed files before building fresh
-    for (f in c(imp_bin, imp_bin_noext, imp_desc, imp_si_file, imp_sid_file, imp_fp_file)) {
-      if (file.exists(f)) file.remove(f)
-    }
-
-    if (verbose) message("[imputed backend] Building file-backed imputed backend ...")
-    be_imp <- read_geno_bigmemory(
-      source      = geno_mat,
-      snp_info    = snp_info,
-      backingfile = "ldxblocks_bm_imputed",
-      backingpath = bigmemory_path,
-      type        = bigmemory_type,
-      verbose     = verbose
+  # Write one VCF record per SNP
+  # Encode all genotypes for this SNP as a character vector, then paste
+  for (k in seq_len(np)) {
+    dosage <- gm[, k]
+    gt_vec <- ifelse(
+      is.na(dosage),
+      "./.",
+      gt_lookup[as.character(as.integer(dosage))]
     )
-    saveRDS(snp_info,    imp_si_file)
-    saveRDS(sample_ids, imp_sid_file)
-    saveRDS(curr_fp,     imp_fp_file)   # fingerprint for stale-cache detection
-    return(be_imp)
+    gt_vec[is.na(gt_vec)] <- "./."   # guard for out-of-range values
+
+    ref_k <- if (has_ref && !is.na(si$REF[k]) && nzchar(si$REF[k]))
+      as.character(si$REF[k]) else "A"
+    alt_k <- if (has_alt && !is.na(si$ALT[k]) && nzchar(si$ALT[k]))
+      as.character(si$ALT[k]) else "T"
+
+    # Ensure REF != ALT (some datasets have REF=ALT after normalisation)
+    if (ref_k == alt_k) alt_k <- if (ref_k == "A") "T" else "A"
+
+    line <- paste(
+      c(as.character(si$CHR[k]),
+        as.integer(si$POS[k]),
+        as.character(si$SNP[k]),
+        ref_k, alt_k, ".", "PASS", ".", "GT",
+        gt_vec),
+      collapse = "\t"
+    )
+    writeLines(line, con = con)
   }
 
-  # Fallback: in-memory matrix backend (no bigmemory installed or not requested)
-  read_geno(path = geno_mat, format = "matrix",
-            snp_info = snp_info, sample_ids = sample_ids,
-            verbose = FALSE)
+  close(con)
+  if (verbose)
+    message("[write_cleaned_vcf] Done: ", out_file)
+  invisible(out_file)
 }
 
-# -- Main pipeline function -----------------------------------------------------
+
+# -- Internal: read phased VCF and cache hap1/hap2/dosage as bigmemory --------
+#
+# After phase_with_beagle() produces a phased VCF, this function:
+#   1. Checks whether bigmemory-backed caches already exist and are fresh.
+#   2. If so, reattaches them instantly (no re-reading of the VCF).
+#   3. Otherwise, reads the phased VCF via read_phased_vcf(), aligns samples
+#      and SNPs to the cleaned/imputed set, then writes three bigmemory backends:
+#        ldxblocks_bm_phased_hap1  (individuals x SNPs, char, 0/1)
+#        ldxblocks_bm_phased_hap2  (individuals x SNPs, char, 0/1)
+#        ldxblocks_bm_phased_dos   (individuals x SNPs, char, 0/1/2)
+#      plus snp_info, sample_ids, and a fingerprint .rds in bigmemory_path.
+#
+# Returns a list(hap1, hap2, dosage, snp_info, sample_ids, phased=TRUE,
+#                phase_method="beagle") compatible with extract_haplotypes()
+# isp=TRUE path.  When use_bigmemory=FALSE the matrices are returned as plain
+# R matrices (same behaviour as before, but still aligned and cached in RAM).
+#' @noRd
+.read_and_cache_phased_vcf <- function(
+    phased_vcf,          # path to phased VCF.gz from phase_with_beagle()
+    snp_info_filtered,   # cleaned/imputed snp_info (target SNP set)
+    sample_ids_target,   # cleaned/imputed sample order
+    chr_filter,          # character vector or NULL (from pipeline chr arg)
+    norm_key_fn,         # .norm_key closure from pipeline scope
+    bigmemory_path,
+    bigmemory_type = "char",
+    use_bigmemory  = FALSE,
+    verbose        = TRUE
+) {
+  .msg <- function(...) if (verbose) message("[phased cache] ", ...)
+
+  stem_base <- file.path(normalizePath(bigmemory_path, mustWork = FALSE),
+                         "ldxblocks_bm_phased")
+  stem_base <- gsub("\\\\", "/", stem_base)
+
+  si_file   <- paste0(stem_base, "_snpinfo.rds")
+  sid_file  <- paste0(stem_base, "_sampleids.rds")
+  fp_file   <- paste0(stem_base, "_params.rds")
+
+  stems <- c(hap1 = paste0(stem_base, "_hap1"),
+             hap2 = paste0(stem_base, "_hap2"),
+             dos  = paste0(stem_base, "_dos"))
+
+  # Fingerprint: phased VCF path + mtime + target SNP count + sample count
+  vcf_mtime <- tryCatch(file.info(phased_vcf)$mtime, error = function(e) NA)
+  curr_fp <- list(
+    phased_vcf       = normalizePath(phased_vcf, mustWork = FALSE),
+    vcf_mtime        = as.character(vcf_mtime),
+    n_snps_target    = nrow(snp_info_filtered),
+    n_samples_target = length(sample_ids_target),
+    bigmemory_type   = bigmemory_type
+  )
+
+  # Check whether all cache files exist and fingerprint matches
+  all_desc_ok <- all(file.exists(paste0(stems, ".desc")))
+  fp_ok       <- FALSE
+  if (all_desc_ok && file.exists(fp_file)) {
+    saved_fp <- tryCatch(readRDS(fp_file), error = function(e) NULL)
+    fp_ok    <- identical(saved_fp, curr_fp)
+  }
+
+  # --- Reattach path: all cache files fresh ---
+  if (isTRUE(use_bigmemory) && all_desc_ok && fp_ok &&
+      file.exists(si_file) && file.exists(sid_file)) {
+    .msg("Reattaching cached phased backends from ", bigmemory_path)
+    si_c  <- readRDS(si_file)
+    sid_c <- readRDS(sid_file)
+    attach_bm <- function(nm) {
+      bigmemory::attach.big.matrix(paste0(stems[[nm]], ".desc"))[]
+    }
+    return(list(
+      hap1       = attach_bm("hap1"),
+      hap2       = attach_bm("hap2"),
+      dosage     = attach_bm("dos"),
+      snp_info   = si_c,
+      sample_ids = sid_c,
+      phased     = TRUE,
+      phase_method = "beagle"
+    ))
+  }
+
+  # --- Build path: read VCF, align, save ---
+  # Remove stale cache files before rebuilding
+  for (st in stems) {
+    for (ext in c(".bin", ".desc", ""))
+      if (file.exists(paste0(st, ext))) file.remove(paste0(st, ext))
+  }
+  for (f in c(si_file, sid_file, fp_file))
+    if (file.exists(f)) file.remove(f)
+
+  .msg("Reading phased VCF: ", basename(phased_vcf))
+  gp <- read_phased_vcf(phased_vcf, min_maf = 0.0, verbose = verbose)
+
+  # Reorder samples to match cleaned/imputed matrix
+  sid_match <- match(sample_ids_target, gp$sample_ids)
+  if (anyNA(sid_match))
+    stop("Phased VCF sample set does not match the cleaned genotype sample set.",
+         call. = FALSE)
+  gp$hap1       <- gp$hap1[, sid_match, drop = FALSE]
+  gp$hap2       <- gp$hap2[, sid_match, drop = FALSE]
+  gp$dosage     <- gp$dosage[, sid_match, drop = FALSE]
+  gp$sample_ids <- gp$sample_ids[sid_match]
+
+  # Restrict to exact cleaned/imputed SNP set via composite key
+  target_df       <- snp_info_filtered
+  target_df$CHR   <- sub("^chr", "", as.character(target_df$CHR), ignore.case = TRUE)
+  phased_df       <- gp$snp_info
+  phased_df$CHR   <- sub("^chr", "", as.character(phased_df$CHR), ignore.case = TRUE)
+  if (!is.null(chr_filter))
+    phased_df <- phased_df[phased_df$CHR %in% chr_filter, , drop = FALSE]
+
+  target_key <- norm_key_fn(target_df)
+  phased_key <- norm_key_fn(phased_df)
+  idx_match  <- match(target_key, phased_key)
+  if (anyNA(idx_match))
+    stop("Phased VCF missing ", sum(is.na(idx_match)),
+         " SNP(s) from the cleaned/imputed marker set after CHR+POS+REF+ALT+SNP matching.",
+         call. = FALSE)
+
+  h1  <- t(gp$hap1[idx_match,  , drop = FALSE])   # individuals x SNPs
+  h2  <- t(gp$hap2[idx_match,  , drop = FALSE])
+  dos <- t(gp$dosage[idx_match, , drop = FALSE])
+  si  <- phased_df[idx_match, , drop = FALSE]
+  si$CHR <- sub("^chr", "", as.character(si$CHR), ignore.case = TRUE)
+  rownames(h1) <- rownames(h2) <- rownames(dos) <- gp$sample_ids
+  colnames(h1) <- colnames(h2) <- colnames(dos) <- si$SNP
+
+  .msg("Phased matrix: ", nrow(h1), " ind x ", ncol(h1), " SNPs after alignment")
+
+  # Save snp_info + sample_ids
+  saveRDS(si,            si_file)
+  saveRDS(gp$sample_ids, sid_file)
+
+  # Save to bigmemory or return as plain matrices
+  if (isTRUE(use_bigmemory) && requireNamespace("bigmemory", quietly = TRUE)) {
+    .msg("Writing phased bigmemory backends (type = '", bigmemory_type, "') ...")
+    make_bm <- function(mat, stem_nm) {
+      bm <- bigmemory::as.big.matrix(
+        matrix(as.integer(mat), nrow = nrow(mat), ncol = ncol(mat)),
+        type        = bigmemory_type,
+        backingfile = paste0(basename(stems[[stem_nm]]), ".bin"),
+        backingpath = bigmemory_path,
+        descriptorfile = paste0(basename(stems[[stem_nm]]), ".desc")
+      )
+      bm[]   # return as plain matrix so extract_haplotypes() works unmodified
+    }
+    h1_out  <- make_bm(h1,  "hap1")
+    h2_out  <- make_bm(h2,  "hap2")
+    dos_out <- make_bm(dos, "dos")
+    .msg("Phased backends written. Rerun to reattach without re-reading VCF.")
+  } else {
+    h1_out  <- h1
+    h2_out  <- h2
+    dos_out <- dos
+  }
+
+  saveRDS(curr_fp, fp_file)
+
+  list(hap1 = h1_out, hap2 = h2_out, dosage = dos_out,
+       snp_info = si, sample_ids = gp$sample_ids,
+       phased = TRUE, phase_method = "beagle")
+}
+
 
 #' End-to-End Haplotype Block Pipeline
 #'
 #' @description
-#' A single-call wrapper that takes one genotype file and produces a complete
-#' haplotype-based dataset ready for genomic prediction. Internally handles
-#' format detection, optional GDS conversion for large files, MAF filtering,
-#' genome-wide LD block detection, haplotype extraction, diversity analysis,
-#' and output writing.
+#' Single-call wrapper: one genotype file in, complete haplotype dataset out.
+#' Handles format detection, MAF filtering, call-rate filtering, imputation,
+#' LD block detection, optional Beagle phasing, haplotype extraction, diversity
+#' analysis, feature matrix construction, and output writing.
 #'
-#' The user provides only the input file path and desired output paths. All
-#' intermediate steps run transparently.
-#'
-#' @section File-backed memory-mapped genotype store (\code{use_bigmemory}):
-#' When \code{use_bigmemory = TRUE} the pipeline converts the source file into
-#' a \code{bigmemory::big.matrix} backed by two binary files on disk before
-#' running any analysis. Only the OS pages needed for each sub-segment window
-#' are loaded into RAM; the rest of the genome stays on disk. Peak RAM is
-#' proportional to \code{n_samples x subSegmSize x bytes_per_cell} rather than
-#' the full genome matrix.
-#'
-#' \strong{Backing files created in \code{bigmemory_path}:}
+#' @section Phasing modes:
 #' \describe{
-#'   \item{\code{ldxblocks_bm.bin}}{Raw binary genotype data.
-#'     Size = n_samples x n_snps x bytes_per_cell.
-#'     With \code{type = "char"} and 204 samples x 3M SNPs: ~0.6 GB.}
-#'   \item{\code{ldxblocks_bm.desc}}{Tiny text descriptor that bigmemory
-#'     uses to memory-map the \code{.bin} file. Never edit this manually.}
-#'   \item{\code{ldxblocks_bm_snpinfo.rds}}{Cached SNP metadata (SNP, CHR,
-#'     POS, REF, ALT). bigmemory does not store metadata, so this file is
-#'     saved separately to enable restart without re-reading the source file.}
+#'   \item{\code{phase = FALSE} (default)}{
+#'     Dosage-pattern haplotypes extracted directly from the imputed matrix.
+#'     No external tools required. Fast. Suitable for genomic prediction.
+#'     Each block entry is a multi-SNP dosage string - not a true gametic
+#'     haplotype. Frequencies are individual-level pattern proportions.}
+#'   \item{\code{phase = TRUE}}{
+#'     Beagle 5.x called on the original input VCF after LD block detection,
+#'     producing true statistically-inferred gametic haplotypes using
+#'     population-LD across all markers. Haplotype strings become
+#'     \code{"g1|g2"}. Frequencies are computed over \eqn{2N} gamete
+#'     observations. Recommended for diversity analysis and biologically
+#'     interpretable results.
+#'
+#'     \strong{Requirements:} \code{geno_source} must be VCF/VCF.gz.
+#'     Place \code{beagle.jar} in \code{out_dir} or supply via
+#'     \code{beagle_jar}. Download:
+#'     \url{https://faculty.washington.edu/browning/beagle/beagle.html}}
 #' }
 #'
-#' \strong{Restart behaviour:} if all three files already exist in
-#' \code{bigmemory_path} when the pipeline is called, the \code{.bin} is
-#' reattached instantly via \code{bigmemory::attach.big.matrix()} -- the
-#' source VCF is not touched. To force a rebuild, delete the \code{.bin}
-#' and \code{.desc} files.
+#' @section Why Beagle and why a cleaned VCF:
+#' Beagle 5.x performs chromosome-level statistical phasing using population
+#' LD across all markers simultaneously, producing true inferred gametic
+#' haplotypes. This is the only supported phasing method in LDxBlocks.
 #'
-#' \strong{Choosing \code{bigmemory_type}:}
-#' \describe{
-#'   \item{\code{"char"} (default, recommended)}{1 signed byte per cell
-#'     (range --128..127). Genotype dosage values 0, 1, 2 fit without loss.
-#'     8x smaller than \code{"double"}.}
-#'   \item{\code{"short"}}{2 bytes per cell. Not needed for 0/1/2 dosage;
-#'     use only if your pipeline stores values outside --128..127 in the
-#'     same matrix.}
-#'   \item{\code{"double"}}{8 bytes per cell. Same as a standard R
-#'     \code{matrix()}. Use only if downstream code requires \code{double}
-#'     precision and the RAM saving is not needed.}
-#' }
+#' When \code{phase = TRUE}, the pipeline does \strong{not} pass
+#' \code{geno_source} directly to Beagle. Instead it first writes a
+#' cleaned VCF (\code{<geno_source_stem>_cleaned.vcf.gz} in \code{out_dir})
+#' containing exactly the SNPs that survived MAF filtering, call-rate
+#' filtering, chromosome subsetting, and malformed-record removal. This
+#' guarantees that the phased VCF's SNP set is identical to the marker set
+#' used for LD block detection, so \code{.read_and_cache_phased_vcf()} can
+#' align phased gametes to blocks without SNP-count mismatches.
 #'
-#' \strong{When to use \code{use_bigmemory = TRUE}:}
-#' \itemize{
-#'   \item Peak RAM from GDS streaming exceeds available node memory.
-#'   \item You need fast restart: the \code{.bin} persists across R sessions
-#'     (supply a persistent \code{bigmemory_path}, not \code{tempdir()}).
-#'   \item Multiple pipeline runs share the same panel (one \code{.bin},
-#'     many readers -- bigmemory memory-maps are safe for concurrent access).
-#' }
+#' @param geno_source  File path or \code{LDxBlocks_backend}. Supported
+#'   formats: VCF (\code{.vcf}/\code{.vcf.gz}), HapMap (\code{.hmp.txt}),
+#'   CSV, GDS, PLINK BED. \code{phase = TRUE} requires VCF/VCF.gz.
+#' @param out_dir      Output directory. Default \code{"."}. When
+#'   \code{phase = TRUE}, \code{beagle.jar} is expected here and the phased
+#'   VCF is written here.
+#' @param out_blocks   Path for LD block table CSV.
+#' @param out_diversity Path for haplotype diversity table CSV.
+#' @param out_hap_matrix Path for haplotype genotype matrix file.
+#' @param hap_format   \code{"numeric"} (default) or \code{"character"}.
+#' @param phase        If \code{TRUE}, phase with Beagle. Default \code{FALSE}.
+#' @param beagle_jar   Path to \code{beagle.jar}.
+#'   Default: \code{file.path(out_dir, "beagle.jar")}.
+#' @param beagle_threads Beagle threads. Default \code{1L}.
+#' @param java_path    Java executable. Default \code{"java"}.
+#' @param beagle_java_mem_gb JVM heap in GB (\code{-Xmx}). Default \code{NULL}.
+#' @param beagle_args  Extra Beagle argument string. Default \code{""}.
+#' @param beagle_ref_panel Phased reference VCF path. Default \code{NULL}.
+#' @param beagle_map_file  Genetic map file path. Default \code{NULL}.
+#' @param beagle_chrom Restrict Beagle to one chromosome. Default \code{NULL}
+#'   (inherits \code{chr} if set).
+#' @param beagle_seed  Integer seed for reproducibility. Default \code{NULL}.
+#' @param beagle_burnin Burn-in iterations. Default \code{NULL}.
+#' @param beagle_iterations Phasing iterations. Default \code{NULL}.
+#' @param beagle_window Window size. Default \code{NULL}.
+#' @param beagle_overlap Window overlap. Default \code{NULL}.
+#' @param maf_cut      Minimum MAF. Default \code{0.05}.
+#' @param impute       \code{"mean_rounded"} (default), \code{"mode"}, or
+#'   \code{"none"}.
+#' @param min_callrate Minimum per-SNP call rate. Default \code{0.0}.
+#' @param CLQcut       r\eqn{^2} threshold for CLQD. Default \code{0.5}.
+#' @param method       \code{"r2"} (default) or \code{"rV2"}.
+#' @param kin_method   \code{"chol"} (default) or \code{"eigen"}.
+#' @param CLQmode      \code{"Density"} (default), \code{"Maximal"},
+#'   \code{"Louvain"}, or \code{"Leiden"}.
+#' @param clstgap      Max bp gap within clique. Default \code{40000L}.
+#' @param split        Split cliques at largest gap. Default \code{FALSE}.
+#' @param appendrare   Append rare SNPs to nearest block. Default \code{FALSE}.
+#' @param singleton_as_block Return singletons as blocks. Default \code{FALSE}.
+#' @param checkLargest Dense-core pre-pass. Default \code{FALSE}.
+#' @param digits       Round r\eqn{^2} (\code{-1L} = off). Default \code{-1L}.
+#' @param leng         Boundary scan half-window (SNPs). Default \code{200L}.
+#' @param subSegmSize  Max SNPs per sub-segment. Default \code{1500L}.
+#' @param n_threads    OpenMP threads. Default \code{1L}.
+#' @param min_snps_chr Skip chromosomes below this SNP count. Default \code{10L}.
+#' @param max_bp_distance Max bp for r\eqn{^2} (\code{0L} = all). Default \code{0L}.
+#' @param min_snps_block Min SNPs per haplotype block. Default \code{3L}.
+#' @param top_n        Max alleles per block (\code{NULL} = all above
+#'   \code{min_freq}). Default \code{NULL}.
+#' @param min_freq     Min haplotype allele frequency. Default \code{0.01}.
+#' @param scale_hap_matrix Scale haplotype matrix columns. Default \code{FALSE}.
+#' @param chr          Chromosomes to process (\code{NULL} = all). Default
+#'   \code{NULL}.
+#' @param clean_malformed Remove malformed VCF lines. Default \code{FALSE}.
+#' @param use_bigmemory File-backed bigmemory store. Default \code{FALSE}.
+#' @param bigmemory_path Directory for backing files. Default \code{tempdir()}.
+#' @param bigmemory_type \code{"char"} (default), \code{"short"},
+#'   or \code{"double"}.
+#' @param verbose      Print progress. Default \code{TRUE}.
 #'
-#' @section Scale behaviour:
-#' Files are processed via the `LDxBlocks_backend` streaming interface.
-#' For VCF, HapMap, and numeric CSV files the backend reads one chromosome
-#' window at a time - peak RAM equals one `subSegmSize`-SNP window regardless
-#' of total marker count. For very large files (> 2 M SNPs) the GDS backend
-#' via `SNPRelate` is used automatically if the `SNPRelate` package is installed.
-#'
-#' @section Haplotype genotype matrix:
-#' Both output formats have haplotype alleles as rows and individuals as
-#' columns, preceded by metadata columns: \code{hap_id}, \code{CHR},
-#' \code{start_bp}, \code{end_bp}, \code{n_snps}, \code{alleles}
-#' (nucleotide sequence of this allele), \code{frequency}.
-#' \itemize{
-#'   \item \code{"numeric"}: individual cells are haplotype dosage values:
-#'     \itemize{
-#'       \item \strong{Phased data}: 0/1/2/NA -- 0 = neither gamete carries
-#'         this allele, 1 = one gamete carries it (heterozygous),
-#'         2 = both gametes carry it (homozygous).
-#'       \item \strong{Unphased data}: 0/1/NA -- 0 = absent, 1 = present
-#'         (individual's block-level string matches this allele exactly).
-#'         The value 2 is not used for unphased data because the two
-#'         chromosomes cannot be distinguished -- an individual homozygous
-#'         for this allele and one heterozygous for it produce different
-#'         observable strings and are treated as different alleles.
-#'     }
-#'     Compatible with rrBLUP, BGLR, sommer, ASReml-R.
-#'   \item \code{"character"}: individual cells are the full nucleotide
-#'     sequence of the allele (e.g. \code{"AGTTA"}) if the individual
-#'     carries it, \code{"-"} if absent, \code{"."} if missing.
-#'     Heterozygous positions use IUPAC ambiguity codes
-#'     (R=A/G, Y=C/T, S=G/C, W=A/T, K=G/T, M=A/C).
-#' }
-#'
-#' @param clean_malformed   Logical. Stream-clean the input file before reading
-#'   by removing any lines whose column count does not match the header. Needed
-#'   for files from NGSEP and some variant callers. Default \code{FALSE}.
-#' @param use_bigmemory     Logical. If \code{TRUE} and \code{geno_source} is a
-#'   file path, the source file is first loaded into a file-backed
-#'   \code{bigmemory::big.matrix} before block detection. Only the OS pages
-#'   needed for each sub-segment window are loaded into RAM, keeping peak memory
-#'   proportional to \code{n_samples x subSegmSize} rather than the full genome.
-#'   Requires the \pkg{bigmemory} package. Default \code{FALSE}.
-#'   Ignored when \code{geno_source} is already an
-#'   \code{LDxBlocks_backend} (the supplied backend is used as-is).
-#' @param bigmemory_path    Directory where the bigmemory backing files
-#'   (\code{.bin} and \code{.desc}) and SNP info cache
-#'   (\code{_snpinfo.rds}) are written or read from. Defaults to
-#'   \code{tempdir()} so files are cleaned up at the end of the R session.
-#'   Supply a persistent directory (e.g. next to the output CSVs) when you
-#'   want to reattach the backing file on a restart without re-reading the VCF.
-#' @param bigmemory_type    Storage type for the \code{big.matrix}: \code{"char"}
-#'   (1 byte per cell, 8x smaller than double, sufficient for 0/1/2 dosage),
-#'   \code{"short"} (2 bytes), or \code{"double"} (8 bytes). Default
-#'   \code{"char"}.
-#' @param geno_source  Path to a genotype file, OR an
-#'   \code{LDxBlocks_backend} object already created by \code{\link{read_geno}}
-#'   or \code{\link{read_geno_bigmemory}}. Passing a backend skips the
-#'   internal \code{read_geno()} call, allowing you to use any pre-built
-#'   backend including file-backed \code{bigmemory} stores.
-#'   Supported file formats when a path is supplied:
-#'   numeric dosage CSV (`.csv`), HapMap (`.hmp.txt`),
-#'   VCF (`.vcf`, `.vcf.gz`), SNPRelate GDS (`.gds`),
-#'   PLINK BED (`.bed`). Format is detected automatically
-#'   from the file extension.
-#' @param out_blocks        Path for the LD block table CSV. Columns:
-#'   `CHR`, `start`, `end`, `start.rsID`, `end.rsID`, `start.bp`, `end.bp`,
-#'   `length_bp`, `length_snps`, `block_name`.
-#' @param out_diversity     Path for the haplotype diversity table CSV.
-#'   Columns: \code{block_id}, \code{CHR}, \code{start_bp},
-#'   \code{end_bp}, \code{n_snps}, \code{n_ind},
-#'   \code{n_haplotypes}, \code{He} (Nei 1973 corrected),
-#'   \code{Shannon}, \code{n_eff_alleles} (effective number of
-#'   alleles = 1/\eqn{\sum p_i^2}), \code{freq_dominant},
-#'   \code{sweep_flag} (\code{TRUE} when freq_dominant >= 0.90,
-#'   indicating a possible selective sweep or strong founder effect),
-#'   \code{phased}.
-#' @param out_hap_matrix    Path for the haplotype genotype matrix. Format is
-#'   controlled by `hap_format`. See section **Haplotype genotype matrix**.
-#' @param hap_format        Output format for the haplotype matrix:
-#'   \itemize{
-#'     \item \code{"numeric"} (default) - Tab-delimited. Rows = haplotype
-#'       alleles, columns = individuals. Metadata columns: \code{hap_id},
-#'       \code{CHR}, \code{start_bp}, \code{end_bp}, \code{n_snps},
-#'       \code{alleles} (nucleotide sequence of this allele), \code{frequency}.
-#'       Individual columns contain 0/1/2/NA dosage.
-#'     \item \code{"character"} - Tab-delimited. Same row/column orientation.
-#'       Individual cells contain the nucleotide sequence of the haplotype
-#'       allele if the individual carries it, \code{"-"} if absent, \code{"."}
-#'       if missing.
-#'   }
-#' @param maf_cut           Minimum minor allele frequency. SNPs below this
-#'   threshold are removed before block detection. Default `0.05`.
-#' @param impute            Character. Missing genotype imputation strategy
-#'   applied to the genotype matrix after MAF filtering and before LD block
-#'   detection and haplotype extraction. One of:
-#'   \describe{
-#'     \item{\code{"mean_rounded"} (default)}{Per-SNP mean imputation rounded
-#'       to the nearest valid dosage (0, 1, or 2). For each SNP, compute the
-#'       mean dosage over non-missing samples and round: mean 0.08 -> 0,
-#'       mean 0.94 -> 1, mean 1.82 -> 2. Recommended for WGS data with
-#'       partial missingness (e.g. \code{miss20} VCF filter). Ensures
-#'       haplotype strings never contain \code{"."}  so all individuals
-#'       contribute 0/1 values to the feature matrix.}
-#'     \item{\code{"mode"}}{Per-SNP mode imputation. Imputes each missing
-#'       value with the most common observed dosage (0, 1, or 2) at that
-#'       SNP. \strong{Tie-breaking}: when two or more dosage values share
-#'       the maximum count (ambiguous mode), the SNP automatically falls
-#'       back to \code{"mean_rounded"} imputation for that SNP only
-#'       (\code{round(column_mean)}, clamped to \{0, 1, 2\}). This
-#'       ensures no silent bias toward the lower dosage and is consistent
-#'       with what \code{"mean_rounded"} would produce. Ties are
-#'       biologically rare at MAF >= 0.05 but can occur in blocks with
-#'       very high heterozygosity.}
-#'     \item{\code{"none"}}{No imputation. If any missing values remain
-#'       after MAF filtering the function stops with an informative error.
-#'       Use only when the input data are already fully imputed.}
-#'   }
-#' @param min_callrate      Numeric in \code{[0, 1]}. Minimum per-SNP call
-#'   rate (proportion of non-missing samples) required to retain a SNP.
-#'   Applied before the authoritative MAF filter so that allele frequencies
-#'   are computed on clean (non-missing-inflated) data. Default \code{0.0}
-#'   (disabled). The three-step post-load order is: (1) call-rate filter,
-#'   (2) MAF filter (authoritative), (3) imputation. Example: set
-#'   \code{min_callrate = 0.8} to require calls in at least 80\% of samples.
-#' @param CLQcut            r^2 threshold for clique edges in CLQD. Higher
-#'   values produce tighter, smaller blocks. Default `0.5`.
-#' @param method            LD metric: \code{"r2"} (default) or \code{"rV2"}
-#'   (requires kinship matrix; see \code{\link{run_Big_LD_all_chr}}).
-#' @param kin_method        Whitening method for \code{rV2}: \code{"chol"}
-#'   (Cholesky, default, faster) or \code{"eigen"} (eigendecomposition,
-#'   more stable for near-singular kinship matrices).
-#' @param CLQmode           Clique scoring mode: \code{"Density"} (default,
-#'   prefers compact high-density cliques -- recommended for most analyses)
-#'   or \code{"Maximal"} (prefers the largest cliques regardless of span).
-#' @param clstgap           Maximum base-pair gap allowed within a clique
-#'   before it is split. Default \code{40000L} (40 kb). Increase for
-#'   populations with long-range LD (e.g. inbred lines); decrease for
-#'   high-recombination panels.
-#' @param split             Logical. If \code{TRUE}, split cliques whose
-#'   SNP span exceeds \code{clstgap} bp at the largest internal gap.
-#'   Default \code{FALSE}.
-#' @param appendrare        Logical. If \code{TRUE}, SNPs that fail MAF
-#'   filtering are appended to the nearest block after detection. Default
-#'   \code{FALSE}.
-#' @param singleton_as_block Logical. If \code{TRUE}, SNPs that receive
-#'   no clique assignment (singletons at recombination hotspots) are
-#'   returned as single-SNP blocks in the block table. Default \code{FALSE}
-#'   (original Big-LD behaviour -- singletons are silently dropped).
-#' @param checkLargest      Logical. If \code{TRUE}, apply a dense-core
-#'   pre-pass before clique enumeration on sub-segments with >=500 SNPs to
-#'   prevent exponential blowup. Default \code{FALSE}.
-#' @param digits            Integer. Round r^2 values to this many decimal
-#'   places before clique detection. \code{-1L} (default) disables rounding.
-#' @param leng              Boundary scan half-window in SNPs. Default `200L`.
-#'   Reduce to 50-100 for very dense WGS panels.
-#' @param subSegmSize       Maximum SNPs per CLQD sub-segment. Controls peak
-#'   RAM: `subSegmSize x n_individuals x 8` bytes. Default `1500L`.
-#' @param n_threads         OpenMP threads for the C++ LD kernel. Default `1L`.
-#' @param min_snps_chr      Skip chromosomes with fewer post-filter SNPs than
-#'   this. Default `10L`. Increase to skip unplaced scaffolds.
-#' @param min_snps_block    Minimum SNPs per haplotype block. Blocks smaller
-#'   than this are excluded from haplotype analysis. Default `3L`.
-#' @param top_n             Integer or \code{NULL}. Maximum haplotype alleles per
-#'   block in the output matrix. \code{NULL} (default) retains all alleles
-#'   above \code{min_freq} -- no cap. Set an integer (e.g. \code{5L}) only to
-#'   limit column count for memory reasons.
-#' @param min_freq          Minimum haplotype allele frequency (0--1). Alleles
-#'   observed at lower frequency than this threshold are dropped before building
-#'   the feature matrix and output files. Default \code{0.01} (1\%). Rare
-#'   alleles below this threshold cannot be estimated reliably in typical
-#'   training sets and add noise. Lower values retain more rare alleles;
-#'   higher values (e.g. \code{0.05}) match the MAF filter applied to SNPs.
-#' @param scale_hap_matrix  Logical. If `TRUE`, scale the haplotype matrix
-#'   columns to zero mean and unit variance before writing. Useful for
-#'   GBLUP-style models. Default `FALSE`.
-#' @param max_bp_distance  Integer. Maximum bp distance between a SNP pair
-#'   for its r\eqn{^2} to be computed in the LD graph. \code{0L} (default)
-#'   computes all pairs. Recommended for WGS panels: \code{500000L} (500 kb).
-#'   Reduces O(p\eqn{^2}) LD computation to near-O(p) when set.
-#' @param chr               Character vector of chromosome names to process.
-#'   `NULL` (default) processes all chromosomes.
-#' @param verbose           Logical. Print timestamped progress. Default `TRUE`.
-#'
-#' @return A named list (invisibly) with elements:
-#' \describe{
-#'   \item{\code{blocks}}{Data frame of LD blocks from \code{run_Big_LD_all_chr}.}
-#'   \item{\code{diversity}}{Data frame of per-block haplotype diversity
-#'     metrics: \code{block_id}, \code{CHR}, \code{start_bp},
-#'     \code{end_bp}, \code{n_snps}, \code{n_ind}, \code{n_haplotypes},
-#'     \code{He} (sample-size corrected expected heterozygosity),
-#'     \code{Shannon}, \code{n_eff_alleles}, \code{freq_dominant},
-#'     \code{sweep_flag}, \code{phased}.}
-#'   \item{\code{hap_matrix}}{Numeric matrix (individuals x haplotype
-#'     allele columns) -- the dimensionality-reduced genotype matrix for
-#'     genomic prediction. Always returned as a numeric R matrix
-#'     regardless of \code{hap_format} (which only controls the
-#'     \emph{file} written to \code{out_hap_matrix}). Dosage values:
-#'     0/1/2/NA for phased data; 0/1/NA for unphased data.
-#'     Compatible with rrBLUP, BGLR, sommer, ASReml-R.}
-#'   \item{\code{haplotypes}}{Named list of per-block haplotype dosage strings
-#'     from \code{extract_haplotypes()}. Pass to
-#'     \code{decode_haplotype_strings()} for nucleotide sequences, or to
-#'     \code{rank_haplotype_blocks()} for evidence-based ranking.}
-#'   \item{\code{snp_info_filtered}}{Data frame of SNP metadata after
-#'     MAF filtering: \code{SNP}, \code{CHR}, \code{POS}, and any
-#'     additional columns from the input file.}
-#'   \item{\code{geno_matrix}}{Numeric matrix (individuals x SNPs) of
-#'     MAF-filtered genotypes (0/1/2/NA). Needed directly by
-#'     \code{\link{tune_LD_params}} and
-#'     \code{\link{run_haplotype_prediction}} -- avoids reloading
-#'     the genotype file after the pipeline completes.}
-#'   \item{\code{n_blocks}}{Integer. Total LD blocks detected genome-wide.}
-#'   \item{\code{n_hap_columns}}{Integer. Total haplotype allele columns
-#'     after \code{min_freq} filtering -- the effective number of predictors
-#'     for genomic prediction.}
-#' }
+#' @return Named list (invisibly): \code{blocks}, \code{diversity},
+#'   \code{hap_matrix}, \code{hap_matrix_info}, \code{haplotypes},
+#'   \code{geno_matrix}, \code{snp_info_filtered}, \code{phased_vcf},
+#'   \code{phased_backend_desc}, \code{phase_method},
+#'   \code{n_blocks}, \code{n_hap_columns}.
 #'
 #' @examples
 #' \donttest{
-#' # Path A: supply a file path (original interface, unchanged)
 #' geno_file <- system.file("extdata", "example_genotypes_numeric.csv",
-#'                          package = "LDxBlocks")
-#'
+#'                           package = "LDxBlocks")
 #' res <- run_ldx_pipeline(
-#'   geno_source    = geno_file,
-#'   out_blocks     = tempfile(fileext = ".csv"),
-#'   out_diversity  = tempfile(fileext = ".csv"),
-#'   out_hap_matrix = tempfile(fileext = ".csv"),
-#'   hap_format     = "numeric",
-#'   maf_cut        = 0.05,
-#'   CLQcut         = 0.5,
-#'   leng           = 10L,
-#'   subSegmSize    = 80L,
-#'   min_snps_block = 3L,
-#'   # top_n       = 5L,   # optional integer cap; NULL = all above min_freq
-#'   # hap_format  = "character",  # alternative to "numeric"
-#'   verbose        = FALSE
+#'   geno_source = geno_file, out_dir = tempdir(),
+#'   out_blocks = tempfile(fileext=".csv"),
+#'   out_diversity = tempfile(fileext=".csv"),
+#'   out_hap_matrix = tempfile(fileext=".csv"),
+#'   phase = FALSE, maf_cut = 0.05, CLQcut = 0.5,
+#'   leng = 10L, subSegmSize = 80L, verbose = FALSE
 #' )
+#' \dontrun{
+#' # With Beagle phasing (place beagle.jar in out_dir first):
+#' res2 <- run_ldx_pipeline(
+#'   geno_source = "data.vcf.gz", out_dir = "results/",
+#'   out_blocks = "results/blocks.csv",
+#'   out_diversity = "results/diversity.csv",
+#'   out_hap_matrix = "results/hap_matrix.csv",
+#'   phase = TRUE, beagle_threads = 4L,
+#'   beagle_java_mem_gb = 8, beagle_seed = 42L
+#' )
+#' }}
 #'
-#' head(res$blocks)
-#' head(res$diversity)
-#' dim(res$hap_matrix)
-#'
-#' # Path B: supply a pre-built bigmemory backend
-#' if (requireNamespace("bigmemory", quietly = TRUE)) {
-#'   # read_geno_bigmemory() accepts a file path directly:
-#'   # it calls read_geno() internally and wraps the result.
-#'   be_bm <- read_geno_bigmemory(
-#'     source      = geno_file,
-#'     backingfile = tempfile("ldxbm"),
-#'     type        = "char"
-#'   )
-#'   res2 <- run_ldx_pipeline(
-#'     geno_source    = be_bm,
-#'     out_blocks     = tempfile(fileext = ".csv"),
-#'     out_diversity  = tempfile(fileext = ".csv"),
-#'     out_hap_matrix = tempfile(fileext = ".csv"),
-#'     CLQcut         = 0.5, leng = 10L, subSegmSize = 70L
-#'   )
-#'   close_backend(be_bm)
-#' }
-#' }
-#'
-#' @seealso \code{\link{run_Big_LD_all_chr}},
-#'   \code{\link{extract_haplotypes}},
-#'   \code{\link{compute_haplotype_diversity}},
+#' @seealso \code{\link{run_Big_LD_all_chr}}, \code{\link{extract_haplotypes}},
 #'   \code{\link{build_haplotype_feature_matrix}},
-#'   \code{\link{rank_haplotype_blocks}},
-#'   \code{\link{run_haplotype_prediction}},
-#'   \code{\link{tune_LD_params}}
-#'
+#'   \code{\link{run_haplotype_prediction}}
 #' @export
 run_ldx_pipeline <- function(
     geno_source,
+    out_dir        = ".",
     out_blocks,
     out_diversity,
     out_hap_matrix,
-    hap_format       = c("numeric", "character"),
-    maf_cut          = 0.05,
-    CLQcut           = 0.5,
-    method           = c("r2", "rV2"),
-    kin_method       = "chol",
-    CLQmode          = c("Density", "Maximal", "Louvain", "Leiden"),
-    leng             = 200L,
-    subSegmSize      = 1500L,
-    clstgap          = 40000L,
-    split            = FALSE,
-    appendrare       = FALSE,
+    hap_format     = c("numeric", "character"),
+
+    # -- Phasing --------------------------------------------------------------
+    phase              = FALSE,
+    beagle_jar         = NULL,
+    beagle_threads     = 1L,
+    java_path          = "java",
+    beagle_java_mem_gb = NULL,
+    beagle_args        = "",
+    beagle_ref_panel   = NULL,
+    beagle_map_file    = NULL,
+    beagle_chrom       = NULL,
+    beagle_seed        = NULL,
+    beagle_burnin      = NULL,
+    beagle_iterations  = NULL,
+    beagle_window      = NULL,
+    beagle_overlap     = NULL,
+
+    # -- Filtering & imputation -----------------------------------------------
+    maf_cut        = 0.05,
+    impute         = c("mean_rounded", "mode", "none"),
+    min_callrate   = 0.0,
+
+    # -- LD block detection ---------------------------------------------------
+    CLQcut             = 0.5,
+    method             = c("r2", "rV2"),
+    kin_method         = "chol",
+    CLQmode            = c("Density", "Maximal", "Louvain", "Leiden"),
+    leng               = 200L,
+    subSegmSize        = 1500L,
+    clstgap            = 40000L,
+    split              = FALSE,
+    appendrare         = FALSE,
     singleton_as_block = FALSE,
-    checkLargest     = FALSE,
-    digits           = -1L,
-    n_threads        = 1L,
-    min_snps_chr     = 10L,
+    checkLargest       = FALSE,
+    digits             = -1L,
+    n_threads          = 1L,
+    min_snps_chr       = 10L,
+    max_bp_distance    = 0L,
+
+    # -- Haplotype extraction -------------------------------------------------
     min_snps_block   = 3L,
     top_n            = NULL,
     min_freq         = 0.01,
     scale_hap_matrix = FALSE,
-    chr              = NULL,
-    verbose          = TRUE,
-    max_bp_distance  = 0L,
-    clean_malformed  = FALSE,
-    use_bigmemory    = FALSE,
-    bigmemory_path   = tempdir(),
-    bigmemory_type   = "char",
-    impute           = c("mean_rounded", "mode", "none"),
-    min_callrate     = 0.0
-) {
-  hap_format    <- match.arg(hap_format)
-  method        <- match.arg(method)
-  CLQmode       <- match.arg(CLQmode)
-  impute        <- match.arg(impute)
-  bigmemory_type <- match.arg(bigmemory_type,
-                              choices = c("char", "short", "double"))
 
-  .ldx_log <- function(...) {
-    if (verbose) message(sprintf("[%s] %s",
-                                 format(Sys.time(), "%H:%M:%S"),
-                                 paste0(...)))
+    # -- General --------------------------------------------------------------
+    chr             = NULL,
+    clean_malformed = FALSE,
+    use_bigmemory   = FALSE,
+    bigmemory_path  = tempdir(),
+    bigmemory_type  = "char",
+    verbose         = TRUE
+) {
+  hap_format     <- match.arg(hap_format)
+  method         <- match.arg(method)
+  CLQmode        <- match.arg(CLQmode)
+  impute         <- match.arg(impute)
+  bigmemory_type <- match.arg(bigmemory_type, choices = c("char", "short", "double"))
+
+  .log <- function(...) {
+    if (verbose)
+      message(sprintf("[%s] %s", format(Sys.time(), "%H:%M:%S"), paste0(...)))
   }
 
-  # -- Step 1: Open backend ------------------------------------------------
-  # Three input paths, in priority order:
-  #   (a) geno_source is already an LDxBlocks_backend -> use as-is
-  #   (b) use_bigmemory = TRUE -> open file, convert to bigmemory backend
-  #   (c) default -> open file via read_geno() (GDS streaming)
-  if (inherits(geno_source, "LDxBlocks_backend")) {
-    # Path (a): pre-built backend supplied by caller
-    be <- geno_source
-    .ldx_log("Using pre-built backend: ", be$type, " | ",
-             be$n_samples, " ind | ", be$n_snps, " SNPs")
-    # Caller owns this backend -- do NOT register on.exit(close_backend)
+  .norm_key <- function(df) {
+    req <- c("CHR", "POS", "REF", "ALT", "SNP")
+    miss <- setdiff(req, names(df))
+    if (length(miss))
+      stop("Missing required columns for alignment: ", paste(miss, collapse = ","), call. = FALSE)
+    paste(
+      .norm_chr_hap(df$CHR),
+      as.character(df$POS),
+      as.character(df$REF),
+      as.character(df$ALT),
+      as.character(df$SNP),
+      sep = "||"
+    )
+  }
 
+  .make_backed_backend <- function(
+    geno_mat,
+    snp_info,
+    sample_ids,
+    stem_name,
+    fingerprint = NULL,
+    verbose = TRUE
+  ) {
+    .make_backed_backend_impl(
+      geno_mat = geno_mat, snp_info = snp_info, sample_ids = sample_ids,
+      stem_name = stem_name, fingerprint = fingerprint,
+      use_bigmemory = use_bigmemory, bigmemory_path = bigmemory_path,
+      bigmemory_type = bigmemory_type, verbose = verbose
+    )
+  }
+
+  # -- Validate phasing requirements early ------------------------------------
+  if (isTRUE(phase)) {
+    if (inherits(geno_source, "LDxBlocks_backend"))
+      stop(
+        "phase = TRUE requires geno_source to be a VCF/VCF.gz file path. ",
+        "Pre-built backends cannot be passed to Beagle.",
+        call. = FALSE
+      )
+
+    if (!is.character(geno_source) ||
+        length(geno_source) != 1L ||
+        !grepl("\\.vcf(\\.gz)?$", geno_source, ignore.case = TRUE))
+      stop(
+        "phase = TRUE requires geno_source to be a VCF or VCF.gz file path.",
+        call. = FALSE
+      )
+
+    if (!file.exists(geno_source))
+      stop("geno_source not found: ", geno_source, call. = FALSE)
+
+    if (is.null(beagle_jar))
+      beagle_jar <- file.path(out_dir, "beagle.jar")
+    if (!file.exists(beagle_jar))
+      stop("beagle.jar not found at: ", beagle_jar,
+           "\nPlace beagle.jar in out_dir ('", out_dir, "') or supply via beagle_jar.\n",
+           "Download: https://faculty.washington.edu/browning/beagle/beagle.html",
+           call. = FALSE)
+  }
+
+  # -- Step 1: Open backend ---------------------------------------------------
+  if (inherits(geno_source, "LDxBlocks_backend")) {
+    be <- geno_source
+    .log("Using pre-built backend: ", be$type, " | ",
+         be$n_samples, " ind | ", be$n_snps, " SNPs")
   } else {
     if (!is.character(geno_source) || length(geno_source) != 1L)
-      stop("geno_source must be a file path (character) or an ",
-           "LDxBlocks_backend object.", call. = FALSE)
+      stop("geno_source must be a file path or an LDxBlocks_backend.", call. = FALSE)
 
     if (isTRUE(use_bigmemory)) {
-      # Path (b): file-backed bigmemory backend
       if (!requireNamespace("bigmemory", quietly = TRUE))
-        stop("use_bigmemory = TRUE requires the 'bigmemory' package. ",
-             "Install with: install.packages('bigmemory')", call. = FALSE)
+        stop("use_bigmemory = TRUE requires the 'bigmemory' package.", call. = FALSE)
 
-      # Normalize and convert to forward slashes. bigmemory's C code
-      # uses sprintf("%s/%s", backingpath, file) so backslashes from
-      # Windows normalizePath produce mixed separators that fail.
       bigmemory_path <- normalizePath(bigmemory_path, mustWork = FALSE)
-      bigmemory_path <- gsub("\\", "/", bigmemory_path, fixed = TRUE)
-      bm_stem     <- file.path(bigmemory_path, "ldxblocks_bm")
-      bm_bin_file <- paste0(bm_stem, ".bin")
-      bm_desc_file <- paste0(bm_stem, ".desc")
-      bm_si_file  <- paste0(bm_stem, "_snpinfo.rds")
+      bigmemory_path <- gsub("\\\\", "/", bigmemory_path, fixed = TRUE)
 
-      # -- Determine bigmemory state and act accordingly ------------------
-      # Three files must ALL exist for a valid reattach:
-      #   .bin  -- raw genotype bytes
-      #   .desc -- bigmemory memory-map descriptor
-      #   _snpinfo.rds -- SNP metadata (not stored in .desc)
-      # Any other combination (partial write, interrupted job, manual
-      # deletion) is treated as a stale/corrupt set: all three files
-      # are removed automatically and the matrix is rebuilt from scratch.
-      # bigmemory < 1.4.7 creates an extensionless backing file (no .bin).
-      # Accept either form when checking for existing state.
-      bm_bin_noext <- sub("\\.bin$", "", bm_bin_file)  # e.g. .../ldxblocks_bm
-      bm_bin_ok  <- file.exists(bm_bin_file) || file.exists(bm_bin_noext)
-      bm_desc_ok <- file.exists(bm_desc_file)
-      bm_si_ok   <- file.exists(bm_si_file)
-      bm_all_ok  <- bm_bin_ok && bm_desc_ok && bm_si_ok
-      bm_partial <- (bm_bin_ok || bm_desc_ok || bm_si_ok) && !bm_all_ok
+      bm_stem      <- file.path(bigmemory_path, "ldxblocks_bm")
+      bm_bin_file  <- paste0(bm_stem, ".bin")
+      bm_desc_file <- paste0(bm_stem, ".desc")
+      bm_si_file   <- paste0(bm_stem, "_snpinfo.rds")
+
+      bm_bin_noext <- sub("\\.bin$", "", bm_bin_file)
+      bm_bin_ok    <- file.exists(bm_bin_file) || file.exists(bm_bin_noext)
+      bm_all_ok    <- bm_bin_ok && file.exists(bm_desc_file) && file.exists(bm_si_file)
+      bm_partial   <- (bm_bin_ok || file.exists(bm_desc_file) || file.exists(bm_si_file)) && !bm_all_ok
 
       if (bm_partial) {
-        # Partial write detected (e.g. job was killed mid-build).
-        # Remove all three files and rebuild cleanly.
-        partial <- c(bm_bin_file, bm_desc_file, bm_si_file)[c(bm_bin_ok, bm_desc_ok, bm_si_ok)]
-        .ldx_log("[bigmemory] Partial backing files detected (incomplete ",
-                 "previous run). Removing and rebuilding:")
-        for (f in partial) {
-          .ldx_log("[bigmemory]   removing ", basename(f))
-          file.remove(f)
-        }
+        for (f in c(bm_bin_file, bm_bin_noext, bm_desc_file, bm_si_file))
+          if (file.exists(f)) {
+            .log("[bigmemory] Removing stale: ", basename(f))
+            file.remove(f)
+          }
         bm_all_ok <- FALSE
       }
 
       if (bm_all_ok) {
-        # State 1: all three files present -> reattach instantly
-        .ldx_log("[bigmemory] Reattaching existing backing file: ",
-                 basename(bm_bin_file))
+        .log("[bigmemory] Reattaching: ", basename(bm_bin_file))
         si_bm <- readRDS(bm_si_file)
         be <- read_geno_bigmemory(
           source      = bm_desc_file,
@@ -611,13 +657,8 @@ run_ldx_pipeline <- function(
           backingpath = bigmemory_path
         )
       } else {
-        # State 2: no files (or just cleaned) -> build fresh
-        .ldx_log("[bigmemory] Building file-backed matrix (type = '",
-                 bigmemory_type, "') ...")
-        .ldx_log("[bigmemory]   ", bm_bin_file)
-        be_tmp <- read_geno(geno_source,
-                            clean_malformed = clean_malformed,
-                            verbose = verbose)
+        .log("[bigmemory] Building file-backed matrix (type = '", bigmemory_type, "') ...")
+        be_tmp <- read_geno(geno_source, clean_malformed = clean_malformed, verbose = verbose)
         be <- read_geno_bigmemory(
           source      = be_tmp,
           snp_info    = be_tmp$snp_info,
@@ -626,193 +667,120 @@ run_ldx_pipeline <- function(
           type        = bigmemory_type,
           verbose     = verbose
         )
-        close_backend(be_tmp)  # release temporary GDS/BED handle
+        close_backend(be_tmp)
         saveRDS(be$snp_info, bm_si_file)
-        .ldx_log("[bigmemory] SNP info cached: ", basename(bm_si_file))
-        # Save sample IDs separately (bigmemory rownames unreliable on file-backed)
-        bm_sid_file <- paste0(bm_stem, "_sampleids.rds")
-        saveRDS(be$sample_ids, bm_sid_file)
-        .ldx_log("[bigmemory] Sample IDs cached: ", basename(bm_sid_file))
-        .ldx_log("[bigmemory] Rerun with same bigmemory_path to reattach ",
-                 "without re-reading the source file.")
+        saveRDS(be$sample_ids, paste0(bm_stem, "_sampleids.rds"))
       }
       on.exit(close_backend(be), add = TRUE)
-
     } else {
-      # Path (c): default GDS streaming backend
-      .ldx_log("Opening genotype file: ", basename(geno_source))
-      be <- read_geno(geno_source, clean_malformed = clean_malformed,
-                      verbose = verbose)
+      .log("Opening: ", basename(geno_source))
+      be <- read_geno(geno_source, clean_malformed = clean_malformed, verbose = verbose)
       on.exit(close_backend(be), add = TRUE)
     }
 
-    .ldx_log("Backend: ", be$type, " | ",
-             be$n_samples, " ind | ", be$n_snps, " SNPs")
+    .log("Backend: ", be$type, " | ", be$n_samples, " ind | ", be$n_snps, " SNPs")
   }
 
-  # -- Step 2: Streaming MAF pre-screen (monomorphic removal) ----------------
-  # This is a LOOSE pre-screen only: it removes obvious monomorphics and
-  # very rare SNPs from the backend before loading, reducing the size of
-  # the matrix loaded in Step 4. It is NOT the authoritative MAF filter.
-  # The authoritative filtering (in correct biological order) happens
-  # post-load in Step 4.5: call-rate -> MAF -> imputation.
-  orig_snp_info <- be$snp_info
+  # -- Step 2: Streaming MAF pre-screen ---------------------------------------
+  orig_snp_info     <- be$snp_info
+  snp_info_filtered <- .maf_filter_backend(be, maf_cut = maf_cut, verbose = verbose)
 
-  .ldx_log("Pre-screen: removing monomorphic / MAF < ", maf_cut, " SNPs (streaming) ...")
-  snp_info_filtered <- .maf_filter_backend(be, maf_cut = maf_cut,
-                                           verbose = verbose)
-  n_pass <- nrow(snp_info_filtered)
-  if (n_pass == 0L)
-    stop("No SNPs remain after MAF pre-screen. Lower maf_cut.")
+  if (nrow(snp_info_filtered) == 0L)
+    stop("No SNPs remain after MAF pre-screen. Lower maf_cut.", call. = FALSE)
 
   be$snp_info <- snp_info_filtered
-  be$n_snps   <- n_pass
+  be$n_snps   <- nrow(snp_info_filtered)
 
-  # -- Step 3: Subset chromosomes if requested --------------------------------
+  # -- Step 3: Chromosome subset ----------------------------------------------
   if (!is.null(chr)) {
-    chr <- as.character(chr)
-    be$snp_info <- be$snp_info[be$snp_info$CHR %in% chr, ]
+    chr <- .norm_chr_hap(as.character(chr))
+    be$snp_info$CHR <- .norm_chr_hap(be$snp_info$CHR)
+    be$snp_info <- be$snp_info[be$snp_info$CHR %in% chr, , drop = FALSE]
     be$n_snps   <- nrow(be$snp_info)
-    .ldx_log("Chromosome filter: retained ", be$n_snps, " SNPs on chr ",
-             paste(chr, collapse = ", "))
+    .log("Chr filter: ", be$n_snps, " SNPs on chr ", paste(chr, collapse = ", "))
   }
 
-  # -- Step 4: Load genotype matrix for block detection ----------------------
-  # Read the MAF-filtered SNPs from the already-open backend `be`.
-  # We do NOT open a second backend -- on Windows, opening a second connection
-  # to the same GDS file while `be` is open causes a file-lock error.
-  # The backend's snp_info was updated in Step 2 to the filtered set;
-  # read_chunk() with the original full-genome SNP indices loads only those.
-  .ldx_log("Loading filtered genotype matrix ...")
-
-  # Map filtered SNP IDs back to column positions in the original full backend
-  # We need the original (pre-filter) snp_info to get correct column indices.
-  # Since be$snp_info is now filtered, we stored the original before filtering.
+  # -- Step 4: Load genotype matrix -------------------------------------------
+  .log("Loading filtered genotype matrix ...")
   full_idx <- match(be$snp_info$SNP, orig_snp_info$SNP)
-  geno_mat <- read_chunk(be, full_idx)             # individuals x filtered SNPs
+  geno_mat <- read_chunk(be, full_idx)
   rownames(geno_mat) <- be$sample_ids
   colnames(geno_mat) <- be$snp_info$SNP
-  .ldx_log("Genotype matrix: ", nrow(geno_mat), " x ", ncol(geno_mat))
+  .log("Genotype matrix: ", nrow(geno_mat), " x ", ncol(geno_mat))
 
-  # -- Step 4.5: Call-rate filter -> MAF filter -> Impute (C++) -------------
-  # Authoritative filtering in correct biological order (all post-load, C++):
-  #   1. Call-rate filter : drop SNPs with call rate < min_callrate.
-  #      A SNP with 40% missing may appear to pass MAF on observed calls;
-  #      removing it first ensures MAF is computed on clean data.
-  #   2. MAF filter       : authoritative MAF filter on call-rate-passed SNPs.
-  #      Replaces the streaming pre-screen from Step 2 which used estimated
-  #      frequencies inflated by missing data.
-  #   3. Impute           : fill remaining NAs in passing SNPs.
-  # All three steps use C++; applied to geno_mat only (disk data unchanged).
-
-  # -- 4.5a: Call-rate filter ------------------------------------------------
-  n_ind  <- nrow(geno_mat)
-  n_snps_before_cr <- ncol(geno_mat)
+  # -- Step 4.5a: Call-rate filter --------------------------------------------
   if (min_callrate > 0) {
     cr_res <- impute_and_filter_cpp(
-      geno         = matrix(as.integer(geno_mat), nrow = n_ind),
+      geno         = matrix(as.integer(geno_mat), nrow = nrow(geno_mat)),
       min_callrate = min_callrate,
-      method       = 0L   # method irrelevant here; we only use $keep
+      method       = 0L
     )
-    n_cr_removed <- cr_res$n_filtered
-    # Call-rate distribution summary for the log
-    cr_vals   <- as.numeric(cr_res$call_rates)
-    cr_pct    <- round(cr_vals * 100, 1)
-    cr_below  <- sum(cr_vals < min_callrate, na.rm = TRUE)
-    cr_min    <- round(min(cr_vals, na.rm = TRUE) * 100, 1)
-    cr_median <- round(median(cr_vals, na.rm = TRUE) * 100, 1)
-    cr_mean   <- round(mean(cr_vals, na.rm = TRUE) * 100, 1)
-    .ldx_log(sprintf(
-      "Call-rate filter: threshold = %.0f%% | SNP call rates: min=%.1f%% mean=%.1f%% median=%.1f%%",
-      min_callrate * 100, cr_min, cr_mean, cr_median))
-    if (n_cr_removed > 0L) {
+
+    if (cr_res$n_filtered > 0L) {
       keep_cr           <- as.logical(cr_res$keep)
       geno_mat          <- geno_mat[, keep_cr, drop = FALSE]
       snp_info_filtered <- snp_info_filtered[keep_cr, , drop = FALSE]
       be$snp_info       <- snp_info_filtered
       be$n_snps         <- nrow(snp_info_filtered)
-      .ldx_log(sprintf(
-        "Call-rate filter: removed %d / %d SNPs (%.1f%%) with call rate < %.0f%% | Remaining: %d SNPs",
-        n_cr_removed, n_snps_before_cr,
-        100 * n_cr_removed / n_snps_before_cr,
-        min_callrate * 100, ncol(geno_mat)))
+
+      .log(sprintf(
+        "Call-rate filter: removed %d SNPs (< %.0f%%) | Remaining: %d",
+        cr_res$n_filtered, min_callrate * 100, ncol(geno_mat)
+      ))
     } else {
-      .ldx_log(sprintf(
-        "Call-rate filter: all %d SNPs passed (>= %.0f%% call rate).",
-        n_snps_before_cr, min_callrate * 100))
+      .log(sprintf("Call-rate filter: all %d SNPs passed.", ncol(geno_mat)))
     }
-  } else {
-    .ldx_log("Call-rate filter: disabled (min_callrate = 0).")
   }
 
-  # -- 4.5b: MAF filter (authoritative, post call-rate) ----------------------
-  # Always run - not conditional on min_callrate > 0.
-  # This is the authoritative MAF filter: call-rate filtering in 4.5a ensures
-  # allele frequencies are now computed on clean (non-missing-inflated) data.
-  {
-    n_before_maf <- ncol(geno_mat)
-    keep_maf <- maf_filter_cpp(geno_mat, maf_cut = maf_cut)
-    n_maf_removed <- sum(!keep_maf)
-    if (n_maf_removed > 0L) {
-      geno_mat          <- geno_mat[, keep_maf, drop = FALSE]
-      snp_info_filtered <- snp_info_filtered[keep_maf, , drop = FALSE]
-      be$snp_info       <- snp_info_filtered
-      be$n_snps         <- nrow(snp_info_filtered)
-      .ldx_log(sprintf(
-        "MAF filter (>= %.2f): removed %d / %d SNPs (%.1f%%) | Remaining: %d SNPs",
-        maf_cut, n_maf_removed, n_before_maf,
-        100 * n_maf_removed / n_before_maf, ncol(geno_mat)))
-    } else {
-      .ldx_log(sprintf(
-        "MAF filter (>= %.2f): all %d SNPs passed.", maf_cut, n_before_maf))
-    }
-    if (ncol(geno_mat) == 0L)
-      stop("No SNPs remain after call-rate and MAF filtering.")
+  # -- Step 4.5b: MAF filter (authoritative) ----------------------------------
+  keep_maf      <- maf_filter_cpp(geno_mat, maf_cut = maf_cut)
+  n_maf_removed <- sum(!keep_maf)
+
+  if (n_maf_removed > 0L) {
+    geno_mat          <- geno_mat[, keep_maf, drop = FALSE]
+    snp_info_filtered <- snp_info_filtered[keep_maf, , drop = FALSE]
+    be$snp_info       <- snp_info_filtered
+    be$n_snps         <- nrow(snp_info_filtered)
+
+    .log(sprintf(
+      "MAF filter (>= %.2f): removed %d SNPs | Remaining: %d",
+      maf_cut, n_maf_removed, ncol(geno_mat)
+    ))
   }
 
-  # -- 4.5c: Imputation ------------------------------------------------------
-  n_na_before   <- sum(is.na(geno_mat))
-  n_cells_total <- as.numeric(nrow(geno_mat)) * ncol(geno_mat)
-  pct_missing   <- round(100 * n_na_before / n_cells_total, 3)
-  if (impute == "none") {
-    if (n_na_before > 0L)
-      stop("impute = 'none' but ", n_na_before, " missing genotypes remain (",
-           pct_missing, "% of ", nrow(geno_mat), " ind x ", ncol(geno_mat),
-           " SNPs). Supply fully imputed data or set impute = 'mean_rounded' or 'mode'.")
-    .ldx_log(sprintf(
-      "Imputation: none | matrix %d ind x %d SNPs | 0 missing values (data complete).",
-      nrow(geno_mat), ncol(geno_mat)))
-  } else if (n_na_before == 0L) {
-    .ldx_log(sprintf(
-      "Imputation: skipped | matrix %d ind x %d SNPs | 0 missing values.",
-      nrow(geno_mat), ncol(geno_mat)))
-  } else {
-    .ldx_log(sprintf(
-      "Imputation (%s): %d ind x %d SNPs | %d missing values (%.3f%% of matrix) -> filling ...",
-      impute, nrow(geno_mat), ncol(geno_mat), n_na_before, pct_missing))
-    method_int <- if (impute == "mode") 1L else 0L
+  if (ncol(geno_mat) == 0L)
+    stop("No SNPs remain after MAF filtering.", call. = FALSE)
+
+  # -- Step 4.5c: Imputation --------------------------------------------------
+  n_na <- sum(is.na(geno_mat))
+
+  if (impute == "none" && n_na > 0L)
+    stop(
+      "impute = 'none' but ", n_na, " missing genotypes remain. ",
+      "Set impute = 'mean_rounded' or 'mode'.",
+      call. = FALSE
+    )
+
+  if (impute != "none" && n_na > 0L) {
+    .log(sprintf("Imputation (%s): %d missing values ...", impute, n_na))
     imp_res <- impute_and_filter_cpp(
       geno         = matrix(as.integer(geno_mat), nrow = nrow(geno_mat)),
-      min_callrate = 0.0,   # call-rate already handled in step 2.5a
-      method       = method_int
+      min_callrate = 0.0,
+      method       = if (impute == "mode") 1L else 0L
     )
     geno_mat <- imp_res$geno_imputed
     storage.mode(geno_mat) <- "numeric"
     rownames(geno_mat) <- be$sample_ids
     colnames(geno_mat) <- snp_info_filtered$SNP
-    n_na_after <- sum(is.na(geno_mat))
-    .ldx_log(sprintf(
-      "Imputation (%s): filled %d / %d missing values (%.3f%%) | Remaining NA: %d",
-      impute, imp_res$n_imputed, n_na_before, pct_missing, n_na_after))
+
+    .log(sprintf(
+      "Imputation: filled %d values | Remaining NA: %d",
+      imp_res$n_imputed, sum(is.na(geno_mat))
+    ))
   }
 
-  # -- Step 4.6: Build post-imputation backend (be_imputed) ------------------
-  # After call-rate filter + MAF filter + imputation, geno_mat is fully clean.
-  # We wrap it in a backend so all downstream steps (LD detection, haplotype
-  # extraction) use read_chunk() against the SAME filtered/imputed data.
-  # This eliminates the SNP-index mismatch between be (raw) and geno_mat.
-  .ldx_log("Building imputed backend (", nrow(geno_mat), " ind x ",
-           ncol(geno_mat), " SNPs) ...")
+  # -- Step 4.6: Build cleaned/imputed backend --------------------------------
+  .log("Building imputed backend (", nrow(geno_mat), " x ", ncol(geno_mat), ") ...")
   be_imputed <- .make_imputed_backend(
     geno_mat       = geno_mat,
     snp_info       = snp_info_filtered,
@@ -825,11 +793,10 @@ run_ldx_pipeline <- function(
     impute_method  = impute,
     verbose        = verbose
   )
-  .ldx_log("Imputed backend: ", be_imputed$type, " | ",
-           be_imputed$n_samples, " ind | ", be_imputed$n_snps, " SNPs")
+  on.exit(close_backend(be_imputed), add = TRUE)
 
-  # -- Step 5: Genome-wide LD block detection ---------------------------------
-  .ldx_log("Running genome-wide LD block detection ...")
+  # -- Step 5: LD block detection ---------------------------------------------
+  .log("Running genome-wide LD block detection ...")
   blocks <- run_Big_LD_all_chr(
     geno_matrix        = be_imputed,
     snp_info           = be_imputed$snp_info,
@@ -853,99 +820,180 @@ run_ldx_pipeline <- function(
   )
 
   if (is.null(blocks) || nrow(blocks) == 0L)
-    stop("No LD blocks detected. Try lowering CLQcut or adjusting parameters.")
+    stop("No LD blocks detected. Try lowering CLQcut or adjusting parameters.", call. = FALSE)
 
-  .ldx_log("Detected ", nrow(blocks), " LD blocks")
+  .log("Detected ", nrow(blocks), " LD blocks")
+  data.table::fwrite(blocks, file = out_blocks, sep = ",", quote = FALSE, na = "NA")
+  .log("Block table written: ", out_blocks)
 
-  # Write block table
-  data.table::fwrite(blocks, file = out_blocks, sep = ",",
-                     quote = FALSE, na = "NA")
-  .ldx_log("Block table written: ", out_blocks)
+  # -- Step 5b: Optional Beagle phasing ---------------------------------------
+  # Phasing occurs AFTER block detection (unphased dosage matrix is correct for
+  # LD) and BEFORE haplotype extraction (which needs gametic strings).
+  #
+  # .read_and_cache_phased_vcf() handles:
+  #   - Running phase_with_beagle() to produce the phased VCF
+  #   - Reading via read_phased_vcf()
+  #   - Aligning samples and SNPs to the cleaned/imputed set
+  #   - Saving hap1, hap2, and dosage as bigmemory-backed matrices in
+  #     bigmemory_path (ldxblocks_bm_phased_hap1, _hap2, _dos)
+  #   - Fingerprint-based restart: reattaches from disk without re-reading
+  #     the phased VCF on subsequent runs
+  phased_vcf_path     <- NULL
+  phased_backend_desc <- NULL
+  phase_method        <- "unphased"
+  geno_for_hap        <- be_imputed
+  out_snp_info        <- be_imputed$snp_info
+
+  if (isTRUE(phase)) {
+    # beagle_chrom: use explicit value or inherit from chr filter
+    phase_chr_use <- beagle_chrom
+    if (is.null(phase_chr_use) && !is.null(chr))
+      phase_chr_use <- paste(chr, collapse = ",")
+
+    out_prefix <- file.path(
+      out_dir,
+      sub("\\.vcf(\\.gz)?$", "_phased", basename(geno_source), ignore.case = TRUE)
+    )
+
+    # Write a filtered VCF from geno_mat (post-MAF/callrate/chr/clean_malformed
+    # filtering) for use as Beagle input.  This is ALWAYS done, not only when
+    # clean_malformed = TRUE, because:
+    #   - geno_source may contain SNPs that failed MAF or call-rate filters
+    #   - geno_source may contain chromosomes excluded by the chr= argument
+    #   - geno_source may contain malformed records if clean_malformed = TRUE
+    # Feeding geno_source directly to Beagle would produce a phased VCF with a
+    # different SNP set than snp_info_filtered, causing .read_and_cache_phased_vcf()
+    # to report missing SNPs and fail alignment.
+    #
+    # The cleaned VCF contains exactly the SNPs in snp_info_filtered, sorted
+    # by CHR and POS, encoded as 0/0 | 0/1 | 1/1 | ./. GT fields.
+    cleaned_vcf_for_beagle <- file.path(
+      out_dir,
+      sub("\\.vcf(\\.gz)?$", "_cleaned.vcf.gz",
+          basename(geno_source), ignore.case = TRUE)
+    )
+    .log("Writing cleaned VCF for Beagle input: ", basename(cleaned_vcf_for_beagle))
+    .write_cleaned_vcf(
+      geno_mat   = geno_mat,
+      snp_info   = snp_info_filtered,
+      sample_ids = be$sample_ids,
+      out_file   = cleaned_vcf_for_beagle,
+      verbose    = verbose
+    )
+
+    .log("Phasing with Beagle -> ", out_prefix, ".vcf.gz ...")
+    phased_vcf_path <- phase_with_beagle(
+      input_vcf   = cleaned_vcf_for_beagle,
+      out_prefix  = out_prefix,
+      beagle_jar  = beagle_jar,
+      java_path   = java_path,
+      java_mem_gb = beagle_java_mem_gb,
+      nthreads    = as.integer(beagle_threads),
+      ref_panel   = beagle_ref_panel,
+      map_file    = beagle_map_file,
+      chrom       = phase_chr_use,
+      seed        = beagle_seed,
+      burnin      = beagle_burnin,
+      iterations  = beagle_iterations,
+      window      = beagle_window,
+      overlap     = beagle_overlap,
+      beagle_args = beagle_args,
+      verbose     = verbose
+    )
+
+    # Read phased VCF, align, and cache hap1/hap2/dosage to bigmemory.
+    # On restart with the same bigmemory_path and matching fingerprint,
+    # the VCF is NOT re-read - backends are reattached from disk instantly.
+    geno_for_hap <- .read_and_cache_phased_vcf(
+      phased_vcf         = phased_vcf_path,
+      snp_info_filtered  = snp_info_filtered,
+      sample_ids_target  = be$sample_ids,
+      chr_filter         = chr,
+      norm_key_fn        = .norm_key,
+      bigmemory_path     = bigmemory_path,
+      bigmemory_type     = bigmemory_type,
+      use_bigmemory      = use_bigmemory,
+      verbose            = verbose
+    )
+
+    out_snp_info <- geno_for_hap$snp_info
+
+    if (isTRUE(use_bigmemory))
+      phased_backend_desc <- file.path(
+        normalizePath(bigmemory_path, mustWork = FALSE),
+        "ldxblocks_bm_phased_dos.desc"
+      )
+
+    phase_method <- "beagle"
+    .log("Phased data ready: ", nrow(geno_for_hap$snp_info), " SNPs x ",
+         length(geno_for_hap$sample_ids), " individuals")
+  }
 
   # -- Step 6: Haplotype extraction -------------------------------------------
-  # Use be_imputed (not be or geno_mat): its columns are aligned with
-  # snp_info_filtered and contain the imputed values. The streaming backend
-  # path in extract_haplotypes() does read_chunk(geno, chr_idx) which must
-  # see the same SNP order as snp_info -- that is only guaranteed with
-  # be_imputed after filtering and imputation.
-  .ldx_log("Extracting haplotypes (min_snps = ", min_snps_block, ") ...")
+  .log("Extracting haplotypes (min_snps = ", min_snps_block, ") ...")
   haplotypes <- extract_haplotypes(
-    geno     = be_imputed,
-    snp_info = be_imputed$snp_info,
+    geno     = geno_for_hap,
+    snp_info = out_snp_info,
     blocks   = blocks,
     chr      = NULL,
     min_snps = min_snps_block
   )
-  n_hap_blocks <- length(haplotypes)
-  .ldx_log("Haplotypes extracted for ", n_hap_blocks, " blocks")
 
-  # -- QC: catch stale compiled binary (missing retained_idx fix) --------------
+  n_hap_blocks <- length(haplotypes)
+  .log("Haplotypes extracted: ", n_hap_blocks, " blocks | phased: ", isTRUE(phase))
+
   hap_bi <- attr(haplotypes, "block_info")
   if (!is.null(hap_bi) && nrow(hap_bi) > 0L) {
-    bad_sing <- hap_bi[!is.na(hap_bi$start_bp) & !is.na(hap_bi$end_bp) &
-                         !is.na(hap_bi$n_snps) &
-                         hap_bi$start_bp == hap_bi$end_bp &
-                         hap_bi$n_snps > 1L, ]
+    bad_sing <- hap_bi[
+      !is.na(hap_bi$start_bp) & !is.na(hap_bi$end_bp) & !is.na(hap_bi$n_snps) &
+        hap_bi$start_bp == hap_bi$end_bp & hap_bi$n_snps > 1L, , drop = FALSE
+    ]
     if (nrow(bad_sing) > 0L)
-      stop("[LDxBlocks] Singleton-coordinate / multi-SNP mismatch in ",
-           nrow(bad_sing), " block(s). The C++ retained_idx fix is not active. ",
-           "Run devtools::install() to recompile ld_core.cpp, then retry.")
-    .ldx_log("QC: singleton-mismatch check passed (0 bad blocks).")
+      stop("[LDxBlocks] Singleton-coordinate mismatch in ", nrow(bad_sing),
+           " block(s). Run devtools::install() to recompile.", call. = FALSE)
+    .log("QC: singleton-mismatch check passed.")
   }
 
   if (n_hap_blocks == 0L)
-    stop("No haplotype blocks produced. Check min_snps_block vs block sizes.")
+    stop("No haplotype blocks produced. Check min_snps_block vs block sizes.", call. = FALSE)
 
   # -- Step 7: Haplotype diversity --------------------------------------------
-  .ldx_log("Computing haplotype diversity ...")
+  .log("Computing haplotype diversity ...")
   diversity <- compute_haplotype_diversity(haplotypes)
+  write_haplotype_diversity(diversity, out_diversity, append_summary = TRUE, verbose = FALSE)
+  .log("Diversity table written: ", out_diversity)
 
-  write_haplotype_diversity(
-    diversity,
-    out_diversity,
-    append_summary = TRUE,
-    verbose        = FALSE
-  )
-  .ldx_log("Diversity table written: ", out_diversity)
-
-  # -- Step 8: Build haplotype genotype matrix --------------------------------
-  # build_haplotype_feature_matrix() now returns list(matrix, info).
-  # info contains exact per-column metadata (hap_id, CHR, start_bp, end_bp,
-  # n_snps, hap_string, frequency) computed during matrix construction --
-  # not reconstructed afterwards. This is the authoritative metadata source.
-  .ldx_log("Building haplotype feature matrix (top_n = ", top_n,
-           ", min_freq = ", min_freq, ") ...")
+  # -- Step 8: Build haplotype feature matrix ---------------------------------
+  .log("Building haplotype feature matrix (top_n = ", top_n, ", min_freq = ", min_freq, ") ...")
   feat_out <- build_haplotype_feature_matrix(
     haplotypes     = haplotypes,
     top_n          = top_n,
     min_freq       = min_freq,
     scale_features = scale_hap_matrix
   )
+
   hap_matrix <- feat_out$matrix
   hap_info   <- feat_out$info
   n_hap_cols <- ncol(hap_matrix)
-  .ldx_log("Haplotype matrix: ", nrow(hap_matrix), " individuals x ",
-           n_hap_cols, " haplotype allele columns")
+  .log("Feature matrix: ", nrow(hap_matrix), " ind x ", n_hap_cols, " haplotype allele columns")
 
-  # -- Step 9: Write haplotype genotype matrix --------------------------------
-  .ldx_log("Writing haplotype matrix (format = ", hap_format, ") ...")
+  # -- Step 9: Write haplotype matrix -----------------------------------------
+  .log("Writing haplotype matrix (format = ", hap_format, ") ...")
 
   if (identical(hap_format, "numeric")) {
-    # Pass hap_info so the writer uses exact builder metadata directly --
-    # no reverse-reconstruction of alleles/frequency from raw haplotypes.
     write_haplotype_numeric(
       hap_matrix = hap_matrix,
       out_file   = out_hap_matrix,
       haplotypes = haplotypes,
-      snp_info   = be_imputed$snp_info,
+      snp_info   = out_snp_info,
       hap_info   = hap_info,
-      sep        = "\t",
+      sep        = "	",
       verbose    = verbose
     )
   } else {
     write_haplotype_character(
       haplotypes = haplotypes,
-      snp_info   = be_imputed$snp_info,
+      snp_info   = out_snp_info,
       out_file   = out_hap_matrix,
       min_freq   = min_freq,
       top_n      = top_n,
@@ -953,26 +1001,30 @@ run_ldx_pipeline <- function(
     )
   }
 
-  .ldx_log("Haplotype matrix written: ", out_hap_matrix)
+  .log("Haplotype matrix written: ", out_hap_matrix)
 
   # -- Done -------------------------------------------------------------------
-  # -- Pipeline QC summary ----------------------------------------------------
   .validate_hap_output(hap_matrix, hap_info, haplotypes)
-  .ldx_log("Pipeline complete.")
-  .ldx_log("  Blocks:              ", nrow(blocks))
-  .ldx_log("  Haplotype blocks:    ", n_hap_blocks)
-  .ldx_log("  Haplotype columns:   ", n_hap_cols)
-  .ldx_log("  Individuals:         ", nrow(hap_matrix))
+
+  .log("Pipeline complete.")
+  .log("  Phase method:        ", phase_method)
+  .log("  Blocks:              ", nrow(blocks))
+  .log("  Haplotype blocks:    ", n_hap_blocks)
+  .log("  Haplotype columns:   ", n_hap_cols)
+  .log("  Individuals:         ", nrow(hap_matrix))
 
   invisible(list(
-    blocks            = blocks,
-    diversity         = diversity,
-    hap_matrix        = hap_matrix,      # individuals x haplotype allele columns
-    hap_matrix_info   = hap_info,        # exact per-column metadata from builder
-    haplotypes        = haplotypes,      # raw dosage strings per block
-    geno_matrix       = geno_mat,        # individuals x SNPs (filtered + imputed)
-    snp_info_filtered = be_imputed$snp_info,
-    n_blocks          = nrow(blocks),
-    n_hap_columns     = n_hap_cols
+    blocks              = blocks,
+    diversity           = diversity,
+    hap_matrix          = hap_matrix,
+    hap_matrix_info     = hap_info,
+    haplotypes          = haplotypes,
+    geno_matrix         = geno_mat,
+    snp_info_filtered   = snp_info_filtered,
+    phased_vcf          = phased_vcf_path,
+    phased_backend_desc = phased_backend_desc,
+    phase_method        = phase_method,
+    n_blocks            = nrow(blocks),
+    n_hap_columns       = n_hap_cols
   ))
 }

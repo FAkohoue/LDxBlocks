@@ -31,6 +31,12 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.">
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-large-scale.html">Large-Scale Analysis: GDS and PLINK BED Backends</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-phasing.html">Statistical Phasing with Beagle 5.x in LDxBlocks</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/LDxBlocks-workflow.html">LDxBlocks Workflow: From Genotype File to Haplotype Features</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
@@ -108,6 +114,29 @@ diversity metrics, prediction feature matrices, and multi-format genotype I/O.</
     <code><a href="backsolve_snp_effects.html">backsolve_snp_effects</a></code>,
     <code><a href="compute_local_gebv.html">compute_local_gebv</a></code>,
     <code><a href="rank_haplotype_blocks.html">rank_haplotype_blocks</a></code>.</p></li>
+<li><p>Haplotype association testing with simpleM correction
+    (Gao et al. 2008, 2010, 2011): <code><a href="test_block_haplotypes.html">test_block_haplotypes</a></code>.
+    <code>sig_metric</code> selects among <code>p_wald</code>, <code>p_fdr</code>,
+    <code>p_simplem</code> (Bonferroni-style), and <code>p_simplem_sidak</code>
+    (Sidak-style, recommended). All four p-value columns always present.
+    <code>meff_scope</code> controls Meff estimation scope.</p></li>
+<li><p>Cross-population GWAS validation - two functions depending on
+    how the association analysis was performed:</p><ul><li><p><code><a href="compare_block_effects.html">compare_block_effects</a></code> - for results from
+        <code><a href="test_block_haplotypes.html">test_block_haplotypes</a></code>. IVW meta-analysis, Cochran Q,
+        I-squared, direction agreement per block.</p></li>
+<li><p><code><a href="compare_gwas_effects.html">compare_gwas_effects</a></code> - for results from external
+        GWAS tools (GAPIT, TASSEL, FarmCPU, PLINK, etc.). Accepts raw GWAS
+        data frames or <code><a href="define_qtl_regions.html">define_qtl_regions</a></code> output. Derives SE
+        from z-score when absent.</p></li>
+<li><p>Both functions support <code>block_match = "position"</code> to match
+        LD blocks by genomic interval overlap (Intersection-over-Union) rather
+        than <code>block_id</code> string equality. This handles the common case
+        where block boundaries differ between populations due to different
+        ancestral LD structures. <code>overlap_min</code> (default 0.50) sets the
+        minimum IoU for a valid positional match. The <code>match_type</code> output
+        column reports <code>"exact"</code>, <code>"position"</code>, or
+        <code>"pop1_only"</code> for every block.</p></li>
+</ul></li>
 <li><p>Write outputs: <code><a href="write_haplotype_numeric.html">write_haplotype_numeric</a></code>,
     <code><a href="write_haplotype_character.html">write_haplotype_character</a></code>,
     <code><a href="write_haplotype_diversity.html">write_haplotype_diversity</a></code>.</p></li>
@@ -180,12 +209,27 @@ disequilibria in finite populations. <em>Theoretical Population Biology</em>
 <p>Remington DL et al. (2001). Structure of linkage disequilibrium and
 phenotypic associations in the maize genome. <em>PNAS</em>
 <strong>98</strong>(20):11479-11484. <a href="https://doi.org/10.1073/pnas.201394398" class="external-link">doi:10.1073/pnas.201394398</a></p>
+<p>Gao X, Starmer J, Martin ER (2008). A multiple testing correction method
+for genetic association studies using correlated single nucleotide
+polymorphisms. <em>Genetic Epidemiology</em> <strong>32</strong>:361-369.
+<a href="https://doi.org/10.1002/gepi.20310" class="external-link">doi:10.1002/gepi.20310</a></p>
+<p>Gao X, Becker LC, Becker DM, Starmer JD, Province MA (2010). Avoiding
+the high Bonferroni penalty in genome-wide association studies.
+<em>Genetic Epidemiology</em> <strong>34</strong>:100-105.
+<a href="https://doi.org/10.1002/gepi.20430" class="external-link">doi:10.1002/gepi.20430</a></p>
+<p>Gao X (2011). Multiple testing corrections for imputed SNPs.
+<em>Genetic Epidemiology</em> <strong>35</strong>:154-158.
+<a href="https://doi.org/10.1002/gepi.20563" class="external-link">doi:10.1002/gepi.20563</a></p>
+<p>Borenstein M, Hedges LV, Higgins JPT, Rothstein HR (2009).
+<em>Introduction to Meta-Analysis</em>. Wiley.</p>
+<p>Higgins JPT, Thompson SG (2002). Quantifying heterogeneity in a
+meta-analysis. <em>Statistics in Medicine</em> <strong>21</strong>(11):1539-1558.
+<a href="https://doi.org/10.1002/sim.1186" class="external-link">doi:10.1002/sim.1186</a></p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p>Useful links:</p><ul><li><p><a href="https://github.com/FAkohoue/LDxBlocks" class="external-link">https://github.com/FAkohoue/LDxBlocks</a></p></li>
 <li><p><a href="https://FAkohoue.github.io/LDxBlocks/">https://FAkohoue.github.io/LDxBlocks/</a></p></li>
-<li><p><a href="https://github.com/FAkohoue" class="external-link">https://github.com/FAkohoue</a></p></li>
 <li><p>Report bugs at <a href="https://github.com/FAkohoue/LDxBlocks/issues" class="external-link">https://github.com/FAkohoue/LDxBlocks/issues</a></p></li>
 </ul></div>
     </div>

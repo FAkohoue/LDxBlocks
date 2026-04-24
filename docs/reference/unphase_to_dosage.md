@@ -12,7 +12,8 @@ unphase_to_dosage(phased_list)
 
 - phased_list:
 
-  List from read_phased_vcf() or phase_with_pedigree().
+  List from
+  [`read_phased_vcf`](https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.md).
 
 ## Value
 

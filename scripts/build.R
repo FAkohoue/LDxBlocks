@@ -118,9 +118,26 @@ devtools::document()
 #    upgrade = FALSE  - do not touch other packages.
 devtools::install()
 
+
+Sys.setenv(PATH = paste(
+  "C:/Program Files/TASSEL5/jre/bin",
+  Sys.getenv("PATH"),
+  sep = ";"
+))
+
 # 6. Run the test suite.  All C++ symbols are now registered in the
 #    installed DLL, so load_all() will find them.
 devtools::test()
+
+.beagle_jar_path <- function() {
+  system.file("extdata", "beagle.jar", package = "LDxBlocks")
+}
+.beagle_available <- function() {
+  j <- .beagle_jar_path()
+  nzchar(j) && file.exists(j)
+}
+
+devtools::test(filter = "phasing")
 
 # 7. Full CRAN check (run after tests pass).
 devtools::check()
@@ -169,7 +186,7 @@ unlink("vignettes/LDxBlocks-large-scale_cache", recursive = TRUE)
 pkgdown::build_article("LDxBlocks-large-scale")
 
 
-file <- "tests/testthat/test-association.R"
+file <- "R/haplotype_association.R"
 
 tools::showNonASCIIfile(file)
 

@@ -1,3 +1,159 @@
+## LDxBlocks 0.3.1.9000 (development)
+
+### New feature: block_match = "position" in compare_block_effects() and compare_gwas_effects()
+
+Both cross-population comparison functions now support matching LD blocks between
+populations by **genomic interval overlap** rather than by `block_id` string equality.
+
+**Why this matters.** LD block boundaries are population-specific: the same causal
+QTL region may be carved into a 100 kb block in Population A and a 130 kb block in
+Population B, producing different `block_id` strings (`"block_1_10000_85000"` vs
+`"block_1_10000_91000"`). With the default `block_match = "id"`, these would not be
+compared — the block appears as Pop1-only and the replication signal is lost.
+
+**New parameters:**
+
+- `block_match = c("id", "position")` — `"id"` (default) preserves backward
+  compatibility; `"position"` matches by Intersection-over-Union (IoU) in base pairs.
+- `overlap_min = 0.50` — minimum IoU for two blocks to be considered the same region.
+  Blocks below this threshold are labelled `"pop1_only"`.
+
+**New output column `match_type`** in `$concordance`:
+
+- `"exact"` — same `block_id` string (boundaries identical)
+- `"position"` — matched by genomic overlap (boundaries differ but IoU ≥ `overlap_min`)
+- `"pop1_only"` — no Pop2 block overlaps this Pop1 block at the threshold
+- `NA` — no block tables were supplied
+
+**New internal function `.match_blocks_by_position()`** performs the interval join
+using a CHR-filtered IoU search. For each Pop1 block, it finds the best-matching Pop2
+block by IoU and records the match type. Accessible via `LDxBlocks:::.match_blocks_by_position()`.
+
+8 new tests in `test-association.R` (122 → 130 total).
+
+## LDxBlocks 0.3.1.9000 (development)
+
+### New function: compare_gwas_effects()
+
+Cross-population effect concordance from **external GWAS results**. Complements
+`compare_block_effects()` for users who ran association analysis outside
+LDxBlocks (GAPIT, TASSEL, FarmCPU, PLINK, or any other tool).
+
+**Two input paths:**
+
+- **Pre-mapped (recommended):** supply `define_qtl_regions()` output for each
+  population. Block assignment is explicit and auditable.
+- **Raw GWAS + blocks (convenience):** supply raw GWAS data frames and block
+  tables; `define_qtl_regions()` is called internally.
+
+**SE derivation.** When the SE column is absent (common in GAPIT/FarmCPU
+output), SE is derived from the z-score: `SE = |BETA| / |Φ⁻¹(P/2)|`. The
+`se_derived_pop1` / `se_derived_pop2` output columns flag which population
+required this step.
+
+**Key differences from `compare_block_effects()`:**
+External GWAS produces one lead SNP per block rather than multiple haplotype
+allele effects. Consequently:
+- `effect_correlation` is always `NA` (needs ≥ 3 alleles).
+- `direction_agreement` is 0 or 1 only.
+- `Q_stat`, `Q_p`, `I2` are always `NA` (Cochran Q undefined with df = 0).
+- `replicated` uses `meta_p ≤ 0.05` instead of `Q_p > 0.05`.
+
+**GWAS-specific output columns** added to `$concordance`:
+`lead_snp_pop1`, `lead_snp_pop2`, `lead_p_pop1`, `lead_p_pop2`,
+`se_derived_pop1`, `se_derived_pop2`, `both_pleiotropic`.
+
+**Flexible column naming.** The `beta_col`, `se_col`, and `p_col` arguments
+accept any column names (e.g. `"effect"`, `"std_err"`, `"pvalue"`). The
+`Marker` column is accepted as an alias for `SNP`.
+
+**Output class.** Returns `LDxBlocks_effect_concordance` — the same class as
+`compare_block_effects()`. The existing `print()` method works immediately.
+
+18 new tests in `test-association.R` (104 → 122 total).
+
+## LDxBlocks 0.3.1.9000 (development)
+
+### New function: compare_block_effects()
+
+Cross-population haplotype effect concordance. Takes two `test_block_haplotypes()`
+result objects and returns per-block statistics for systematic GWAS replication:
+
+- **IVW meta-analysis**: inverse-variance weighted combined effect and SE per
+  block, identical framework to two-sample Mendelian randomisation.
+- **Cochran Q heterogeneity**: tests whether effect sizes differ significantly
+  between populations. Significant Q (low Q_p) flags G×E interaction or
+  population-specific LD structure differences.
+- **I² inconsistency**: 0–100% measure of between-population heterogeneity.
+  Values > 50% indicate that the two populations are telling a different
+  biological story at that block.
+- **Direction agreement**: fraction of shared alleles with the same effect sign.
+  Controlled by `direction_threshold` (default 0.75).
+- **`replicated` flag**: composite criterion — `enough_shared AND
+  directionally_concordant AND Q_p > 0.05`.
+- **Block boundary diagnostics**: when `blocks_pop1` and `blocks_pop2` are
+  supplied, `boundary_overlap_ratio` is **automatically computed** (not
+  user-set) as bp(intersection) / bp(union) for every block. This quantifies
+  how similarly the two populations carved the region into LD blocks.
+  `boundary_overlap_warn` (input parameter, default `0.80`) is the threshold
+  below which `boundary_warning = TRUE` is set in the output.
+- **`$shared_alleles`**: per-allele detail table with `ivw_effect`, `ivw_SE`,
+  `direction_agree`, and raw effects/SEs from both populations.
+- 15 new tests in `test-association.R` (89 → 104 total).
+
+### Enhancement: simpleM multiple-testing correction in test_block_haplotypes()
+
+`test_block_haplotypes()` now implements the simpleM procedure
+(Gao et al. 2008, 2010, 2011) for LD-aware multiple-testing correction of
+correlated haplotype allele tests. simpleM estimates the effective number of
+independent tests (Meff) from the eigenspectrum of the haplotype allele dosage
+correlation matrix, replacing raw test counting with an LD-aware effective
+count that is less conservative than Bonferroni while providing family-wise
+error control.
+
+**New parameters:**
+
+- `sig_metric`: which p-value drives `significant` / `significant_omnibus`.
+  One of `"p_wald"`, `"p_fdr"`, `"p_simplem"` (Bonferroni-style), or
+  `"p_simplem_sidak"` (Šidák-style, recommended). Default `"p_wald"`.
+- `meff_scope`: scope for Meff estimation — `"chromosome"` (recommended),
+  `"global"`, or `"block"`. Default `"chromosome"`.
+- `meff_percent_cut`: variance threshold for simpleM eigendecomposition.
+  Default `0.995` (99.5%), following the original simpleM recommendation.
+- `meff_max_cols`: chunk size for large eigendecompositions. Default `1000L`.
+
+**New output columns — always present regardless of `sig_metric`:**
+
+- `allele_tests`: `Meff`, `alpha_simplem`, `alpha_simplem_sidak`,
+  `p_simplem`, `p_simplem_sidak`, `p_fdr`
+- `block_tests`: `Meff`, `alpha_simplem`, `alpha_simplem_sidak`,
+  `p_omnibus_fdr`, `p_omnibus_simplem`, `p_omnibus_simplem_sidak`
+  (plus `p_omnibus_adj` retained for backward compatibility)
+
+**New return list elements:** `meff_scope`, `meff_percent_cut`, `meff`
+(nested list of Meff summaries per trait: `$allele$global`,
+`$allele$chromosome`, `$allele$block`, `$block$global`, `$block$chromosome`).
+
+13 new tests in `test-association.R` (76 → 89).
+
+### Bug fix: read_phased_vcf() dot-ID synthesis
+
+When a phased VCF has `.` or empty string in the ID column (column 3),
+`read_phased_vcf()` now synthesises `CHR_POS` identifiers for those rows,
+matching the behaviour of `read_geno()`. Without this fix, all-dot VCFs
+produced duplicate `rownames(hap1)` that caused `extract_haplotypes()` to
+fail when slicing by SNP name.
+
+- Handles `NA`, `"."`, and `""` (empty string) row-by-row.
+- Real rsIDs in mixed VCFs are preserved; only missing IDs are replaced.
+- Verbose message reports the count of synthesised IDs.
+- 3 new regression tests in `test-phasing.R` (30 → 33).
+
+Note: this gap only affects direct calls to `read_phased_vcf()` on
+externally phased VCFs with dot IDs. The `run_ldx_pipeline()` path was
+already safe because `read_geno()` synthesises `CHR_POS` IDs before writing
+the cleaned VCF to Beagle.
+
 ## LDxBlocks 0.3.1.9000 (development patch)
 
 ### Breaking change: SNP ID separator changed from `:` to `_`
@@ -305,7 +461,7 @@ function. All are in two new files: `R/analysis_extensions.R` and
   structured per-individual, per-block diplotype table with explicit `hap1`,
   `hap2`, `diplotype` (canonical sorted string), `heterozygous`,
   `phase_ambiguous`, and `missing` columns. Handles both phased input
-  (from `read_phased_vcf()` / `phase_with_pedigree()`, where `phase_ambiguous`
+  (from `read_phased_vcf()`, where `phase_ambiguous`
   is always `FALSE`) and unphased input (where heterozygous genotypes set
   `phase_ambiguous = TRUE` unless `resolve_unphased = TRUE` triggers a
   maximum-parsimony heuristic).
@@ -472,8 +628,6 @@ blocks <- run_Big_LD_all_chr(
     `hap1`/`hap2` gamete matrices plus combined dosage.
   - `phase_with_beagle()`: call Beagle 5.x for statistical phasing of WGS
     data; returns path to phased VCF.gz.
-  - `phase_with_pedigree()`: Mendelian allele transmission phasing within
-    parent-offspring trios; exact when parents are homozygous.
   - `unphase_to_dosage()`: collapse phased gamete matrices back to 0/1/2
     (internal helper; not exported).
 - **Haplotype extraction** (`extract_haplotypes()`):

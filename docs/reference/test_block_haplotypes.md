@@ -1,10 +1,17 @@
-# Block-Level Haplotype Association Testing (Q+K Mixed Linear Model)
+# Block-Level Haplotype Association Testing (Q+K Mixed Linear Model with simpleM Multiple-Testing Correction)
 
 Performs genome-wide haplotype block association tests for one or more
 quantitative traits. Each LD block is tested as a unit: per-allele Wald
 tests identify which specific haplotype alleles drive association, and
 an omnibus F-test evaluates the block as a whole. Population structure
 and kinship are corrected jointly through a unified mixed linear model.
+
+In addition to raw and FDR-adjusted p-values, this function applies
+**simpleM**-style multiple-testing correction to account for correlation
+among tested haplotype alleles. simpleM estimates the effective number
+of independent tests (\\M\_{\mathrm{eff}}\\) from the eigenvalues of the
+haplotype allele correlation matrix and derives either a
+Bonferroni-style or Sidak-style adjusted threshold.
 
 **Statistical model (Q+K / EMMAX formulation):**
 
@@ -14,35 +21,35 @@ and kinship are corrected jointly through a unified mixed linear model.
 - \\x\_{\mathrm{hap}}\\:
 
   Haplotype allele dosage (0, 1, or 2 copies for phased data; 0 or 1 for
-  unphased) - the quantity being tested for association.
+  unphased).
 
 - \\PC_k\\:
 
-  The k-th eigenvector of the haplotype GRM, included as a fixed-effect
-  covariate to capture discrete population structure explicitly. Derived
-  from `eigen(G_hap)`, so both fixed-effect PCs and the random-effect
-  GRM use the same kinship model.
+  k-th eigenvector of the haplotype GRM, as a fixed-effect covariate for
+  population structure.
 
 - \\g \sim MVN(0,\\\sigma_g^2 G)\\:
 
-  Polygenic background - captures residual continuous kinship
-  (within-family, cryptic relatedness) as a random effect after PC
-  removal.
+  Polygenic background as a random effect.
 
 - \\\varepsilon \sim MVN(0,\\\sigma_e^2 I)\\:
 
   Residual error.
 
-**Implementation and scaling:** The GRM is inverted once per trait via
-[`rrBLUP::mixed.solve()`](https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html)
-(dominant cost, O(n^3)). Per-allele tests on the de-regressed residuals
-are then fully vectorised across all blocks simultaneously using a
-single
-[`crossprod()`](https://rdrr.io/pkg/Matrix/man/matmult-methods.html)
-call (O(n x p), analogous to the BLAS DGEMV trick in marginal SNP
-screening). For 5,000 individuals and 51,000 haplotype allele columns
-across 17,000 blocks, the scan step takes seconds after the one-time GRM
-inversion (~30 s for n = 5,000).
+**simpleM extension (Gao et al. 2008, 2010, 2011):**
+\\M\_{\mathrm{eff}}\\ is estimated from the eigenspectrum of the
+haplotype allele dosage correlation matrix - the number of principal
+components needed to explain `meff_percent_cut` of variance (default
+99.5%). Two simpleM adjusted p-value paths are always computed:
+
+- `p_simplem` - Bonferroni-style: \\\min(p \times
+  M\_{\mathrm{eff}},\\1)\\.
+
+- `p_simplem_sidak` - Sidak-style: \\1 - (1 - p)^{M\_{\mathrm{eff}}}\\.
+
+Because haplotype alleles are correlated within and across nearby
+blocks, simpleM is less conservative than raw Bonferroni while still
+providing family-wise error control.
 
 ## Usage
 
@@ -57,7 +64,13 @@ test_block_haplotypes(
   id_col = "id",
   blue_col = "blue",
   blue_cols = NULL,
-  alpha = NULL,
+  sig_threshold = 0.05,
+  sig_metric = c("p_wald", "p_fdr", "p_simplem", "p_simplem_sidak"),
+  meff_scope = c("chromosome", "global", "block"),
+  meff_percent_cut = 0.995,
+  meff_max_cols = 1000L,
+  plot = FALSE,
+  out_dir = ".",
   verbose = TRUE
 )
 ```
@@ -69,216 +82,170 @@ test_block_haplotypes(
   Named list produced by
   [`extract_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md).
   Each element is a named character vector (one haplotype dosage string
-  per individual), and the list must carry a `block_info` attribute
-  (added automatically by `extract_haplotypes`). The number of elements
-  equals the number of qualifying LD blocks.
+  per individual), and the list must carry a `block_info` attribute.
 
 - blues:
 
-  Pre-adjusted phenotype means (BLUEs or BLUPs from a field trial mixed
-  model). Accepted in four formats:
-
-  - Named numeric vector: `c(ind1 = 2.3, ind2 = 1.8, ...)`. Names must
-    match individual IDs (row names of the genotype matrix).
-
-  - Single-trait data frame: columns `id_col` (individual IDs) and
-    `blue_col` (numeric phenotype values).
-
-  - Multi-trait data frame: columns `id_col` plus one column per trait
-    specified in `blue_cols`. All named traits are tested in a single
-    call sharing the same GRM.
-
-  - Named list of named numeric vectors: one element per trait, e.g.
-    `list(YLD = c(ind1=2.3,...), RES = c(ind1=0.8,...))`.
-
-  Individuals in `blues` not present in `haplotypes` are silently
-  dropped. At least 10 common individuals are required per trait.
+  Pre-adjusted phenotype means. Accepted in four formats: named numeric
+  vector, single-trait data frame, multi-trait data frame, or named list
+  of named numeric vectors. At least 10 common individuals are required
+  per trait.
 
 - blocks:
 
-  LD block table returned by
-  [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
-  or
-  [`run_ldx_pipeline`](https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.md).
-  Required columns: `CHR`, `start.bp`, `end.bp`. Used only for block
-  metadata annotation in the output; the actual haplotype allele columns
-  come from `haplotypes`.
+  LD block table from
+  [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md).
+  Used for block metadata annotation in the output only.
 
 - n_pcs:
 
   Integer (`>= 0`) or `NULL`. Number of haplotype-GRM eigenvectors to
-  include as fixed-effect population structure covariates in the null
-  model. Controls the trade-off between correction strategies:
-
-  - `0L` (default): Pure GRM correction - EMMAX / P3D approximation. The
-    GRM random effect absorbs all structure and kinship. Appropriate for
-    populations with diffuse continuous kinship (e.g. livestock half-sib
-    families, advanced inbred lines) where there are no sharp discrete
-    subpopulation boundaries.
-
-  - `1` to `10`: Q+K model (Yu et al. 2006) - top-k GRM eigenvectors as
-    fixed effects plus the GRM random effect. The fixed- effect PCs
-    capture discrete subpopulation membership (e.g. breeds, ecotypes,
-    geographic clusters); the GRM random effect captures
-    within-subpopulation continuous kinship. Use when strong cluster
-    structure inflates the Q-Q plot under `n_pcs = 0`. Typically 3-5 PCs
-    are sufficient; using more than 10 risks over-correction.
-
-  - `NULL`: Auto-select via the elbow of the GRM eigenvalue scree plot
-    (first position where the marginal gain in variance explained drops
-    below 1%), capped at 10.
-
-  PCs are derived from `eigen(G_hap)` - the same GRM that enters as the
-  random effect - ensuring mathematical consistency.
+  include as fixed-effect population structure covariates. `0L`
+  (default): pure GRM / EMMAX. `1-10`: Q+K model. `NULL`: auto-selected
+  from the GRM scree-plot elbow, capped at 10.
 
 - top_n:
 
-  Integer or `NULL`. Maximum number of haplotype alleles per block to
-  include in the feature matrix before testing. `NULL` (default) retains
-  all alleles above `min_freq`. Supply an integer (e.g. `5L`) only to
-  cap column count for very large panels where memory is constrained.
-  Alleles are ranked by frequency; the most common `top_n` are retained.
+  Integer or `NULL`. Maximum haplotype alleles per block in the feature
+  matrix. `NULL` retains all alleles above `min_freq`.
 
 - min_freq:
 
-  Numeric in (0, 1). Minimum haplotype allele frequency in the panel.
-  Alleles with frequency below this threshold are excluded from both the
-  feature matrix and all tests. Default `0.05`. Lower values (e.g.
-  `0.02`) include rarer alleles at the cost of reduced power and
-  increased multiple testing burden. Values below `0.02` are not
-  recommended for panels smaller than 200 individuals.
+  Numeric in (0, 1). Minimum haplotype allele frequency. Default `0.05`.
 
 - id_col:
 
-  Character. Name of the individual-ID column when `blues` is a data
-  frame. Must exactly match a column name in the data frame. Default
-  `"id"`.
+  Character. Individual-ID column name when `blues` is a data frame.
+  Default `"id"`.
 
 - blue_col:
 
-  Character. Name of the phenotype column when `blues` is a single-trait
-  data frame. Must be numeric. Default `"blue"`.
+  Character. Phenotype column name for single-trait data frames. Default
+  `"blue"`.
 
 - blue_cols:
 
-  Character vector. Names of phenotype columns when `blues` is a
-  multi-trait wide data frame. Each named column is treated as a
-  separate trait and tested independently (but using the same GRM).
-  Default `NULL` (ignored unless `blues` is a data frame with more than
-  one numeric column beyond `id_col`).
+  Character vector. Phenotype column names for multi-trait data frames.
+  Default `NULL`.
 
-- alpha:
+- sig_threshold:
 
-  Numeric or `NULL`. Significance threshold for the `significant` flag
-  in `allele_tests` and `significant_omnibus` in `block_tests`. `NULL`
-  (default) applies genome-wide Bonferroni correction: \\\alpha = 0.05 /
-  n\_{\mathrm{tests}}\\ where \\n\_{\mathrm{tests}}\\ is the total
-  number of allele-level tests across all blocks and traits. Supply a
-  fixed value (e.g. `0.05`) to use a less conservative threshold, or
-  `0.05 / nrow(blocks)` to apply Bonferroni at the block level rather
-  than the allele level.
+  Numeric in (0, 1\]. Significance cutoff applied to the p-value chosen
+  by `sig_metric`. Default `0.05`. Common choices:
+
+  - `0.05` - recommended with `sig_metric = "p_fdr"`, `"p_simplem"`, or
+    `"p_simplem_sidak"`.
+
+  - `0.05 / n_tests` - raw Bonferroni with `sig_metric = "p_wald"`.
+
+- sig_metric:
+
+  Character. Which p-value to use for the `significant` and
+  `significant_omnibus` flags. One of:
+
+  - `"p_wald"` - raw Wald p-value. Use with a pre-corrected
+    `sig_threshold` (e.g. `0.05 / n_tests`).
+
+  - `"p_fdr"` - Benjamini-Hochberg FDR. Recommended for
+    discovery-oriented analyses.
+
+  - `"p_simplem"` - simpleM Bonferroni-style adjusted p-value.
+
+  - `"p_simplem_sidak"` - simpleM Sidak-style adjusted p-value.
+    Recommended default when family-wise error control is desired with
+    correlated haplotype predictors.
+
+  All four p-value columns are always present in the output regardless
+  of this choice.
+
+- meff_scope:
+
+  Character. Scope at which \\M\_{\mathrm{eff}}\\ is estimated. One of:
+
+  - `"chromosome"` (recommended) - separate \\M\_{\mathrm{eff}}\\ per
+    chromosome; best balance of scalability and LD awareness.
+
+  - `"global"` - one genome-wide \\M\_{\mathrm{eff}}\\; suitable for
+    moderate-sized scans.
+
+  - `"block"` - one \\M\_{\mathrm{eff}}\\ per LD block at the allele
+    level; for block omnibus tests \\M\_{\mathrm{eff}} = 1\\.
+
+- meff_percent_cut:
+
+  Numeric in (0, 1). Proportion of variance explained by the retained
+  PCs in the simpleM eigendecomposition. Default `0.995` (99.5%),
+  following the original simpleM recommendation.
+
+- meff_max_cols:
+
+  Integer. Maximum columns per eigendecomposition block when computing
+  \\M\_{\mathrm{eff}}\\. Larger groups are chunked and summed. Default
+  `1000L`.
+
+- plot:
+
+  Logical. If `TRUE`, save Manhattan and Q-Q plots. Default `FALSE`.
+  Significance markers reflect `sig_metric`.
+
+- out_dir:
+
+  Character. Directory for optional plots. Default `"."`.
 
 - verbose:
 
-  Logical. If `TRUE` (default), prints timestamped progress messages:
-  model type, trait name, number of alleles scanned, and a final
-  summary. Set `FALSE` for batch use or inside loops.
+  Logical. Print progress messages. Default `TRUE`.
 
 ## Value
 
-A named list of class `c("LDxBlocks_haplotype_assoc", "list")` with the
-following elements:
+A named list of class `c("LDxBlocks_haplotype_assoc", "list")`:
 
 - `allele_tests`:
 
-  Data frame. One row per haplotype allele per LD block per trait.
-  Contains 13 columns:
-
-  - `block_id` (character) - Block identifier string matching
-    `names(haplotypes)`, e.g. `"block_1_1000_103000"`.
-
-  - `CHR` (character) - Chromosome label.
-
-  - `start_bp` (integer) - Block start coordinate (base pairs).
-
-  - `end_bp` (integer) - Block end coordinate (base pairs).
-
-  - `trait` (character) - Trait name.
-
-  - `allele` (character) - Haplotype allele identifier string.
-
-  - `frequency` (numeric, (0,1\]) - Allele frequency in the panel
-    (proportion of individuals carrying the allele).
-
-  - `effect` (numeric) - Estimated additive effect: mean phenotype
-    difference per unit increase in allele dosage on the de-regressed
-    residual scale. Positive = favourable if higher trait values are
-    desirable.
-
-  - `SE` (numeric) - Standard error of the effect estimate.
-
-  - `t_stat` (numeric) - t-statistic (`effect / SE`).
-
-  - `p_wald` (numeric, (0,1\]) - Two-sided Wald p-value (raw,
-    uncorrected).
-
-  - `p_wald_adj` (numeric, (0,1\]) - Bonferroni-adjusted p-value:
-    `min(p_wald * n_tests, 1)`.
-
-  - `significant` (logical) - `TRUE` when `p_wald <= alpha`.
-
-  Rows are sorted ascending by `CHR`, `start_bp`, then `p_wald` within
-  each trait.
+  Data frame with one row per allele per block per trait. Always
+  includes: `p_wald`, `p_fdr`, `Meff`, `alpha_simplem`,
+  `alpha_simplem_sidak`, `p_simplem`, `p_simplem_sidak`, `significant`.
 
 - `block_tests`:
 
-  Data frame. One row per LD block per trait. Contains 12 columns:
-
-  - `block_id`, `CHR`, `start_bp`, `end_bp`, `trait` - as above.
-
-  - `n_alleles_tested` (integer) - Number of alleles above `min_freq` in
-    this block that were included in the omnibus test.
-
-  - `F_stat` (numeric) - Omnibus F-statistic testing all
-    `n_alleles_tested` allele columns jointly against the de- regressed
-    residual.
-
-  - `df_LRT` (integer) - Numerator degrees of freedom (=
-    `n_alleles_tested`).
-
-  - `p_omnibus` (numeric, (0,1\]) - Raw omnibus p-value from the
-    F-distribution.
-
-  - `p_omnibus_adj` (numeric, (0,1\]) - Bonferroni-adjusted across all
-    blocks per trait: `min(p_omnibus * n_blocks, 1)`.
-
-  - `var_explained` (numeric, \[0,1\]) - Proportion of de-regressed
-    phenotypic variance explained by all haplotype alleles of this block
-    jointly: `1 - RSS_full / RSS_null`.
-
-  - `significant_omnibus` (logical) - `TRUE` when
-    `p_omnibus_adj < 0.05`.
-
-  Rows sorted ascending by `CHR`, `start_bp`, `p_omnibus`.
+  Data frame with one row per block per trait. Always includes:
+  `p_omnibus`, `p_omnibus_fdr`, `p_omnibus_adj` (backward-compat
+  Bonferroni), `Meff`, `alpha_simplem`, `alpha_simplem_sidak`,
+  `p_omnibus_simplem`, `p_omnibus_simplem_sidak`, `significant_omnibus`.
 
 - `traits`:
 
-  Character vector of trait names that were tested.
+  Character vector of trait names tested.
 
 - `n_pcs_used`:
 
-  Integer. Number of GRM eigenvectors included as fixed-effect
-  covariates in the null model. `0L` when `n_pcs = 0L` (pure EMMAX).
+  Integer. GRM PCs used in the null model.
 
-- `alpha`:
+- `sig_threshold`:
 
-  Numeric. The significance threshold actually used (either supplied or
-  computed by Bonferroni).
+  Numeric. Significance cutoff used.
+
+- `sig_metric`:
+
+  Character. P-value used for significance flags.
 
 - `n_tests`:
 
-  Integer. Total number of allele-level Wald tests performed across all
-  blocks and traits (the Bonferroni denominator).
+  Integer. Total allele-level tests performed.
+
+- `meff_scope`:
+
+  Character. simpleM estimation scope.
+
+- `meff_percent_cut`:
+
+  Numeric. Variance cutoff for simpleM.
+
+- `meff`:
+
+  Named list of \\M\_{\mathrm{eff}}\\ summaries per trait, each with
+  `$allele` (global/chromosome/block) and `$block` (global/chromosome)
+  components.
 
 ## References
 
@@ -286,15 +253,26 @@ Endelman JB (2011). Ridge regression and other kernels for genomic
 selection with R package rrBLUP. *Plant Genome* **4**:250-255.
 [doi:10.3835/plantgenome2011.08.0024](https://doi.org/10.3835/plantgenome2011.08.0024)
 
-Yu J, Pressoir G, Briggs WH, et al. (2006). A unified mixed-model method
-for association mapping that accounts for multiple levels of
-relatedness. *Nature Genetics* **38**(2):203-208.
+Yu J et al. (2006). A unified mixed-model method for association
+mapping. *Nature Genetics* **38**(2):203-208.
 [doi:10.1038/ng1702](https://doi.org/10.1038/ng1702)
 
-Kang HM, Sul JH, Service SK, et al. (2010). Variance component model to
-account for sample structure in genome-wide association studies. *Nature
-Genetics* **42**(4):348-354.
-[doi:10.1038/ng.548](https://doi.org/10.1038/ng.548)
+Kang HM et al. (2010). Variance component model to account for sample
+structure in genome-wide association studies. *Nature Genetics*
+**42**(4):348-354. [doi:10.1038/ng.548](https://doi.org/10.1038/ng.548)
+
+Gao X et al. (2008). A multiple testing correction method for genetic
+association studies using correlated single nucleotide polymorphisms.
+*Genetic Epidemiology* **32**:361-369.
+[doi:10.1002/gepi.20310](https://doi.org/10.1002/gepi.20310)
+
+Gao X et al. (2010). Avoiding the high Bonferroni penalty in genome-wide
+association studies. *Genetic Epidemiology* **34**:100-105.
+[doi:10.1002/gepi.20430](https://doi.org/10.1002/gepi.20430)
+
+Gao X (2011). Multiple testing corrections for imputed SNPs. *Genetic
+Epidemiology* **35**:154-158.
+[doi:10.1002/gepi.20563](https://doi.org/10.1002/gepi.20563)
 
 ## See also
 
@@ -310,47 +288,30 @@ Genetics* **42**(4):348-354.
 data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
 haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks)
 
-# Pure GRM correction (EMMAX, default - n_pcs = 0)
-assoc <- test_block_haplotypes(
-  haplotypes = haps,
-  blues      = setNames(ldx_blues$YLD, ldx_blues$id),
-  blocks     = ldx_blocks,
-  verbose    = FALSE
-)
-head(assoc$block_tests[order(assoc$block_tests$p_omnibus), ])
-#>                block_id CHR start_bp end_bp trait n_alleles_tested F_stat
-#> 7    block_3_1000_19068   3     1000  19068 trait                8 1.8388
-#> 4    block_2_1000_30023   2     1000  30023 trait                7 1.3505
-#> 8   block_3_74532_93854   3    74532  93854 trait                8 0.9660
-#> 2   block_1_81064_99022   1    81064  99022 trait                7 0.9341
-#> 1    block_1_1000_25027   1     1000  25027 trait                7 0.8244
-#> 3 block_1_155368_179371   1   155368 179371 trait                9 0.7209
-#>   df_LRT  p_omnibus var_explained p_omnibus_adj significant_omnibus
-#> 7      8 0.07717218        0.1170     0.6945496               FALSE
-#> 4      7 0.23347078        0.0778     1.0000000               FALSE
-#> 8      8 0.46630057        0.0651     1.0000000               FALSE
-#> 2      7 0.48322056        0.0552     1.0000000               FALSE
-#> 1      7 0.56903648        0.0490     1.0000000               FALSE
-#> 3      9 0.68877228        0.0557     1.0000000               FALSE
-
-# Q+K model (3 GRM-derived PCs + GRM, for structured populations)
-assoc_qk <- test_block_haplotypes(
-  haplotypes = haps,
-  blues      = setNames(ldx_blues$YLD, ldx_blues$id),
-  blocks     = ldx_blocks,
-  n_pcs      = 3L,
-  verbose    = FALSE
+# FDR-based discovery (default EMMAX model)
+assoc_fdr <- test_block_haplotypes(
+  haplotypes = haps, blues = setNames(ldx_blues$YLD, ldx_blues$id),
+  blocks = ldx_blocks, sig_metric = "p_fdr", verbose = FALSE
 )
 
-# Multi-trait
+# simpleM Sidak with 3 GRM PCs (Q+K), chromosome-wise Meff
+assoc_sm <- test_block_haplotypes(
+  haplotypes = haps, blues = setNames(ldx_blues$YLD, ldx_blues$id),
+  blocks = ldx_blocks, n_pcs = 3L,
+  sig_metric = "p_simplem_sidak", meff_scope = "chromosome",
+  verbose = FALSE
+)
+
+# Check per-trait Meff
+assoc_sm$meff$trait$allele$chromosome
+#>  1  2  3 
+#> 23 23 24 
+
+# Multi-trait with simpleM
 assoc_mt <- test_block_haplotypes(
-  haplotypes = haps,
-  blues      = ldx_blues,
-  blocks     = ldx_blocks,
-  id_col     = "id",
-  blue_cols  = c("YLD", "RES"),
-  n_pcs      = 3L,
-  verbose    = FALSE
+  haplotypes = haps, blues = ldx_blues,
+  blocks = ldx_blocks, id_col = "id", blue_cols = c("YLD","RES"),
+  sig_metric = "p_simplem", meff_scope = "chromosome", verbose = FALSE
 )
 # }
 ```

@@ -51,9 +51,9 @@ data(ldx_blues,    package = "LDxBlocks")
   env2 = setNames(ldx_blues$YLD + rnorm(120, 0.4, 0.1), ldx_blues$id)
 )
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 1. cv_haplotype_prediction
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("cv_haplotype_prediction: returns LDxBlocks_cv object", {
   skip_if_not_installed("rrBLUP")
@@ -135,9 +135,9 @@ test_that("cv_haplotype_prediction: print method works without error", {
   expect_no_error(print(cv))
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 2. compare_haplotype_populations
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("compare_haplotype_populations: returns data.frame with required columns", {
   ids <- rownames(ldx_geno)
@@ -196,9 +196,9 @@ test_that("compare_haplotype_populations: sorted by CHR and start_bp", {
     expect_equal(order(cmp$CHR, cmp$start_bp), seq_len(nrow(cmp)))
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 3. plot_haplotype_network
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("plot_haplotype_network: returns igraph object invisibly", {
   skip_if_not_installed("igraph")
@@ -244,9 +244,9 @@ test_that("plot_haplotype_network: works with groups argument", {
   )
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 4. run_haplotype_stability
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("run_haplotype_stability: returns data.frame with required columns", {
   skip_if_not_installed("rrBLUP")
@@ -307,9 +307,9 @@ test_that("run_haplotype_stability: errors with unnamed blues_list", {
   )
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 5. export_candidate_regions
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 .qtl <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
                            p_threshold = NULL, trait_col = "trait")
@@ -372,9 +372,9 @@ test_that("export_candidate_regions: errors on missing required columns", {
   expect_error(export_candidate_regions(bad_qtl, format = "bed"), "missing")
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 6. decompose_block_effects
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 # Create synthetic SNP effects for testing
 .snp_effects <- setNames(rnorm(ncol(ldx_geno)), colnames(ldx_geno))
@@ -442,9 +442,9 @@ test_that("decompose_block_effects: sorted by CHR, start_bp, effect_rank", {
   }
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 7. scan_diversity_windows
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("scan_diversity_windows: returns data.frame with required columns", {
   scan <- scan_diversity_windows(
@@ -529,9 +529,9 @@ test_that("scan_diversity_windows: n_eff_alleles >= 1 for all rows", {
   expect_true(all(nea >= 1 - 1e-8))
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 8. infer_block_haplotypes
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("infer_block_haplotypes: returns data.frame with required columns", {
   dip <- infer_block_haplotypes(.haps)
@@ -658,9 +658,9 @@ test_that("infer_block_haplotypes: errors without block_info attribute", {
   expect_error(infer_block_haplotypes(bad_haps), "block_info")
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 9. collapse_haplotypes
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 test_that("collapse_haplotypes: rare_to_other pools rare alleles into <other>", {
   haps_col <- collapse_haplotypes(.haps_small, min_freq = 0.30,
@@ -737,9 +737,9 @@ test_that("collapse_haplotypes: all-common case produces no changes", {
     expect_equal(haps_col[[bn]], .haps_small[[bn]], label = bn)
 })
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 10. harmonize_haplotypes
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 # Split ldx_geno into reference (70%) and target (30%) panels
 .n_ind   <- nrow(ldx_geno)

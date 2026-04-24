@@ -50,8 +50,9 @@ estimate_diplotype_effects(
   Phase-ambiguous diplotypes (unphased heterozygotes) are excluded from
   the dominance analysis but included in the omnibus F-test if their
   diplotype string is unambiguous. For accurate dominance decomposition,
-  phased input (from `read_phased_vcf`, `phase_with_beagle`, or
-  `phase_with_pedigree`) is strongly recommended.
+  phased input (from `read_phased_vcf`, `phase_with_beagle`, or via
+  [`phase_with_beagle`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_beagle.md))
+  is strongly recommended.
 
 - blues:
 
@@ -129,12 +130,17 @@ elements:
     format ensures that `"010/110"` and `"110/010"` are always
     represented identically.
 
-  - `n` (integer) - Number of individuals with this diplotype.
+  - `n_class` (integer) - Number of individuals carrying this specific
+    diplotype combination.
+
+  - `n_total` (integer) - Total individuals with non-missing data in
+    this block (sum of n_class across all diplotype classes).
 
   - `mean_blue` (numeric) - Mean de-regressed phenotype value for this
     diplotype class (on the residual scale after GRM correction).
 
-  - `se_mean` (numeric) - Standard error of the mean (`sd / sqrt(n)`).
+  - `se_mean` (numeric) - Standard error of the mean
+    (`sd / sqrt(n_class)`).
 
 - `dominance_table`:
 
@@ -219,7 +225,7 @@ dip_res$dominance_table[dip_res$dominance_table$overdominance, ]
 #> 1 block_1_155368_179371   1   155368 179371 trait 0100010000000000001000100
 #> 2 block_2_161515_180473   2   161515 180473 trait      00100000100000000000
 #>                    allele_B   mean_AA   mean_AB   mean_BB         a         d
-#> 1 0111011011101110001000101 -0.438808  0.135217 -0.125740  0.156534  0.417491
+#> 1 0111011011101110001000101 -0.438808  0.135218 -0.125740  0.156534  0.417491
 #> 2      00100011100000110110  0.695056 -0.011832  0.214904 -0.240076 -0.466812
 #>   d_over_a overdominance
 #> 1   2.6671          TRUE

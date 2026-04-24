@@ -22,7 +22,7 @@ Phase-ambiguous diplotypes (unphased heterozygotes) are excluded from
 the dominance analysis but included in the omnibus F-test if their
 diplotype string is unambiguous. For accurate dominance decomposition,
 phased input (from \code{read_phased_vcf}, \code{phase_with_beagle}, or
-\code{phase_with_pedigree}) is strongly recommended.}
+via \code{\link{phase_with_beagle}}) is strongly recommended.}
 
 \item{blues}{Pre-adjusted phenotype means. Accepts the same four formats
 as \code{\link{test_block_haplotypes}}: named numeric vector,
@@ -75,11 +75,14 @@ A named list of class \code{c("LDxBlocks_diplotype", "list")}
         \code{"/"}, e.g. \code{"010/110"}. Homozygotes have identical
         halves: \code{"010/010"}. This format ensures that \code{"010/110"}
         and \code{"110/010"} are always represented identically.
-      \item \code{n} (integer) - Number of individuals with this diplotype.
+      \item \code{n_class} (integer) - Number of individuals carrying
+        this specific diplotype combination.
+      \item \code{n_total} (integer) - Total individuals with non-missing
+        data in this block (sum of n_class across all diplotype classes).
       \item \code{mean_blue} (numeric) - Mean de-regressed phenotype value
         for this diplotype class (on the residual scale after GRM correction).
       \item \code{se_mean} (numeric) - Standard error of the mean
-        (\code{sd / sqrt(n)}).
+        (\code{sd / sqrt(n_class)}).
     }}
 
   \item{\code{dominance_table}}{Data frame. One row per ordered allele pair

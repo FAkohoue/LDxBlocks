@@ -66,12 +66,44 @@ multi-format genotype I/O.
     [`compute_local_gebv`](https://FAkohoue.github.io/LDxBlocks/reference/compute_local_gebv.md),
     [`rank_haplotype_blocks`](https://FAkohoue.github.io/LDxBlocks/reference/rank_haplotype_blocks.md).
 
-11. Write outputs:
+11. Haplotype association testing with simpleM correction (Gao et al.
+    2008, 2010, 2011):
+    [`test_block_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md).
+    `sig_metric` selects among `p_wald`, `p_fdr`, `p_simplem`
+    (Bonferroni-style), and `p_simplem_sidak` (Sidak-style,
+    recommended). All four p-value columns always present. `meff_scope`
+    controls Meff estimation scope.
+
+12. Cross-population GWAS validation - two functions depending on how
+    the association analysis was performed:
+
+    - [`compare_block_effects`](https://FAkohoue.github.io/LDxBlocks/reference/compare_block_effects.md) -
+      for results from
+      [`test_block_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md).
+      IVW meta-analysis, Cochran Q, I-squared, direction agreement per
+      block.
+
+    - [`compare_gwas_effects`](https://FAkohoue.github.io/LDxBlocks/reference/compare_gwas_effects.md) -
+      for results from external GWAS tools (GAPIT, TASSEL, FarmCPU,
+      PLINK, etc.). Accepts raw GWAS data frames or
+      [`define_qtl_regions`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md)
+      output. Derives SE from z-score when absent.
+
+    - Both functions support `block_match = "position"` to match LD
+      blocks by genomic interval overlap (Intersection-over-Union)
+      rather than `block_id` string equality. This handles the common
+      case where block boundaries differ between populations due to
+      different ancestral LD structures. `overlap_min` (default 0.50)
+      sets the minimum IoU for a valid positional match. The
+      `match_type` output column reports `"exact"`, `"position"`, or
+      `"pop1_only"` for every block.
+
+13. Write outputs:
     [`write_haplotype_numeric`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_numeric.md),
     [`write_haplotype_character`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_character.md),
     [`write_haplotype_diversity`](https://FAkohoue.github.io/LDxBlocks/reference/write_haplotype_diversity.md).
 
-12. Or run everything at once:
+14. Or run everything at once:
     [`run_ldx_pipeline`](https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.md).
 
 ## Example data
@@ -158,6 +190,27 @@ phenotypic associations in the maize genome. *PNAS*
 **98**(20):11479-11484.
 [doi:10.1073/pnas.201394398](https://doi.org/10.1073/pnas.201394398)
 
+Gao X, Starmer J, Martin ER (2008). A multiple testing correction method
+for genetic association studies using correlated single nucleotide
+polymorphisms. *Genetic Epidemiology* **32**:361-369.
+[doi:10.1002/gepi.20310](https://doi.org/10.1002/gepi.20310)
+
+Gao X, Becker LC, Becker DM, Starmer JD, Province MA (2010). Avoiding
+the high Bonferroni penalty in genome-wide association studies. *Genetic
+Epidemiology* **34**:100-105.
+[doi:10.1002/gepi.20430](https://doi.org/10.1002/gepi.20430)
+
+Gao X (2011). Multiple testing corrections for imputed SNPs. *Genetic
+Epidemiology* **35**:154-158.
+[doi:10.1002/gepi.20563](https://doi.org/10.1002/gepi.20563)
+
+Borenstein M, Hedges LV, Higgins JPT, Rothstein HR (2009). *Introduction
+to Meta-Analysis*. Wiley.
+
+Higgins JPT, Thompson SG (2002). Quantifying heterogeneity in a
+meta-analysis. *Statistics in Medicine* **21**(11):1539-1558.
+[doi:10.1002/sim.1186](https://doi.org/10.1002/sim.1186)
+
 ## See also
 
 Useful links:
@@ -165,8 +218,6 @@ Useful links:
 - <https://github.com/FAkohoue/LDxBlocks>
 
 - <https://FAkohoue.github.io/LDxBlocks/>
-
-- <https://github.com/FAkohoue>
 
 - Report bugs at <https://github.com/FAkohoue/LDxBlocks/issues>
 

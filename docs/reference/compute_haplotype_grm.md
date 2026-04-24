@@ -9,7 +9,7 @@ realized relationship matrix.
 ## Usage
 
 ``` r
-compute_haplotype_grm(hap_matrix, bend = FALSE)
+compute_haplotype_grm(hap_matrix, bend = FALSE, phased = NULL)
 ```
 
 ## Arguments
@@ -24,6 +24,16 @@ compute_haplotype_grm(hap_matrix, bend = FALSE)
   Logical. If `TRUE`, add a small constant to the diagonal to ensure
   positive-definiteness: `diag(G) + 0.001`. Useful when passing G to
   mixed model solvers. Default `FALSE`.
+
+- phased:
+
+  Logical or `NULL` (default). Whether the haplotype feature matrix uses
+  `additive_012` encoding for phased data (dosage values 0/1/2, dose
+  scale = 2) or unphased data (presence/absence 0/1, dose scale = 1).
+  `NULL` auto-detects from column maxima: any column with a value \> 1
+  implies phased encoding. For guaranteed correctness when all haplotype
+  alleles lack homozygous carriers (max=1 even in phased data), supply
+  `phased = TRUE` or `FALSE` explicitly.
 
 ## Value
 
@@ -63,5 +73,5 @@ G    <- compute_haplotype_grm(feat)
 dim(G)
 #> [1] 120 120
 round(range(diag(G)), 3)  # diagonal ~= 1 for typical populations
-#> [1] 0.301 1.479
+#> [1] 0.162 0.797
 ```

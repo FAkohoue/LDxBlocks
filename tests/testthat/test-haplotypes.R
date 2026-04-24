@@ -506,7 +506,10 @@ test_that("define_qtl_regions: lead_beta present when BETA supplied", {
 })
 
 test_that("define_qtl_regions: lead_beta NA when no BETA column", {
-  qtl <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
+  # Strip BETA and SE from ldx_gwas to simulate a no-effect-size GWAS table
+  # (ldx_gwas now includes BETA/SE columns for compare_gwas_effects demos)
+  gwas_no_beta <- ldx_gwas[, setdiff(names(ldx_gwas), c("BETA", "SE"))]
+  qtl <- define_qtl_regions(gwas_no_beta, ldx_blocks, ldx_snp_info,
                             p_threshold=NULL, trait_col="trait")
   expect_true("lead_beta" %in% names(qtl))
   expect_true(all(is.na(qtl$lead_beta)))

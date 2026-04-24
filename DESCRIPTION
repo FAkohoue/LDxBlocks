@@ -10,7 +10,7 @@ Authors@R:
       email   = "akohoue.f@gmail.com",
       role    = c("aut", "cre"),
       comment = c(ORCID = "0000-0002-2160-0182")
-      )
+    )
 Description: Fast, scalable linkage disequilibrium (LD) block detection for
     genome-wide SNP data. Supports two LD metrics: standard r^2 (fast,
     suitable for 10M+ markers) and the kinship-adjusted rV^2 (Mangin et al.
@@ -20,7 +20,7 @@ Description: Fast, scalable linkage disequilibrium (LD) block detection for
     OpenMP. A unified multi-format I/O layer reads numeric dosage CSV,
     HapMap, VCF, SNPRelate GDS, and PLINK BED files through a streaming
     never-full-genome memory model. Downstream modules cover: haplotype
-    phasing (statistical via Beagle, pedigree-based transmission, or
+    phasing (statistical via Beagle or
     pre-phased VCF); haplotype extraction for phased and unphased data;
     diversity metrics (richness, Nei's expected heterozygosity corrected for
     sample size, Shannon entropy, effective number of alleles, sweep flag);
@@ -53,16 +53,29 @@ Description: Fast, scalable linkage disequilibrium (LD) block detection for
     (infer_block_haplotypes); rare-allele collapsing with three strategies
     (collapse_haplotypes); and cross-panel haplotype label harmonisation
     via reference-dictionary matching (harmonize_haplotypes).
-    Four haplotype association and breeding decision functions complete the
+    Five haplotype association and breeding decision functions complete the
     inference layer: block-level haplotype association testing via a unified
-    Q+K mixed linear model with vectorised per-allele scan (test_block_haplotypes,
-    analogous to EMMAX/GAPIT3, O(n^3) GRM inversion once per trait then
-    O(n*p) BLAS scan across all blocks); diplotype effect estimation with
-    additive/dominance decomposition and overdominance detection
-    (estimate_diplotype_effects); genome-wide haplotype portfolio scoring
-    against known allele effects with a normalised stacking index
-    (score_favorable_haplotypes); and a per-parent allele inventory for
-    haplotype stacking cross decisions (summarize_parent_haplotypes).
+    Q+K mixed linear model with vectorised per-allele scan and simpleM
+    multiple-testing correction (test_block_haplotypes, Gao et al. 2008
+    Genet Epidemiol 32:361; sig_metric selects among p_wald, p_fdr,
+    p_simplem, p_simplem_sidak; all four p-value columns always present;
+    meff_scope controls Meff estimation at chromosome, global, or block level);
+    diplotype effect estimation with additive/dominance decomposition and
+    overdominance detection (estimate_diplotype_effects); genome-wide
+    haplotype portfolio scoring against known allele effects with a normalised
+    stacking index (score_favorable_haplotypes); a per-parent allele inventory
+    for haplotype stacking cross decisions (summarize_parent_haplotypes); and
+    cross-population haplotype effect concordance via IVW meta-analysis,
+    Cochran Q heterogeneity, I-squared inconsistency, and direction agreement
+    (compare_block_effects); cross-population concordance from external GWAS
+    results produced by any tool (compare_gwas_effects; accepts raw GWAS data
+    frames or define_qtl_regions() output; derives SE from z-score when absent).
+    Both concordance functions support block_match = 'position' to match LD
+    blocks by genomic interval overlap (Intersection-over-Union) rather than by
+    block_id string equality, handling the common case where block boundaries
+    differ between populations due to different ancestral LD structures. The
+    match_type output column reports 'exact', 'position' (IoU >= overlap_min,
+    default 0.50), or 'pop1_only' for every block.
     LD decay analysis (compute_ld_decay) estimates the distance at which r2
     or rV2 drops below a critical threshold per chromosome, using a
     memory-efficient position-first random sampling strategy and optional
@@ -98,7 +111,8 @@ Imports:
     rrBLUP,
     stats,
     utils,
-    grDevices
+    grDevices,
+    scales
 Suggests:
     AGHmatrix (>= 2.0.0),
     ASRgenomics (>= 1.1.0),
@@ -122,7 +136,6 @@ Config/testthat/edition: 3
 LazyData: true
 SystemRequirements: C++17, OpenMP (optional but recommended)
 URL: https://github.com/FAkohoue/LDxBlocks,
-    https://FAkohoue.github.io/LDxBlocks/,
-    https://github.com/FAkohoue
+    https://FAkohoue.github.io/LDxBlocks/
 BugReports: https://github.com/FAkohoue/LDxBlocks/issues
 VignetteBuilder: knitr
