@@ -54,9 +54,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="package-overview">Package overview<a class="anchor" aria-label="anchor" href="#package-overview"></a></h2>
+      <h2 id="b">B<a class="anchor" aria-label="anchor" href="#b"></a></h2>
 
-      <div class="section-desc"><p>Main documentation entry point for LDxBlocks.</p></div>
+      <div class="section-desc"><p>Functions and datasets beginning with B.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -65,44 +65,21 @@
 
       <dl><dt>
 
-          <code><a href="LDxBlocks-package.html">LDxBlocks-package</a></code> <code><a href="LDxBlocks-package.html">LDxBlocks</a></code>
+          <code><a href="backsolve_snp_effects.html">backsolve_snp_effects()</a></code>
 
         </dt>
-        <dd>LDxBlocks: Genome-Wide LD Block Detection and Haplotype Analysis</dd>
+        <dd>Backsolve SNP Effects from GEBV (Tong et al. 2025)</dd>
+
+        <dt>
+
+          <code><a href="build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>
+
+        </dt>
+        <dd>Build Haplotype Dosage Matrix for Genomic Prediction</dd>
       </dl></div><div class="section level2">
-      <h2 id="main-workflows">Main workflows<a class="anchor" aria-label="anchor" href="#main-workflows"></a></h2>
+      <h2 id="c">C<a class="anchor" aria-label="anchor" href="#c"></a></h2>
 
-      <div class="section-desc"><p>High-level functions covering the full LDxBlocks pipeline, from genotype input to LD block detection, haplotype construction, and genomic prediction.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="run_ldx_pipeline.html">run_ldx_pipeline()</a></code>
-
-        </dt>
-        <dd>End-to-End Haplotype Block Pipeline</dd>
-
-        <dt>
-
-          <code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>
-
-        </dt>
-        <dd>Genome-Wide LD Block Detection by Chromosome</dd>
-
-        <dt>
-
-          <code><a href="tune_LD_params.html">tune_LD_params()</a></code>
-
-        </dt>
-        <dd>Auto-Tune LD Block Detection Parameters</dd>
-      </dl></div><div class="section level2">
-      <h2 id="genotype-input-and-backend">Genotype input and backend<a class="anchor" aria-label="anchor" href="#genotype-input-and-backend"></a></h2>
-
-      <div class="section-desc"><p>Import genotype data from multiple formats and manage the LDxBlocks memory-efficient backend for large genomic datasets.</p></div>
+      <div class="section-desc"><p>Functions and datasets beginning with C.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -110,34 +87,6 @@
 
 
       <dl><dt>
-
-          <code><a href="read_geno.html">read_geno()</a></code>
-
-        </dt>
-        <dd>Read Genotype Data into an LDxBlocks Backend</dd>
-
-        <dt>
-
-          <code><a href="read_geno_bigmemory.html">read_geno_bigmemory()</a></code>
-
-        </dt>
-        <dd>Open a bigmemory-backed Genotype Store</dd>
-
-        <dt>
-
-          <code><a href="read_chunk.html">read_chunk()</a></code>
-
-        </dt>
-        <dd>Extract a Genotype Slice from an LDxBlocks Backend</dd>
-
-        <dt>
-
-          <code><a href="prepare_geno.html">prepare_geno()</a></code>
-
-        </dt>
-        <dd>Prepare Genotype Matrix for LD Computation</dd>
-
-        <dt>
 
           <code><a href="close_backend.html">close_backend()</a></code>
 
@@ -146,232 +95,10 @@
 
         <dt>
 
-          <code><a href="print.LDxBlocks_backend.html">print(<i>&lt;LDxBlocks_backend&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Print Method for LDxBlocks Backend</dd>
-
-        <dt>
-
-          <code><a href="summary.LDxBlocks_backend.html">summary(<i>&lt;LDxBlocks_backend&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Summary Method for LDxBlocks Backend</dd>
-      </dl></div><div class="section level2">
-      <h2 id="ld-computation-and-block-detection">LD computation and block detection<a class="anchor" aria-label="anchor" href="#ld-computation-and-block-detection"></a></h2>
-
-      <div class="section-desc"><p>Core algorithms for LD estimation, LD decay analysis, and genome-wide LD block segmentation using clique-based and community-detection approaches.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="compute_r2.html">compute_r2()</a></code>
-
-        </dt>
-        <dd>Compute Standard r^2 LD Matrix</dd>
-
-        <dt>
-
-          <code><a href="compute_rV2.html">compute_rV2()</a></code>
-
-        </dt>
-        <dd>Compute Kinship-Adjusted rV^2 LD Matrix</dd>
-
-        <dt>
-
-          <code><a href="get_V_inv_sqrt.html">get_V_inv_sqrt()</a></code>
-
-        </dt>
-        <dd>Compute the Inverse Square Root (Whitening Factor) of a Kinship Matrix</dd>
-
-        <dt>
-
-          <code><a href="compute_ld_decay.html">compute_ld_decay()</a></code>
-
-        </dt>
-        <dd>Compute LD Decay and Chromosome-Specific Decay Distances</dd>
-
-        <dt>
-
-          <code><a href="plot_ld_decay.html">plot_ld_decay()</a></code>
-
-        </dt>
-        <dd>Plot LD Decay Curve</dd>
-
-        <dt>
-
-          <code><a href="summarise_blocks.html">summarise_blocks()</a></code>
-
-        </dt>
-        <dd>Summarise LD Block Characteristics</dd>
-
-        <dt>
-
-          <code><a href="plot_ld_blocks.html">plot_ld_blocks()</a></code>
-
-        </dt>
-        <dd>Plot LD Block Structure Across Chromosomes</dd>
-      </dl></div><div class="section level2">
-      <h2 id="phasing-tools">Phasing tools<a class="anchor" aria-label="anchor" href="#phasing-tools"></a></h2>
-
-      <div class="section-desc"><p>Functions for obtaining gametic phase from WGS data (Beagle) or pre-phased VCF files.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="read_phased_vcf.html">read_phased_vcf()</a></code>
-
-        </dt>
-        <dd>Read Pre-Phased VCF</dd>
-
-        <dt>
-
-          <code><a href="phase_with_beagle.html">phase_with_beagle()</a></code>
-
-        </dt>
-        <dd>Statistical Phasing via Beagle 5.x</dd>
-      </dl></div><div class="section level2">
-      <h2 id="haplotype-construction-and-diversity">Haplotype construction and diversity<a class="anchor" aria-label="anchor" href="#haplotype-construction-and-diversity"></a></h2>
-
-      <div class="section-desc"><p>Extract haplotypes within LD blocks, decode nucleotide sequences, compute haplotype diversity statistics, and construct genomic prediction features.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="extract_haplotypes.html">extract_haplotypes()</a></code>
-
-        </dt>
-        <dd>Extract Haplotype Dosage Strings from LD Blocks</dd>
-
-        <dt>
-
-          <code><a href="decode_haplotype_strings.html">decode_haplotype_strings()</a></code>
-
-        </dt>
-        <dd>Decode Haplotype Strings to Nucleotide Sequences</dd>
-
-        <dt>
-
-          <code><a href="compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>
-
-        </dt>
-        <dd>Compute Haplotype Diversity Per Block</dd>
-
-        <dt>
-
-          <code><a href="build_haplotype_feature_matrix.html">build_haplotype_feature_matrix()</a></code>
-
-        </dt>
-        <dd>Build Haplotype Dosage Matrix for Genomic Prediction</dd>
-
-        <dt>
-
-          <code><a href="compute_haplotype_grm.html">compute_haplotype_grm()</a></code>
-
-        </dt>
-        <dd>Compute Haplotype-Based Genomic Relationship Matrix</dd>
-
-        <dt>
-
-          <code><a href="define_qtl_regions.html">define_qtl_regions()</a></code>
-
-        </dt>
-        <dd>Map GWAS Hits to LD Blocks (Post-GWAS QTL Region Definition)</dd>
-      </dl></div><div class="section level2">
-      <h2 id="haplotype-harmonisation">Haplotype harmonisation<a class="anchor" aria-label="anchor" href="#haplotype-harmonisation"></a></h2>
-
-      <div class="section-desc"><p>Harmonise haplotypes across populations, infer diplotypes, and collapse rare alleles into biologically meaningful groups.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="infer_block_haplotypes.html">infer_block_haplotypes()</a></code>
-
-        </dt>
-        <dd>Infer Structured Block-Level Diplotypes Per Individual</dd>
-
-        <dt>
-
           <code><a href="collapse_haplotypes.html">collapse_haplotypes()</a></code>
 
         </dt>
         <dd>Collapse Rare Haplotype Alleles Into Biologically Meaningful Groups</dd>
-
-        <dt>
-
-          <code><a href="harmonize_haplotypes.html">harmonize_haplotypes()</a></code>
-
-        </dt>
-        <dd>Harmonize Haplotype Allele Labels Across Panels or Analysis Runs</dd>
-      </dl></div><div class="section level2">
-      <h2 id="haplotype-export">Haplotype export<a class="anchor" aria-label="anchor" href="#haplotype-export"></a></h2>
-
-      <div class="section-desc"><p>Export haplotype dosage matrices and diversity summaries for downstream statistical analyses.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="write_haplotype_numeric.html">write_haplotype_numeric()</a></code>
-
-        </dt>
-        <dd>Write Haplotype Feature Matrix as Numeric Dosage Table</dd>
-
-        <dt>
-
-          <code><a href="write_haplotype_character.html">write_haplotype_character()</a></code>
-
-        </dt>
-        <dd>Write Haplotype Character (Nucleotide) Matrix</dd>
-
-        <dt>
-
-          <code><a href="write_haplotype_diversity.html">write_haplotype_diversity()</a></code>
-
-        </dt>
-        <dd>Write Haplotype Diversity Table</dd>
-      </dl></div><div class="section level2">
-      <h2 id="association-and-qtl-interpretation">Association and QTL interpretation<a class="anchor" aria-label="anchor" href="#association-and-qtl-interpretation"></a></h2>
-
-      <div class="section-desc"><p>Block-level association tests (Q+K mixed model with simpleM multiple-testing correction), diplotype effect decomposition, cross-population effect concordance from haplotype association results (compare_block_effects) or external GWAS tools (compare_gwas_effects), and GWAS integration.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="test_block_haplotypes.html">test_block_haplotypes()</a></code>
-
-        </dt>
-        <dd>Block-Level Haplotype Association Testing (Q+K Mixed Linear Model with simpleM Multiple-Testing Correction)</dd>
-
-        <dt>
-
-          <code><a href="estimate_diplotype_effects.html">estimate_diplotype_effects()</a></code>
-
-        </dt>
-        <dd>Estimate Diplotype Effects and Dominance Deviations Per LD Block</dd>
 
         <dt>
 
@@ -389,33 +116,31 @@
 
         <dt>
 
-          <code><a href="integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code>
+          <code><a href="compare_haplotype_populations.html">compare_haplotype_populations()</a></code>
 
         </dt>
-        <dd>Integrate GWAS QTL Regions with Haplotype Prediction Results</dd>
-      </dl></div><div class="section level2">
-      <h2 id="genomic-prediction">Genomic prediction<a class="anchor" aria-label="anchor" href="#genomic-prediction"></a></h2>
-
-      <div class="section-desc"><p>Haplotype-based genomic prediction following Tong et al. (2024-2025), including GBLUP integration and local GEBV estimation.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="prepare_gblup_inputs.html">prepare_gblup_inputs()</a></code>
-
-        </dt>
-        <dd>Prepare Genomic Prediction Inputs for External GBLUP Software</dd>
+        <dd>Compare Haplotype Allele Frequencies Between Two Population Groups</dd>
 
         <dt>
 
-          <code><a href="run_haplotype_prediction.html">run_haplotype_prediction()</a></code>
+          <code><a href="compute_haplotype_diversity.html">compute_haplotype_diversity()</a></code>
 
         </dt>
-        <dd>Haplotype Prediction and Block Importance from Pre-Adjusted Phenotypes</dd>
+        <dd>Compute Haplotype Diversity Per Block</dd>
+
+        <dt>
+
+          <code><a href="compute_haplotype_grm.html">compute_haplotype_grm()</a></code>
+
+        </dt>
+        <dd>Compute Haplotype-Based Genomic Relationship Matrix</dd>
+
+        <dt>
+
+          <code><a href="compute_ld_decay.html">compute_ld_decay()</a></code>
+
+        </dt>
+        <dd>Compute LD Decay and Chromosome-Specific Decay Distances</dd>
 
         <dt>
 
@@ -426,14 +151,259 @@
 
         <dt>
 
-          <code><a href="backsolve_snp_effects.html">backsolve_snp_effects()</a></code>
+          <code><a href="compute_r2.html">compute_r2()</a></code>
 
         </dt>
-        <dd>Backsolve SNP Effects from GEBV (Tong et al. 2025)</dd>
-      </dl></div><div class="section level2">
-      <h2 id="breeding-decision-support">Breeding decision support<a class="anchor" aria-label="anchor" href="#breeding-decision-support"></a></h2>
+        <dd>Compute Standard r^2 LD Matrix</dd>
 
-      <div class="section-desc"><p>Identify favourable haplotypes and rank LD blocks for haplotype stacking strategies.</p></div>
+        <dt>
+
+          <code><a href="compute_rV2.html">compute_rV2()</a></code>
+
+        </dt>
+        <dd>Compute Kinship-Adjusted rV^2 LD Matrix</dd>
+
+        <dt>
+
+          <code><a href="cv_haplotype_prediction.html">cv_haplotype_prediction()</a></code>
+
+        </dt>
+        <dd>K-Fold Cross-Validation for Haplotype-Based Genomic Prediction</dd>
+      </dl></div><div class="section level2">
+      <h2 id="d">D<a class="anchor" aria-label="anchor" href="#d"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with D.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="decode_haplotype_strings.html">decode_haplotype_strings()</a></code>
+
+        </dt>
+        <dd>Decode Haplotype Strings to Nucleotide Sequences</dd>
+
+        <dt>
+
+          <code><a href="decompose_block_effects.html">decompose_block_effects()</a></code>
+
+        </dt>
+        <dd>Decompose Per-SNP Effects into Per-Haplotype-Allele Effect Table</dd>
+
+        <dt>
+
+          <code><a href="define_qtl_regions.html">define_qtl_regions()</a></code>
+
+        </dt>
+        <dd>Map GWAS Hits to LD Blocks (Post-GWAS QTL Region Definition)</dd>
+      </dl></div><div class="section level2">
+      <h2 id="e">E<a class="anchor" aria-label="anchor" href="#e"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with E.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="estimate_diplotype_effects.html">estimate_diplotype_effects()</a></code>
+
+        </dt>
+        <dd>Estimate Diplotype Effects and Dominance Deviations Per LD Block</dd>
+
+        <dt>
+
+          <code><a href="export_candidate_regions.html">export_candidate_regions()</a></code>
+
+        </dt>
+        <dd>Export Candidate Gene Regions to BED, CSV, or biomaRt Format</dd>
+
+        <dt>
+
+          <code><a href="extract_haplotypes.html">extract_haplotypes()</a></code>
+
+        </dt>
+        <dd>Extract Haplotype Dosage Strings from LD Blocks</dd>
+      </dl></div><div class="section level2">
+      <h2 id="g">G<a class="anchor" aria-label="anchor" href="#g"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with G.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="get_V_inv_sqrt.html">get_V_inv_sqrt()</a></code>
+
+        </dt>
+        <dd>Compute the Inverse Square Root (Whitening Factor) of a Kinship Matrix</dd>
+      </dl></div><div class="section level2">
+      <h2 id="h">H<a class="anchor" aria-label="anchor" href="#h"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with H.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="harmonize_haplotypes.html">harmonize_haplotypes()</a></code>
+
+        </dt>
+        <dd>Harmonize Haplotype Allele Labels Across Panels or Analysis Runs</dd>
+      </dl></div><div class="section level2">
+      <h2 id="i">I<a class="anchor" aria-label="anchor" href="#i"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with I.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="infer_block_haplotypes.html">infer_block_haplotypes()</a></code>
+
+        </dt>
+        <dd>Infer Structured Block-Level Diplotypes Per Individual</dd>
+
+        <dt>
+
+          <code><a href="integrate_gwas_haplotypes.html">integrate_gwas_haplotypes()</a></code>
+
+        </dt>
+        <dd>Integrate GWAS QTL Regions with Haplotype Prediction Results</dd>
+      </dl></div><div class="section level2">
+      <h2 id="l">L<a class="anchor" aria-label="anchor" href="#l"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with L.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="LDxBlocks-package.html">LDxBlocks-package</a></code> <code><a href="LDxBlocks-package.html">LDxBlocks</a></code>
+
+        </dt>
+        <dd>LDxBlocks: Genome-Wide LD Block Detection and Haplotype Analysis</dd>
+
+        <dt>
+
+          <code><a href="ldx_blocks.html">ldx_blocks</a></code>
+
+        </dt>
+        <dd>Example LD Block Table</dd>
+
+        <dt>
+
+          <code><a href="ldx_blues.html">ldx_blues</a></code>
+
+        </dt>
+        <dd>Pre-Adjusted Phenotype Means (BLUEs) for Genomic Prediction Examples</dd>
+
+        <dt>
+
+          <code><a href="ldx_blues_list.html">ldx_blues_list</a></code>
+
+        </dt>
+        <dd>Per-Environment BLUEs for Stability Analysis Examples</dd>
+
+        <dt>
+
+          <code><a href="ldx_geno.html">ldx_geno</a></code>
+
+        </dt>
+        <dd>Example Genotype Matrix</dd>
+
+        <dt>
+
+          <code><a href="ldx_gwas.html">ldx_gwas</a></code>
+
+        </dt>
+        <dd>Example GWAS Marker Table</dd>
+
+        <dt>
+
+          <code><a href="ldx_snp_info.html">ldx_snp_info</a></code>
+
+        </dt>
+        <dd>Example SNP Information Table</dd>
+      </dl></div><div class="section level2">
+      <h2 id="p">P<a class="anchor" aria-label="anchor" href="#p"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with P.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="phase_with_beagle.html">phase_with_beagle()</a></code>
+
+        </dt>
+        <dd>Statistical Phasing via Beagle 5.x</dd>
+
+        <dt>
+
+          <code><a href="plot_haplotype_network.html">plot_haplotype_network()</a></code>
+
+        </dt>
+        <dd>Plot a Minimum-Spanning Haplotype Network for One LD Block</dd>
+
+        <dt>
+
+          <code><a href="plot_ld_blocks.html">plot_ld_blocks()</a></code>
+
+        </dt>
+        <dd>Plot LD Block Structure Across Chromosomes</dd>
+
+        <dt>
+
+          <code><a href="plot_ld_decay.html">plot_ld_decay()</a></code>
+
+        </dt>
+        <dd>Plot LD Decay Curve</dd>
+
+        <dt>
+
+          <code><a href="prepare_gblup_inputs.html">prepare_gblup_inputs()</a></code>
+
+        </dt>
+        <dd>Prepare Genomic Prediction Inputs for External GBLUP Software</dd>
+
+        <dt>
+
+          <code><a href="prepare_geno.html">prepare_geno()</a></code>
+
+        </dt>
+        <dd>Prepare Genotype Matrix for LD Computation</dd>
+
+        <dt>
+
+          <code><a href="print.LDxBlocks_backend.html">print(<i>&lt;LDxBlocks_backend&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Print Method for LDxBlocks Backend</dd>
+      </dl></div><div class="section level2">
+      <h2 id="r">R<a class="anchor" aria-label="anchor" href="#r"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with R.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -449,33 +419,45 @@
 
         <dt>
 
-          <code><a href="score_favorable_haplotypes.html">score_favorable_haplotypes()</a></code>
+          <code><a href="read_chunk.html">read_chunk()</a></code>
 
         </dt>
-        <dd>Score Individual Haplotype Portfolios Against Known Allele Effects</dd>
+        <dd>Extract a Genotype Slice from an LDxBlocks Backend</dd>
 
         <dt>
 
-          <code><a href="summarize_parent_haplotypes.html">summarize_parent_haplotypes()</a></code>
+          <code><a href="read_geno.html">read_geno()</a></code>
 
         </dt>
-        <dd>Summarise Haplotype Allele Inventory Per Candidate Parent</dd>
-      </dl></div><div class="section level2">
-      <h2 id="population-and-stability-analysis">Population and stability analysis<a class="anchor" aria-label="anchor" href="#population-and-stability-analysis"></a></h2>
+        <dd>Read Genotype Data into an LDxBlocks Backend</dd>
 
-      <div class="section-desc"><p>Compare haplotype distributions across populations and evaluate stability across environments.</p></div>
+        <dt>
 
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="compare_haplotype_populations.html">compare_haplotype_populations()</a></code>
+          <code><a href="read_geno_bigmemory.html">read_geno_bigmemory()</a></code>
 
         </dt>
-        <dd>Compare Haplotype Allele Frequencies Between Two Population Groups</dd>
+        <dd>Open a bigmemory-backed Genotype Store</dd>
+
+        <dt>
+
+          <code><a href="read_phased_vcf.html">read_phased_vcf()</a></code>
+
+        </dt>
+        <dd>Read a Pre-Phased VCF</dd>
+
+        <dt>
+
+          <code><a href="run_Big_LD_all_chr.html">run_Big_LD_all_chr()</a></code>
+
+        </dt>
+        <dd>Genome-Wide LD Block Detection by Chromosome</dd>
+
+        <dt>
+
+          <code><a href="run_haplotype_prediction.html">run_haplotype_prediction()</a></code>
+
+        </dt>
+        <dd>Haplotype Prediction and Block Importance from Pre-Adjusted Phenotypes</dd>
 
         <dt>
 
@@ -486,6 +468,22 @@
 
         <dt>
 
+          <code><a href="run_ldx_pipeline.html">run_ldx_pipeline()</a></code>
+
+        </dt>
+        <dd>End-to-End Haplotype Block Pipeline</dd>
+      </dl></div><div class="section level2">
+      <h2 id="s">S<a class="anchor" aria-label="anchor" href="#s"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with S.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
           <code><a href="scan_diversity_windows.html">scan_diversity_windows()</a></code>
 
         </dt>
@@ -493,21 +491,35 @@
 
         <dt>
 
-          <code><a href="decompose_block_effects.html">decompose_block_effects()</a></code>
+          <code><a href="score_favorable_haplotypes.html">score_favorable_haplotypes()</a></code>
 
         </dt>
-        <dd>Decompose Per-SNP Effects into Per-Haplotype-Allele Effect Table</dd>
+        <dd>Score Individual Haplotype Portfolios Against Known Allele Effects</dd>
 
         <dt>
 
-          <code><a href="export_candidate_regions.html">export_candidate_regions()</a></code>
+          <code><a href="summarise_blocks.html">summarise_blocks()</a></code>
 
         </dt>
-        <dd>Export Candidate Gene Regions to BED, CSV, or biomaRt Format</dd>
-      </dl></div><div class="section level2">
-      <h2 id="cross-validation">Cross-validation<a class="anchor" aria-label="anchor" href="#cross-validation"></a></h2>
+        <dd>Summarise LD Block Characteristics</dd>
 
-      <div class="section-desc"><p>Evaluate predictive ability of haplotype-based genomic models.</p></div>
+        <dt>
+
+          <code><a href="summarize_parent_haplotypes.html">summarize_parent_haplotypes()</a></code>
+
+        </dt>
+        <dd>Summarise Haplotype Allele Inventory Per Candidate Parent</dd>
+
+        <dt>
+
+          <code><a href="summary.LDxBlocks_backend.html">summary(<i>&lt;LDxBlocks_backend&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Summary Method for LDxBlocks Backend</dd>
+      </dl></div><div class="section level2">
+      <h2 id="t">T<a class="anchor" aria-label="anchor" href="#t"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with T.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -516,14 +528,21 @@
 
       <dl><dt>
 
-          <code><a href="cv_haplotype_prediction.html">cv_haplotype_prediction()</a></code>
+          <code><a href="test_block_haplotypes.html">test_block_haplotypes()</a></code>
 
         </dt>
-        <dd>K-Fold Cross-Validation for Haplotype-Based Genomic Prediction</dd>
-      </dl></div><div class="section level2">
-      <h2 id="visualisation">Visualisation<a class="anchor" aria-label="anchor" href="#visualisation"></a></h2>
+        <dd>Block-Level Haplotype Association Testing (Q+K Mixed Linear Model with simpleM Multiple-Testing Correction)</dd>
 
-      <div class="section-desc"><p>Plot LD structure and haplotype relationships.</p></div>
+        <dt>
+
+          <code><a href="tune_LD_params.html">tune_LD_params()</a></code>
+
+        </dt>
+        <dd>Auto-Tune LD Block Detection Parameters</dd>
+      </dl></div><div class="section level2">
+      <h2 id="w">W<a class="anchor" aria-label="anchor" href="#w"></a></h2>
+
+      <div class="section-desc"><p>Functions and datasets beginning with W.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -532,61 +551,24 @@
 
       <dl><dt>
 
-          <code><a href="plot_haplotype_network.html">plot_haplotype_network()</a></code>
+          <code><a href="write_haplotype_character.html">write_haplotype_character()</a></code>
 
         </dt>
-        <dd>Plot a Minimum-Spanning Haplotype Network for One LD Block</dd>
-      </dl></div><div class="section level2">
-      <h2 id="example-datasets">Example datasets<a class="anchor" aria-label="anchor" href="#example-datasets"></a></h2>
-
-      <div class="section-desc"><p>Simulated datasets for tutorials and reproducible examples.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="ldx_geno.html">ldx_geno</a></code>
-
-        </dt>
-        <dd>Example Genotype Matrix</dd>
+        <dd>Write Haplotype Character (Nucleotide) Matrix</dd>
 
         <dt>
 
-          <code><a href="ldx_snp_info.html">ldx_snp_info</a></code>
+          <code><a href="write_haplotype_diversity.html">write_haplotype_diversity()</a></code>
 
         </dt>
-        <dd>Example SNP Information Table</dd>
+        <dd>Write Haplotype Diversity Table</dd>
 
         <dt>
 
-          <code><a href="ldx_blocks.html">ldx_blocks</a></code>
+          <code><a href="write_haplotype_numeric.html">write_haplotype_numeric()</a></code>
 
         </dt>
-        <dd>Example LD Block Table</dd>
-
-        <dt>
-
-          <code><a href="ldx_gwas.html">ldx_gwas</a></code>
-
-        </dt>
-        <dd>Example GWAS Marker Table</dd>
-
-        <dt>
-
-          <code><a href="ldx_blues.html">ldx_blues</a></code>
-
-        </dt>
-        <dd>Pre-Adjusted Phenotype Means (BLUEs) for Genomic Prediction Examples</dd>
-
-        <dt>
-
-          <code><a href="ldx_blues_list.html">ldx_blues_list</a></code>
-
-        </dt>
-        <dd>Per-Environment BLUEs for Stability Analysis Examples</dd>
+        <dd>Write Haplotype Feature Matrix as Numeric Dosage Table</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

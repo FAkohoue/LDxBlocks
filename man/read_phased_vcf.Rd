@@ -2,20 +2,45 @@
 % Please edit documentation in R/haplotypes.R
 \name{read_phased_vcf}
 \alias{read_phased_vcf}
-\title{Read Pre-Phased VCF}
+\title{Read a Pre-Phased VCF}
 \usage{
 read_phased_vcf(vcf_file, min_maf = 0, verbose = TRUE)
 }
 \arguments{
-\item{vcf_file}{Path to phased VCF or VCF.gz with 0|1 GT fields.}
+\item{vcf_file}{Character. Path to a phased \code{.vcf} or \code{.vcf.gz}
+file.}
 
-\item{min_maf}{Minimum MAF. Default 0.0.}
+\item{min_maf}{Numeric. Minimum minor allele frequency used to filter
+variants after dosage calculation. Must be between 0 and 0.5.
+Default is \code{0.0}, meaning no MAF filtering.}
 
-\item{verbose}{Logical. Default TRUE.}
+\item{verbose}{Logical. If \code{TRUE}, progress messages are printed.
+Default is \code{TRUE}.}
 }
 \value{
-List: hap1, hap2 (SNPs x individuals, 0/1), dosage (0/1/2), snp_info, sample_ids.
+A list with elements:
+\describe{
+  \item{\code{hap1}}{Integer matrix of first haplotype alleles,
+    SNPs x individuals.}
+  \item{\code{hap2}}{Integer matrix of second haplotype alleles,
+    SNPs x individuals.}
+  \item{\code{dosage}}{Integer matrix of allele dosages, SNPs x individuals.}
+  \item{\code{snp_info}}{Data frame with columns \code{SNP}, \code{CHR},
+    \code{POS}, \code{REF}, and \code{ALT}.}
+  \item{\code{sample_ids}}{Character vector of sample IDs.}
+  \item{\code{phased}}{Logical. Always \code{TRUE}.}
+  \item{\code{phase_method}}{Character. Always \code{"vcf_phased"}.}
+}
 }
 \description{
-Read Pre-Phased VCF
+Reads a phased VCF/VCF.gz file and extracts the two haplotype allele
+matrices, allele dosage matrix, SNP metadata, and sample IDs.
+
+This function expects phased genotype calls in the VCF sample columns,
+using the pipe separator, for example \code{0|0}, \code{0|1},
+\code{1|0}, \code{1|1}, or \code{.|.}. FORMAT subfields are allowed;
+for example, \code{0|1:35:99} is parsed as \code{0|1}.
+
+The returned \code{hap1}, \code{hap2}, and \code{dosage} matrices are
+stored as SNPs x individuals.
 }

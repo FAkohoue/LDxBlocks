@@ -119,12 +119,6 @@ devtools::document()
 devtools::install()
 
 
-Sys.setenv(PATH = paste(
-  "C:/Program Files/TASSEL5/jre/bin",
-  Sys.getenv("PATH"),
-  sep = ";"
-))
-
 # 6. Run the test suite.  All C++ symbols are now registered in the
 #    installed DLL, so load_all() will find them.
 devtools::test()

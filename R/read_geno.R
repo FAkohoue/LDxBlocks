@@ -734,7 +734,12 @@ read_chunk <- function(backend, col_idx) {
            # No filter/reset cycle needed -- simpler and faster than the SeqArray path.
            .require_pkg("SNPRelate", "GDS chunk reader")
            snp_int_ids <- backend$.var_ids[col_idx]
-           samp_ids    <- backend$.sample_filter %||% backend$sample_ids
+
+           samp_ids <- backend$sample_ids
+
+           if (is.null(samp_ids) || length(samp_ids) == 0L) {
+             stop("No sample IDs found in GDS backend.", call. = FALSE)
+           }
 
            dos <- SNPRelate::snpgdsGetGeno(
              backend$.gds,
@@ -743,6 +748,17 @@ read_chunk <- function(backend, col_idx) {
              snpfirstdim = FALSE,    # returns samples x SNPs
              with.id     = FALSE
            )
+
+           if (is.null(dos) || !is.matrix(dos) ||
+               nrow(dos) == 0L || ncol(dos) == 0L) {
+             stop(
+               "snpgdsGetGeno returned empty matrix: ",
+               nrow(dos), " x ", ncol(dos),
+               ". Likely mismatch between SNP IDs and sample IDs.",
+               call. = FALSE
+             )
+           }
+
            # snpgdsGetGeno() returns REF allele count by default (2=hom-REF, 0=hom-ALT).
            # LDxBlocks uses ALT dosage convention (0=hom-REF, 2=hom-ALT).
            # Invert: ALT_count = 2 - REF_count; NA stays NA.

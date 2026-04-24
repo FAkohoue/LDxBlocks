@@ -5,73 +5,131 @@
 .norm_chr_hap <- function(x) sub("^chr","",as.character(x),ignore.case=TRUE)
 `%||%` <- function(x,y) if(is.null(x)) y else x
 
-#' Read Pre-Phased VCF
-#' @param vcf_file Path to phased VCF or VCF.gz with 0|1 GT fields.
-#' @param min_maf Minimum MAF. Default 0.0.
-#' @param verbose Logical. Default TRUE.
-#' @return List: hap1, hap2 (SNPs x individuals, 0/1), dosage (0/1/2), snp_info, sample_ids.
+#' Read a Pre-Phased VCF
+#'
+#' @description
+#' Reads a phased VCF/VCF.gz file and extracts the two haplotype allele
+#' matrices, allele dosage matrix, SNP metadata, and sample IDs.
+#'
+#' This function expects phased genotype calls in the VCF sample columns,
+#' using the pipe separator, for example \code{0|0}, \code{0|1},
+#' \code{1|0}, \code{1|1}, or \code{.|.}. FORMAT subfields are allowed;
+#' for example, \code{0|1:35:99} is parsed as \code{0|1}.
+#'
+#' The returned \code{hap1}, \code{hap2}, and \code{dosage} matrices are
+#' stored as SNPs x individuals.
+#'
+#' @param vcf_file Character. Path to a phased \code{.vcf} or \code{.vcf.gz}
+#'   file.
+#' @param min_maf Numeric. Minimum minor allele frequency used to filter
+#'   variants after dosage calculation. Must be between 0 and 0.5.
+#'   Default is \code{0.0}, meaning no MAF filtering.
+#' @param verbose Logical. If \code{TRUE}, progress messages are printed.
+#'   Default is \code{TRUE}.
+#'
+#' @return A list with elements:
+#' \describe{
+#'   \item{\code{hap1}}{Integer matrix of first haplotype alleles,
+#'     SNPs x individuals.}
+#'   \item{\code{hap2}}{Integer matrix of second haplotype alleles,
+#'     SNPs x individuals.}
+#'   \item{\code{dosage}}{Integer matrix of allele dosages, SNPs x individuals.}
+#'   \item{\code{snp_info}}{Data frame with columns \code{SNP}, \code{CHR},
+#'     \code{POS}, \code{REF}, and \code{ALT}.}
+#'   \item{\code{sample_ids}}{Character vector of sample IDs.}
+#'   \item{\code{phased}}{Logical. Always \code{TRUE}.}
+#'   \item{\code{phase_method}}{Character. Always \code{"vcf_phased"}.}
+#' }
+#'
 #' @export
 read_phased_vcf <- function(vcf_file, min_maf = 0.0, verbose = TRUE) {
-  if (!is.numeric(min_maf) || length(min_maf) != 1L ||
-      is.na(min_maf) || min_maf < 0 || min_maf > 0.5)
-    stop("min_maf must be a single numeric in [0, 0.5].", call. = FALSE)
-  if (!file.exists(vcf_file))
-    stop("VCF not found: ", vcf_file, call. = FALSE)
-  if (verbose) message("[read_phased_vcf] Reading: ", basename(vcf_file))
 
-  # -- Step 1: Extract header lines to get sample IDs -------------------------
-  # Read only until the #CHROM line - at most ~100 meta lines for any VCF.
-  con <- gzfile(vcf_file, "r")
+  # -- Input checks -----------------------------------------------------------
+  if (!is.character(vcf_file) || length(vcf_file) != 1L || !nzchar(vcf_file)) {
+    stop("vcf_file must be a single non-empty character string.", call. = FALSE)
+  }
+
+  if (!file.exists(vcf_file)) {
+    stop("VCF not found: ", vcf_file, call. = FALSE)
+  }
+
+  if (!grepl("\\.vcf(\\.gz)?$", vcf_file, ignore.case = TRUE)) {
+    stop("vcf_file must be a .vcf or .vcf.gz file.", call. = FALSE)
+  }
+
+  if (!is.numeric(min_maf) || length(min_maf) != 1L ||
+      is.na(min_maf) || !is.finite(min_maf) ||
+      min_maf < 0 || min_maf > 0.5) {
+    stop("min_maf must be a single numeric value in [0, 0.5].", call. = FALSE)
+  }
+
+  verbose <- isTRUE(verbose)
+
+  if (verbose) {
+    message("[read_phased_vcf] Reading: ", basename(vcf_file))
+  }
+
+  is_gz <- grepl("\\.gz$", vcf_file, ignore.case = TRUE)
+
+  # -- Internal helper: open VCF connection ----------------------------------
+  .open_vcf_connection <- function(file) {
+    if (is_gz) {
+      gzcon(file(file, open = "rb"))
+    } else {
+      file(file, open = "r")
+    }
+  }
+
+  # -- Step 1: Extract #CHROM header and sample IDs ---------------------------
+  con <- .open_vcf_connection(vcf_file)
   on.exit(try(close(con), silent = TRUE), add = TRUE)
+
   header_line <- NULL
   repeat {
     ln <- readLines(con, n = 1L, warn = FALSE)
     if (!length(ln)) break
-    if (startsWith(ln, "#CHROM")) { header_line <- ln; break }
+    if (startsWith(ln, "#CHROM")) {
+      header_line <- ln
+      break
+    }
   }
-  close(con)
-  if (is.null(header_line)) stop("No #CHROM header found.", call. = FALSE)
+
+  try(close(con), silent = TRUE)
+
+  if (is.null(header_line)) {
+    stop("No #CHROM header found in VCF.", call. = FALSE)
+  }
 
   cols <- strsplit(header_line, "\t", fixed = TRUE)[[1L]]
+
+  if (length(cols) < 10L) {
+    stop("VCF header has fewer than 10 columns; no sample columns found.",
+         call. = FALSE)
+  }
+
   sids <- cols[10:length(cols)]
   ns   <- length(sids)
 
-  # -- Step 2: Read all data lines with data.table::fread() -------------------
-  # Fast path: fread(cmd=) pipes through zcat + grep at C level (~50x speedup).
-  # This requires zcat and grep on PATH. Check availability BEFORE calling fread
-  # so that we never emit the shell-command-not-found WARNING that fread/shell()
-  # produces on Windows when the command is missing. tryCatch only catches errors;
-  # a shell warning leaks out even when the error handler runs the fallback.
-  is_gz <- grepl("\\.gz$", vcf_file, ignore.case = TRUE)
-  .use_shell <- nzchar(Sys.which(if (is_gz) "zcat" else "grep"))
+  if (!ns) {
+    stop("No sample IDs found in VCF header.", call. = FALSE)
+  }
 
-  dt <- if (.use_shell) {
-    cmd <- if (is_gz) {
-      paste0("zcat ", shQuote(vcf_file), " | grep -v '^#'")
-    } else {
-      paste0("grep -v '^#' ", shQuote(vcf_file))
+  # -- Step 2: Read VCF data lines -------------------------------------------
+  .read_vcf_fallback <- function() {
+    if (verbose) {
+      message("[read_phased_vcf] Using R fallback reader")
     }
-    data.table::fread(
-      cmd          = cmd,
-      header       = FALSE,
-      sep          = "\t",
-      colClasses   = "character",
-      showProgress = FALSE,
-      data.table   = FALSE
-    )
-  } else {
-    # Fallback: pure-R reader for Windows without zcat/grep on PATH.
-    # Reads all lines via gzcon then passes the text to fread - avoids the
-    # O(n^2) growing-vector problem of the original line-at-a-time loop.
-    if (verbose)
-      message("[read_phased_vcf] Shell tools not on PATH; using R fallback reader")
-    pipe_con <- if (is_gz) gzcon(file(vcf_file, "rb")) else file(vcf_file, "r")
-    on.exit(try(close(pipe_con), silent = TRUE), add = TRUE)
-    all_lines  <- readLines(pipe_con, warn = FALSE)
-    close(pipe_con)
+
+    con2 <- .open_vcf_connection(vcf_file)
+    on.exit(try(close(con2), silent = TRUE), add = TRUE)
+
+    all_lines  <- readLines(con2, warn = FALSE)
     data_lines <- all_lines[!startsWith(all_lines, "#")]
-    if (!length(data_lines))
+
+    if (!length(data_lines)) {
       stop("No data lines found in VCF.", call. = FALSE)
+    }
+
     data.table::fread(
       text         = paste(data_lines, collapse = "\n"),
       header       = FALSE,
@@ -82,76 +140,196 @@ read_phased_vcf <- function(vcf_file, min_maf = 0.0, verbose = TRUE) {
     )
   }
 
-  nv <- nrow(dt)
-  if (nv == 0L) stop("No variant rows found in phased VCF.", call. = FALSE)
-  if (verbose) message("[read_phased_vcf] ", nv, " variants x ", ns, " samples")
+  dt <- if (is_gz) {
+    zcmd <- Sys.which("zcat")
 
-  # Fixed column positions: 1=CHROM 2=POS 3=ID 4=REF 5=ALT 10..=sample GTs
+    if (.Platform$OS.type == "unix" &&
+        identical(Sys.info()[["sysname"]], "Darwin")) {
+      gzcat <- Sys.which("gzcat")
+      if (nzchar(gzcat)) zcmd <- gzcat
+    }
+
+    grep_cmd <- Sys.which("grep")
+
+    if (nzchar(zcmd) && nzchar(grep_cmd)) {
+      cmd <- paste(
+        shQuote(zcmd),
+        shQuote(vcf_file),
+        "|",
+        shQuote(grep_cmd),
+        "-v '^#'"
+      )
+
+      tryCatch(
+        data.table::fread(
+          cmd          = cmd,
+          header       = FALSE,
+          sep          = "\t",
+          colClasses   = "character",
+          showProgress = FALSE,
+          data.table   = FALSE
+        ),
+        error = function(e) .read_vcf_fallback()
+      )
+    } else {
+      .read_vcf_fallback()
+    }
+  } else {
+    grep_cmd <- Sys.which("grep")
+
+    if (nzchar(grep_cmd)) {
+      cmd <- paste(shQuote(grep_cmd), "-v '^#'", shQuote(vcf_file))
+
+      tryCatch(
+        data.table::fread(
+          cmd          = cmd,
+          header       = FALSE,
+          sep          = "\t",
+          colClasses   = "character",
+          showProgress = FALSE,
+          data.table   = FALSE
+        ),
+        error = function(e) .read_vcf_fallback()
+      )
+    } else {
+      .read_vcf_fallback()
+    }
+  }
+
+  nv <- nrow(dt)
+
+  if (!nv) {
+    stop("No variant rows found in phased VCF.", call. = FALSE)
+  }
+
+  if (ncol(dt) < 9L + ns) {
+    stop(
+      "VCF data has fewer columns than expected from the #CHROM header.",
+      call. = FALSE
+    )
+  }
+
+  if (verbose) {
+    message("[read_phased_vcf] ", nv, " variants x ", ns, " samples")
+  }
+
+  # -- Step 3: Extract fixed VCF fields --------------------------------------
   sc  <- .norm_chr_hap(dt[[1L]])
   sp  <- suppressWarnings(as.integer(dt[[2L]]))
   sid <- dt[[3L]]
   sr  <- dt[[4L]]
   sa  <- dt[[5L]]
 
-  # -- Step 3: Vectorised GT parsing -----------------------------------------
-  # Beagle 5.x always produces phased biallelic GT: "0|0" "0|1" "1|0" "1|1" ".|."
-  # Alleles sit at fixed character positions 1 and 3 (pipe separator at 2).
-  # substr() operates at C speed on the whole matrix - no strsplit loop needed.
-  gt_mat  <- as.matrix(dt[, 10:(9L + ns), drop = FALSE])
-  # Strip FORMAT subfields (e.g. "0|1:35:99" -> "0|1").
-  # This makes the parser robust to VCFs with extra FORMAT fields.
-  # Note: Beagle 5.x always writes FORMAT=GT only for the phased output,
-  # so sub() is a no-op for Beagle-produced files.
-  if (any(grepl(":", gt_mat[1L, ], fixed = TRUE)))
-    gt_mat <- matrix(sub(":.*$", "", gt_mat), nrow = nv, ncol = ns)
-  # Parse alleles using sub() to support multi-character allele indices
-  # (e.g. "10|2") as well as the standard single-character case.
+  if (any(is.na(sp))) {
+    stop("Some POS values could not be converted to integer.", call. = FALSE)
+  }
+
+  # -- Step 4: Vectorised phased GT parsing ----------------------------------
+  gt_mat <- as.matrix(dt[, 10:(9L + ns), drop = FALSE])
+
+  # Keep only the GT part when FORMAT subfields exist, e.g. 0|1:35:99 -> 0|1.
+  gt_mat <- matrix(sub(":.*$", "", gt_mat), nrow = nv, ncol = ns)
+
+  is_missing_gt <- gt_mat %in% c("./.", ".|.")
+
+  is_phased_gt <- grepl("^([0-9]+|\\.)\\|([0-9]+|\\.)$", gt_mat)
+
+  bad_gt <- !(is_missing_gt | is_phased_gt)
+
+  if (any(bad_gt, na.rm = TRUE)) {
+    bad_example <- unique(as.character(gt_mat[bad_gt]))[1L]
+    stop(
+      "VCF contains unphased or unsupported GT values. ",
+      "Expected phased GT values like 0|0, 0|1, 1|0, 1|1, .|., or missing ./. ",
+      "First unsupported value: ", bad_example,
+      call. = FALSE
+    )
+  }
+
+  gt_mat[is_missing_gt] <- ".|."
+
   a1_char <- matrix(sub("\\|.*$", "", gt_mat), nrow = nv, ncol = ns)
   a2_char <- matrix(sub("^.*\\|",  "", gt_mat), nrow = nv, ncol = ns)
 
   missing_allele <- a1_char == "." | a1_char == "" |
     a2_char == "." | a2_char == ""
+
   h1 <- matrix(suppressWarnings(as.integer(a1_char)), nrow = nv, ncol = ns)
   h2 <- matrix(suppressWarnings(as.integer(a2_char)), nrow = nv, ncol = ns)
-  h1[missing_allele] <- NA_real_
-  h2[missing_allele] <- NA_real_
+
+  h1[missing_allele] <- NA_integer_
+  h2[missing_allele] <- NA_integer_
+
+  if (any(!missing_allele & (is.na(h1) | is.na(h2)))) {
+    stop("Some non-missing GT alleles could not be converted to integers.",
+         call. = FALSE)
+  }
 
   rownames(h1) <- rownames(h2) <- sid
   colnames(h1) <- colnames(h2) <- sids
-  dos <- h1 + h2
 
-  # -- Step 4: Synthesise CHR_POS IDs for dot/empty ID fields -----------------
+  dos <- h1 + h2
+  rownames(dos) <- sid
+  colnames(dos) <- sids
+
+  # -- Step 5: Synthesise CHR_POS IDs for dot/empty ID fields -----------------
   dot_or_empty <- is.na(sid) | sid == "." | !nzchar(sid)
+
   if (any(dot_or_empty)) {
     sid[dot_or_empty] <- paste0(sc[dot_or_empty], "_", sp[dot_or_empty])
     rownames(h1) <- rownames(h2) <- rownames(dos) <- sid
-    if (verbose)
-      message("[read_phased_vcf] Synthesised ", sum(dot_or_empty),
-              " SNP ID(s) as CHR_POS (original ID was '.' or empty)")
+
+    if (verbose) {
+      message(
+        "[read_phased_vcf] Synthesised ",
+        sum(dot_or_empty),
+        " SNP ID(s) as CHR_POS (original ID was '.' or empty)"
+      )
+    }
   }
 
-  snp_info <- data.frame(SNP = sid, CHR = sc, POS = sp,
-                         REF = sr,  ALT = sa,
-                         stringsAsFactors = FALSE)
+  snp_info <- data.frame(
+    SNP = sid,
+    CHR = sc,
+    POS = sp,
+    REF = sr,
+    ALT = sa,
+    stringsAsFactors = FALSE
+  )
 
-  # -- Step 5: Optional MAF filter --------------------------------------------
+  # -- Step 6: Optional MAF filtering ----------------------------------------
   if (min_maf > 0) {
     af  <- rowMeans(dos, na.rm = TRUE) / 2
     maf <- pmin(af, 1 - af)
-    ok  <- !is.na(maf) & maf >= min_maf
+
+    ok <- !is.na(maf) & maf >= min_maf
+
     h1       <- h1[ok,  , drop = FALSE]
     h2       <- h2[ok,  , drop = FALSE]
     dos      <- dos[ok, , drop = FALSE]
-    snp_info <- snp_info[ok, ]
-    if (verbose)
-      message("[read_phased_vcf] After MAF >= ", min_maf, ": ", sum(ok), " variants")
+    snp_info <- snp_info[ok, , drop = FALSE]
+
+    if (verbose) {
+      message(
+        "[read_phased_vcf] After MAF >= ",
+        min_maf,
+        ": ",
+        sum(ok),
+        " variants"
+      )
+    }
   }
 
-  list(hap1 = h1, hap2 = h2, dosage = dos,
-       snp_info     = snp_info,
-       sample_ids   = sids,
-       phased       = TRUE,
-       phase_method = "vcf_phased")
+  # -- Return ----------------------------------------------------------------
+  list(
+    hap1         = h1,
+    hap2         = h2,
+    dosage       = dos,
+    snp_info     = snp_info,
+    sample_ids   = sids,
+    phased       = TRUE,
+    phase_method = "vcf_phased"
+  )
 }
 
 

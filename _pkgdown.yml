@@ -65,228 +65,127 @@ articles:
 
 reference:
 
-# ------------------------------------------------------------
-# Package overview
-# ------------------------------------------------------------
-
-  - title: "Package overview"
+  - title: "B"
     desc: >
-      Main documentation entry point for LDxBlocks.
+      Functions and datasets beginning with B.
     contents:
-      - LDxBlocks-package
-
-
-# ------------------------------------------------------------
-# Main workflows
-# ------------------------------------------------------------
-
-  - title: "Main workflows"
-    desc: >
-      High-level functions covering the full LDxBlocks pipeline,
-      from genotype input to LD block detection, haplotype construction,
-      and genomic prediction.
-    contents:
-      - run_ldx_pipeline
-      - run_Big_LD_all_chr
-      - tune_LD_params
-
-
-# ------------------------------------------------------------
-# Genotype input and backend management
-# ------------------------------------------------------------
-
-  - title: "Genotype input and backend"
-    desc: >
-      Import genotype data from multiple formats and manage the LDxBlocks
-      memory-efficient backend for large genomic datasets.
-    contents:
-      - read_geno
-      - read_geno_bigmemory
-      - read_chunk
-      - prepare_geno
-      - close_backend
-      - print.LDxBlocks_backend
-      - summary.LDxBlocks_backend
-
-
-# ------------------------------------------------------------
-# LD computation and block detection
-# ------------------------------------------------------------
-
-  - title: "LD computation and block detection"
-    desc: >
-      Core algorithms for LD estimation, LD decay analysis, and
-      genome-wide LD block segmentation using clique-based and
-      community-detection approaches.
-    contents:
-      - compute_r2
-      - compute_rV2
-      - get_V_inv_sqrt
-      - compute_ld_decay
-      - plot_ld_decay
-      - summarise_blocks
-      - plot_ld_blocks
-
-
-# ------------------------------------------------------------
-# Phasing tools
-# ------------------------------------------------------------
-
-  - title: "Phasing tools"
-    desc: >
-      Functions for obtaining gametic phase from WGS data (Beagle)
-      or pre-phased VCF files.
-    contents:
-      - read_phased_vcf
-      - phase_with_beagle
-
-
-# ------------------------------------------------------------
-# Haplotype construction and diversity analysis
-# ------------------------------------------------------------
-
-  - title: "Haplotype construction and diversity"
-    desc: >
-      Extract haplotypes within LD blocks, decode nucleotide sequences,
-      compute haplotype diversity statistics, and construct genomic
-      prediction features.
-    contents:
-      - extract_haplotypes
-      - decode_haplotype_strings
-      - compute_haplotype_diversity
+      - backsolve_snp_effects
       - build_haplotype_feature_matrix
-      - compute_haplotype_grm
-      - define_qtl_regions
 
-
-# ------------------------------------------------------------
-# Haplotype harmonisation and inference
-# ------------------------------------------------------------
-
-  - title: "Haplotype harmonisation"
+  - title: "C"
     desc: >
-      Harmonise haplotypes across populations, infer diplotypes,
-      and collapse rare alleles into biologically meaningful groups.
+      Functions and datasets beginning with C.
     contents:
-      - infer_block_haplotypes
+      - close_backend
       - collapse_haplotypes
-      - harmonize_haplotypes
-
-
-# ------------------------------------------------------------
-# Haplotype output writers
-# ------------------------------------------------------------
-
-  - title: "Haplotype export"
-    desc: >
-      Export haplotype dosage matrices and diversity summaries
-      for downstream statistical analyses.
-    contents:
-      - write_haplotype_numeric
-      - write_haplotype_character
-      - write_haplotype_diversity
-
-
-# ------------------------------------------------------------
-# Association and QTL interpretation
-# ------------------------------------------------------------
-
-  - title: "Association and QTL interpretation"
-    desc: >
-      Block-level association tests (Q+K mixed model with simpleM
-      multiple-testing correction), diplotype effect decomposition,
-      cross-population effect concordance from haplotype association results
-      (compare_block_effects) or external GWAS tools (compare_gwas_effects),
-      and GWAS integration.
-    contents:
-      - test_block_haplotypes
-      - estimate_diplotype_effects
       - compare_block_effects
       - compare_gwas_effects
-      - integrate_gwas_haplotypes
-
-
-# ------------------------------------------------------------
-# Genomic prediction tools
-# ------------------------------------------------------------
-
-  - title: "Genomic prediction"
-    desc: >
-      Haplotype-based genomic prediction following Tong et al. (2024-2025),
-      including GBLUP integration and local GEBV estimation.
-    contents:
-      - prepare_gblup_inputs
-      - run_haplotype_prediction
-      - compute_local_gebv
-      - backsolve_snp_effects
-
-
-# ------------------------------------------------------------
-# Breeding decision tools
-# ------------------------------------------------------------
-
-  - title: "Breeding decision support"
-    desc: >
-      Identify favourable haplotypes and rank LD blocks for
-      haplotype stacking strategies.
-    contents:
-      - rank_haplotype_blocks
-      - score_favorable_haplotypes
-      - summarize_parent_haplotypes
-
-
-# ------------------------------------------------------------
-# Population comparison and stability analysis
-# ------------------------------------------------------------
-
-  - title: "Population and stability analysis"
-    desc: >
-      Compare haplotype distributions across populations and evaluate
-      stability across environments.
-    contents:
       - compare_haplotype_populations
-      - run_haplotype_stability
-      - scan_diversity_windows
-      - decompose_block_effects
-      - export_candidate_regions
-
-
-# ------------------------------------------------------------
-# Cross-validation tools
-# ------------------------------------------------------------
-
-  - title: "Cross-validation"
-    desc: >
-      Evaluate predictive ability of haplotype-based genomic models.
-    contents:
+      - compute_haplotype_diversity
+      - compute_haplotype_grm
+      - compute_ld_decay
+      - compute_local_gebv
+      - compute_r2
+      - compute_rV2
       - cv_haplotype_prediction
 
-
-# ------------------------------------------------------------
-# Visualisation tools
-# ------------------------------------------------------------
-
-  - title: "Visualisation"
+  - title: "D"
     desc: >
-      Plot LD structure and haplotype relationships.
+      Functions and datasets beginning with D.
     contents:
-      - plot_haplotype_network
+      - decode_haplotype_strings
+      - decompose_block_effects
+      - define_qtl_regions
 
-
-# ------------------------------------------------------------
-# Example datasets
-# ------------------------------------------------------------
-
-  - title: "Example datasets"
+  - title: "E"
     desc: >
-      Simulated datasets for tutorials and reproducible examples.
+      Functions and datasets beginning with E.
     contents:
-      - ldx_geno
-      - ldx_snp_info
+      - estimate_diplotype_effects
+      - export_candidate_regions
+      - extract_haplotypes
+
+  - title: "G"
+    desc: >
+      Functions and datasets beginning with G.
+    contents:
+      - get_V_inv_sqrt
+
+  - title: "H"
+    desc: >
+      Functions and datasets beginning with H.
+    contents:
+      - harmonize_haplotypes
+
+  - title: "I"
+    desc: >
+      Functions and datasets beginning with I.
+    contents:
+      - infer_block_haplotypes
+      - integrate_gwas_haplotypes
+
+  - title: "L"
+    desc: >
+      Functions and datasets beginning with L.
+    contents:
+      - LDxBlocks-package
       - ldx_blocks
-      - ldx_gwas
       - ldx_blues
       - ldx_blues_list
+      - ldx_geno
+      - ldx_gwas
+      - ldx_snp_info
+
+  - title: "P"
+    desc: >
+      Functions and datasets beginning with P.
+    contents:
+      - phase_with_beagle
+      - plot_haplotype_network
+      - plot_ld_blocks
+      - plot_ld_decay
+      - prepare_gblup_inputs
+      - prepare_geno
+      - print.LDxBlocks_backend
+
+  - title: "R"
+    desc: >
+      Functions and datasets beginning with R.
+    contents:
+      - rank_haplotype_blocks
+      - read_chunk
+      - read_geno
+      - read_geno_bigmemory
+      - read_phased_vcf
+      - run_Big_LD_all_chr
+      - run_haplotype_prediction
+      - run_haplotype_stability
+      - run_ldx_pipeline
+
+  - title: "S"
+    desc: >
+      Functions and datasets beginning with S.
+    contents:
+      - scan_diversity_windows
+      - score_favorable_haplotypes
+      - summarise_blocks
+      - summarize_parent_haplotypes
+      - summary.LDxBlocks_backend
+
+  - title: "T"
+    desc: >
+      Functions and datasets beginning with T.
+    contents:
+      - test_block_haplotypes
+      - tune_LD_params
+
+  - title: "W"
+    desc: >
+      Functions and datasets beginning with W.
+    contents:
+      - write_haplotype_character
+      - write_haplotype_diversity
+      - write_haplotype_numeric
 
 news:
   releases:

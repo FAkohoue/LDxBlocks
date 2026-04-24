@@ -5,7 +5,7 @@ backup <- if (length(args) >= 2) as.logical(args[[2]]) else TRUE
 clean_all_r_files <- function(root = ".", backup = TRUE) {
   files <- c(
     list.files(file.path(root, "R"), pattern = "\\.[Rr]$", recursive = TRUE, full.names = TRUE),
-    list.files(file.path(root, "tests", "testthat"), pattern = "\\.[Rr]$", recursive = TRUE, full.names = TRUE),
+    #list.files(file.path(root, "tests", "testthat"), pattern = "\\.[Rr]$", recursive = TRUE, full.names = TRUE),
     list.files(file.path(root, "data-raw"), pattern = "\\.[Rr]$", recursive = TRUE, full.names = TRUE)
   )
   files <- unique(files[file.exists(files)])
