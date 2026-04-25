@@ -588,36 +588,53 @@ extract_haplotypes <- function(geno, snp_info, blocks,
   }
 
   if (isp) {
-    # Detect dosage orientation robustly via SNP ID matching.
-    # Contract needed downstream: gm=[n_ind x n_snps], h1m=[n_ind x n_snps],
-    #   sg=SNP IDs (length = ncol(gm)), iids=individual IDs.
-    # Pipeline: dosage=[n_ind x n_snps] (rownames=individuals, colnames=SNPs).
-    # Tests/legacy: dosage=[n_snps x n_ind] (rownames=SNPs, colnames=individuals).
+    # Detect dosage orientation using sample_ids shape match.
+    # bigmemory bm[] strips dimnames, so we cannot rely on rownames/colnames.
+    # Priority order:
+    #   1. Shape: if nrow(dosage) == length(sample_ids) -> [n_ind x n_snps]
+    #      (pipeline build path, reattach path - bigmemory returns unnamed matrix)
+    #   2. Shape: if ncol(dosage) == length(sample_ids) -> [n_snps x n_ind]
+    #      (test/legacy path - t(ldx_geno) where individuals are columns)
+    #   3. Dimname probe: rownames match snp_info$SNP -> [n_snps x n_ind]
+    #      (legacy paths with named matrices)
+    # After orientation, sg (SNP IDs) is filled from dimnames or snp_info$SNP.
     .dos  <- geno$dosage
     .sids <- geno$sample_ids
-    # Primary check: do rownames of dosage match known SNP IDs?
-    # Sample a few to keep the check O(1).
-    .snp_probe <- head(snp_info$SNP, 20L)
-    .rows_are_snps <- length(.snp_probe) > 0L &&
-      any(rownames(.dos) %in% .snp_probe)
-    # Fallback when rownames are NULL or uninformative: use sample_ids count.
-    if (!.rows_are_snps && is.null(rownames(.dos)) && !is.null(.sids))
-      .rows_are_snps <- length(.sids) != nrow(.dos)
-    if (.rows_are_snps) {
-      # dosage=[n_snps x n_ind]: SNPs are rows, individuals are columns
-      iids <- .sids %||% colnames(.dos)
-      sg   <- rownames(.dos)
-      gm   <- t(.dos)
-      h1m  <- t(geno$hap1)
-      h2m  <- t(geno$hap2)
+    .n_sids <- length(.sids)
+    # Determine orientation
+    .ind_are_rows <- if (.n_sids > 0L && nrow(.dos) == .n_sids) {
+      TRUE   # [n_ind x n_snps]: shape match wins
+    } else if (.n_sids > 0L && ncol(.dos) == .n_sids) {
+      FALSE  # [n_snps x n_ind]: individuals are columns
     } else {
+      # Final fallback: check if rownames match SNP IDs
+      .snp_probe <- head(snp_info$SNP, 20L)
+      !any(rownames(.dos) %in% .snp_probe)  # TRUE = ind are rows, FALSE = snps are rows
+    }
+    if (.ind_are_rows) {
       # dosage=[n_ind x n_snps]: individuals are rows, SNPs are columns
       iids <- .sids %||% rownames(.dos)
-      sg   <- colnames(.dos)
+      sg   <- colnames(.dos) %||% snp_info$SNP  # bigmemory loses colnames; use snp_info
       gm   <- .dos
       h1m  <- geno$hap1
       h2m  <- geno$hap2
+    } else {
+      # dosage=[n_snps x n_ind]: SNPs are rows, individuals are columns
+      iids <- .sids %||% colnames(.dos)
+      sg   <- rownames(.dos) %||% snp_info$SNP
+      gm   <- t(.dos)
+      h1m  <- t(geno$hap1)
+      h2m  <- t(geno$hap2)
     }
+    # Safety checks: catch orientation/cache mismatches early with a clear error.
+    if (length(sg) != ncol(gm))
+      stop(
+        "Internal error: SNP ID vector length does not match genotype columns: ",
+        length(sg), " SNP IDs for ", ncol(gm), " genotype columns.",
+        call. = FALSE
+      )
+    if (is.null(iids) || length(iids) != nrow(gm))
+      iids <- paste0("ind", seq_len(nrow(gm)))
   } else {
     if (!is.matrix(geno)) geno <- as.matrix(geno)
     gm <- geno; h1m <- h2m <- NULL; iids <- rownames(geno); sg <- colnames(geno)
