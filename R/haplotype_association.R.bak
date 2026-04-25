@@ -1413,7 +1413,16 @@ estimate_diplotype_effects <- function(
   .log("Building haplotype GRM ...")
   hap_mat <- build_haplotype_feature_matrix(haplotypes, min_freq = min_freq,
                                             encoding = "additive_012")$matrix
-  G <- compute_haplotype_grm(hap_mat)
+  G <- tryCatch(
+    compute_haplotype_grm(hap_mat),
+    error = function(e) {
+      warning("Haplotype GRM computation failed: ", conditionMessage(e),
+              ". Using identity matrix fallback.", call. = FALSE)
+      diag_G <- diag(nrow(hap_mat))
+      rownames(diag_G) <- colnames(diag_G) <- rownames(hap_mat)
+      diag_G
+    }
+  )
 
   .log("Inferring diplotypes ...")
   # resolve_unphased=TRUE: heterozygous individuals get an arbitrary phase

@@ -19,8 +19,8 @@ read_phased_vcf <- function(vcf_file, min_maf = 0.0, verbose = TRUE) {
     stop("VCF not found: ", vcf_file, call. = FALSE)
   if (verbose) message("[read_phased_vcf] Reading: ", basename(vcf_file))
 
-  # -- Step 1: Extract header lines to get sample IDs -------------------------
-  # Read only until the #CHROM line - at most ~100 meta lines for any VCF.
+  # ── Step 1: Extract header lines to get sample IDs ─────────────────────────
+  # Read only until the #CHROM line — at most ~100 meta lines for any VCF.
   con <- gzfile(vcf_file, "r")
   on.exit(try(close(con), silent = TRUE), add = TRUE)
   header_line <- NULL
@@ -36,7 +36,7 @@ read_phased_vcf <- function(vcf_file, min_maf = 0.0, verbose = TRUE) {
   sids <- cols[10:length(cols)]
   ns   <- length(sids)
 
-  # -- Step 2: Read all data lines with data.table::fread() -------------------
+  # ── Step 2: Read all data lines with data.table::fread() ───────────────────
   # Fast path: fread(cmd=) pipes through zcat + grep at C level (~50x speedup).
   # This requires zcat and grep on PATH. Check availability BEFORE calling fread
   # so that we never emit the shell-command-not-found WARNING that fread/shell()
@@ -101,10 +101,10 @@ read_phased_vcf <- function(vcf_file, min_maf = 0.0, verbose = TRUE) {
   sr  <- dt[[4L]]
   sa  <- dt[[5L]]
 
-  # -- Step 3: Vectorised GT parsing -----------------------------------------
+  # ── Step 3: Vectorised GT parsing ─────────────────────────────────────────
   # Beagle 5.x always produces phased biallelic GT: "0|0" "0|1" "1|0" "1|1" ".|."
   # Alleles sit at fixed character positions 1 and 3 (pipe separator at 2).
-  # substr() operates at C speed on the whole matrix - no strsplit loop needed.
+  # substr() operates at C speed on the whole matrix — no strsplit loop needed.
   gt_mat  <- as.matrix(dt[, 10:(9L + ns), drop = FALSE])
   # Strip FORMAT subfields (e.g. "0|1:35:99" -> "0|1").
   # This makes the parser robust to VCFs with extra FORMAT fields.
@@ -128,7 +128,7 @@ read_phased_vcf <- function(vcf_file, min_maf = 0.0, verbose = TRUE) {
   colnames(h1) <- colnames(h2) <- sids
   dos <- h1 + h2
 
-  # -- Step 4: Synthesise CHR_POS IDs for dot/empty ID fields -----------------
+  # ── Step 4: Synthesise CHR_POS IDs for dot/empty ID fields ─────────────────
   dot_or_empty <- is.na(sid) | sid == "." | !nzchar(sid)
   if (any(dot_or_empty)) {
     sid[dot_or_empty] <- paste0(sc[dot_or_empty], "_", sp[dot_or_empty])
@@ -142,7 +142,7 @@ read_phased_vcf <- function(vcf_file, min_maf = 0.0, verbose = TRUE) {
                          REF = sr,  ALT = sa,
                          stringsAsFactors = FALSE)
 
-  # -- Step 5: Optional MAF filter --------------------------------------------
+  # ── Step 5: Optional MAF filter ────────────────────────────────────────────
   if (min_maf > 0) {
     af  <- rowMeans(dos, na.rm = TRUE) / 2
     maf <- pmin(af, 1 - af)
@@ -1051,7 +1051,7 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
 #'   \itemize{
 #'     \item \code{"additive_012"} (default):
 #'       \strong{Phased data}: values are 0 (neither gamete carries the allele),
-#'       1 (one gamete carries it - heterozygous), or 2 (both gametes - homozygous).
+#'       1 (one gamete carries it — heterozygous), or 2 (both gametes — homozygous).
 #'       This gives true allele dosage on the standard 0/1/2 scale.
 #'       \strong{Unphased data}: values are 0 or 1 only (presence/absence of the
 #'       dosage-pattern haplotype). The value 2 is never produced for unphased
@@ -1071,7 +1071,7 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
 #' \code{\link{phase_with_beagle}}):
 #' each individual's block string is \code{"g1|g2"} where \code{g1} and \code{g2}
 #' are the two gametic sequences. Haplotype alleles are identified at the
-#' \emph{gamete} level - true haplotypes in the biological sense. Frequencies
+#' \emph{gamete} level — true haplotypes in the biological sense. Frequencies
 #' are gamete frequencies (each individual contributes two observations).
 #' Dosage values 0, 1, 2 measure actual allele copy number.
 #'
@@ -1463,7 +1463,7 @@ write_haplotype_character <- function(haplotypes, snp_info, out_file,
     # Alleles string for metadata column: REF1/ALT1;REF2/ALT2;...
     alleles_str <- paste(paste0(ref_v, "/", alt_v), collapse = ";")
 
-    # Frequency table - must split phased "g1|g2" strings into gametes before
+    # Frequency table — must split phased "g1|g2" strings into gametes before
     # tabulating. Without splitting, phased entries like "010|111" would be
     # treated as a single string and ranked as diplotypes, not haplotype alleles.
     brow_w    <- if (!is.null(bi)) bi[bi$block_id == bn, , drop = FALSE] else NULL
@@ -1558,7 +1558,7 @@ write_haplotype_character <- function(haplotypes, snp_info, out_file,
 #'   \code{\link{build_haplotype_feature_matrix}()\$info}. When supplied,
 #'   the \code{alleles}, \code{frequency}, \code{n_snps}, \code{CHR},
 #'   \code{start_bp}, and \code{end_bp} columns are written directly from
-#'   this object without any reconstruction. Recommended - pass
+#'   this object without any reconstruction. Recommended — pass
 #'   \code{hap_info = feat_out\$info} where \code{feat_out} is the return
 #'   value of \code{build_haplotype_feature_matrix()}. Default \code{NULL}
 #'   (falls back to legacy reconstruction from \code{haplotypes} and

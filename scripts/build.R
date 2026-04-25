@@ -123,6 +123,12 @@ devtools::install()
 
 # 6. Run the test suite.  All C++ symbols are now registered in the
 #    installed DLL, so load_all() will find them.
+
+devtools::test(filter = "haplotypes")
+devtools::test(filter = "extensions")
+devtools::test(filter = "association")
+devtools::test(filter = "association-stress")
+
 devtools::test()
 
 #devtools::test(filter = "association")
