@@ -1,76 +1,29 @@
 # Estimate Diplotype Effects and Dominance Deviations Per LD Block
 
-Fits per-block diplotype models to quantify additive and dominance
-genetic effects at LD blocks using haplotype-derived diplotypes.
+Fits a per-block diplotype model to decompose phenotypic variation into
+additive and dominance components at each LD block, after correcting for
+population structure and kinship via the haplotype GRM. This function
+provides direct evidence for non-additive gene action: dominance,
+overdominance, and heterosis.
 
-This function integrates haplotype structure with mixed-model correction
-for relatedness to provide biologically interpretable measures of gene
-action, including dominance and overdominance.
+**Method:** For each LD block, unique diplotypes (canonical
+haplotype-pair strings inferred by
+[`infer_block_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/infer_block_haplotypes.md),
+e.g. `"010/110"`) are treated as levels of a fixed factor. A mixed model
+with the haplotype GRM as a kinship random effect is fitted via
+[`rrBLUP::mixed.solve()`](https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html)
+to obtain de-regressed phenotype residuals. Diplotype class means are
+computed on these residuals. For each pair of common alleles (A, B),
+classical quantitative genetics parameters are derived from the three
+diplotype class means:
 
-**Statistical framework:**
+- Additive effect: \\a = (\bar{y}\_{BB} - \bar{y}\_{AA}) / 2\\
 
-The analysis proceeds in three stages:
+- Dominance deviation: \\d = \bar{y}\_{AB} - (\bar{y}\_{AA} +
+  \bar{y}\_{BB}) / 2\\
 
-1.  A haplotype feature matrix is constructed using
-    [`build_haplotype_feature_matrix`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md).
-
-2.  A haplotype genomic relationship matrix (GRM) is computed via
-    [`compute_haplotype_grm`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_grm.md),
-    capturing genome-wide similarity based on haplotype composition.
-
-3.  For each trait:
-
-    - A null mixed model is fitted: \$\$y = \mu + u + e\$\$ where \\u
-      \sim N(0, G\sigma^2_u)\\ using
-      [`rrBLUP::mixed.solve()`](https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html).
-
-    - Residuals (de-regressed phenotypes) are computed: \\y^\* = y -
-      \hat{\mu} - \hat{u}\\
-
-    - Diplotype effects are estimated from these residuals.
-
-**Diplotype representation:**
-
-Diplotypes are canonical strings of two haplotypes sorted alphabetically
-and joined by `"/"`:
-
-- Homozygote: `"010/010"`
-
-- Heterozygote: `"010/110"`
-
-This ensures phase invariance (`"010/110"` == `"110/010"`).
-
-**Genetic effects:**
-
-For each allele pair \\A, B\\, the following quantities are estimated:
-
-- Additive effect: \$\$a = (\bar{y}\_{BB} - \bar{y}\_{AA}) / 2\$\$
-
-- Dominance deviation: \$\$d = \bar{y}\_{AB} - (\bar{y}\_{AA} +
-  \bar{y}\_{BB}) / 2\$\$
-
-- Dominance ratio: \$\$d/a\$\$
-
-Interpretation:
-
-- \\d/a = 0\\ -\> additive
-
-- \\\|d/a\| \< 1\\ -\> partial dominance
-
-- \\\|d/a\| = 1\\ -\> complete dominance
-
-- \\\|d/a\| \> 1\\ -\> overdominance (heterosis)
-
-**Important:**
-
-- Phased haplotypes are strongly recommended.
-
-- Unphased heterozygotes are resolved arbitrarily
-  (`resolve_unphased = TRUE`), which does not bias mean-based dominance
-  estimates.
-
-- GRM scaling is automatically adjusted based on whether haplotypes are
-  phased.
+- Dominance ratio: \\d/a\\ - the key quantity for interpreting gene
+  action (see `d_over_a` column description).
 
 ## Usage
 
@@ -92,110 +45,165 @@ estimate_diplotype_effects(
 
 - haplotypes:
 
-  Named list from
+  Named list produced by
   [`extract_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.md).
-  Must include a `block_info` attribute with: `block_id`, `CHR`,
-  `start_bp`, `end_bp`, and `phased`.
+  Phase-ambiguous diplotypes (unphased heterozygotes) are excluded from
+  the dominance analysis but included in the omnibus F-test if their
+  diplotype string is unambiguous. For accurate dominance decomposition,
+  phased input (from `read_phased_vcf`, `phase_with_beagle`, or via
+  [`phase_with_beagle`](https://FAkohoue.github.io/LDxBlocks/reference/phase_with_beagle.md))
+  is strongly recommended.
 
 - blues:
 
-  Phenotypic values (BLUEs or adjusted means). Supported formats:
-
-  - Named numeric vector
-
-  - Data frame (single or multi-trait)
-
-  - Named list of numeric vectors
-
-  Individual IDs must match haplotype IDs.
+  Pre-adjusted phenotype means. Accepts the same four formats as
+  [`test_block_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md):
+  named numeric vector, single-trait data frame, multi-trait data frame,
+  or named list. All formats require individual IDs matching the names
+  of haplotype strings.
 
 - blocks:
 
   LD block table from
-  [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
-  (used for metadata).
+  [`run_Big_LD_all_chr`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md).
+  Used only to supply block coordinate metadata (`CHR`, `start_bp`,
+  `end_bp`) to the output tables.
 
 - min_freq:
 
-  Numeric in \[0, 1\]. Minimum haplotype allele frequency for inclusion
-  in dominance decomposition. Default `0.05`.
+  Numeric in (0, 1). Minimum allele frequency. Alleles below this
+  threshold in the full panel are excluded from the dominance
+  decomposition (`dominance_table`) but their diplotypes still
+  contribute to `diplotype_means` and `omnibus_tests` if sufficient
+  individuals carry them. Default `0.05`.
 
 - min_n_diplotype:
 
-  Integer \>= 2. Minimum number of individuals per diplotype class.
-  Default `3L`.
+  Integer. Minimum number of individuals that must carry a given
+  diplotype class for it to be included in `diplotype_means` and the
+  dominance decomposition. Diplotype classes with fewer individuals are
+  silently excluded. The omnibus F-test uses only the retained classes.
+  Default `3L`. Increasing to 5-10 improves mean estimate stability for
+  small panels; decreasing below 3 is not recommended.
 
 - id_col:
 
-  Character. ID column name for data frame input. Default `"id"`.
+  Character. Name of the individual-ID column when `blues` is a data
+  frame. Default `"id"`.
 
 - blue_col:
 
-  Character. Single-trait column name. Default `"blue"`.
+  Character. Name of the phenotype column for single-trait data frames.
+  Default `"blue"`.
 
 - blue_cols:
 
-  Character vector for multi-trait input. Default `NULL`.
+  Character vector. Phenotype column names for multi-trait data frames.
+  Default `NULL`.
 
 - verbose:
 
-  Logical. Print progress messages. Default `TRUE`.
+  Logical. `TRUE` (default) prints progress per trait.
 
 ## Value
 
-Object of class `LDxBlocks_diplotype` containing:
+A named list of class `c("LDxBlocks_diplotype", "list")` with three
+elements:
 
-- diplotype_means:
+- `diplotype_means`:
 
-  One row per diplotype class per block per trait.
+  Data frame. One row per diplotype class per LD block per trait, for
+  diplotype classes with `>= min_n_diplotype` individuals. Contains 9
+  columns:
 
-  Columns:
+  - `block_id` (character) - Block identifier.
 
-  - block_id, CHR, start_bp, end_bp
+  - `CHR` (character) - Chromosome.
 
-  - trait
+  - `start_bp`, `end_bp` (integer) - Block coordinates.
 
-  - diplotype
+  - `trait` (character) - Trait name.
 
-  - n (class size)
+  - `diplotype` (character) - Canonical diplotype string: two haplotype
+    allele strings sorted alphabetically and joined by `"/"`, e.g.
+    `"010/110"`. Homozygotes have identical halves: `"010/010"`. This
+    format ensures that `"010/110"` and `"110/010"` are always
+    represented identically.
 
-  - n_total
+  - `n_class` (integer) - Number of individuals carrying this specific
+    diplotype combination.
 
-  - mean_blue
+  - `n_total` (integer) - Total individuals with non-missing data in
+    this block (sum of n_class across all diplotype classes).
 
-  - se_mean
+  - `mean_blue` (numeric) - Mean de-regressed phenotype value for this
+    diplotype class (on the residual scale after GRM correction).
 
-- dominance_table:
+  - `se_mean` (numeric) - Standard error of the mean
+    (`sd / sqrt(n_class)`).
 
-  One row per allele pair per block per trait.
+- `dominance_table`:
 
-  Columns:
+  Data frame. One row per ordered allele pair (A, B) per block per
+  trait, for pairs where all three diplotype classes (AA, AB, BB) each
+  have `>= min_n_diplotype` individuals. Contains 14 columns:
 
-  - allele_A, allele_B
+  - `block_id`, `CHR`, `start_bp`, `end_bp`, `trait` - as above.
 
-  - mean_AA, mean_AB, mean_BB
+  - `allele_A`, `allele_B` (character) - The two alleles being compared
+    (alphabetically ordered: A comes before B).
 
-  - a, d
+  - `mean_AA`, `mean_AB`, `mean_BB` (numeric) - Diplotype class means on
+    the de-regressed phenotype scale.
 
-  - d_over_a
+  - `a` (numeric) - Additive effect: \\(\bar{y}\_{BB} - \bar{y}\_{AA}) /
+    2\\. Positive means allele B increases trait value relative to A.
 
-  - overdominance (logical)
+  - `d` (numeric) - Dominance deviation: \\\bar{y}\_{AB} -
+    (\bar{y}\_{AA} + \bar{y}\_{BB}) / 2\\. Positive: heterozygote
+    advantage (overdominance when \\\|d\| \> \|a\|\\). Negative:
+    heterozygote disadvantage (underdominance).
 
-- omnibus_tests:
+  - `d_over_a` (numeric or `NA`) - Dominance ratio \\d/a\\.
+    Interpretation: 0 = purely additive gene action; \\\pm 0.5\\ =
+    partial dominance; \\\pm 1\\ = complete dominance (heterozygote
+    equal to one homozygote); \\\|d/a\| \> 1\\ = overdominance
+    (heterozygote exceeds both homozygotes - evidence for heterosis at
+    this locus). `NA` when \\\|a\| \< 10^{-10}\\ (no additive variation
+    between homozygotes).
 
-  Per-block ANOVA results:
+  - `overdominance` (logical) - `TRUE` when \\\|d/a\| \> 1\\ and
+    `d_over_a` is not `NA`.
 
-  - F_stat, df1, df2
+- `omnibus_tests`:
 
-  - p_omnibus
+  Data frame. One row per LD block per trait, for blocks where at least
+  `min_n_diplotype` individuals carry at least 2 distinct diplotype
+  classes. Contains 9 columns:
 
-  - p_omnibus_adj (Bonferroni per trait)
+  - `block_id`, `trait` - as above.
 
-  - significant
+  - `n_diplotypes` (integer) - Number of diplotype classes with
+    `>= min_n_diplotype` individuals, used as factor levels.
+
+  - `F_stat` (numeric) - F-statistic from one-way ANOVA (diplotype
+    factor) on de-regressed phenotype residuals.
+
+  - `df1` (integer) - Numerator df = `n_diplotypes - 1`.
+
+  - `df2` (integer) - Denominator df = `n_obs - n_diplotypes`.
+
+  - `p_omnibus` (numeric, (0,1\]) - Raw p-value.
+
+  - `p_omnibus_adj` (numeric, (0,1\]) - Bonferroni-adjusted across all
+    tested blocks per trait.
+
+  - `significant` (logical) - `TRUE` when `p_omnibus_adj < 0.05`.
+
+  Sorted ascending by `p_omnibus`.
 
 ## See also
 
-[`compute_haplotype_grm`](https://FAkohoue.github.io/LDxBlocks/reference/compute_haplotype_grm.md),
 [`infer_block_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/infer_block_haplotypes.md),
 [`test_block_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md)
 
@@ -203,26 +211,27 @@ Object of class `LDxBlocks_diplotype` containing:
 
 ``` r
 # \donttest{
-if (requireNamespace("LDxBlocks", quietly = TRUE)) {
-  data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
-
-haps <- extract_haplotypes(
-  geno     = ldx_geno,
-  snp_info = ldx_snp_info,
-  blocks   = ldx_blocks,
-  min_snps = 5L
-)
-
-res <- estimate_diplotype_effects(
+data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
+haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 5)
+dip_res <- estimate_diplotype_effects(
   haplotypes = haps,
   blues      = setNames(ldx_blues$YLD, ldx_blues$id),
   blocks     = ldx_blocks,
   verbose    = FALSE
 )
-
-subset(res$dominance_table, overdominance)
-subset(res$omnibus_tests, significant)
-}
+# Overdominant blocks
+dip_res$dominance_table[dip_res$dominance_table$overdominance, ]
+#>                block_id CHR start_bp end_bp trait                  allele_A
+#> 1 block_1_155368_179371   1   155368 179371 trait 0100010000000000001000100
+#> 2 block_2_161515_180473   2   161515 180473 trait      00100000100000000000
+#>                    allele_B   mean_AA   mean_AB   mean_BB         a         d
+#> 1 0111011011101110001000101 -0.438808  0.135218 -0.125740  0.156534  0.417491
+#> 2      00100011100000110110  0.695056 -0.011832  0.214904 -0.240076 -0.466812
+#>   d_over_a overdominance
+#> 1   2.6671          TRUE
+#> 2   1.9444          TRUE
+# Significant diplotype effects
+dip_res$omnibus_tests[dip_res$omnibus_tests$significant, ]
 #> [1] block_id      trait         n_diplotypes  F_stat        df1          
 #> [6] df2           p_omnibus     p_omnibus_adj significant  
 #> <0 rows> (or 0-length row.names)

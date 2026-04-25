@@ -37,7 +37,6 @@ for (f in files) {
 
 if (!bad_found) {
   cat("OK: no non-ASCII characters found in scanned .R files.\n")
-  quit(status = 0)
 }
 
 cat(sprintf("\nTotal problematic lines: %d\n", total_bad))

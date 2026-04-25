@@ -176,8 +176,69 @@
 
 
 # ==============================================================================
+# Internal helper: return a well-formed empty result with status field
+# ==============================================================================
+.empty_assoc_result <- function(
+    status          = "no_results",
+    traits          = character(0),
+    n_pcs_used      = 0L,
+    sig_threshold   = 0.05,
+    sig_metric      = "p_fdr",
+    meff_scope      = "chromosome",
+    meff_percent_cut = 0.995,
+    warning_message = NULL
+) {
+  if (!is.null(warning_message))
+    warning(warning_message, call. = FALSE)
+  structure(
+    list(
+      allele_tests     = data.frame(),
+      block_tests      = data.frame(),
+      traits           = traits,
+      n_pcs_used       = n_pcs_used,
+      sig_threshold    = sig_threshold,
+      sig_metric       = sig_metric,
+      n_tests          = 0L,
+      meff_scope       = meff_scope,
+      meff_percent_cut = meff_percent_cut,
+      meff             = list(),
+      status           = status
+    ),
+    class = c("LDxBlocks_haplotype_assoc", "list")
+  )
+}
+
+# ==============================================================================
 # 1. test_block_haplotypes
 # ==============================================================================
+
+# Internal helper: check if a column has more than one unique non-NA value
+.is_polymorphic_col <- function(x) {
+  x <- x[!is.na(x)]
+  length(unique(x)) > 1L
+}
+
+# Internal helper: vectorised per-allele Wald scan
+.vectorized_hap_wald_scan <- function(X, y_resid, dose_scale = 1) {
+  # Vectorised Wald scan helper (extracted for clarity)
+  n <- length(y_resid); y_bar <- mean(y_resid)
+  XtX  <- colSums(X^2) - colSums(X)^2 / n
+  keep <- is.finite(XtX) & XtX > 1e-10
+  if (!any(keep)) return(NULL)
+  Xk <- X[, keep, drop = FALSE]; XtXk <- XtX[keep]
+  Xty_c <- as.numeric(crossprod(Xk, y_resid)) - n * colMeans(Xk) * y_bar
+  beta <- Xty_c / XtXk
+  df   <- n - 2L; if (df <= 0L) return(NULL)
+  rss  <- pmax(sum((y_resid - y_bar)^2) - beta^2 * XtXk, 0)
+  SE   <- sqrt(rss / df / XtXk)
+  data.frame(
+    column_index       = which(keep), effect = beta, SE = SE,
+    t_stat             = beta / SE,
+    p_wald             = 2 * stats::pt(-abs(beta / SE), df = df),
+    allele_freq_tested = colMeans(Xk, na.rm = TRUE) / dose_scale,
+    stringsAsFactors   = FALSE
+  )
+}
 
 #' Block-Level Haplotype Association Testing (Q+K Mixed Linear Model
 #' with simpleM Multiple-Testing Correction)
@@ -394,7 +455,6 @@
 #'   \code{\link{run_haplotype_prediction}},
 #'   \code{\link{estimate_diplotype_effects}}
 #' @export
-
 test_block_haplotypes <- function(
     haplotypes,
     blues,
@@ -446,7 +506,19 @@ test_block_haplotypes <- function(
   dose_scale <- if (is_phased_data) 2 else 1
 
   .log("Computing haplotype GRM ...")
-  G <- compute_haplotype_grm(hap_mat, phased = is_phased_data)
+  G <- tryCatch(
+    compute_haplotype_grm(hap_mat, phased = is_phased_data),
+    error = function(e) {
+      warning(
+        "Haplotype GRM computation failed: ", conditionMessage(e),
+        ". Using identity matrix fallback.",
+        call. = FALSE
+      )
+      diag_G <- diag(nrow(hap_mat))
+      rownames(diag_G) <- colnames(diag_G) <- rownames(hap_mat)
+      diag_G
+    }
+  )
 
   # -- Derive GRM PCs once (shared across all traits) -------------------------
   # G = Q Lambda Q^T - columns of Q are PCs of individuals in haplotype space.
@@ -459,25 +531,35 @@ test_block_haplotypes <- function(
 
   if (auto_pcs || n_pcs_req > 0L) {
     .log("Eigendecomposing GRM for PC fixed-effect covariates ...")
-    eig      <- eigen(G, symmetric = TRUE)
-    eig_vals <- pmax(eig$values, 0)
-    var_prop <- eig_vals / sum(eig_vals)
-    if (auto_pcs) {
-      marginal   <- diff(-var_prop)
-      elbow      <- which(marginal > 0.01)[1]
-      n_pcs_used <- if (is.na(elbow)) 3L else min(elbow, 10L)
+    eig <- tryCatch(
+      eigen(G, symmetric = TRUE),
+      error = function(e) {
+        warning("GRM eigendecomposition failed; no PCs will be used.", call. = FALSE)
+        NULL
+      }
+    )
+    if (is.null(eig)) {
+      n_pcs_used <- 0L
     } else {
-      n_pcs_used <- min(n_pcs_req, ncol(eig$vectors))
+      eig_vals <- pmax(eig$values, 0)
+      var_prop <- eig_vals / sum(eig_vals)
+      if (auto_pcs) {
+        marginal   <- diff(-var_prop)
+        elbow      <- which(marginal > 0.01)[1]
+        n_pcs_used <- if (is.na(elbow)) 3L else min(elbow, 10L)
+      } else {
+        n_pcs_used <- min(n_pcs_req, ncol(eig$vectors))
+      }
+      if (n_pcs_used > 0L) {
+        pc_scores <- eig$vectors[, seq_len(n_pcs_used), drop = FALSE]
+        rownames(pc_scores) <- rownames(G)
+        colnames(pc_scores) <- paste0("PC", seq_len(n_pcs_used))
+        cum_var <- sum(var_prop[seq_len(n_pcs_used)]) * 100
+        .log("  ", n_pcs_used, " GRM-derived PCs (", round(cum_var, 1),
+             "% of GRM variance)")
+      }
     }
-    if (n_pcs_used > 0L) {
-      pc_scores <- eig$vectors[, seq_len(n_pcs_used), drop = FALSE]
-      rownames(pc_scores) <- rownames(G)
-      colnames(pc_scores) <- paste0("PC", seq_len(n_pcs_used))
-      cum_var <- sum(var_prop[seq_len(n_pcs_used)]) * 100
-      .log("  ", n_pcs_used, " GRM-derived PCs (", round(cum_var, 1),
-           "% of GRM variance)")
-    }
-  }
+  }  # end if (auto_pcs || n_pcs_req > 0L)
 
   allele_rows <- list()
   block_rows  <- list()
@@ -504,7 +586,20 @@ test_block_haplotypes <- function(
       next
     }
 
-    y     <- pheno[common]
+    y <- as.numeric(pheno[common])
+    names(y) <- common
+
+    ok_y <- !is.na(y) & is.finite(y)
+
+    if (sum(ok_y) < 10L) {
+      warning("Fewer than 10 non-missing phenotypes for trait '", tr, "' - skipping.",
+              call. = FALSE)
+      next
+    }
+
+    common <- common[ok_y]
+    y      <- y[ok_y]
+
     G_sub <- G[common, common, drop = FALSE]
 
     # -- Null model: y = mu + PC_fixed_effects + g + e ----------------------
@@ -520,16 +615,21 @@ test_block_haplotypes <- function(
       rrBLUP::mixed.solve(y = y, X = X_null, K = G_sub, method = "REML"),
       error = function(e) NULL
     )
-    if (is.null(null_fit)) {
-      warning("Null model failed for trait '", tr, "' - skipping.",
-              call. = FALSE)
-      next
+    if (!is.null(null_fit)) {
+      y_fixed <- as.numeric(X_null %*% null_fit$beta)
+      u_sub <- null_fit$u[common]; u_sub[is.na(u_sub)] <- 0
+      y_resid <- y - y_fixed - u_sub
+    } else {
+      lm_null <- tryCatch(stats::lm.fit(x = X_null, y = y), error = function(e) NULL)
+      if (is.null(lm_null)) {
+        warning("Fixed-effect fallback model also failed for trait '", tr, "' - skipping.",
+                call. = FALSE)
+        next
+      }
+      y_resid <- stats::residuals(lm_null)
     }
 
-    # De-regressed phenotype: remove fixed effects (mu + PCs) and polygenic g
-    y_fixed <- as.numeric(X_null %*% null_fit$beta)
-    y_resid <- y - y_fixed - null_fit$u[common]
-    n_ind   <- length(y_resid)
+    n_ind <- length(y_resid)
 
     # -- VECTORISED per-allele scan across ALL blocks simultaneously ---------
     # This is the key scaling improvement over the original lm() loop.
@@ -635,50 +735,139 @@ test_block_haplotypes <- function(
     # -- Per-block omnibus F-test (vectorised per block) ---------------------
     # After the vectorised scan, omnibus F-test is a per-block loop but cheap:
     # only iterates over ~17,000 blocks with 3-5 columns each.
+    # -- Block-level omnibus tests
     unique_blocks <- unique(col_bl_valid)
+
     for (bn in unique_blocks) {
+
       blk_idx <- which(col_bl_valid == bn)
       X_blk   <- X_valid[, blk_idx, drop = FALSE]
-      if (!ncol(X_blk)) next
 
-      blk_meta <- if (!is.null(bi)) bi[bi$block_id == bn, , drop=FALSE]
-      else NULL
-      gm2 <- function(col, def=NA) {
-        if (!is.null(blk_meta) && nrow(blk_meta)>0) blk_meta[[col]][1] else def
+      blk_meta <- if (!is.null(bi) && is.data.frame(bi)) {
+        bi[bi$block_id == bn, , drop = FALSE]
+      } else {
+        NULL
+      }
+
+      gm2 <- function(col, def = NA) {
+        if (!is.null(blk_meta) &&
+            nrow(blk_meta) > 0L &&
+            col %in% names(blk_meta)) {
+          blk_meta[[col]][1L]
+        } else {
+          def
+        }
+      }
+
+      if (!ncol(X_blk)) {
+        block_rows[[length(block_rows) + 1L]] <- data.frame(
+          block_id         = bn,
+          CHR              = gm2("CHR", NA_character_),
+          start_bp         = gm2("start_bp", NA_integer_),
+          end_bp           = gm2("end_bp", NA_integer_),
+          trait            = tr,
+          n_alleles_tested = 0L,
+          F_stat           = NA_real_,
+          df_LRT           = NA_real_,
+          p_omnibus        = NA_real_,
+          var_explained    = NA_real_,
+          status           = "skipped_empty_block",
+          stringsAsFactors = FALSE
+        )
+        next
+      }
+
+      blk_var <- apply(X_blk, 2L, .is_polymorphic_col)
+      X_blk   <- X_blk[, blk_var, drop = FALSE]
+
+      if (!ncol(X_blk)) {
+        block_rows[[length(block_rows) + 1L]] <- data.frame(
+          block_id         = bn,
+          CHR              = gm2("CHR", NA_character_),
+          start_bp         = gm2("start_bp", NA_integer_),
+          end_bp           = gm2("end_bp", NA_integer_),
+          trait            = tr,
+          n_alleles_tested = 0L,
+          F_stat           = NA_real_,
+          df_LRT           = NA_real_,
+          p_omnibus        = NA_real_,
+          var_explained    = NA_real_,
+          status           = "skipped_monomorphic",
+          stringsAsFactors = FALSE
+        )
+        next
       }
 
       df_full <- as.data.frame(X_blk)
       names(df_full) <- paste0("h", seq_len(ncol(df_full)))
       df_full$y_r <- y_resid
-      fit_full <- tryCatch(stats::lm(y_r ~ ., data=df_full),
-                           error=function(e) NULL)
-      if (is.null(fit_full)) next
+
+      fit_full <- tryCatch(
+        stats::lm(y_r ~ ., data = df_full),
+        error = function(e) NULL
+      )
+
+      if (is.null(fit_full)) {
+        block_rows[[length(block_rows) + 1L]] <- data.frame(
+          block_id         = bn,
+          CHR              = gm2("CHR", NA_character_),
+          start_bp         = gm2("start_bp", NA_integer_),
+          end_bp           = gm2("end_bp", NA_integer_),
+          trait            = tr,
+          n_alleles_tested = ncol(X_blk),
+          F_stat           = NA_real_,
+          df_LRT           = NA_real_,
+          p_omnibus        = NA_real_,
+          var_explained    = NA_real_,
+          status           = "model_failed",
+          stringsAsFactors = FALSE
+        )
+        next
+      }
 
       RSS_null <- ss_tot
       RSS_full <- sum(stats::residuals(fit_full)^2)
-      df_lrt   <- ncol(X_blk)
-      df_res   <- n_ind - df_lrt - 1L
-      if (RSS_null < 1e-15 || df_lrt < 1L || df_res < 1L) next
+      df_lrt <- ncol(X_blk)
+      df_res <- n_ind - df_lrt - 1L
 
-      F_stat  <- ((RSS_null - RSS_full)/df_lrt) / (RSS_full/df_res)
-      p_omni  <- stats::pf(F_stat, df1=df_lrt, df2=df_res, lower.tail=FALSE)
-      var_exp <- max(0, 1 - RSS_full/RSS_null)
+      if (RSS_null < 1e-15 || df_lrt < 1L || df_res < 1L) {
+        block_rows[[length(block_rows) + 1L]] <- data.frame(
+          block_id         = bn,
+          CHR              = gm2("CHR", NA_character_),
+          start_bp         = gm2("start_bp", NA_integer_),
+          end_bp           = gm2("end_bp", NA_integer_),
+          trait            = tr,
+          n_alleles_tested = ncol(X_blk),
+          F_stat           = NA_real_,
+          df_LRT           = df_lrt,
+          p_omnibus        = NA_real_,
+          var_explained    = NA_real_,
+          status           = "insufficient_df",
+          stringsAsFactors = FALSE
+        )
+        next
+      }
 
-      block_rows[[length(block_rows)+1L]] <- data.frame(
+      F_stat <- ((RSS_null - RSS_full) / df_lrt) / (RSS_full / df_res)
+      p_omni <- stats::pf(F_stat, df1 = df_lrt, df2 = df_res, lower.tail = FALSE)
+      var_exp <- max(0, 1 - RSS_full / RSS_null)
+
+      block_rows[[length(block_rows) + 1L]] <- data.frame(
         block_id         = bn,
-        CHR              = gm2("CHR",      NA_character_),
+        CHR              = gm2("CHR", NA_character_),
         start_bp         = gm2("start_bp", NA_integer_),
-        end_bp           = gm2("end_bp",   NA_integer_),
+        end_bp           = gm2("end_bp", NA_integer_),
         trait            = tr,
         n_alleles_tested = ncol(X_blk),
-        F_stat           = round(F_stat,  4),
+        F_stat           = round(F_stat, 4),
         df_LRT           = df_lrt,
         p_omnibus        = p_omni,
         var_explained    = round(var_exp, 4),
+        status           = "ok",
         stringsAsFactors = FALSE
       )
-    }
-  }
+    }  # end for(bn)
+  }  # end trait loop
 
   # -- Assemble output and apply multiple testing correction ------------------
   if (!length(allele_rows) && !length(block_rows)) {
@@ -689,7 +878,8 @@ test_block_haplotypes <- function(
            sig_threshold    = sig_threshold, sig_metric = sig_metric,
            n_tests          = 0L,
            meff_scope       = meff_scope, meff_percent_cut = meff_percent_cut,
-           meff             = list()),
+           meff             = list(),
+           status           = "no_results"),
       class = c("LDxBlocks_haplotype_assoc", "list")
     ))
   }
@@ -853,7 +1043,8 @@ test_block_haplotypes <- function(
       n_tests          = n_tests,
       meff_scope       = meff_scope,
       meff_percent_cut = meff_percent_cut,
-      meff             = meff_summary
+      meff             = meff_summary,
+      status           = "ok"
     ),
     class = c("LDxBlocks_haplotype_assoc", "list")
   )
@@ -1002,45 +1193,39 @@ test_block_haplotypes <- function(
   invisible(NULL)
 }
 
-#' @method print LDxBlocks_haplotype_assoc
+
 #' @export
 print.LDxBlocks_haplotype_assoc <- function(x, ...) {
   cat("LDxBlocks Haplotype Association Results\n")
   cat("  Model:        GRM")
-
   if (x$n_pcs_used > 0L)
     cat(" + ", x$n_pcs_used, " GRM-derived PC(s) [Q+K]", sep = "")
   else
     cat(" [EMMAX/P3D]")
-
   cat("\n")
   cat("  Traits:       ", paste(x$traits, collapse = ", "), "\n")
   cat("  Allele tests: ", nrow(x$allele_tests), "\n")
   cat("  Block tests:  ", nrow(x$block_tests), "\n")
   cat("  sig_metric:   ", x$sig_metric,
       " (significant when ", x$sig_metric, " <= ", x$sig_threshold, ")\n", sep = "")
-
   if (!is.null(x$meff_scope))
     cat("  meff_scope:   ", x$meff_scope,
         " (cut = ", x$meff_percent_cut, ")\n", sep = "")
-
   cat("  Columns always present:\n")
   cat("    allele_tests: p_wald, p_fdr, p_simplem, p_simplem_sidak, Meff,\n")
   cat("                  alpha_simplem, alpha_simplem_sidak\n")
   cat("    block_tests:  p_omnibus, p_omnibus_fdr, p_omnibus_adj,\n")
   cat("                  p_omnibus_simplem, p_omnibus_simplem_sidak, Meff,\n")
   cat("                  alpha_simplem, alpha_simplem_sidak\n")
-
   if (nrow(x$allele_tests) > 0)
     cat("  Significant alleles (", x$sig_metric, " <= ", x$sig_threshold, "): ",
         sum(x$allele_tests$significant, na.rm = TRUE), "\n", sep = "")
-
   if (nrow(x$block_tests) > 0)
     cat("  Significant blocks  (", x$sig_metric, " <= ", x$sig_threshold, "): ",
         sum(x$block_tests$significant_omnibus, na.rm = TRUE), "\n", sep = "")
-
   invisible(x)
 }
+
 
 # ==============================================================================
 # 2. estimate_diplotype_effects
@@ -1049,193 +1234,161 @@ print.LDxBlocks_haplotype_assoc <- function(x, ...) {
 #' Estimate Diplotype Effects and Dominance Deviations Per LD Block
 #'
 #' @description
-#' Fits per-block diplotype models to quantify additive and dominance
-#' genetic effects at LD blocks using haplotype-derived diplotypes.
+#' Fits a per-block diplotype model to decompose phenotypic variation into
+#' additive and dominance components at each LD block, after correcting for
+#' population structure and kinship via the haplotype GRM. This function
+#' provides direct evidence for non-additive gene action: dominance,
+#' overdominance, and heterosis.
 #'
-#' This function integrates haplotype structure with mixed-model
-#' correction for relatedness to provide biologically interpretable
-#' measures of gene action, including dominance and overdominance.
-#'
-#' \strong{Statistical framework:}
-#'
-#' The analysis proceeds in three stages:
-#'
-#' \enumerate{
-#'   \item A haplotype feature matrix is constructed using
-#'     \code{\link{build_haplotype_feature_matrix}}.
-#'
-#'   \item A haplotype genomic relationship matrix (GRM) is computed
-#'     via \code{\link{compute_haplotype_grm}}, capturing genome-wide
-#'     similarity based on haplotype composition.
-#'
-#'   \item For each trait:
-#'     \itemize{
-#'       \item A null mixed model is fitted:
-#'         \deqn{y = \mu + u + e}
-#'         where \eqn{u \sim N(0, G\sigma^2_u)} using
-#'         \code{rrBLUP::mixed.solve()}.
-#'
-#'       \item Residuals (de-regressed phenotypes) are computed:
-#'         \eqn{y^* = y - \hat{\mu} - \hat{u}}
-#'
-#'       \item Diplotype effects are estimated from these residuals.
-#'     }
-#' }
-#'
-#' \strong{Diplotype representation:}
-#'
-#' Diplotypes are canonical strings of two haplotypes sorted
-#' alphabetically and joined by \code{"/"}:
-#'
+#' \strong{Method:} For each LD block, unique diplotypes (canonical
+#' haplotype-pair strings inferred by \code{\link{infer_block_haplotypes}},
+#' e.g. \code{"010/110"}) are treated as levels of a fixed factor. A mixed
+#' model with the haplotype GRM as a kinship random effect is fitted via
+#' \code{rrBLUP::mixed.solve()} to obtain de-regressed phenotype residuals.
+#' Diplotype class means are computed on these residuals. For each pair of
+#' common alleles (A, B), classical quantitative genetics parameters are
+#' derived from the three diplotype class means:
 #' \itemize{
-#'   \item Homozygote: \code{"010/010"}
-#'   \item Heterozygote: \code{"010/110"}
+#'   \item Additive effect: \eqn{a = (\bar{y}_{BB} - \bar{y}_{AA}) / 2}
+#'   \item Dominance deviation: \eqn{d = \bar{y}_{AB} -
+#'     (\bar{y}_{AA} + \bar{y}_{BB}) / 2}
+#'   \item Dominance ratio: \eqn{d/a} - the key quantity for interpreting
+#'     gene action (see \code{d_over_a} column description).
 #' }
 #'
-#' This ensures phase invariance (\code{"010/110"} == \code{"110/010"}).
+#' @param haplotypes Named list produced by \code{\link{extract_haplotypes}}.
+#'   Phase-ambiguous diplotypes (unphased heterozygotes) are excluded from
+#'   the dominance analysis but included in the omnibus F-test if their
+#'   diplotype string is unambiguous. For accurate dominance decomposition,
+#'   phased input (from \code{read_phased_vcf}, \code{phase_with_beagle}, or
+#'   via \code{\link{phase_with_beagle}}) is strongly recommended.
 #'
-#' \strong{Genetic effects:}
+#' @param blues Pre-adjusted phenotype means. Accepts the same four formats
+#'   as \code{\link{test_block_haplotypes}}: named numeric vector,
+#'   single-trait data frame, multi-trait data frame, or named list. All
+#'   formats require individual IDs matching the names of haplotype strings.
 #'
-#' For each allele pair \eqn{A, B}, the following quantities are estimated:
+#' @param blocks LD block table from \code{\link{run_Big_LD_all_chr}}.
+#'   Used only to supply block coordinate metadata (\code{CHR},
+#'   \code{start_bp}, \code{end_bp}) to the output tables.
 #'
-#' \itemize{
-#'   \item Additive effect:
-#'     \deqn{a = (\bar{y}_{BB} - \bar{y}_{AA}) / 2}
+#' @param min_freq Numeric in (0, 1). Minimum allele frequency. Alleles
+#'   below this threshold in the full panel are excluded from the dominance
+#'   decomposition (\code{dominance_table}) but their diplotypes still
+#'   contribute to \code{diplotype_means} and \code{omnibus_tests} if
+#'   sufficient individuals carry them. Default \code{0.05}.
 #'
-#'   \item Dominance deviation:
-#'     \deqn{d = \bar{y}_{AB} - (\bar{y}_{AA} + \bar{y}_{BB}) / 2}
+#' @param min_n_diplotype Integer. Minimum number of individuals that must
+#'   carry a given diplotype class for it to be included in \code{diplotype_means}
+#'   and the dominance decomposition. Diplotype classes with fewer individuals
+#'   are silently excluded. The omnibus F-test uses only the retained classes.
+#'   Default \code{3L}. Increasing to 5-10 improves mean estimate stability
+#'   for small panels; decreasing below 3 is not recommended.
 #'
-#'   \item Dominance ratio:
-#'     \deqn{d/a}
-#' }
+#' @param id_col Character. Name of the individual-ID column when \code{blues}
+#'   is a data frame. Default \code{"id"}.
 #'
-#' Interpretation:
+#' @param blue_col Character. Name of the phenotype column for single-trait
+#'   data frames. Default \code{"blue"}.
 #'
-#' \itemize{
-#'   \item \eqn{d/a = 0} -> additive
-#'   \item \eqn{|d/a| < 1} -> partial dominance
-#'   \item \eqn{|d/a| = 1} -> complete dominance
-#'   \item \eqn{|d/a| > 1} -> overdominance (heterosis)
-#' }
+#' @param blue_cols Character vector. Phenotype column names for multi-trait
+#'   data frames. Default \code{NULL}.
 #'
-#' \strong{Important:}
+#' @param verbose Logical. \code{TRUE} (default) prints progress per trait.
 #'
-#' \itemize{
-#'   \item Phased haplotypes are strongly recommended.
-#'   \item Unphased heterozygotes are resolved arbitrarily
-#'     (\code{resolve_unphased = TRUE}), which does not bias
-#'     mean-based dominance estimates.
-#'   \item GRM scaling is automatically adjusted based on whether
-#'     haplotypes are phased.
-#' }
-#'
-#' @param haplotypes Named list from \code{\link{extract_haplotypes}}.
-#'   Must include a \code{block_info} attribute with:
-#'   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
-#'   and \code{phased}.
-#'
-#' @param blues Phenotypic values (BLUEs or adjusted means).
-#'   Supported formats:
-#'   \itemize{
-#'     \item Named numeric vector
-#'     \item Data frame (single or multi-trait)
-#'     \item Named list of numeric vectors
-#'   }
-#'   Individual IDs must match haplotype IDs.
-#'
-#' @param blocks LD block table from
-#'   \code{\link{run_Big_LD_all_chr}} (used for metadata).
-#'
-#' @param min_freq Numeric in [0, 1].
-#'   Minimum haplotype allele frequency for inclusion in dominance
-#'   decomposition. Default \code{0.05}.
-#'
-#' @param min_n_diplotype Integer >= 2.
-#'   Minimum number of individuals per diplotype class.
-#'   Default \code{3L}.
-#'
-#' @param id_col Character. ID column name for data frame input.
-#'   Default \code{"id"}.
-#'
-#' @param blue_col Character. Single-trait column name.
-#'   Default \code{"blue"}.
-#'
-#' @param blue_cols Character vector for multi-trait input.
-#'   Default \code{NULL}.
-#'
-#' @param verbose Logical. Print progress messages. Default \code{TRUE}.
-#'
-#' @return Object of class \code{LDxBlocks_diplotype} containing:
+#' @return A named list of class \code{c("LDxBlocks_diplotype", "list")}
+#'   with three elements:
 #'
 #' \describe{
-#'   \item{diplotype_means}{
-#'     One row per diplotype class per block per trait.
-#'
-#'     Columns:
+#'   \item{\code{diplotype_means}}{Data frame. One row per diplotype class per
+#'     LD block per trait, for diplotype classes with \code{>= min_n_diplotype}
+#'     individuals. Contains 9 columns:
 #'     \itemize{
-#'       \item block_id, CHR, start_bp, end_bp
-#'       \item trait
-#'       \item diplotype
-#'       \item n (class size)
-#'       \item n_total
-#'       \item mean_blue
-#'       \item se_mean
-#'     }
-#'   }
+#'       \item \code{block_id} (character) - Block identifier.
+#'       \item \code{CHR} (character) - Chromosome.
+#'       \item \code{start_bp}, \code{end_bp} (integer) - Block coordinates.
+#'       \item \code{trait} (character) - Trait name.
+#'       \item \code{diplotype} (character) - Canonical diplotype string: two
+#'         haplotype allele strings sorted alphabetically and joined by
+#'         \code{"/"}, e.g. \code{"010/110"}. Homozygotes have identical
+#'         halves: \code{"010/010"}. This format ensures that \code{"010/110"}
+#'         and \code{"110/010"} are always represented identically.
+#'       \item \code{n_class} (integer) - Number of individuals carrying
+#'         this specific diplotype combination.
+#'       \item \code{n_total} (integer) - Total individuals with non-missing
+#'         data in this block (sum of n_class across all diplotype classes).
+#'       \item \code{mean_blue} (numeric) - Mean de-regressed phenotype value
+#'         for this diplotype class (on the residual scale after GRM correction).
+#'       \item \code{se_mean} (numeric) - Standard error of the mean
+#'         (\code{sd / sqrt(n_class)}).
+#'     }}
 #'
-#'   \item{dominance_table}{
-#'     One row per allele pair per block per trait.
-#'
-#'     Columns:
+#'   \item{\code{dominance_table}}{Data frame. One row per ordered allele pair
+#'     (A, B) per block per trait, for pairs where all three diplotype classes
+#'     (AA, AB, BB) each have \code{>= min_n_diplotype} individuals.
+#'     Contains 14 columns:
 #'     \itemize{
-#'       \item allele_A, allele_B
-#'       \item mean_AA, mean_AB, mean_BB
-#'       \item a, d
-#'       \item d_over_a
-#'       \item overdominance (logical)
-#'     }
-#'   }
+#'       \item \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+#'         \code{trait} - as above.
+#'       \item \code{allele_A}, \code{allele_B} (character) - The two alleles
+#'         being compared (alphabetically ordered: A comes before B).
+#'       \item \code{mean_AA}, \code{mean_AB}, \code{mean_BB} (numeric) -
+#'         Diplotype class means on the de-regressed phenotype scale.
+#'       \item \code{a} (numeric) - Additive effect:
+#'         \eqn{(\bar{y}_{BB} - \bar{y}_{AA}) / 2}. Positive means allele B
+#'         increases trait value relative to A.
+#'       \item \code{d} (numeric) - Dominance deviation:
+#'         \eqn{\bar{y}_{AB} - (\bar{y}_{AA} + \bar{y}_{BB}) / 2}.
+#'         Positive: heterozygote advantage (overdominance when \eqn{|d| > |a|}).
+#'         Negative: heterozygote disadvantage (underdominance).
+#'       \item \code{d_over_a} (numeric or \code{NA}) - Dominance ratio
+#'         \eqn{d/a}. Interpretation: 0 = purely additive gene action;
+#'         \eqn{\pm 0.5} = partial dominance; \eqn{\pm 1} = complete dominance
+#'         (heterozygote equal to one homozygote); \eqn{|d/a| > 1} = overdominance
+#'         (heterozygote exceeds both homozygotes - evidence for heterosis at
+#'         this locus). \code{NA} when \eqn{|a| < 10^{-10}} (no additive
+#'         variation between homozygotes).
+#'       \item \code{overdominance} (logical) - \code{TRUE} when
+#'         \eqn{|d/a| > 1} and \code{d_over_a} is not \code{NA}.
+#'     }}
 #'
-#'   \item{omnibus_tests}{
-#'     Per-block ANOVA results:
-#'
+#'   \item{\code{omnibus_tests}}{Data frame. One row per LD block per trait,
+#'     for blocks where at least \code{min_n_diplotype} individuals carry at
+#'     least 2 distinct diplotype classes. Contains 9 columns:
 #'     \itemize{
-#'       \item F_stat, df1, df2
-#'       \item p_omnibus
-#'       \item p_omnibus_adj (Bonferroni per trait)
-#'       \item significant
+#'       \item \code{block_id}, \code{trait} - as above.
+#'       \item \code{n_diplotypes} (integer) - Number of diplotype classes
+#'         with \code{>= min_n_diplotype} individuals, used as factor levels.
+#'       \item \code{F_stat} (numeric) - F-statistic from one-way ANOVA
+#'         (diplotype factor) on de-regressed phenotype residuals.
+#'       \item \code{df1} (integer) - Numerator df = \code{n_diplotypes - 1}.
+#'       \item \code{df2} (integer) - Denominator df = \code{n_obs - n_diplotypes}.
+#'       \item \code{p_omnibus} (numeric, (0,1]) - Raw p-value.
+#'       \item \code{p_omnibus_adj} (numeric, (0,1]) - Bonferroni-adjusted
+#'         across all tested blocks per trait.
+#'       \item \code{significant} (logical) - \code{TRUE} when
+#'         \code{p_omnibus_adj < 0.05}.
 #'     }
-#'   }
+#'     Sorted ascending by \code{p_omnibus}.}
 #' }
 #'
 #' @examples
 #' \donttest{
-#' if (requireNamespace("LDxBlocks", quietly = TRUE)) {
-#'   data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
-#'
-#' haps <- extract_haplotypes(
-#'   geno     = ldx_geno,
-#'   snp_info = ldx_snp_info,
-#'   blocks   = ldx_blocks,
-#'   min_snps = 5L
-#' )
-#'
-#' res <- estimate_diplotype_effects(
+#' data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
+#' haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 5)
+#' dip_res <- estimate_diplotype_effects(
 #'   haplotypes = haps,
 #'   blues      = setNames(ldx_blues$YLD, ldx_blues$id),
 #'   blocks     = ldx_blocks,
 #'   verbose    = FALSE
 #' )
-#'
-#' subset(res$dominance_table, overdominance)
-#' subset(res$omnibus_tests, significant)
+#' # Overdominant blocks
+#' dip_res$dominance_table[dip_res$dominance_table$overdominance, ]
+#' # Significant diplotype effects
+#' dip_res$omnibus_tests[dip_res$omnibus_tests$significant, ]
 #' }
-#' }
-#'
-#' @seealso \code{\link{compute_haplotype_grm}},
-#'   \code{\link{infer_block_haplotypes}},
+#' @seealso \code{\link{infer_block_haplotypes}},
 #'   \code{\link{test_block_haplotypes}}
-#'
 #' @export
 estimate_diplotype_effects <- function(
     haplotypes,
@@ -1248,426 +1401,176 @@ estimate_diplotype_effects <- function(
     blue_cols        = NULL,
     verbose          = TRUE
 ) {
-  # -- Dependency check -------------------------------------------------------
-  if (!requireNamespace("rrBLUP", quietly = TRUE)) {
+  if (!requireNamespace("rrBLUP", quietly = TRUE))
     stop("rrBLUP is required: install.packages('rrBLUP')", call. = FALSE)
-  }
 
-  verbose <- isTRUE(verbose)
-  .log <- function(...) {
-    if (verbose) message(sprintf("[diplotype] %s", paste0(...)))
-  }
+  .log <- function(...) if (verbose) message(sprintf("[diplotype] %s", paste0(...)))
 
-  # -- Input validation -------------------------------------------------------
-  if (!is.list(haplotypes) || !length(haplotypes)) {
-    stop("haplotypes must be a non-empty list produced by extract_haplotypes().",
-         call. = FALSE)
-  }
-
-  if (!is.numeric(min_freq) || length(min_freq) != 1L ||
-      is.na(min_freq) || !is.finite(min_freq) ||
-      min_freq < 0 || min_freq > 1) {
-    stop("min_freq must be a single numeric value in [0, 1].", call. = FALSE)
-  }
-
-  min_n_diplotype <- suppressWarnings(as.integer(min_n_diplotype))
-  if (length(min_n_diplotype) != 1L ||
-      is.na(min_n_diplotype) ||
-      min_n_diplotype < 2L) {
-    stop("min_n_diplotype must be a single integer >= 2.", call. = FALSE)
-  }
-
-  bi <- attr(haplotypes, "block_info")
-
-  if (!is.null(bi) && !is.data.frame(bi)) {
-    stop("attr(haplotypes, 'block_info') must be a data frame or NULL.",
-         call. = FALSE)
-  }
-
-  if (!is.null(bi) && nrow(bi) > 0L) {
-    req_bi <- c("block_id", "CHR", "start_bp", "end_bp", "phased")
-    miss_bi <- setdiff(req_bi, names(bi))
-
-    if (length(miss_bi)) {
-      stop(
-        "attr(haplotypes, 'block_info') is missing required column(s): ",
-        paste(miss_bi, collapse = ", "),
-        call. = FALSE
-      )
-    }
-  }
-
-  # Parse phenotype input
   blues_list <- .parse_blues_assoc(blues, id_col, blue_col, blue_cols)
-  traits <- names(blues_list)
+  traits     <- names(blues_list)
+  bi         <- attr(haplotypes, "block_info")
 
-  if (!length(traits)) {
-    stop("No traits found in blues.", call. = FALSE)
-  }
+  .log("Building haplotype GRM ...")
+  hap_mat <- build_haplotype_feature_matrix(haplotypes, min_freq = min_freq,
+                                            encoding = "additive_012")$matrix
+  G <- compute_haplotype_grm(hap_mat)
 
-  # -- Build haplotype feature matrix and GRM --------------------------------
-  .log("Building haplotype feature matrix ...")
-
-  feat <- build_haplotype_feature_matrix(
-    haplotypes = haplotypes,
-    min_freq   = min_freq,
-    encoding   = "additive_012"
-  )
-
-  hap_mat <- feat$matrix
-
-  if (!is.matrix(hap_mat)) {
-    hap_mat <- as.matrix(hap_mat)
-  }
-
-  if (!nrow(hap_mat)) {
-    stop("Haplotype feature matrix has zero rows.", call. = FALSE)
-  }
-
-  if (!ncol(hap_mat)) {
-    stop(
-      "Haplotype feature matrix has zero columns after min_freq filtering. ",
-      "Try lowering min_freq.",
-      call. = FALSE
-    )
-  }
-
-  # Detect phasing from block_info, not from matrix values.
-  # This avoids misclassifying phased alleles with no homozygous carriers.
-  is_phased_data <- is.data.frame(bi) &&
-    nrow(bi) > 0L &&
-    any(bi$phased %in% TRUE, na.rm = TRUE)
-
-  .log("Computing haplotype GRM ...")
-  G <- compute_haplotype_grm(hap_mat, phased = is_phased_data)
-
-  if (!is.matrix(G) || nrow(G) != ncol(G)) {
-    stop("compute_haplotype_grm() did not return a square matrix.",
-         call. = FALSE)
-  }
-
-  if (is.null(rownames(G)) || any(!nzchar(rownames(G)))) {
-    stop("Haplotype GRM must have individual IDs as row names.",
-         call. = FALSE)
-  }
-
-  # -- Infer diplotypes -------------------------------------------------------
   .log("Inferring diplotypes ...")
+  # resolve_unphased=TRUE: heterozygous individuals get an arbitrary phase
+  # assignment, which is acceptable for dominance decomposition since
+  # mean(y_AA), mean(y_AB), mean(y_BB) depend only on diplotype identity,
+  # not on which chromosome carries which haplotype.
+  dip_tbl <- infer_block_haplotypes(haplotypes, resolve_unphased = TRUE)
+  dip_tbl <- dip_tbl[!dip_tbl$missing, ]
 
-  dip_tbl <- infer_block_haplotypes(
-    haplotypes        = haplotypes,
-    resolve_unphased  = TRUE
-  )
+  means_rows <- list(); dom_rows <- list(); omnibus_rows <- list()
 
-  if (!is.data.frame(dip_tbl) || !nrow(dip_tbl)) {
-    stop("infer_block_haplotypes() returned no diplotype records.",
-         call. = FALSE)
-  }
-
-  req_dip <- c("block_id", "id", "diplotype", "hap1", "hap2", "missing")
-  miss_dip <- setdiff(req_dip, names(dip_tbl))
-
-  if (length(miss_dip)) {
-    stop(
-      "infer_block_haplotypes() output is missing required column(s): ",
-      paste(miss_dip, collapse = ", "),
-      call. = FALSE
-    )
-  }
-
-  dip_tbl <- dip_tbl[!dip_tbl$missing, , drop = FALSE]
-
-  if (!nrow(dip_tbl)) {
-    stop("All inferred diplotypes are missing.", call. = FALSE)
-  }
-
-  means_rows   <- list()
-  dom_rows     <- list()
-  omnibus_rows <- list()
-
-  # -- Trait loop -------------------------------------------------------------
   for (tr in traits) {
     .log("Trait: ", tr)
-
-    pheno <- blues_list[[tr]]
-
-    if (is.null(names(pheno))) {
-      warning("Trait '", tr, "' has no individual names; skipping.",
-              call. = FALSE)
-      next
-    }
-
-    pheno <- pheno[is.finite(pheno)]
+    pheno  <- blues_list[[tr]]
     common <- intersect(names(pheno), rownames(G))
+    if (length(common) < 10L) next
 
-    if (length(common) < 10L) {
-      warning(
-        "Fewer than 10 common individuals for trait '", tr, "'; skipping.",
-        call. = FALSE
-      )
-      next
-    }
+    G_sub    <- G[common, common, drop = FALSE]
+    y        <- pheno[common]
+    null_fit <- tryCatch(rrBLUP::mixed.solve(y=y, K=G_sub, method="REML"),
+                         error=function(e) NULL)
+    if (is.null(null_fit)) next
+    y_resid  <- y - as.numeric(null_fit$beta) - null_fit$u[common]
 
-    G_sub <- G[common, common, drop = FALSE]
-    y     <- as.numeric(pheno[common])
-    names(y) <- common
-
-    null_fit <- tryCatch(
-      rrBLUP::mixed.solve(y = y, K = G_sub, method = "REML"),
-      error = function(e) NULL
-    )
-
-    if (is.null(null_fit)) {
-      warning("Null mixed model failed for trait '", tr, "'; skipping.",
-              call. = FALSE)
-      next
-    }
-
-    y_resid <- y - as.numeric(null_fit$beta) - null_fit$u[common]
-    names(y_resid) <- common
-
-    # -- Block loop -----------------------------------------------------------
     for (bn in names(haplotypes)) {
-      dip_bn <- dip_tbl[dip_tbl$block_id == bn, , drop = FALSE]
+      dip_bn  <- dip_tbl[dip_tbl$block_id == bn, ]
       if (!nrow(dip_bn)) next
-
-      dip_ind <- dip_bn[dip_bn$id %in% common, , drop = FALSE]
+      dip_ind <- dip_bn[dip_bn$id %in% common, ]
       if (nrow(dip_ind) < min_n_diplotype) next
 
-      dip_count <- table(dip_ind$diplotype)
-      keep_dip  <- names(dip_count)[dip_count >= min_n_diplotype]
-
-      if (length(keep_dip) < 1L) next
-
-      dip_ind_sub <- dip_ind[dip_ind$diplotype %in% keep_dip, , drop = FALSE]
-
+      dip_tbl2    <- table(dip_ind$diplotype)
+      keep_dip    <- names(dip_tbl2)[dip_tbl2 >= min_n_diplotype]
+      dip_ind_sub <- dip_ind[dip_ind$diplotype %in% keep_dip, ]
       if (nrow(dip_ind_sub) < min_n_diplotype) next
 
-      blk_meta <- if (!is.null(bi) && nrow(bi) > 0L) {
-        bi[bi$block_id == bn, , drop = FALSE]
-      } else {
-        NULL
+      blk_meta <- if (!is.null(bi)) bi[bi$block_id == bn, , drop=FALSE] else NULL
+      gm <- function(col, def=NA) {
+        if (!is.null(blk_meta) && nrow(blk_meta)>0) blk_meta[[col]][1] else def
       }
 
-      gm <- function(col, def = NA) {
-        if (!is.null(blk_meta) && nrow(blk_meta) > 0L && col %in% names(blk_meta)) {
-          blk_meta[[col]][1L]
-        } else {
-          def
-        }
-      }
-
-      # -- Diplotype class means ---------------------------------------------
       for (dp in keep_dip) {
-        idx <- intersect(
-          dip_ind_sub$id[dip_ind_sub$diplotype == dp],
-          names(y_resid)
-        )
-
+        idx <- intersect(dip_ind_sub$id[dip_ind_sub$diplotype==dp], names(y_resid))
         if (length(idx) < 2L) next
-
         vals <- y_resid[idx]
-
-        means_rows[[length(means_rows) + 1L]] <- data.frame(
-          block_id   = bn,
-          CHR        = gm("CHR", NA_character_),
-          start_bp   = gm("start_bp", NA_integer_),
-          end_bp     = gm("end_bp", NA_integer_),
-          trait      = tr,
-          diplotype  = dp,
-          n          = length(vals),
-          n_total    = nrow(dip_ind),
-          mean_blue  = round(mean(vals), 6),
-          se_mean    = round(stats::sd(vals) / sqrt(length(vals)), 6),
-          stringsAsFactors = FALSE
-        )
+        means_rows[[length(means_rows)+1L]] <- data.frame(
+          block_id=bn, CHR=gm("CHR",NA_character_),
+          start_bp=gm("start_bp",NA_integer_), end_bp=gm("end_bp",NA_integer_),
+          trait=tr, diplotype=dp,
+          n=length(vals),               # individuals carrying THIS diplotype (n per class)
+          n_total=nrow(dip_ind),         # all individuals with a valid diplotype call
+          # at this block AND with phenotype data;
+          # n_total >= sum(n_class) because rare
+          # diplotype classes (< min_n_diplotype)
+          # contribute to n_total but not to any row
+          mean_blue=round(mean(vals),6),
+          se_mean=round(stats::sd(vals)/sqrt(length(vals)),6),
+          stringsAsFactors=FALSE)
       }
 
-      # -- Common allele set --------------------------------------------------
+      # Build allele frequency table from resolved hap1/hap2 gamete strings.
+      # Using dip_tbl (not raw haplotypes[[bn]]) ensures phased input works:
+      # haplotypes[[bn]] contains 'A|B' strings for phased data, while
+      # dip_tbl$hap1/hap2 already contain the individual gamete strings.
       gametes_bn <- c(dip_ind$hap1, dip_ind$hap2)
-      gametes_bn <- gametes_bn[
-        !is.na(gametes_bn) &
-          nzchar(gametes_bn) &
-          !grepl(".", gametes_bn, fixed = TRUE)
-      ]
-
+      gametes_bn <- gametes_bn[!is.na(gametes_bn) & !grepl("\\.", gametes_bn)]
       if (!length(gametes_bn)) next
-
       freq_tbl <- table(gametes_bn) / length(gametes_bn)
       com_al   <- names(freq_tbl)[freq_tbl >= min_freq]
-
-      all_al <- intersect(
-        unique(unlist(strsplit(keep_dip, "/", fixed = TRUE), use.names = FALSE)),
-        com_al
-      )
-
+      all_al   <- intersect(
+        unique(unlist(lapply(keep_dip, function(dp) strsplit(dp,"/")[[1]]))),
+        com_al)
       if (length(all_al) < 2L) next
 
-      # -- Additive and dominance decomposition -------------------------------
-      for (ai in seq_len(length(all_al) - 1L)) {
-        for (bi2 in seq.int(ai + 1L, length(all_al))) {
-          A <- all_al[ai]
-          B <- all_al[bi2]
-
-          mean_dip <- function(dp) {
-            idx <- intersect(
-              dip_ind_sub$id[dip_ind_sub$diplotype == dp],
-              names(y_resid)
-            )
-            if (length(idx) < 2L) NA_real_ else mean(y_resid[idx])
+      for (ai in seq_len(length(all_al)-1L)) {
+        for (bi2 in seq(ai+1L, length(all_al))) {
+          A <- all_al[ai]; B <- all_al[bi2]
+          gm2 <- function(dp) {
+            idx <- intersect(dip_ind_sub$id[dip_ind_sub$diplotype==dp],
+                             names(y_resid))
+            if (length(idx)<2L) NA_real_ else mean(y_resid[idx])
           }
-
-          dp_AA <- paste(sort(c(A, A)), collapse = "/")
-          dp_AB <- paste(sort(c(A, B)), collapse = "/")
-          dp_BB <- paste(sort(c(B, B)), collapse = "/")
-
-          mAA <- mean_dip(dp_AA)
-          mAB <- mean_dip(dp_AB)
-          mBB <- mean_dip(dp_BB)
-
-          if (any(is.na(c(mAA, mAB, mBB)))) next
-
-          a_e <- (mBB - mAA) / 2
-          d_e <- mAB - (mAA + mBB) / 2
-          doa <- if (abs(a_e) > 1e-10) d_e / a_e else NA_real_
-
-          dom_rows[[length(dom_rows) + 1L]] <- data.frame(
-            block_id      = bn,
-            CHR           = gm("CHR", NA_character_),
-            start_bp      = gm("start_bp", NA_integer_),
-            end_bp        = gm("end_bp", NA_integer_),
-            trait         = tr,
-            allele_A      = A,
-            allele_B      = B,
-            mean_AA       = round(mAA, 6),
-            mean_AB       = round(mAB, 6),
-            mean_BB       = round(mBB, 6),
-            a             = round(a_e, 6),
-            d             = round(d_e, 6),
-            d_over_a      = if (!is.na(doa)) round(doa, 4) else NA_real_,
-            overdominance = !is.na(doa) && abs(doa) > 1,
-            stringsAsFactors = FALSE
-          )
+          mAA <- gm2(paste(sort(c(A,A)),collapse="/"))
+          mAB <- gm2(paste(sort(c(A,B)),collapse="/"))
+          mBB <- gm2(paste(sort(c(B,B)),collapse="/"))
+          if (any(is.na(c(mAA,mAB,mBB)))) next
+          a_e  <- (mBB-mAA)/2
+          d_e  <- mAB-(mAA+mBB)/2
+          doa  <- if (abs(a_e)>1e-10) d_e/a_e else NA_real_
+          dom_rows[[length(dom_rows)+1L]] <- data.frame(
+            block_id=bn, CHR=gm("CHR",NA_character_),
+            start_bp=gm("start_bp",NA_integer_), end_bp=gm("end_bp",NA_integer_),
+            trait=tr, allele_A=A, allele_B=B,
+            mean_AA=round(mAA,6), mean_AB=round(mAB,6), mean_BB=round(mBB,6),
+            a=round(a_e,6), d=round(d_e,6),
+            d_over_a=if(!is.na(doa)) round(doa,4) else NA_real_,
+            overdominance=!is.na(doa) & abs(doa)>1,
+            stringsAsFactors=FALSE)
         }
       }
 
-      # -- Per-block omnibus diplotype test -----------------------------------
-      df_dip <- data.frame(
-        y_r = y_resid[dip_ind_sub$id],
-        dip = factor(dip_ind_sub$diplotype),
-        stringsAsFactors = FALSE
-      )
-
-      df_dip <- df_dip[!is.na(df_dip$y_r), , drop = FALSE]
-      df_dip$dip <- droplevels(df_dip$dip)
-
-      if (nrow(df_dip) < min_n_diplotype + 1L) next
-      if (nlevels(df_dip$dip) < 2L) next
-
-      fit_dip <- tryCatch(
-        stats::lm(y_r ~ dip, data = df_dip),
-        error = function(e) NULL
-      )
-
+      df_dip  <- data.frame(
+        y_r=y_resid[dip_ind_sub$id], dip=factor(dip_ind_sub$diplotype))
+      df_dip  <- df_dip[!is.na(df_dip$y_r),]
+      if (nrow(df_dip) < min_n_diplotype+1L) next
+      fit_dip <- tryCatch(stats::lm(y_r~dip,data=df_dip), error=function(e) NULL)
       if (is.null(fit_dip)) next
-
       an <- stats::anova(fit_dip)
-
-      if (!"dip" %in% rownames(an)) next
-
-      omnibus_rows[[length(omnibus_rows) + 1L]] <- data.frame(
-        block_id     = bn,
-        trait        = tr,
-        n_diplotypes = nlevels(df_dip$dip),
-        F_stat       = round(an["dip", "F value"], 4),
-        df1          = an["dip", "Df"],
-        df2          = an["Residuals", "Df"],
-        p_omnibus    = an["dip", "Pr(>F)"],
-        stringsAsFactors = FALSE
-      )
+      omnibus_rows[[length(omnibus_rows)+1L]] <- data.frame(
+        block_id=bn, trait=tr, n_diplotypes=length(keep_dip),
+        F_stat=round(an["dip","F value"],4),
+        df1=an["dip","Df"], df2=an["Residuals","Df"],
+        p_omnibus=an["dip","Pr(>F)"], stringsAsFactors=FALSE)
     }
   }
 
-  # -- Assemble output --------------------------------------------------------
-  means_df <- if (length(means_rows)) {
-    do.call(rbind, means_rows)
-  } else {
-    data.frame()
-  }
-
-  dom_df <- if (length(dom_rows)) {
-    do.call(rbind, dom_rows)
-  } else {
-    data.frame()
-  }
-
+  means_df   <- if (length(means_rows))   do.call(rbind,means_rows)   else data.frame()
+  dom_df     <- if (length(dom_rows))     do.call(rbind,dom_rows)     else data.frame()
   omnibus_df <- if (length(omnibus_rows)) {
-    df <- do.call(rbind, omnibus_rows)
+    df <- do.call(rbind,omnibus_rows)
+    df$p_omnibus_adj <- pmin(df$p_omnibus*nrow(df),1)
+    df$significant   <- df$p_omnibus_adj < 0.05
+    df[order(df$p_omnibus),]
+  } else data.frame()
 
-    df$p_omnibus_adj <- NA_real_
-    for (tr in unique(df$trait)) {
-      idx <- which(df$trait == tr)
-      df$p_omnibus_adj[idx] <- pmin(df$p_omnibus[idx] * length(idx), 1)
-    }
-
-    df$significant <- df$p_omnibus_adj < 0.05
-    df[order(df$p_omnibus), , drop = FALSE]
-  } else {
-    data.frame()
-  }
-
-  .log(
-    "Done. Diplotype means: ", nrow(means_df),
-    " | Allele pairs: ", nrow(dom_df),
-    " | Blocks: ", nrow(omnibus_df)
-  )
-
-  structure(
-    list(
-      diplotype_means = means_df,
-      dominance_table = dom_df,
-      omnibus_tests   = omnibus_df
-    ),
-    class = c("LDxBlocks_diplotype", "list")
-  )
+  .log("Done. Diplotype means:",nrow(means_df),"| Allele pairs:",nrow(dom_df),
+       "| Blocks:",nrow(omnibus_df))
+  structure(list(diplotype_means=means_df,dominance_table=dom_df,
+                 omnibus_tests=omnibus_df),
+            class=c("LDxBlocks_diplotype","list"))
 }
-
-# ==============================================================================
-# S3 print method for LDxBlocks_diplotype
-# ==============================================================================
 
 #' @method print LDxBlocks_diplotype
 #' @export
 print.LDxBlocks_diplotype <- function(x, ...) {
-
   cat("\nLDxBlocks Diplotype Effect Results\n")
   cat("==================================\n")
-
   n_means  <- nrow(x$diplotype_means)
   n_dom    <- nrow(x$dominance_table)
   n_blocks <- nrow(x$omnibus_tests)
-
   cat("Diplotype means :", n_means, "\n")
   cat("Dominance tests :", n_dom, "\n")
   cat("Blocks tested   :", n_blocks, "\n")
-
   if (n_dom > 0) {
     n_over <- sum(x$dominance_table$overdominance, na.rm = TRUE)
     cat("Overdominance   :", n_over, "\n")
   }
-
   if (n_blocks > 0 && "significant" %in% names(x$omnibus_tests)) {
     n_sig <- sum(x$omnibus_tests$significant, na.rm = TRUE)
     cat("Significant blocks :", n_sig, "\n")
   }
-
   cat("\nUse:\n")
   cat("  res$diplotype_means\n")
   cat("  res$dominance_table\n")
   cat("  res$omnibus_tests\n\n")
-
   invisible(x)
 }
+
 
 # ==============================================================================
 # compare_block_effects
@@ -2306,13 +2209,12 @@ compare_block_effects <- function(
   )
 }
 
-#' @method print LDxBlocks_effect_concordance
+
 #' @export
 print.LDxBlocks_effect_concordance <- function(x, ...) {
   cat("LDxBlocks Cross-Population Effect Concordance\n")
   cat("  Populations: ", x$pop1_name, " vs ", x$pop2_name, "\n", sep = "")
   cat("  Traits:      ", paste(x$traits, collapse = ", "), "\n")
-
   if (nrow(x$concordance) > 0) {
     cat("  Blocks compared:          ", nrow(x$concordance), "\n")
     cat("  With enough shared alleles:", sum(x$concordance$enough_shared, na.rm = TRUE), "\n")
@@ -2327,10 +2229,8 @@ print.LDxBlocks_effect_concordance <- function(x, ...) {
       cat("  Median I2 (heterogeneity): ",
           round(median(x$concordance$I2, na.rm = TRUE), 1), "%\n")
   }
-
   if (nrow(x$shared_alleles) > 0)
     cat("  Shared allele comparisons: ", nrow(x$shared_alleles), "\n")
-
   invisible(x)
 }
 

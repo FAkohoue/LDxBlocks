@@ -136,7 +136,7 @@ Functions and datasets beginning with R.
 - [`read_geno_bigmemory()`](https://FAkohoue.github.io/LDxBlocks/reference/read_geno_bigmemory.md)
   : Open a bigmemory-backed Genotype Store
 - [`read_phased_vcf()`](https://FAkohoue.github.io/LDxBlocks/reference/read_phased_vcf.md)
-  : Read a Pre-Phased VCF
+  : Read Pre-Phased VCF
 - [`run_Big_LD_all_chr()`](https://FAkohoue.github.io/LDxBlocks/reference/run_Big_LD_all_chr.md)
   : Genome-Wide LD Block Detection by Chromosome
 - [`run_haplotype_prediction()`](https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_prediction.md)

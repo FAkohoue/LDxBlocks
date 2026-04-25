@@ -65,3 +65,4 @@ clean_all_r_files <- function(root = ".", backup = TRUE) {
 }
 
 clean_all_r_files(root = root, backup = backup)
+

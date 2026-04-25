@@ -80,7 +80,9 @@ list.files("pkgdown/favicon")
 # 1. Remove the installed package so no old DLL can be loaded by mistake.
 remove.packages("LDxBlocks")
 
+
 unlink(file.path(.libPaths()[1], "00LOCK-LDxBlocks"), recursive = TRUE)
+
 
 # 2. Delete the compiled DLL from the source tree (src/*.so / src/*.dll).
 #    Do this BEFORE the restart so there is nothing to unload conflicts with.

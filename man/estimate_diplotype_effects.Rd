@@ -17,194 +17,163 @@ estimate_diplotype_effects(
 )
 }
 \arguments{
-\item{haplotypes}{Named list from \code{\link{extract_haplotypes}}.
-Must include a \code{block_info} attribute with:
-\code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
-and \code{phased}.}
+\item{haplotypes}{Named list produced by \code{\link{extract_haplotypes}}.
+Phase-ambiguous diplotypes (unphased heterozygotes) are excluded from
+the dominance analysis but included in the omnibus F-test if their
+diplotype string is unambiguous. For accurate dominance decomposition,
+phased input (from \code{read_phased_vcf}, \code{phase_with_beagle}, or
+via \code{\link{phase_with_beagle}}) is strongly recommended.}
 
-\item{blues}{Phenotypic values (BLUEs or adjusted means).
-Supported formats:
-\itemize{
-  \item Named numeric vector
-  \item Data frame (single or multi-trait)
-  \item Named list of numeric vectors
-}
-Individual IDs must match haplotype IDs.}
+\item{blues}{Pre-adjusted phenotype means. Accepts the same four formats
+as \code{\link{test_block_haplotypes}}: named numeric vector,
+single-trait data frame, multi-trait data frame, or named list. All
+formats require individual IDs matching the names of haplotype strings.}
 
-\item{blocks}{LD block table from
-\code{\link{run_Big_LD_all_chr}} (used for metadata).}
+\item{blocks}{LD block table from \code{\link{run_Big_LD_all_chr}}.
+Used only to supply block coordinate metadata (\code{CHR},
+\code{start_bp}, \code{end_bp}) to the output tables.}
 
-\item{min_freq}{Numeric in [0, 1].
-Minimum haplotype allele frequency for inclusion in dominance
-decomposition. Default \code{0.05}.}
+\item{min_freq}{Numeric in (0, 1). Minimum allele frequency. Alleles
+below this threshold in the full panel are excluded from the dominance
+decomposition (\code{dominance_table}) but their diplotypes still
+contribute to \code{diplotype_means} and \code{omnibus_tests} if
+sufficient individuals carry them. Default \code{0.05}.}
 
-\item{min_n_diplotype}{Integer >= 2.
-Minimum number of individuals per diplotype class.
-Default \code{3L}.}
+\item{min_n_diplotype}{Integer. Minimum number of individuals that must
+carry a given diplotype class for it to be included in \code{diplotype_means}
+and the dominance decomposition. Diplotype classes with fewer individuals
+are silently excluded. The omnibus F-test uses only the retained classes.
+Default \code{3L}. Increasing to 5-10 improves mean estimate stability
+for small panels; decreasing below 3 is not recommended.}
 
-\item{id_col}{Character. ID column name for data frame input.
-Default \code{"id"}.}
+\item{id_col}{Character. Name of the individual-ID column when \code{blues}
+is a data frame. Default \code{"id"}.}
 
-\item{blue_col}{Character. Single-trait column name.
-Default \code{"blue"}.}
+\item{blue_col}{Character. Name of the phenotype column for single-trait
+data frames. Default \code{"blue"}.}
 
-\item{blue_cols}{Character vector for multi-trait input.
-Default \code{NULL}.}
+\item{blue_cols}{Character vector. Phenotype column names for multi-trait
+data frames. Default \code{NULL}.}
 
-\item{verbose}{Logical. Print progress messages. Default \code{TRUE}.}
+\item{verbose}{Logical. \code{TRUE} (default) prints progress per trait.}
 }
 \value{
-Object of class \code{LDxBlocks_diplotype} containing:
+A named list of class \code{c("LDxBlocks_diplotype", "list")}
+  with three elements:
 
 \describe{
-  \item{diplotype_means}{
-    One row per diplotype class per block per trait.
-
-    Columns:
+  \item{\code{diplotype_means}}{Data frame. One row per diplotype class per
+    LD block per trait, for diplotype classes with \code{>= min_n_diplotype}
+    individuals. Contains 9 columns:
     \itemize{
-      \item block_id, CHR, start_bp, end_bp
-      \item trait
-      \item diplotype
-      \item n (class size)
-      \item n_total
-      \item mean_blue
-      \item se_mean
-    }
-  }
+      \item \code{block_id} (character) - Block identifier.
+      \item \code{CHR} (character) - Chromosome.
+      \item \code{start_bp}, \code{end_bp} (integer) - Block coordinates.
+      \item \code{trait} (character) - Trait name.
+      \item \code{diplotype} (character) - Canonical diplotype string: two
+        haplotype allele strings sorted alphabetically and joined by
+        \code{"/"}, e.g. \code{"010/110"}. Homozygotes have identical
+        halves: \code{"010/010"}. This format ensures that \code{"010/110"}
+        and \code{"110/010"} are always represented identically.
+      \item \code{n_class} (integer) - Number of individuals carrying
+        this specific diplotype combination.
+      \item \code{n_total} (integer) - Total individuals with non-missing
+        data in this block (sum of n_class across all diplotype classes).
+      \item \code{mean_blue} (numeric) - Mean de-regressed phenotype value
+        for this diplotype class (on the residual scale after GRM correction).
+      \item \code{se_mean} (numeric) - Standard error of the mean
+        (\code{sd / sqrt(n_class)}).
+    }}
 
-  \item{dominance_table}{
-    One row per allele pair per block per trait.
-
-    Columns:
+  \item{\code{dominance_table}}{Data frame. One row per ordered allele pair
+    (A, B) per block per trait, for pairs where all three diplotype classes
+    (AA, AB, BB) each have \code{>= min_n_diplotype} individuals.
+    Contains 14 columns:
     \itemize{
-      \item allele_A, allele_B
-      \item mean_AA, mean_AB, mean_BB
-      \item a, d
-      \item d_over_a
-      \item overdominance (logical)
-    }
-  }
+      \item \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
+        \code{trait} - as above.
+      \item \code{allele_A}, \code{allele_B} (character) - The two alleles
+        being compared (alphabetically ordered: A comes before B).
+      \item \code{mean_AA}, \code{mean_AB}, \code{mean_BB} (numeric) -
+        Diplotype class means on the de-regressed phenotype scale.
+      \item \code{a} (numeric) - Additive effect:
+        \eqn{(\bar{y}_{BB} - \bar{y}_{AA}) / 2}. Positive means allele B
+        increases trait value relative to A.
+      \item \code{d} (numeric) - Dominance deviation:
+        \eqn{\bar{y}_{AB} - (\bar{y}_{AA} + \bar{y}_{BB}) / 2}.
+        Positive: heterozygote advantage (overdominance when \eqn{|d| > |a|}).
+        Negative: heterozygote disadvantage (underdominance).
+      \item \code{d_over_a} (numeric or \code{NA}) - Dominance ratio
+        \eqn{d/a}. Interpretation: 0 = purely additive gene action;
+        \eqn{\pm 0.5} = partial dominance; \eqn{\pm 1} = complete dominance
+        (heterozygote equal to one homozygote); \eqn{|d/a| > 1} = overdominance
+        (heterozygote exceeds both homozygotes - evidence for heterosis at
+        this locus). \code{NA} when \eqn{|a| < 10^{-10}} (no additive
+        variation between homozygotes).
+      \item \code{overdominance} (logical) - \code{TRUE} when
+        \eqn{|d/a| > 1} and \code{d_over_a} is not \code{NA}.
+    }}
 
-  \item{omnibus_tests}{
-    Per-block ANOVA results:
-
+  \item{\code{omnibus_tests}}{Data frame. One row per LD block per trait,
+    for blocks where at least \code{min_n_diplotype} individuals carry at
+    least 2 distinct diplotype classes. Contains 9 columns:
     \itemize{
-      \item F_stat, df1, df2
-      \item p_omnibus
-      \item p_omnibus_adj (Bonferroni per trait)
-      \item significant
+      \item \code{block_id}, \code{trait} - as above.
+      \item \code{n_diplotypes} (integer) - Number of diplotype classes
+        with \code{>= min_n_diplotype} individuals, used as factor levels.
+      \item \code{F_stat} (numeric) - F-statistic from one-way ANOVA
+        (diplotype factor) on de-regressed phenotype residuals.
+      \item \code{df1} (integer) - Numerator df = \code{n_diplotypes - 1}.
+      \item \code{df2} (integer) - Denominator df = \code{n_obs - n_diplotypes}.
+      \item \code{p_omnibus} (numeric, (0,1]) - Raw p-value.
+      \item \code{p_omnibus_adj} (numeric, (0,1]) - Bonferroni-adjusted
+        across all tested blocks per trait.
+      \item \code{significant} (logical) - \code{TRUE} when
+        \code{p_omnibus_adj < 0.05}.
     }
-  }
+    Sorted ascending by \code{p_omnibus}.}
 }
 }
 \description{
-Fits per-block diplotype models to quantify additive and dominance
-genetic effects at LD blocks using haplotype-derived diplotypes.
+Fits a per-block diplotype model to decompose phenotypic variation into
+additive and dominance components at each LD block, after correcting for
+population structure and kinship via the haplotype GRM. This function
+provides direct evidence for non-additive gene action: dominance,
+overdominance, and heterosis.
 
-This function integrates haplotype structure with mixed-model
-correction for relatedness to provide biologically interpretable
-measures of gene action, including dominance and overdominance.
-
-\strong{Statistical framework:}
-
-The analysis proceeds in three stages:
-
-\enumerate{
-  \item A haplotype feature matrix is constructed using
-    \code{\link{build_haplotype_feature_matrix}}.
-
-  \item A haplotype genomic relationship matrix (GRM) is computed
-    via \code{\link{compute_haplotype_grm}}, capturing genome-wide
-    similarity based on haplotype composition.
-
-  \item For each trait:
-    \itemize{
-      \item A null mixed model is fitted:
-        \deqn{y = \mu + u + e}
-        where \eqn{u \sim N(0, G\sigma^2_u)} using
-        \code{rrBLUP::mixed.solve()}.
-
-      \item Residuals (de-regressed phenotypes) are computed:
-        \eqn{y^* = y - \hat{\mu} - \hat{u}}
-
-      \item Diplotype effects are estimated from these residuals.
-    }
-}
-
-\strong{Diplotype representation:}
-
-Diplotypes are canonical strings of two haplotypes sorted
-alphabetically and joined by \code{"/"}:
-
+\strong{Method:} For each LD block, unique diplotypes (canonical
+haplotype-pair strings inferred by \code{\link{infer_block_haplotypes}},
+e.g. \code{"010/110"}) are treated as levels of a fixed factor. A mixed
+model with the haplotype GRM as a kinship random effect is fitted via
+\code{rrBLUP::mixed.solve()} to obtain de-regressed phenotype residuals.
+Diplotype class means are computed on these residuals. For each pair of
+common alleles (A, B), classical quantitative genetics parameters are
+derived from the three diplotype class means:
 \itemize{
-  \item Homozygote: \code{"010/010"}
-  \item Heterozygote: \code{"010/110"}
-}
-
-This ensures phase invariance (\code{"010/110"} == \code{"110/010"}).
-
-\strong{Genetic effects:}
-
-For each allele pair \eqn{A, B}, the following quantities are estimated:
-
-\itemize{
-  \item Additive effect:
-    \deqn{a = (\bar{y}_{BB} - \bar{y}_{AA}) / 2}
-
-  \item Dominance deviation:
-    \deqn{d = \bar{y}_{AB} - (\bar{y}_{AA} + \bar{y}_{BB}) / 2}
-
-  \item Dominance ratio:
-    \deqn{d/a}
-}
-
-Interpretation:
-
-\itemize{
-  \item \eqn{d/a = 0} -> additive
-  \item \eqn{|d/a| < 1} -> partial dominance
-  \item \eqn{|d/a| = 1} -> complete dominance
-  \item \eqn{|d/a| > 1} -> overdominance (heterosis)
-}
-
-\strong{Important:}
-
-\itemize{
-  \item Phased haplotypes are strongly recommended.
-  \item Unphased heterozygotes are resolved arbitrarily
-    (\code{resolve_unphased = TRUE}), which does not bias
-    mean-based dominance estimates.
-  \item GRM scaling is automatically adjusted based on whether
-    haplotypes are phased.
+  \item Additive effect: \eqn{a = (\bar{y}_{BB} - \bar{y}_{AA}) / 2}
+  \item Dominance deviation: \eqn{d = \bar{y}_{AB} -
+    (\bar{y}_{AA} + \bar{y}_{BB}) / 2}
+  \item Dominance ratio: \eqn{d/a} - the key quantity for interpreting
+    gene action (see \code{d_over_a} column description).
 }
 }
 \examples{
 \donttest{
-if (requireNamespace("LDxBlocks", quietly = TRUE)) {
-  data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
-
-haps <- extract_haplotypes(
-  geno     = ldx_geno,
-  snp_info = ldx_snp_info,
-  blocks   = ldx_blocks,
-  min_snps = 5L
-)
-
-res <- estimate_diplotype_effects(
+data(ldx_geno, ldx_snp_info, ldx_blocks, ldx_blues, package = "LDxBlocks")
+haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 5)
+dip_res <- estimate_diplotype_effects(
   haplotypes = haps,
   blues      = setNames(ldx_blues$YLD, ldx_blues$id),
   blocks     = ldx_blocks,
   verbose    = FALSE
 )
-
-subset(res$dominance_table, overdominance)
-subset(res$omnibus_tests, significant)
+# Overdominant blocks
+dip_res$dominance_table[dip_res$dominance_table$overdominance, ]
+# Significant diplotype effects
+dip_res$omnibus_tests[dip_res$omnibus_tests$significant, ]
 }
-}
-
 }
 \seealso{
-\code{\link{compute_haplotype_grm}},
-  \code{\link{infer_block_haplotypes}},
+\code{\link{infer_block_haplotypes}},
   \code{\link{test_block_haplotypes}}
 }
