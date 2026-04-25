@@ -69,6 +69,7 @@ jobs:
         run: |
           if (!requireNamespace("BiocManager", quietly = TRUE))
             install.packages("BiocManager", repos = "https://cloud.r-project.org")
+          BiocManager::install(ask = FALSE, update = FALSE)
           bioc_pkgs <- c("SNPRelate", "gdsfmt", "vsn")
           to_install <- bioc_pkgs[!vapply(
             bioc_pkgs,
@@ -79,6 +80,14 @@ jobs:
           if (length(to_install))
             BiocManager::install(to_install, ask = FALSE, update = FALSE)
 
+      - name: Cache R packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-r-${{ matrix.config.r }}-${{ hashFiles('DESCRIPTION') }}
+          restore-keys: |
+            ${{ runner.os }}-r-${{ matrix.config.r }}-
+
       - name: Install R dependencies
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -86,12 +95,14 @@ jobs:
             any::rcmdcheck
             any::covr
           needs: check
-          cache: false
 
       - name: Reinstall data.table from source on Linux
         if: runner.os == 'Linux'
         shell: Rscript {0}
         run: |
+          if (requireNamespace("data.table", quietly = TRUE)) {
+            try(remove.packages("data.table"), silent = TRUE)
+          }
           install.packages("data.table", repos = "https://cloud.r-project.org", type = "source")
           library(data.table)
           packageVersion("data.table")
@@ -108,4 +119,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-r${{ matrix.config.r }}-results
-          path: check
+          path: ${{ runner.os }}.Rcheck
