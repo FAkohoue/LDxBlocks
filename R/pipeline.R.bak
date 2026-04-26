@@ -348,7 +348,7 @@
       .bin  <- file.path(bigmemory_path, paste0(basename(stems[[stem_nm]]), ".bin"))
       .desc <- file.path(bigmemory_path, paste0(basename(stems[[stem_nm]]), ".desc"))
       # Cleanup is handled by cleanup_stem() above; if files still exist here
-      # something went wrong - fail fast rather than silently overwriting.
+      # something went wrong — fail fast rather than silently overwriting.
       if (file.exists(.bin) || file.exists(.desc))
         stop("Stale bigmemory backend still exists after cleanup: ",
              basename(.bin), call. = FALSE)
@@ -397,7 +397,7 @@
 #'   \item{\code{phase = FALSE} (default)}{
 #'     Dosage-pattern haplotypes extracted directly from the imputed matrix.
 #'     No external tools required. Fast. Suitable for genomic prediction.
-#'     Each block entry is a multi-SNP dosage string - not a true gametic
+#'     Each block entry is a multi-SNP dosage string — not a true gametic
 #'     haplotype. Frequencies are individual-level pattern proportions.}
 #'   \item{\code{phase = TRUE}}{
 #'     Beagle 5.x called on the original input VCF after LD block detection,
@@ -529,7 +529,7 @@ run_ldx_pipeline <- function(
     out_hap_matrix,
     hap_format     = c("numeric", "character"),
 
-    # -- Phasing --------------------------------------------------------------
+    # ── Phasing ──────────────────────────────────────────────────────────────
     phase              = FALSE,
     beagle_jar         = NULL,
     beagle_threads     = 1L,
@@ -545,12 +545,12 @@ run_ldx_pipeline <- function(
     beagle_window      = NULL,
     beagle_overlap     = NULL,
 
-    # -- Filtering & imputation -----------------------------------------------
+    # ── Filtering & imputation ───────────────────────────────────────────────
     maf_cut        = 0.05,
     impute         = c("mean_rounded", "mode", "none"),
     min_callrate   = 0.0,
 
-    # -- LD block detection ---------------------------------------------------
+    # ── LD block detection ───────────────────────────────────────────────────
     CLQcut             = 0.5,
     method             = c("r2", "rV2"),
     kin_method         = "chol",
@@ -567,13 +567,13 @@ run_ldx_pipeline <- function(
     min_snps_chr       = 10L,
     max_bp_distance    = 0L,
 
-    # -- Haplotype extraction -------------------------------------------------
+    # ── Haplotype extraction ─────────────────────────────────────────────────
     min_snps_block   = 3L,
     top_n            = NULL,
     min_freq         = 0.01,
     scale_hap_matrix = FALSE,
 
-    # -- General --------------------------------------------------------------
+    # ── General ──────────────────────────────────────────────────────────────
     chr             = NULL,
     clean_malformed = FALSE,
     use_bigmemory   = FALSE,
@@ -626,7 +626,7 @@ run_ldx_pipeline <- function(
     )
   }
 
-  # -- Validate phasing requirements early ------------------------------------
+  # ── Validate phasing requirements early ────────────────────────────────────
   if (isTRUE(phase)) {
     if (inherits(geno_source, "LDxBlocks_backend"))
       stop(
@@ -655,7 +655,7 @@ run_ldx_pipeline <- function(
            call. = FALSE)
   }
 
-  # -- Step 1: Open backend ---------------------------------------------------
+  # ── Step 1: Open backend ───────────────────────────────────────────────────
   if (inherits(geno_source, "LDxBlocks_backend")) {
     be <- geno_source
     .log("Using pre-built backend: ", be$type, " | ",
@@ -724,7 +724,7 @@ run_ldx_pipeline <- function(
     .log("Backend: ", be$type, " | ", be$n_samples, " ind | ", be$n_snps, " SNPs")
   }
 
-  # -- Step 2: Streaming MAF pre-screen ---------------------------------------
+  # ── Step 2: Streaming MAF pre-screen ───────────────────────────────────────
   orig_snp_info     <- be$snp_info
   snp_info_filtered <- .maf_filter_backend(be, maf_cut = maf_cut, verbose = verbose)
 
@@ -734,7 +734,7 @@ run_ldx_pipeline <- function(
   be$snp_info <- snp_info_filtered
   be$n_snps   <- nrow(snp_info_filtered)
 
-  # -- Step 3: Chromosome subset ----------------------------------------------
+  # ── Step 3: Chromosome subset ──────────────────────────────────────────────
   if (!is.null(chr)) {
     chr <- .norm_chr_hap(as.character(chr))
     be$snp_info$CHR <- .norm_chr_hap(be$snp_info$CHR)
@@ -743,7 +743,7 @@ run_ldx_pipeline <- function(
     .log("Chr filter: ", be$n_snps, " SNPs on chr ", paste(chr, collapse = ", "))
   }
 
-  # -- Step 4: Load genotype matrix -------------------------------------------
+  # ── Step 4: Load genotype matrix ───────────────────────────────────────────
   .log("Loading filtered genotype matrix ...")
   full_idx <- match(be$snp_info$SNP, orig_snp_info$SNP)
   geno_mat <- read_chunk(be, full_idx)
@@ -751,7 +751,7 @@ run_ldx_pipeline <- function(
   colnames(geno_mat) <- be$snp_info$SNP
   .log("Genotype matrix: ", nrow(geno_mat), " x ", ncol(geno_mat))
 
-  # -- Step 4.5a: Call-rate filter --------------------------------------------
+  # ── Step 4.5a: Call-rate filter ────────────────────────────────────────────
   if (min_callrate > 0) {
     cr_res <- impute_and_filter_cpp(
       geno         = matrix(as.integer(geno_mat), nrow = nrow(geno_mat)),
@@ -775,7 +775,7 @@ run_ldx_pipeline <- function(
     }
   }
 
-  # -- Step 4.5b: MAF filter (authoritative) ----------------------------------
+  # ── Step 4.5b: MAF filter (authoritative) ──────────────────────────────────
   keep_maf      <- maf_filter_cpp(geno_mat, maf_cut = maf_cut)
   n_maf_removed <- sum(!keep_maf)
 
@@ -794,7 +794,7 @@ run_ldx_pipeline <- function(
   if (ncol(geno_mat) == 0L)
     stop("No SNPs remain after MAF filtering.", call. = FALSE)
 
-  # -- Step 4.5c: Imputation --------------------------------------------------
+  # ── Step 4.5c: Imputation ──────────────────────────────────────────────────
   n_na <- sum(is.na(geno_mat))
 
   if (impute == "none" && n_na > 0L)
@@ -822,7 +822,7 @@ run_ldx_pipeline <- function(
     ))
   }
 
-  # -- Step 4.6: Build cleaned/imputed backend --------------------------------
+  # ── Step 4.6: Build cleaned/imputed backend ────────────────────────────────
   .log("Building imputed backend (", nrow(geno_mat), " x ", ncol(geno_mat), ") ...")
   be_imputed <- .make_imputed_backend(
     geno_mat       = geno_mat,
@@ -838,7 +838,7 @@ run_ldx_pipeline <- function(
   )
   on.exit(close_backend(be_imputed), add = TRUE)
 
-  # -- Step 5: LD block detection ---------------------------------------------
+  # ── Step 5: LD block detection ─────────────────────────────────────────────
   .log("Running genome-wide LD block detection ...")
   blocks <- run_Big_LD_all_chr(
     geno_matrix        = be_imputed,
@@ -869,7 +869,7 @@ run_ldx_pipeline <- function(
   data.table::fwrite(blocks, file = out_blocks, sep = ",", quote = FALSE, na = "NA")
   .log("Block table written: ", out_blocks)
 
-  # -- Step 5b: Optional Beagle phasing ---------------------------------------
+  # ── Step 5b: Optional Beagle phasing ───────────────────────────────────────
   # Phasing occurs AFTER block detection (unphased dosage matrix is correct for
   # LD) and BEFORE haplotype extraction (which needs gametic strings).
   #
@@ -895,7 +895,7 @@ run_ldx_pipeline <- function(
 
     out_prefix <- file.path(
       out_dir,
-      sub("\\.vcf(\\.gz)?$", "_phased", basename(geno_source), ignore.case = TRUE)
+      sub("\.vcf(\.gz)?$", "_phased", basename(geno_source), ignore.case = TRUE)
     )
 
     # Write a filtered VCF from geno_mat (post-MAF/callrate/chr/clean_malformed
@@ -912,7 +912,7 @@ run_ldx_pipeline <- function(
     # by CHR and POS, encoded as 0/0 | 0/1 | 1/1 | ./. GT fields.
     cleaned_vcf_for_beagle <- file.path(
       out_dir,
-      sub("\\.vcf(\\.gz)?$", "_cleaned.vcf.gz",
+      sub("\.vcf(\.gz)?$", "_cleaned.vcf.gz",
           basename(geno_source), ignore.case = TRUE)
     )
     .log("Writing cleaned VCF for Beagle input: ", basename(cleaned_vcf_for_beagle))
@@ -946,7 +946,7 @@ run_ldx_pipeline <- function(
 
     # Read phased VCF, align, and cache hap1/hap2/dosage to bigmemory.
     # On restart with the same bigmemory_path and matching fingerprint,
-    # the VCF is NOT re-read - backends are reattached from disk instantly.
+    # the VCF is NOT re-read — backends are reattached from disk instantly.
     geno_for_hap <- .read_and_cache_phased_vcf(
       phased_vcf         = phased_vcf_path,
       snp_info_filtered  = snp_info_filtered,
@@ -972,7 +972,7 @@ run_ldx_pipeline <- function(
          length(geno_for_hap$sample_ids), " individuals")
   }
 
-  # -- Step 6: Haplotype extraction -------------------------------------------
+  # ── Step 6: Haplotype extraction ───────────────────────────────────────────
   .log("Extracting haplotypes (min_snps = ", min_snps_block, ") ...")
   haplotypes <- extract_haplotypes(
     geno     = geno_for_hap,
@@ -1000,13 +1000,13 @@ run_ldx_pipeline <- function(
   if (n_hap_blocks == 0L)
     stop("No haplotype blocks produced. Check min_snps_block vs block sizes.", call. = FALSE)
 
-  # -- Step 7: Haplotype diversity --------------------------------------------
+  # ── Step 7: Haplotype diversity ────────────────────────────────────────────
   .log("Computing haplotype diversity ...")
   diversity <- compute_haplotype_diversity(haplotypes)
   write_haplotype_diversity(diversity, out_diversity, append_summary = TRUE, verbose = FALSE)
   .log("Diversity table written: ", out_diversity)
 
-  # -- Step 8: Build haplotype feature matrix ---------------------------------
+  # ── Step 8: Build haplotype feature matrix ─────────────────────────────────
   .log("Building haplotype feature matrix (top_n = ", top_n, ", min_freq = ", min_freq, ") ...")
   feat_out <- build_haplotype_feature_matrix(
     haplotypes     = haplotypes,
@@ -1020,7 +1020,7 @@ run_ldx_pipeline <- function(
   n_hap_cols <- ncol(hap_matrix)
   .log("Feature matrix: ", nrow(hap_matrix), " ind x ", n_hap_cols, " haplotype allele columns")
 
-  # -- Step 9: Write haplotype matrix -----------------------------------------
+  # ── Step 9: Write haplotype matrix ─────────────────────────────────────────
   .log("Writing haplotype matrix (format = ", hap_format, ") ...")
 
   if (identical(hap_format, "numeric")) {
@@ -1046,7 +1046,7 @@ run_ldx_pipeline <- function(
 
   .log("Haplotype matrix written: ", out_hap_matrix)
 
-  # -- Done -------------------------------------------------------------------
+  # ── Done ───────────────────────────────────────────────────────────────────
   .validate_hap_output(hap_matrix, hap_info, haplotypes)
 
   .log("Pipeline complete.")
