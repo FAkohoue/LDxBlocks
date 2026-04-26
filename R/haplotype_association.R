@@ -1230,10 +1230,18 @@ test_block_haplotypes <- function(
   dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
   traits <- unique(allele_df$trait)
 
-  # -- Shared chromosome ordering -----------------------------------------------
-  all_chrs  <- unique(allele_df$CHR)
+  # -- Shared chromosome ordering (numeric, not lexicographic) ------------------
+  # unique() on a character CHR column sorted lexicographically returns
+  # ["1","10","11","12","2",...]. Converting to integer and re-ordering gives
+  # the correct ["1","2",...,"12"] sequence for the factor levels.
+  all_chrs  <- unique(as.character(allele_df$CHR))
   chr_num   <- suppressWarnings(as.integer(all_chrs))
-  chr_order <- if (!any(is.na(chr_num))) all_chrs[order(chr_num)] else sort(all_chrs)
+  chr_order <- if (!any(is.na(chr_num))) {
+    all_chrs[order(chr_num)]
+  } else {
+    chr_lead <- suppressWarnings(as.integer(sub("[^0-9].*", "", all_chrs)))
+    if (!any(is.na(chr_lead))) all_chrs[order(chr_lead, all_chrs)] else sort(all_chrs)
+  }
   chrom_colors <- stats::setNames(
     rep(c("#6495ED","#800000","#f0b27a","#008080","#8e44ad"),
         length.out = length(chr_order)),
