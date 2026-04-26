@@ -739,6 +739,19 @@ Key parameters:
 - `n_pcs = k`: top-k GRM eigenvectors as additional fixed effects (Q+K
   model)
 - `n_pcs = NULL`: auto-selected from the GRM scree-plot elbow
+- `optimize_pcs = FALSE`: when `TRUE`, auto-selects n_pcs by fitting
+  null models for k = 0..`optimize_pcs_max` and minimising the criterion
+  set by `optimize_method`. More principled than the elbow heuristic for
+  GWAS.
+- `optimize_pcs_max = 10L`: maximum PCs evaluated when
+  `optimize_pcs = TRUE`
+- `optimize_method = c("bic_lambda", "bic", "lambda")`: criterion for PC
+  selection (only used when `optimize_pcs = TRUE`):
+  - `"bic"` — minimise BIC of the null REML model
+  - `"lambda"` — minimise \|λ_GC − 1\| (genomic control calibration)
+  - `"bic_lambda"` (**default, recommended**) — hybrid: \|λ−1\| +
+    0.01·scaled_BIC. Minimises inflation/deflation while BIC breaks ties
+    toward fewer PCs
 - `sig_metric`: which p-value drives the `significant` flag:
   - `"p_wald"` — raw Wald p-value (use with a pre-corrected threshold)
   - `"p_fdr"` — Benjamini-Hochberg FDR (recommended for discovery)
@@ -752,10 +765,20 @@ Key parameters:
   - `"block"` — one Meff per LD block (omnibus tests get Meff = 1)
 - `meff_percent_cut`: variance threshold for simpleM eigendecomposition
   (default `0.995`)
+- `plot = TRUE`: saves **PDF** plots (not PNG). Three files per run:
+  `manhattan_<trait>.pdf`, `qq_<trait>.pdf`, `pca_grm.pdf` (GRM PCA
+  coloured by phenotype), `grm_scree.pdf` (eigenvalue scree with
+  selected PC in red)
 
 All four p-value columns (`p_wald`, `p_fdr`, `p_simplem`,
 `p_simplem_sidak`) are **always present** in every output regardless of
 `sig_metric`.
+
+[`estimate_diplotype_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/estimate_diplotype_effects.md)
+also now supports the full correction set with a new `sig_metric`
+parameter. All four p-value columns (`p_omnibus_adj`, `p_omnibus_fdr`,
+`p_omnibus_simplem`, `p_omnibus_simplem_sidak`) are always present in
+`$omnibus_tests` regardless of the chosen `sig_metric`.
 
 ``` r
 # FDR-based discovery (EMMAX, default)
@@ -1354,8 +1377,36 @@ All p-value columns are always present regardless of `sig_metric`. The
 | `meff_scope` | Scope used for Meff estimation (`"chromosome"`, `"global"`, or `"block"`) |
 | `meff_percent_cut` | Variance threshold used for simpleM eigendecomposition |
 | `meff` | Named list of Meff summaries per trait: `$allele$global`, `$allele$chromosome`, `$allele$block`, `$block$global`, `$block$chromosome` |
+| `pc_model_selection` | `data.frame` with one row per k tested when `optimize_pcs = TRUE`: `n_pcs`, `BIC`, `lambda_gc`, `score`, `selected`. `NULL` when `optimize_pcs = FALSE` |
+
+**Plots produced when `plot = TRUE`** (all saved as PDF):
+
+| File | Description |
+|----|----|
+| `manhattan_<trait>.pdf` | Manhattan plot — one per trait |
+| `qq_<trait>.pdf` | QQ plot — one per trait |
+| `pca_grm.pdf` | PCA of GRM eigenvectors in PC1 × PC2, coloured by first trait phenotype |
+| `grm_scree.pdf` | Scree plot of GRM eigenvalues (up to PC30); red bar and vertical line at selected k |
 
 ### 15.8. `estimate_diplotype_effects()` — LDxBlocks_diplotype
+
+**`$omnibus_tests`** — one row per LD block per trait (updated columns):
+
+| Column | Type | Description |
+|----|----|----|
+| `block_id`, `trait` | — | Identifiers |
+| `n_diplotypes` | integer | Diplotype classes with ≥ `min_n_diplotype` individuals |
+| `F_stat` | numeric | F-statistic (one-way ANOVA on GRM-corrected residuals) |
+| `df1`, `df2` | integer | Numerator and denominator degrees of freedom |
+| `p_omnibus` | numeric | Raw p-value |
+| `p_omnibus_adj` | numeric | Plain Bonferroni × n_blocks_per_trait (backward-compat) |
+| `p_omnibus_fdr` | numeric | BH-FDR per trait |
+| `p_omnibus_simplem` | numeric | simpleM Bonferroni-style: min(p × Meff, 1) |
+| `p_omnibus_simplem_sidak` | numeric | simpleM Šidák-style: 1 − (1−p)^Meff (**recommended**) |
+| `Meff` | numeric | Effective number of blocks (block-summary PC1 eigenspectrum) |
+| `significant` | logical | TRUE when the p-value chosen by `sig_metric` \< `sig_threshold` |
+
+All five p-value columns are always present regardless of `sig_metric`.
 
 **`$dominance_table`** — one row per allele pair per block per trait:
 

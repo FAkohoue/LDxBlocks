@@ -449,15 +449,61 @@ names(assoc_sm$allele_tests)
 # ... "p_wald" "p_fdr" "p_simplem" "p_simplem_sidak" "Meff" ...
 ```
 
+### Automatic PC model selection (optional, recommended when lambda != 1)
+
+When genomic control lambda is deflated (\< 1, over-correction) or
+inflated (\> 1, under-correction), `optimize_pcs = TRUE` lets the data
+choose n_pcs:
+
+``` r
+assoc_opt <- test_block_haplotypes(
+  haplotypes       = haps,
+  blues            = blues_vec,
+  blocks           = blocks,
+  optimize_pcs     = TRUE,           # triggers automatic PC selection
+  optimize_pcs_max = 10L,            # test k = 0..10
+  optimize_method  = "bic_lambda",   # recommended: |lambda-1| + 0.01*BIC
+  sig_metric       = "p_simplem_sidak",
+  meff_scope       = "chromosome",
+  plot             = TRUE,           # PDF plots: Manhattan, QQ, PCA, scree
+  out_dir          = "my_results",
+  verbose          = TRUE
+)
+
+# Model selection table: one row per k tested
+assoc_opt$pc_model_selection
+#  n_pcs     BIC lambda_gc   score selected
+#      0  1234.1     1.021  0.0210    FALSE
+#      1  1231.5     1.015  0.0150    FALSE
+#      2  1230.8     1.003  0.0033    FALSE
+#      3  1232.1     0.999  0.0011     TRUE
+
+# n_pcs chosen
+assoc_opt$n_pcs_used
+```
+
 ### Diplotype effects (additive + dominance)
+
+[`estimate_diplotype_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/estimate_diplotype_effects.md)
+now supports the full correction set with a `sig_metric` parameter,
+mirroring
+[`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md):
 
 ``` r
 dip <- estimate_diplotype_effects(
   haplotypes       = haps,
   blues            = blues_vec,
   blocks           = blocks,
-  min_n_diplotype  = 3L
+  min_n_diplotype  = 3L,
+  sig_metric       = "p_omnibus_simplem_sidak",  # recommended
+  meff_percent_cut = 0.995,
+  verbose          = FALSE
 )
+
+# All five correction columns always present in $omnibus_tests:
+# p_omnibus_adj | p_omnibus_fdr | p_omnibus_simplem | p_omnibus_simplem_sidak | Meff
+head(dip$omnibus_tests[, c("block_id","trait","p_omnibus","p_omnibus_fdr",
+                            "p_omnibus_simplem_sidak","Meff","significant")], 5)
 
 # Blocks showing overdominance (heterosis candidates)
 dip$dominance_table[dip$dominance_table$overdominance,

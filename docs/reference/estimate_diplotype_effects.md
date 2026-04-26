@@ -37,6 +37,11 @@ estimate_diplotype_effects(
   id_col = "id",
   blue_col = "blue",
   blue_cols = NULL,
+  sig_threshold = 0.05,
+  sig_metric = c("p_omnibus_adj", "p_omnibus_fdr", "p_omnibus_simplem",
+    "p_omnibus_simplem_sidak"),
+  meff_percent_cut = 0.995,
+  meff_max_cols = 1000L,
   verbose = TRUE
 )
 ```
@@ -100,6 +105,46 @@ estimate_diplotype_effects(
 
   Character vector. Phenotype column names for multi-trait data frames.
   Default `NULL`.
+
+- sig_threshold:
+
+  Numeric in (0, 1\]. Significance cutoff applied to the p-value chosen
+  by `sig_metric`. Default `0.05`.
+
+- sig_metric:
+
+  Character. Which p-value drives the `significant` flag in
+  `$omnibus_tests`. One of:
+
+  - `"p_omnibus_adj"` (default) - plain Bonferroni: \\\min(p \times
+    n\_{blocks},\\1)\\, computed per trait. Retained for backward
+    compatibility.
+
+  - `"p_omnibus_fdr"` - Benjamini-Hochberg FDR per trait.
+
+  - `"p_omnibus_simplem"` - simpleM Bonferroni-style: \\\min(p \times
+    M\_{\mathrm{eff}},\\1)\\, where \\M\_{\mathrm{eff}}\\ is estimated
+    from the eigenspectrum of the block-summary PC1 matrix.
+
+  - `"p_omnibus_simplem_sidak"` - simpleM Sidak-style:
+    \\1-(1-p)^{M\_{\mathrm{eff}}}\\. Recommended: consistent with
+    [`test_block_haplotypes`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md).
+
+  All four p-value columns are always present in `$omnibus_tests`
+  regardless of this choice.
+
+- meff_percent_cut:
+
+  Numeric in (0, 1). Proportion of variance explained by the retained
+  PCs in the simpleM eigendecomposition used to estimate
+  \\M\_{\mathrm{eff}}\\ for `sig_metric = "p_omnibus_simplem"` or
+  `"p_omnibus_simplem_sidak"`. Default `0.995` (99.5%), following the
+  original simpleM recommendation (Gao et al. 2008).
+
+- meff_max_cols:
+
+  Integer. Maximum columns per eigendecomposition chunk when estimating
+  \\M\_{\mathrm{eff}}\\. Default `1000L`.
 
 - verbose:
 
@@ -232,8 +277,10 @@ dip_res$dominance_table[dip_res$dominance_table$overdominance, ]
 #> 2   1.9444          TRUE
 # Significant diplotype effects
 dip_res$omnibus_tests[dip_res$omnibus_tests$significant, ]
-#> [1] block_id      trait         n_diplotypes  F_stat        df1          
-#> [6] df2           p_omnibus     p_omnibus_adj significant  
+#>  [1] block_id                trait                   n_diplotypes           
+#>  [4] F_stat                  df1                     df2                    
+#>  [7] p_omnibus               p_omnibus_adj           p_omnibus_fdr          
+#> [10] p_omnibus_simplem       p_omnibus_simplem_sidak significant            
 #> <0 rows> (or 0-length row.names)
 # }
 ```

@@ -204,6 +204,9 @@ family-wise error control.</p>
 <span>  meff_scope <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"chromosome"</span>, <span class="st">"global"</span>, <span class="st">"block"</span><span class="op">)</span>,</span>
 <span>  meff_percent_cut <span class="op">=</span> <span class="fl">0.995</span>,</span>
 <span>  meff_max_cols <span class="op">=</span> <span class="fl">1000L</span>,</span>
+<span>  optimize_pcs <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  optimize_pcs_max <span class="op">=</span> <span class="fl">10L</span>,</span>
+<span>  optimize_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bic_lambda"</span>, <span class="st">"bic"</span>, <span class="st">"lambda"</span><span class="op">)</span>,</span>
 <span>  plot <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  out_dir <span class="op">=</span> <span class="st">"."</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -236,7 +239,8 @@ Used for block metadata annotation in the output only.</p></dd>
 <dd><p>Integer (<code>&gt;= 0</code>) or <code>NULL</code>. Number of haplotype-GRM
 eigenvectors to include as fixed-effect population structure covariates.
 <code>0L</code> (default): pure GRM / EMMAX. <code>1-10</code>: Q+K model.
-<code>NULL</code>: auto-selected from the GRM scree-plot elbow, capped at 10.</p></dd>
+<code>NULL</code>: auto-selected from the GRM scree-plot elbow, capped at 10.
+Ignored when <code>optimize_pcs = TRUE</code>.</p></dd>
 
 
 <dt id="arg-top-n">top_n<a class="anchor" aria-label="anchor" href="#arg-top-n"></a></dt>
@@ -309,6 +313,35 @@ by the retained PCs in the simpleM eigendecomposition. Default <code>0.995</code
 <dd><p>Integer. Maximum columns per eigendecomposition block
 when computing \(M_{\mathrm{eff}}\). Larger groups are chunked and
 summed. Default <code>1000L</code>.</p></dd>
+
+
+<dt id="arg-optimize-pcs">optimize_pcs<a class="anchor" aria-label="anchor" href="#arg-optimize-pcs"></a></dt>
+<dd><p>Logical. When <code>TRUE</code>, automatically selects
+<code>n_pcs</code> by fitting REML null models for
+<code>k = 0, 1, ..., optimize_pcs_max</code> and choosing the value that
+minimises the criterion set by <code>optimize_method</code>. Selection uses
+only the first trait (the haplotype GRM is shared across all traits).
+Default <code>FALSE</code>: <code>n_pcs</code> is used directly.</p></dd>
+
+
+<dt id="arg-optimize-pcs-max">optimize_pcs_max<a class="anchor" aria-label="anchor" href="#arg-optimize-pcs-max"></a></dt>
+<dd><p>Integer. Upper bound on the number of PCs evaluated
+when <code>optimize_pcs = TRUE</code>. Default <code>10L</code>.</p></dd>
+
+
+<dt id="arg-optimize-method">optimize_method<a class="anchor" aria-label="anchor" href="#arg-optimize-method"></a></dt>
+<dd><p>Character. Criterion for PC model selection when
+<code>optimize_pcs = TRUE</code>. One of:</p><ul><li><p><code>"bic_lambda"</code> (<strong>default, recommended</strong>) - hybrid score:
+    \(|\lambda_{GC} - 1| + 0.01 \times \tilde{BIC}\), where
+    \(\tilde{BIC}\) is the BIC scaled to \([0,1]\) across all
+    k values. Minimises genomic inflation while BIC breaks ties toward
+    fewer PCs.</p></li>
+<li><p><code>"bic"</code> - minimise the REML BIC of the null model:
+    \(-2 \cdot \log L + k_{params} \cdot \log n\).</p></li>
+<li><p><code>"lambda"</code> - minimise \(|\lambda_{GC} - 1|\) alone, where
+    \(\lambda_{GC}\) is estimated from a fast 500-allele scan on
+    GRM-corrected residuals.</p></li>
+</ul><p>Ignored when <code>optimize_pcs = FALSE</code>.</p></dd>
 
 
 <dt id="arg-plot">plot<a class="anchor" aria-label="anchor" href="#arg-plot"></a></dt>

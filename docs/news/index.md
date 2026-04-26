@@ -2,6 +2,99 @@
 
 ## LDxBlocks 0.3.1.9000 (development)
 
+### Enhancement: PC model selection and expanded plot outputs in test_block_haplotypes()
+
+[`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md)
+now supports automatic selection of the number of population structure
+covariates (n_pcs) via a new BIC/lambda/hybrid optimisation framework,
+and produces three new diagnostic plots in PDF format.
+
+**New parameters:**
+
+- `optimize_pcs = FALSE` — when `TRUE`, fits REML null models for
+  `n_pcs = 0..optimize_pcs_max` and selects the value minimising the
+  score criterion chosen by `optimize_method`. Uses only the first trait
+  (GRM is shared across traits). When `FALSE` (default), `n_pcs` is used
+  directly.
+- `optimize_pcs_max = 10L` — upper bound on the number of PCs evaluated
+  during optimisation.
+- `optimize_method = c("bic_lambda", "bic", "lambda")` — criterion for
+  PC model selection (only used when `optimize_pcs = TRUE`):
+  - `"bic"` — minimise BIC of the null REML model:
+    `−2·logLik + k·log(n)`, where k = intercept + n_pcs + σ²_g + σ²_e.
+  - `"lambda"` — minimise \|λ_GC − 1\|, where λ is estimated from a fast
+    500-allele scan on GRM-corrected residuals. Most directly targets
+    genomic control calibration.
+  - `"bic_lambda"` (**default**, recommended for GWAS) — hybrid score:
+    \|λ − 1\| + 0.01 × scaled_BIC. Minimises inflation/deflation while
+    BIC breaks ties toward the simpler (fewer PCs) model.
+
+**New return element:**
+
+- `$pc_model_selection` — `data.frame` with one row per k tested:
+  `n_pcs`, `BIC`, `lambda_gc`, `score`, `selected`. Printed by
+  [`print()`](https://rdrr.io/r/base/print.html) and visible in the run
+  log. `NULL` when `optimize_pcs = FALSE`.
+
+**Plot changes (breaking):**
+
+All plots now saved as **PDF** instead of PNG. Three plots are produced
+per run:
+
+- `manhattan_<trait>.pdf` — unchanged content, format changed to PDF.
+- `qq_<trait>.pdf` — unchanged content, format changed to PDF.
+- `pca_grm.pdf` — **new**: individuals in PC1 × PC2 space (GRM
+  eigenvectors), coloured by the first trait’s phenotype using a
+  blue-white-red diverging palette. Subtitle reports the number of PCs
+  used in the model.
+- `grm_scree.pdf` — **new**: scree plot of GRM eigenvalues (up to PC30),
+  with the selected PC cutoff highlighted in red and the cumulative
+  variance curve overlaid as a dashed line. When `optimize_pcs = TRUE`,
+  the subtitle reports the selection criterion, selected k, and
+  lambda_GC.
+
+**Breaking change note:** any downstream code that expected
+`manhattan_*.png` or `qq_*.png` file names must be updated to use the
+`.pdf` extension.
+
+### Enhancement: full multiple-testing correction set in estimate_diplotype_effects()
+
+[`estimate_diplotype_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/estimate_diplotype_effects.md)
+now computes the same four correction columns as
+[`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md),
+making the two modules symmetric. The `significant` flag is now driven
+by a user-selected criterion rather than always using plain Bonferroni.
+
+**New parameters:**
+
+- `sig_threshold = 0.05` — significance cutoff applied to the p-value
+  selected by `sig_metric`.
+- `sig_metric = c("p_omnibus_adj", "p_omnibus_fdr", "p_omnibus_simplem", "p_omnibus_simplem_sidak")`
+  — which correction drives the `significant` flag:
+  - `"p_omnibus_adj"` — plain Bonferroni × n_blocks_per_trait (old
+    default, retained for backward compatibility).
+  - `"p_omnibus_fdr"` — Benjamini-Hochberg FDR.
+  - `"p_omnibus_simplem"` — simpleM Bonferroni-style: min(p × Meff, 1),
+    where Meff is estimated from the block-summary PC1 eigenspectrum.
+  - `"p_omnibus_simplem_sidak"` (**recommended**) — simpleM Šidák-style:
+    1 − (1 − p)^Meff. Consistent with
+    [`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md).
+- `meff_percent_cut = 0.995` — variance threshold for simpleM Meff
+  estimation.
+- `meff_max_cols = 1000L` — chunk size for large eigendecompositions.
+
+**New output columns in `$omnibus_tests`** (all always present):
+
+| Column | Description |
+|----|----|
+| `p_omnibus_adj` | Plain Bonferroni × n_blocks (unchanged) |
+| `p_omnibus_fdr` | BH-FDR per trait |
+| `p_omnibus_simplem` | simpleM Bonferroni-style: min(p × Meff, 1) |
+| `p_omnibus_simplem_sidak` | simpleM Šidák-style: 1 − (1−p)^Meff |
+| `Meff` | Effective number of independent tests (block-summary PC1 eigenspectrum) |
+
+## LDxBlocks 0.3.1.9000 (development)
+
 ### New feature: block_match = “position” in compare_block_effects() and compare_gwas_effects()
 
 Both cross-population comparison functions now support matching LD

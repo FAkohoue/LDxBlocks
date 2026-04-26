@@ -653,7 +653,7 @@ Bonferroni.</p>
 <span>  haplotypes       <span class="op">=</span> <span class="va">haps</span>,</span>
 <span>  blues            <span class="op">=</span> <span class="va">blues_vec</span>,</span>
 <span>  blocks           <span class="op">=</span> <span class="va">blocks</span>,</span>
-<span>  n_pcs            <span class="op">=</span> <span class="fl">3L</span>,                 <span class="co"># Q+K model</span></span>
+<span>  n_pcs            <span class="op">=</span> <span class="fl">3L</span>,                 <span class="co"># Q+K model (used when optimize_pcs = FALSE)</span></span>
 <span>  sig_metric       <span class="op">=</span> <span class="st">"p_simplem_sidak"</span>,  <span class="co"># simpleM Šidák correction</span></span>
 <span>  meff_scope       <span class="op">=</span> <span class="st">"chromosome"</span>,       <span class="co"># recommended: separate Meff per chr</span></span>
 <span>  meff_percent_cut <span class="op">=</span> <span class="fl">0.995</span>,              <span class="co"># 99.5% variance threshold (Gao default)</span></span>
@@ -669,6 +669,30 @@ Bonferroni.</p>
 <span>                            <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"allele"</span>,<span class="st">"effect"</span>,<span class="st">"SE"</span>,</span>
 <span>                              <span class="st">"p_wald"</span>,<span class="st">"p_simplem"</span>,<span class="st">"p_simplem_sidak"</span>,<span class="st">"Meff"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">5</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># Automatic PC selection — let the data choose n_pcs via BIC/lambda hybrid</span></span>
+<span><span class="co"># Recommended when lambda_GC is far from 1.0 with a fixed n_pcs.</span></span>
+<span><span class="va">assoc_opt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span></span>
+<span>  haplotypes       <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  blues            <span class="op">=</span> <span class="va">blues_vec</span>,</span>
+<span>  blocks           <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  optimize_pcs     <span class="op">=</span> <span class="cn">TRUE</span>,              <span class="co"># triggers BIC/lambda model selection</span></span>
+<span>  optimize_pcs_max <span class="op">=</span> <span class="fl">10L</span>,              <span class="co"># test k = 0..10</span></span>
+<span>  optimize_method  <span class="op">=</span> <span class="st">"bic_lambda"</span>,     <span class="co"># recommended: |lambda-1| + 0.01*BIC</span></span>
+<span>  sig_metric       <span class="op">=</span> <span class="st">"p_simplem_sidak"</span>,</span>
+<span>  meff_scope       <span class="op">=</span> <span class="st">"chromosome"</span>,</span>
+<span>  plot             <span class="op">=</span> <span class="cn">TRUE</span>,             <span class="co"># saves PDF plots including pca_grm.pdf</span></span>
+<span>  out_dir          <span class="op">=</span> <span class="st">"results"</span>,        <span class="co"># and grm_scree.pdf</span></span>
+<span>  verbose          <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Inspect selection table</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">assoc_opt</span><span class="op">$</span><span class="va">pc_model_selection</span><span class="op">)</span></span>
+<span><span class="co">#  n_pcs     BIC lambda_gc  score selected</span></span>
+<span><span class="co">#      0  1234.1     1.021 0.0210    FALSE</span></span>
+<span><span class="co">#      1  1231.5     1.015 0.0150    FALSE</span></span>
+<span><span class="co">#      2  1230.8     1.003 0.0033    FALSE</span></span>
+<span><span class="co">#      3  1232.1     0.999 0.0011     TRUE   &lt;-- selected</span></span>
+<span></span>
 <span><span class="co"># Multi-trait: all traits share the same GRM</span></span>
 <span><span class="va">assoc_mt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span></span>
 <span>  haplotypes <span class="op">=</span> <span class="va">haps</span>,</span>
@@ -680,13 +704,29 @@ Bonferroni.</p>
 <span>  sig_metric <span class="op">=</span> <span class="st">"p_simplem_sidak"</span>,</span>
 <span>  verbose    <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/estimate_diplotype_effects.html">estimate_diplotype_effects()</a></code> decomposes phenotypic
-variation into additive and dominance components:</p>
+<p><code><a href="../reference/estimate_diplotype_effects.html">estimate_diplotype_effects()</a></code> now supports the same
+correction set as <code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code>. All five p-value
+columns are always present in <code>$omnibus_tests</code>;
+<code>sig_metric</code> controls which drives the
+<code>significant</code> flag:</p>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dip</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/estimate_diplotype_effects.html">estimate_diplotype_effects</a></span><span class="op">(</span></span>
-<span>  haplotypes <span class="op">=</span> <span class="va">haps</span>, blues <span class="op">=</span> <span class="va">blues_vec</span>, blocks <span class="op">=</span> <span class="va">blocks</span>,</span>
-<span>  min_n_diplotype <span class="op">=</span> <span class="fl">3L</span>, verbose <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  haplotypes       <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  blues            <span class="op">=</span> <span class="va">blues_vec</span>,</span>
+<span>  blocks           <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  min_n_diplotype  <span class="op">=</span> <span class="fl">3L</span>,</span>
+<span>  sig_metric       <span class="op">=</span> <span class="st">"p_omnibus_simplem_sidak"</span>,  <span class="co"># recommended</span></span>
+<span>  meff_percent_cut <span class="op">=</span> <span class="fl">0.995</span>,</span>
+<span>  verbose          <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># All five columns always present:</span></span>
+<span><span class="co"># p_omnibus_adj | p_omnibus_fdr | p_omnibus_simplem | p_omnibus_simplem_sidak | Meff</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dip</span><span class="op">$</span><span class="va">omnibus_tests</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"trait"</span>,<span class="st">"F_stat"</span>,<span class="st">"p_omnibus"</span>,</span>
+<span>                            <span class="st">"p_omnibus_fdr"</span>,<span class="st">"p_omnibus_simplem_sidak"</span>,</span>
+<span>                            <span class="st">"Meff"</span>,<span class="st">"significant"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">5</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Blocks showing overdominance (heterosis candidates)</span></span>
 <span><span class="va">dip</span><span class="op">$</span><span class="va">dominance_table</span><span class="op">[</span><span class="va">dip</span><span class="op">$</span><span class="va">dominance_table</span><span class="op">$</span><span class="va">overdominance</span>,</span>
 <span>                    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"allele_A"</span>,<span class="st">"allele_B"</span>,<span class="st">"a"</span>,<span class="st">"d"</span>,<span class="st">"d_over_a"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 </div>

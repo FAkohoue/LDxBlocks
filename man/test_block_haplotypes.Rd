@@ -20,6 +20,9 @@ test_block_haplotypes(
   meff_scope = c("chromosome", "global", "block"),
   meff_percent_cut = 0.995,
   meff_max_cols = 1000L,
+  optimize_pcs = FALSE,
+  optimize_pcs_max = 10L,
+  optimize_method = c("bic_lambda", "bic", "lambda"),
   plot = FALSE,
   out_dir = ".",
   verbose = TRUE
@@ -41,7 +44,8 @@ Used for block metadata annotation in the output only.}
 \item{n_pcs}{Integer (\code{>= 0}) or \code{NULL}. Number of haplotype-GRM
 eigenvectors to include as fixed-effect population structure covariates.
 \code{0L} (default): pure GRM / EMMAX. \code{1-10}: Q+K model.
-\code{NULL}: auto-selected from the GRM scree-plot elbow, capped at 10.}
+\code{NULL}: auto-selected from the GRM scree-plot elbow, capped at 10.
+Ignored when \code{optimize_pcs = TRUE}.}
 
 \item{top_n}{Integer or \code{NULL}. Maximum haplotype alleles per block
 in the feature matrix. \code{NULL} retains all alleles above
@@ -101,6 +105,32 @@ by the retained PCs in the simpleM eigendecomposition. Default \code{0.995}
 \item{meff_max_cols}{Integer. Maximum columns per eigendecomposition block
 when computing \eqn{M_{\mathrm{eff}}}. Larger groups are chunked and
 summed. Default \code{1000L}.}
+
+\item{optimize_pcs}{Logical. When \code{TRUE}, automatically selects
+\code{n_pcs} by fitting REML null models for
+\code{k = 0, 1, \ldots, optimize_pcs_max} and choosing the value that
+minimises the criterion set by \code{optimize_method}. Selection uses
+only the first trait (the haplotype GRM is shared across all traits).
+Default \code{FALSE}: \code{n_pcs} is used directly.}
+
+\item{optimize_pcs_max}{Integer. Upper bound on the number of PCs evaluated
+when \code{optimize_pcs = TRUE}. Default \code{10L}.}
+
+\item{optimize_method}{Character. Criterion for PC model selection when
+\code{optimize_pcs = TRUE}. One of:
+\itemize{
+  \item \code{"bic_lambda"} (\strong{default, recommended}) - hybrid score:
+    \eqn{|\lambda_{GC} - 1| + 0.01 \times \tilde{BIC}}, where
+    \eqn{\tilde{BIC}} is the BIC scaled to \eqn{[0,1]} across all
+    k values. Minimises genomic inflation while BIC breaks ties toward
+    fewer PCs.
+  \item \code{"bic"} - minimise the REML BIC of the null model:
+    \eqn{-2 \cdot \log L + k_{params} \cdot \log n}.
+  \item \code{"lambda"} - minimise \eqn{|\lambda_{GC} - 1|} alone, where
+    \eqn{\lambda_{GC}} is estimated from a fast 500-allele scan on
+    GRM-corrected residuals.
+}
+Ignored when \code{optimize_pcs = FALSE}.}
 
 \item{plot}{Logical. If \code{TRUE}, save Manhattan and Q-Q plots.
 Default \code{FALSE}. Significance markers reflect \code{sig_metric}.}

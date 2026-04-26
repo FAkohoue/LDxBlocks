@@ -991,6 +991,22 @@
 <li>
 <code>n_pcs = NULL</code>: auto-selected from the GRM scree-plot elbow</li>
 <li>
+<code>optimize_pcs = FALSE</code>: when <code>TRUE</code>, auto-selects n_pcs by fitting null models for k = 0..<code>optimize_pcs_max</code> and minimising the criterion set by <code>optimize_method</code>. More principled than the elbow heuristic for GWAS.</li>
+<li>
+<code>optimize_pcs_max = 10L</code>: maximum PCs evaluated when <code>optimize_pcs = TRUE</code>
+</li>
+<li>
+<code>optimize_method = c("bic_lambda", "bic", "lambda")</code>: criterion for PC selection (only used when <code>optimize_pcs = TRUE</code>):
+<ul>
+<li>
+<code>"bic"</code> — minimise BIC of the null REML model</li>
+<li>
+<code>"lambda"</code> — minimise |λ_GC − 1| (genomic control calibration)</li>
+<li>
+<code>"bic_lambda"</code> (<strong>default, recommended</strong>) — hybrid: |λ−1| + 0.01·scaled_BIC. Minimises inflation/deflation while BIC breaks ties toward fewer PCs</li>
+</ul>
+</li>
+<li>
 <code>sig_metric</code>: which p-value drives the <code>significant</code> flag:
 <ul>
 <li>
@@ -1016,8 +1032,11 @@
 </li>
 <li>
 <code>meff_percent_cut</code>: variance threshold for simpleM eigendecomposition (default <code>0.995</code>)</li>
+<li>
+<code>plot = TRUE</code>: saves <strong>PDF</strong> plots (not PNG). Three files per run: <code>manhattan_&lt;trait&gt;.pdf</code>, <code>qq_&lt;trait&gt;.pdf</code>, <code>pca_grm.pdf</code> (GRM PCA coloured by phenotype), <code>grm_scree.pdf</code> (eigenvalue scree with selected PC in red)</li>
 </ul>
 <p>All four p-value columns (<code>p_wald</code>, <code>p_fdr</code>, <code>p_simplem</code>, <code>p_simplem_sidak</code>) are <strong>always present</strong> in every output regardless of <code>sig_metric</code>.</p>
+<p><code><a href="reference/estimate_diplotype_effects.html">estimate_diplotype_effects()</a></code> also now supports the full correction set with a new <code>sig_metric</code> parameter. All four p-value columns (<code>p_omnibus_adj</code>, <code>p_omnibus_fdr</code>, <code>p_omnibus_simplem</code>, <code>p_omnibus_simplem_sidak</code>) are always present in <code>$omnibus_tests</code> regardless of the chosen <code>sig_metric</code>.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># FDR-based discovery (EMMAX, default)</span></span>
 <span><span class="va">assoc_fdr</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/test_block_haplotypes.html">test_block_haplotypes</a></span><span class="op">(</span></span>
@@ -2523,12 +2542,123 @@
 <td>Named list of Meff summaries per trait: <code>$allele$global</code>, <code>$allele$chromosome</code>, <code>$allele$block</code>, <code>$block$global</code>, <code>$block$chromosome</code>
 </td>
 </tr>
+<tr>
+<td><code>pc_model_selection</code></td>
+<td>
+<code>data.frame</code> with one row per k tested when <code>optimize_pcs = TRUE</code>: <code>n_pcs</code>, <code>BIC</code>, <code>lambda_gc</code>, <code>score</code>, <code>selected</code>. <code>NULL</code> when <code>optimize_pcs = FALSE</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Plots produced when <code>plot = TRUE</code></strong> (all saved as PDF):</p>
+<table class="table">
+<colgroup>
+<col width="31%">
+<col width="68%">
+</colgroup>
+<thead><tr>
+<th>File</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>manhattan_&lt;trait&gt;.pdf</code></td>
+<td>Manhattan plot — one per trait</td>
+</tr>
+<tr>
+<td><code>qq_&lt;trait&gt;.pdf</code></td>
+<td>QQ plot — one per trait</td>
+</tr>
+<tr>
+<td><code>pca_grm.pdf</code></td>
+<td>PCA of GRM eigenvectors in PC1 × PC2, coloured by first trait phenotype</td>
+</tr>
+<tr>
+<td><code>grm_scree.pdf</code></td>
+<td>Scree plot of GRM eigenvalues (up to PC30); red bar and vertical line at selected k</td>
+</tr>
 </tbody>
 </table>
 </div>
 <div class="section level3">
 <h3 id="id_158-estimate_diplotype_effects--ldxblocks_diplotype">15.8. <code>estimate_diplotype_effects()</code> — LDxBlocks_diplotype<a class="anchor" aria-label="anchor" href="#id_158-estimate_diplotype_effects--ldxblocks_diplotype"></a>
 </h3>
+<p><strong><code>$omnibus_tests</code></strong> — one row per LD block per trait (updated columns):</p>
+<table class="table">
+<colgroup>
+<col width="29%">
+<col width="22%">
+<col width="48%">
+</colgroup>
+<thead><tr>
+<th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code>block_id</code>, <code>trait</code>
+</td>
+<td>—</td>
+<td>Identifiers</td>
+</tr>
+<tr>
+<td><code>n_diplotypes</code></td>
+<td>integer</td>
+<td>Diplotype classes with ≥ <code>min_n_diplotype</code> individuals</td>
+</tr>
+<tr>
+<td><code>F_stat</code></td>
+<td>numeric</td>
+<td>F-statistic (one-way ANOVA on GRM-corrected residuals)</td>
+</tr>
+<tr>
+<td>
+<code>df1</code>, <code>df2</code>
+</td>
+<td>integer</td>
+<td>Numerator and denominator degrees of freedom</td>
+</tr>
+<tr>
+<td><code>p_omnibus</code></td>
+<td>numeric</td>
+<td>Raw p-value</td>
+</tr>
+<tr>
+<td><code>p_omnibus_adj</code></td>
+<td>numeric</td>
+<td>Plain Bonferroni × n_blocks_per_trait (backward-compat)</td>
+</tr>
+<tr>
+<td><code>p_omnibus_fdr</code></td>
+<td>numeric</td>
+<td>BH-FDR per trait</td>
+</tr>
+<tr>
+<td><code>p_omnibus_simplem</code></td>
+<td>numeric</td>
+<td>simpleM Bonferroni-style: min(p × Meff, 1)</td>
+</tr>
+<tr>
+<td><code>p_omnibus_simplem_sidak</code></td>
+<td>numeric</td>
+<td>simpleM Šidák-style: 1 − (1−p)^Meff (<strong>recommended</strong>)</td>
+</tr>
+<tr>
+<td><code>Meff</code></td>
+<td>numeric</td>
+<td>Effective number of blocks (block-summary PC1 eigenspectrum)</td>
+</tr>
+<tr>
+<td><code>significant</code></td>
+<td>logical</td>
+<td>TRUE when the p-value chosen by <code>sig_metric</code> &lt; <code>sig_threshold</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>All five p-value columns are always present regardless of <code>sig_metric</code>.</p>
 <p><strong><code>$dominance_table</code></strong> — one row per allele pair per block per trait:</p>
 <table class="table">
 <colgroup>

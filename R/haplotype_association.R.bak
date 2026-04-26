@@ -36,6 +36,18 @@
 # .adjust_p_simplem_* : Bonferroni-style and Šidák-style p-value adjustment
 # ==============================================================================
 
+# Suppress R CMD check NOTE: "no visible binding for global variable"
+# These names are used inside ggplot2::aes() calls where non-standard
+# evaluation means R cannot resolve them statically.
+if (getRversion() >= "2.15.1") {
+  utils::globalVariables(c(
+    # PCA plot (pc_df columns)
+    "PC1", "PC2", "pheno",
+    # Scree plot (scree_df columns)
+    "PC", "PVE", "cum", "selected"
+  ))
+}
+
 .MeFF_PCA <- function(eigenValues, percentCut = 0.995) {
   eigenValues <- as.numeric(eigenValues)
   eigenValues <- eigenValues[is.finite(eigenValues) & eigenValues > 0]
@@ -303,6 +315,33 @@
 #'   eigenvectors to include as fixed-effect population structure covariates.
 #'   \code{0L} (default): pure GRM / EMMAX. \code{1-10}: Q+K model.
 #'   \code{NULL}: auto-selected from the GRM scree-plot elbow, capped at 10.
+#'   Ignored when \code{optimize_pcs = TRUE}.
+#'
+#' @param optimize_pcs Logical. When \code{TRUE}, automatically selects
+#'   \code{n_pcs} by fitting REML null models for
+#'   \code{k = 0, 1, \ldots, optimize_pcs_max} and choosing the value that
+#'   minimises the criterion set by \code{optimize_method}. Selection uses
+#'   only the first trait (the haplotype GRM is shared across all traits).
+#'   Default \code{FALSE}: \code{n_pcs} is used directly.
+#'
+#' @param optimize_pcs_max Integer. Upper bound on the number of PCs evaluated
+#'   when \code{optimize_pcs = TRUE}. Default \code{10L}.
+#'
+#' @param optimize_method Character. Criterion for PC model selection when
+#'   \code{optimize_pcs = TRUE}. One of:
+#'   \itemize{
+#'     \item \code{"bic_lambda"} (\strong{default, recommended}) — hybrid score:
+#'       \eqn{|\lambda_{GC} - 1| + 0.01 \times \tilde{BIC}}, where
+#'       \eqn{\tilde{BIC}} is the BIC scaled to \eqn{[0,1]} across all
+#'       k values. Minimises genomic inflation while BIC breaks ties toward
+#'       fewer PCs.
+#'     \item \code{"bic"} — minimise the REML BIC of the null model:
+#'       \eqn{-2 \cdot \log L + k_{params} \cdot \log n}.
+#'     \item \code{"lambda"} — minimise \eqn{|\lambda_{GC} - 1|} alone, where
+#'       \eqn{\lambda_{GC}} is estimated from a fast 500-allele scan on
+#'       GRM-corrected residuals.
+#'   }
+#'   Ignored when \code{optimize_pcs = FALSE}.
 #'
 #' @param top_n Integer or \code{NULL}. Maximum haplotype alleles per block
 #'   in the feature matrix. \code{NULL} retains all alleles above
@@ -470,6 +509,9 @@ test_block_haplotypes <- function(
     meff_scope       = c("chromosome", "global", "block"),
     meff_percent_cut = 0.995,
     meff_max_cols    = 1000L,
+    optimize_pcs     = FALSE,
+    optimize_pcs_max = 10L,
+    optimize_method  = c("bic_lambda", "bic", "lambda"),
     plot             = FALSE,
     out_dir          = ".",
     verbose          = TRUE
@@ -477,8 +519,9 @@ test_block_haplotypes <- function(
   if (!requireNamespace("rrBLUP", quietly = TRUE))
     stop("rrBLUP is required: install.packages('rrBLUP')", call. = FALSE)
 
-  sig_metric <- match.arg(sig_metric)
-  meff_scope <- match.arg(meff_scope)
+  sig_metric      <- match.arg(sig_metric)
+  meff_scope      <- match.arg(meff_scope)
+  optimize_method <- match.arg(optimize_method)
   .log <- function(...) if (verbose) message(sprintf("[assoc] %s", paste0(...)))
 
   blues_list <- .parse_blues_assoc(blues, id_col, blue_col, blue_cols)
@@ -524,12 +567,14 @@ test_block_haplotypes <- function(
   # G = Q Λ Q^T — columns of Q are PCs of individuals in haplotype space.
   # Mathematically equivalent to PCA on genotypes (SVD duality) but guaranteed
   # consistent with the GRM random effect — same kinship model for both.
-  n_pcs_used <- 0L
-  pc_scores  <- NULL
-  auto_pcs   <- is.null(n_pcs)
+  n_pcs_used   <- 0L
+  pc_scores    <- NULL
+  eig          <- NULL          # kept for PCA plot
+  pc_model_sel <- NULL          # populated when optimize_pcs = TRUE
+  auto_pcs     <- is.null(n_pcs)
   n_pcs_req  <- if (auto_pcs) NA_integer_ else as.integer(n_pcs)
 
-  if (auto_pcs || n_pcs_req > 0L) {
+  if (auto_pcs || isTRUE(optimize_pcs) || (!auto_pcs && n_pcs_req > 0L)) {
     .log("Eigendecomposing GRM for PC fixed-effect covariates ...")
     eig <- tryCatch(
       eigen(G, symmetric = TRUE),
@@ -543,13 +588,117 @@ test_block_haplotypes <- function(
     } else {
       eig_vals <- pmax(eig$values, 0)
       var_prop <- eig_vals / sum(eig_vals)
-      if (auto_pcs) {
+
+      if (isTRUE(optimize_pcs)) {
+        # -- Model selection over n_pcs = 0..optimize_pcs_max
+        # optimize_method controls the criterion:
+        #   "bic"        : minimise BIC of the null REML model
+        #   "lambda"     : minimise |lambda_GC - 1| (genomic inflation)
+        #   "bic_lambda" : hybrid — minimise abs(lambda-1) + 0.01*scaled_BIC
+        #                  (recommended for GWAS: BIC tie-breaks lambda near 1)
+        # Uses the first trait (GRM is shared across traits).
+        .log("  Optimising n_pcs via '", optimize_method,
+             "' (0..", optimize_pcs_max, " PCs) ...")
+        tr_sel  <- names(blues_list)[1]
+        ph_sel  <- blues_list[[tr_sel]]
+        com_sel <- intersect(names(ph_sel), rownames(G))
+        com_sel <- com_sel[!is.na(ph_sel[com_sel]) & is.finite(ph_sel[com_sel])]
+        y_sel   <- ph_sel[com_sel]
+        G_sel   <- G[com_sel, com_sel, drop = FALSE]
+        ev      <- eig$vectors
+        rownames(ev) <- rownames(G)
+        n_sel   <- length(y_sel)
+
+        # Per-k fit statistics
+        k_seq <- 0L:as.integer(optimize_pcs_max)
+        bic_k <- lambda_k <- numeric(length(k_seq))
+
+        for (ki in seq_along(k_seq)) {
+          k   <- k_seq[ki]
+          X_k <- if (k == 0L) {
+            matrix(1, nrow = n_sel, ncol = 1L)
+          } else {
+            cbind(1, ev[com_sel, seq_len(k), drop = FALSE])
+          }
+          fit <- tryCatch(
+            rrBLUP::mixed.solve(y = y_sel, X = X_k, K = G_sel, method = "REML"),
+            error = function(e) NULL
+          )
+          if (is.null(fit) || !is.finite(fit$LL)) {
+            bic_k[ki] <- NA_real_; lambda_k[ki] <- NA_real_; next
+          }
+          n_param    <- k + 3L   # intercept + k PCs + sigma_g + sigma_e
+          bic_k[ki]  <- -2 * fit$LL + n_param * log(n_sel)
+          # Compute lambda_GC from residuals under this null model
+          y_fixed_k  <- as.numeric(X_k %*% fit$beta)
+          u_k        <- fit$u[com_sel]; u_k[is.na(u_k)] <- 0
+          resid_k    <- y_sel - y_fixed_k - u_k
+          # Approximate lambda via chi-sq median of null residuals
+          # (exact computation requires per-allele p-values; use fast proxy:
+          #  variance ratio of corrected vs raw phenotype as lambda proxy)
+          # Run the vectorised scan on the first 500 alleles for speed
+          X_scan_sub <- hap_mat[com_sel, seq_len(min(500L, ncol(hap_mat))),
+                                drop = FALSE]
+          X_scan_sub[is.na(X_scan_sub)] <- 0
+          XtX_s  <- colSums(X_scan_sub^2) - colSums(X_scan_sub)^2 / n_sel
+          X_s    <- X_scan_sub[, XtX_s > 1e-10, drop = FALSE]
+          XtX_s2 <- XtX_s[XtX_s > 1e-10]
+          if (!ncol(X_s)) { lambda_k[ki] <- NA_real_; next }
+          xb  <- colMeans(X_s); yb <- mean(resid_k)
+          Xty <- as.numeric(crossprod(X_s, resid_k)) - n_sel * xb * yb
+          bt  <- Xty / XtX_s2
+          ss  <- sum((resid_k - yb)^2)
+          rss <- pmax(ss - bt^2 * XtX_s2, 0)
+          se  <- sqrt(rss / (n_sel - 2L) / XtX_s2)
+          ts  <- bt / se
+          ps  <- 2 * stats::pt(-abs(ts), df = n_sel - 2L)
+          chisq_obs <- stats::qchisq(ps, df = 1L, lower.tail = FALSE)
+          lambda_k[ki] <- stats::median(chisq_obs, na.rm = TRUE) /
+            stats::qchisq(0.5, df = 1L, lower.tail = FALSE)
+        }
+
+        # Build model selection table
+        bic_sc  <- (bic_k  - min(bic_k,  na.rm = TRUE)) /
+          (max(bic_k,  na.rm = TRUE) - min(bic_k,  na.rm = TRUE) + 1e-10)
+        score_k <- switch(optimize_method,
+                          bic        = bic_k,
+                          lambda     = abs(lambda_k - 1),
+                          bic_lambda = abs(lambda_k - 1) + 0.01 * bic_sc
+        )
+
+        pc_model_sel <- data.frame(
+          n_pcs     = k_seq,
+          BIC       = round(bic_k,    2),
+          lambda_gc = round(lambda_k, 4),
+          score     = round(score_k,  6),
+          selected  = FALSE,
+          stringsAsFactors = FALSE
+        )
+
+        best_ki    <- which.min(score_k)
+        best_k     <- k_seq[best_ki]
+        n_pcs_used <- as.integer(best_k)
+        pc_model_sel$selected[best_ki] <- TRUE
+
+        .log(sprintf("  Optimal n_pcs = %d  (criterion: %s | lambda_GC = %.3f)",
+                     n_pcs_used, optimize_method,
+                     pc_model_sel$lambda_gc[best_ki]))
+        .log("  Model selection table:")
+        for (ri in seq_len(nrow(pc_model_sel))) {
+          .log(sprintf("    k=%2d  BIC=%8.1f  lambda=%.3f  score=%.4f%s",
+                       pc_model_sel$n_pcs[ri],   pc_model_sel$BIC[ri],
+                       pc_model_sel$lambda_gc[ri], pc_model_sel$score[ri],
+                       if (pc_model_sel$selected[ri]) "  <-- selected" else ""))
+        }
+
+      } else if (auto_pcs) {
         marginal   <- diff(-var_prop)
         elbow      <- which(marginal > 0.01)[1]
         n_pcs_used <- if (is.na(elbow)) 3L else min(elbow, 10L)
       } else {
         n_pcs_used <- min(n_pcs_req, ncol(eig$vectors))
       }
+
       if (n_pcs_used > 0L) {
         pc_scores <- eig$vectors[, seq_len(n_pcs_used), drop = FALSE]
         rownames(pc_scores) <- rownames(G)
@@ -559,7 +708,7 @@ test_block_haplotypes <- function(
              "% of GRM variance)")
       }
     }
-  }  # end if (auto_pcs || n_pcs_req > 0L)
+  }  # end PC selection block
 
   allele_rows <- list()
   block_rows  <- list()
@@ -1026,25 +1175,34 @@ test_block_haplotypes <- function(
   .log("Done. Allele tests: ", n_tests,
        " | Significant (", sig_metric, " <= ", sig_threshold, "): ", n_sig)
 
-  # ── Optional Manhattan and QQ plots ────────────────────────────────────────
+  # ── Optional Manhattan, QQ, and PCA plots ───────────────────────────────────
   if (isTRUE(plot) && nrow(allele_df) > 0) {
-    .plot_assoc_results(allele_df, sig_threshold = sig_threshold,
-                        out_dir = out_dir, verbose = verbose)
+    .plot_assoc_results(
+      allele_df     = allele_df,
+      sig_threshold = sig_threshold,
+      out_dir       = out_dir,
+      verbose       = verbose,
+      eig           = eig,              # for PCA + scree plots
+      n_pcs_used    = n_pcs_used,
+      blues_list    = blues_list,       # trait values for PC colouring
+      pc_model_sel  = pc_model_sel      # model selection table for scree subtitle
+    )
   }
 
   structure(
     list(
-      allele_tests     = allele_df,
-      block_tests      = block_df,
-      traits           = traits,
-      n_pcs_used       = n_pcs_used,
-      sig_threshold    = sig_threshold,
-      sig_metric       = sig_metric,
-      n_tests          = n_tests,
-      meff_scope       = meff_scope,
-      meff_percent_cut = meff_percent_cut,
-      meff             = meff_summary,
-      status           = "ok"
+      allele_tests        = allele_df,
+      block_tests         = block_df,
+      traits              = traits,
+      n_pcs_used          = n_pcs_used,
+      sig_threshold       = sig_threshold,
+      sig_metric          = sig_metric,
+      n_tests             = n_tests,
+      meff_scope          = meff_scope,
+      meff_percent_cut    = meff_percent_cut,
+      meff                = meff_summary,
+      pc_model_selection  = pc_model_sel,   # NULL unless optimize_pcs = TRUE
+      status              = "ok"
     ),
     class = c("LDxBlocks_haplotype_assoc", "list")
   )
@@ -1057,8 +1215,14 @@ test_block_haplotypes <- function(
 #        shape legend for significant multi-trait hits.
 # ==============================================================================
 
-.plot_assoc_results <- function(allele_df, sig_threshold = 0.05,
-                                out_dir = ".", verbose = TRUE) {
+.plot_assoc_results <- function(allele_df,
+                                sig_threshold    = 0.05,
+                                out_dir          = ".",
+                                verbose          = TRUE,
+                                eig              = NULL,
+                                n_pcs_used       = 0L,
+                                blues_list       = NULL,
+                                pc_model_sel     = NULL) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     if (verbose) message("[plot] ggplot2 not installed. Install with: install.packages('ggplot2')")
     return(invisible(NULL))
@@ -1066,19 +1230,147 @@ test_block_haplotypes <- function(
   dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
   traits <- unique(allele_df$trait)
 
-  # ── Shared chromosome ordering ──────────────────────────────────────────────
-  all_chrs <- unique(allele_df$CHR)
-  chr_num  <- suppressWarnings(as.integer(all_chrs))
-  chr_order <- if (!any(is.na(chr_num))) {
-    all_chrs[order(chr_num)]
-  } else {
-    sort(all_chrs)
-  }
+  # ── Shared chromosome ordering ───────────────────────────────────────────────
+  all_chrs  <- unique(allele_df$CHR)
+  chr_num   <- suppressWarnings(as.integer(all_chrs))
+  chr_order <- if (!any(is.na(chr_num))) all_chrs[order(chr_num)] else sort(all_chrs)
   chrom_colors <- stats::setNames(
     rep(c("#6495ED","#800000","#f0b27a","#008080","#8e44ad"),
         length.out = length(chr_order)),
     chr_order
   )
+
+  # ── PCA plot (once, not per trait) ──────────────────────────────────────────
+  if (!is.null(eig) && !is.null(eig$vectors) && ncol(eig$vectors) >= 2L) {
+    tryCatch({
+      eig_vals <- pmax(eig$values, 0)
+      var_prop <- eig_vals / sum(eig_vals) * 100
+
+      pc_df <- data.frame(
+        id  = rownames(allele_df)[1],   # placeholder; overwritten below
+        PC1 = eig$vectors[, 1L],
+        PC2 = eig$vectors[, 2L],
+        row.names = NULL,
+        stringsAsFactors = FALSE
+      )
+      pc_df$id <- rownames(eig$vectors)
+
+      # Colour by mean phenotype of first trait if available
+      colour_by <- "individual"
+      if (!is.null(blues_list) && length(blues_list) >= 1L) {
+        ph     <- blues_list[[1L]]
+        common <- intersect(pc_df$id, names(ph))
+        if (length(common) >= 2L) {
+          pc_df$pheno <- NA_real_
+          pc_df$pheno[match(common, pc_df$id)] <- as.numeric(ph[common])
+          colour_by <- names(blues_list)[1L]
+        }
+      }
+
+      # Mark individuals used as PCs in the model
+      pc_df$model_pc <- if (n_pcs_used > 0L) "Used in model" else "Not used"
+
+      p_pca <- if ("pheno" %in% names(pc_df)) {
+        ggplot2::ggplot(
+          pc_df, ggplot2::aes(x = PC1, y = PC2, colour = pheno)) +
+          ggplot2::geom_point(size = 1.8, alpha = 0.8) +
+          ggplot2::scale_colour_gradientn(
+            colours = c("#2166ac","#f7f7f7","#d6604d"),
+            name    = colour_by,
+            na.value = "grey70"
+          )
+      } else {
+        ggplot2::ggplot(pc_df, ggplot2::aes(x = PC1, y = PC2)) +
+          ggplot2::geom_point(colour = "#6495ED", size = 1.8, alpha = 0.8)
+      }
+
+      p_pca <- p_pca +
+        ggplot2::labs(
+          title    = "PCA — haplotype GRM",
+          subtitle = sprintf("n_pcs used in model: %d | PC1 %.1f%% | PC2 %.1f%%",
+                             as.integer(n_pcs_used), var_prop[1L], var_prop[2L]),
+          x = sprintf("PC1 (%.1f%%)", var_prop[1L]),
+          y = sprintf("PC2 (%.1f%%)", var_prop[2L])
+        ) +
+        ggplot2::theme_classic(base_size = 11) +
+        ggplot2::theme(
+          plot.title    = ggplot2::element_text(face = "bold"),
+          plot.subtitle = ggplot2::element_text(size = 9, colour = "grey40"),
+          axis.title    = ggplot2::element_text(size = 11, face = "bold"),
+          legend.title  = ggplot2::element_text(size = 9, face = "bold"),
+          panel.grid.major = ggplot2::element_blank(),
+          panel.grid.minor = ggplot2::element_blank()
+        )
+
+      pca_file <- file.path(out_dir, "pca_grm.pdf")
+      ggplot2::ggsave(pca_file, p_pca, width = 6, height = 5.5,
+                      device = "pdf", useDingbats = FALSE)
+      if (verbose) message("[plot] PCA saved: ", pca_file)
+    }, error = function(e) {
+      if (verbose) message("[plot] PCA skipped: ", conditionMessage(e))
+    })
+  }
+
+  # ── Scree plot ──────────────────────────────────────────────────────────────
+  if (!is.null(eig) && !is.null(eig$values)) {
+    tryCatch({
+      eig_vals  <- pmax(eig$values, 0)
+      var_prop  <- eig_vals / sum(eig_vals) * 100
+      n_show    <- min(30L, length(var_prop))
+      scree_df  <- data.frame(
+        PC  = seq_len(n_show),
+        PVE = var_prop[seq_len(n_show)],
+        cum = cumsum(var_prop[seq_len(n_show)]),
+        stringsAsFactors = FALSE
+      )
+      scree_df$selected <- scree_df$PC == (n_pcs_used)
+      # Add BIC/lambda selection path if available
+      sel_label <- if (!is.null(pc_model_sel) && any(pc_model_sel$selected)) {
+        sel_row <- pc_model_sel[pc_model_sel$selected, ]
+        sprintf("Selected: k=%d | λ=%.3f | criterion: score=%.4f",
+                sel_row$n_pcs[1], sel_row$lambda_gc[1], sel_row$score[1])
+      } else {
+        sprintf("n_pcs used in model: %d", as.integer(n_pcs_used))
+      }
+
+      p_scree <- ggplot2::ggplot(scree_df,
+                                 ggplot2::aes(x = PC, y = PVE)) +
+        ggplot2::geom_col(
+          ggplot2::aes(fill = selected),
+          colour = "grey30", linewidth = 0.2) +
+        ggplot2::scale_fill_manual(
+          values = c("FALSE" = "#6495ED", "TRUE" = "#800000"),
+          guide  = "none") +
+        ggplot2::geom_line(
+          ggplot2::aes(y = cum), colour = "grey40",
+          linetype = "dashed", linewidth = 0.5) +
+        ggplot2::geom_vline(
+          xintercept = n_pcs_used + 0.5,
+          colour = "#800000", linetype = "solid", linewidth = 0.5) +
+        ggplot2::scale_x_continuous(breaks = seq(1, n_show, by = 2)) +
+        ggplot2::labs(
+          title    = "Scree plot — haplotype GRM",
+          subtitle = sel_label,
+          x        = "Principal component",
+          y        = "Variance explained (%)"
+        ) +
+        ggplot2::theme_classic(base_size = 11) +
+        ggplot2::theme(
+          plot.title    = ggplot2::element_text(face = "bold"),
+          plot.subtitle = ggplot2::element_text(size = 9, colour = "grey40"),
+          axis.title    = ggplot2::element_text(size = 11, face = "bold"),
+          panel.grid.major.y = ggplot2::element_line(colour = "grey90"),
+          panel.grid.minor   = ggplot2::element_blank()
+        )
+
+      scree_file <- file.path(out_dir, "grm_scree.pdf")
+      ggplot2::ggsave(scree_file, p_scree, width = 7, height = 4.5,
+                      device = "pdf", useDingbats = FALSE)
+      if (verbose) message("[plot] Scree plot saved: ", scree_file)
+    }, error = function(e) {
+      if (verbose) message("[plot] Scree plot skipped: ", conditionMessage(e))
+    })
+  }
 
   # ── Per-trait Manhattan and QQ ───────────────────────────────────────────────
   for (tr in traits) {
@@ -1086,22 +1378,22 @@ test_block_haplotypes <- function(
                       allele_df$p_wald > 0, ]
     if (!nrow(df)) next
 
-    df$CHR <- factor(as.character(df$CHR), levels = chr_order)
-    df$log10p      <- -log10(df$p_wald)
+    df$CHR        <- factor(as.character(df$CHR), levels = chr_order)
+    df$log10p     <- -log10(df$p_wald)
     df$Significant <- ifelse(df$significant, "Above threshold", "Below threshold")
     sig_line  <- -log10(sig_threshold)
-    sugg_line <- max(0, sig_line - 1)  # one order of magnitude less stringent
+    sugg_line <- max(0, sig_line - 1)
 
-    # ── Manhattan plot (your style) ────────────────────────────────────────────
+    # ── Manhattan ──────────────────────────────────────────────────────────────
     p_manh <- ggplot2::ggplot(
       df, ggplot2::aes(x = CHR, y = log10p, colour = CHR)) +
       ggplot2::geom_jitter(
-        data    = df[df$Significant == "Below threshold", ],
-        alpha   = 0.5, width = 0.42, size = 0.8) +
+        data  = df[df$Significant == "Below threshold", ],
+        alpha = 0.5, width = 0.42, size = 0.8) +
       ggplot2::geom_jitter(
-        data    = df[df$Significant == "Above threshold", ],
+        data  = df[df$Significant == "Above threshold", ],
         ggplot2::aes(shape = allele),
-        alpha   = 0.85, width = 0.42, size = 2.2) +
+        alpha = 0.85, width = 0.42, size = 2.2) +
       ggplot2::scale_colour_manual(values = chrom_colors, guide = "none") +
       ggplot2::scale_shape_manual(
         name   = "Haplotype allele",
@@ -1117,7 +1409,7 @@ test_block_haplotypes <- function(
         breaks = scales::pretty_breaks(n = 6)
       ) +
       ggplot2::labs(
-        title    = paste0("Manhattan plot \u2014 ", tr),
+        title    = paste0("Manhattan plot — ", tr),
         subtitle = paste0(nrow(df), " haplotype allele tests | ",
                           "threshold p = ", sig_threshold, " | ",
                           sum(df$significant, na.rm = TRUE), " significant"),
@@ -1125,64 +1417,67 @@ test_block_haplotypes <- function(
         y = expression(-log[10](italic(p)))
       ) +
       ggplot2::theme_classic(base_size = 11) +
-      ggplot2::guides(shape = ggplot2::guide_legend(nrow = 2, override.aes = list(size = 3))) +
+      ggplot2::guides(shape = ggplot2::guide_legend(
+        nrow = 2, override.aes = list(size = 3))) +
       ggplot2::theme(
-        plot.title        = ggplot2::element_text(face = "bold"),
-        plot.subtitle     = ggplot2::element_text(size = 9, colour = "grey40"),
-        legend.title      = ggplot2::element_text(size = 9, face = "bold"),
-        legend.position   = "bottom",
-        axis.title.x      = ggplot2::element_blank(),
-        axis.text.x       = ggplot2::element_text(size = 8, face = "bold"),
-        axis.ticks.x      = ggplot2::element_blank(),
-        axis.line.x       = ggplot2::element_blank(),
-        axis.title.y      = ggplot2::element_text(size = 12, face = "bold"),
-        plot.margin       = ggplot2::unit(c(0.2, 0.2, 0.1, 0.2), "cm"),
-        panel.grid.major  = ggplot2::element_blank(),
-        panel.grid.minor  = ggplot2::element_blank()
+        plot.title       = ggplot2::element_text(face = "bold"),
+        plot.subtitle    = ggplot2::element_text(size = 9, colour = "grey40"),
+        legend.title     = ggplot2::element_text(size = 9, face = "bold"),
+        legend.position  = "bottom",
+        axis.title.x     = ggplot2::element_blank(),
+        axis.text.x      = ggplot2::element_text(size = 8, face = "bold"),
+        axis.ticks.x     = ggplot2::element_blank(),
+        axis.line.x      = ggplot2::element_blank(),
+        axis.title.y     = ggplot2::element_text(size = 12, face = "bold"),
+        plot.margin      = ggplot2::unit(c(0.2, 0.2, 0.1, 0.2), "cm"),
+        panel.grid.major = ggplot2::element_blank(),
+        panel.grid.minor = ggplot2::element_blank()
       )
 
-    # ── QQ plot ────────────────────────────────────────────────────────────────
-    n_p  <- nrow(df)
-    obs  <- sort(df$log10p, decreasing = TRUE)
-    exp  <- -log10((seq_len(n_p)) / (n_p + 1))
+    # ── QQ ─────────────────────────────────────────────────────────────────────
+    n_p    <- nrow(df)
+    obs    <- sort(df$log10p, decreasing = TRUE)
+    exp_p  <- -log10((seq_len(n_p)) / (n_p + 1))
     lambda <- stats::median(
       stats::qchisq(df$p_wald, df = 1, lower.tail = FALSE), na.rm = TRUE
     ) / stats::qchisq(0.5, df = 1, lower.tail = FALSE)
 
-    qq_df <- data.frame(expected = rev(exp), observed = rev(obs),
+    qq_df <- data.frame(expected = rev(exp_p), observed = rev(obs),
                         significant = rev(sort(df$significant)))
 
     p_qq <- ggplot2::ggplot(qq_df, ggplot2::aes(x = expected, y = observed)) +
       ggplot2::geom_abline(intercept = 0, slope = 1,
                            colour = "red", linetype = "solid", linewidth = 0.5) +
       ggplot2::geom_point(
-        data  = qq_df[!qq_df$significant, ],
+        data   = qq_df[!qq_df$significant, ],
         colour = "#6495ED", size = 0.7, alpha = 0.6) +
       ggplot2::geom_point(
-        data  = qq_df[qq_df$significant, ],
+        data   = qq_df[qq_df$significant, ],
         colour = "#800000", size = 1.5, alpha = 0.9) +
       ggplot2::labs(
-        title    = paste0("QQ plot \u2014 ", tr),
-        subtitle = sprintf("\u03bb (GC) = %.3f | %d tests", lambda, n_p),
+        title    = paste0("QQ plot — ", tr),
+        subtitle = sprintf("λ (GC) = %.3f | %d tests", lambda, n_p),
         x = expression("Expected " * -log[10](italic(p))),
         y = expression("Observed " * -log[10](italic(p)))
       ) +
       ggplot2::theme_classic(base_size = 11) +
       ggplot2::theme(
-        plot.title     = ggplot2::element_text(face = "bold"),
-        plot.subtitle  = ggplot2::element_text(size = 9, colour = "grey40"),
-        axis.title     = ggplot2::element_text(size = 11, face = "bold"),
+        plot.title       = ggplot2::element_text(face = "bold"),
+        plot.subtitle    = ggplot2::element_text(size = 9, colour = "grey40"),
+        axis.title       = ggplot2::element_text(size = 11, face = "bold"),
         panel.grid.major = ggplot2::element_blank(),
         panel.grid.minor = ggplot2::element_blank()
       )
 
-    # ── Save ───────────────────────────────────────────────────────────────────
+    # ── Save as PDF ────────────────────────────────────────────────────────────
     safe_tr   <- gsub("[^A-Za-z0-9_]", "_", tr)
-    manh_file <- file.path(out_dir, paste0("manhattan_", safe_tr, ".png"))
-    qq_file   <- file.path(out_dir, paste0("qq_",        safe_tr, ".png"))
+    manh_file <- file.path(out_dir, paste0("manhattan_", safe_tr, ".pdf"))
+    qq_file   <- file.path(out_dir, paste0("qq_",        safe_tr, ".pdf"))
 
-    ggplot2::ggsave(manh_file, p_manh, width = 14, height = 5.5, dpi = 300)
-    ggplot2::ggsave(qq_file,   p_qq,   width  =  5, height = 5,   dpi = 300)
+    ggplot2::ggsave(manh_file, p_manh, width = 14, height = 5.5,
+                    device = "pdf", useDingbats = FALSE)
+    ggplot2::ggsave(qq_file,   p_qq,   width = 5,  height = 5,
+                    device = "pdf", useDingbats = FALSE)
 
     if (verbose) {
       message("[plot] Manhattan saved: ", manh_file)
@@ -1223,6 +1518,15 @@ print.LDxBlocks_haplotype_assoc <- function(x, ...) {
   if (nrow(x$block_tests) > 0)
     cat("  Significant blocks  (", x$sig_metric, " <= ", x$sig_threshold, "): ",
         sum(x$block_tests$significant_omnibus, na.rm = TRUE), "\n", sep = "")
+  if (!is.null(x$pc_model_selection) && nrow(x$pc_model_selection) > 0) {
+    cat("\n  PC model selection (optimize_pcs = TRUE):\n")
+    sel <- x$pc_model_selection
+    for (i in seq_len(nrow(sel))) {
+      cat(sprintf("    k=%2d  BIC=%8.1f  lambda_GC=%.3f  score=%.4f%s\n",
+                  sel$n_pcs[i], sel$BIC[i], sel$lambda_gc[i], sel$score[i],
+                  if (sel$selected[i]) "  <-- selected" else ""))
+    }
+  }
   invisible(x)
 }
 
@@ -1293,6 +1597,36 @@ print.LDxBlocks_haplotype_assoc <- function(x, ...) {
 #'
 #' @param blue_cols Character vector. Phenotype column names for multi-trait
 #'   data frames. Default \code{NULL}.
+#'
+#' @param sig_threshold Numeric in (0, 1]. Significance cutoff applied to the
+#'   p-value chosen by \code{sig_metric}. Default \code{0.05}.
+#'
+#' @param sig_metric Character. Which p-value drives the \code{significant}
+#'   flag in \code{$omnibus_tests}. One of:
+#'   \itemize{
+#'     \item \code{"p_omnibus_adj"} (default) — plain Bonferroni:
+#'       \eqn{\min(p \times n_{blocks},\,1)}, computed per trait.
+#'       Retained for backward compatibility.
+#'     \item \code{"p_omnibus_fdr"} — Benjamini-Hochberg FDR per trait.
+#'     \item \code{"p_omnibus_simplem"} — simpleM Bonferroni-style:
+#'       \eqn{\min(p \times M_{\mathrm{eff}},\,1)}, where
+#'       \eqn{M_{\mathrm{eff}}} is estimated from the eigenspectrum of the
+#'       block-summary PC1 matrix.
+#'     \item \code{"p_omnibus_simplem_sidak"} — simpleM Šidák-style:
+#'       \eqn{1-(1-p)^{M_{\mathrm{eff}}}}. Recommended: consistent with
+#'       \code{\link{test_block_haplotypes}}.
+#'   }
+#'   All four p-value columns are always present in \code{$omnibus_tests}
+#'   regardless of this choice.
+#'
+#' @param meff_percent_cut Numeric in (0, 1). Proportion of variance explained
+#'   by the retained PCs in the simpleM eigendecomposition used to estimate
+#'   \eqn{M_{\mathrm{eff}}} for \code{sig_metric = "p_omnibus_simplem"} or
+#'   \code{"p_omnibus_simplem_sidak"}. Default \code{0.995} (99.5\%),
+#'   following the original simpleM recommendation (Gao et al. 2008).
+#'
+#' @param meff_max_cols Integer. Maximum columns per eigendecomposition chunk
+#'   when estimating \eqn{M_{\mathrm{eff}}}. Default \code{1000L}.
 #'
 #' @param verbose Logical. \code{TRUE} (default) prints progress per trait.
 #'
@@ -1399,6 +1733,11 @@ estimate_diplotype_effects <- function(
     id_col           = "id",
     blue_col         = "blue",
     blue_cols        = NULL,
+    sig_threshold    = 0.05,
+    sig_metric       = c("p_omnibus_adj", "p_omnibus_fdr",
+                         "p_omnibus_simplem", "p_omnibus_simplem_sidak"),
+    meff_percent_cut = 0.995,
+    meff_max_cols    = 1000L,
     verbose          = TRUE
 ) {
   if (!requireNamespace("rrBLUP", quietly = TRUE))
@@ -1540,11 +1879,66 @@ estimate_diplotype_effects <- function(
 
   means_df   <- if (length(means_rows))   do.call(rbind,means_rows)   else data.frame()
   dom_df     <- if (length(dom_rows))     do.call(rbind,dom_rows)     else data.frame()
+  sig_metric_dip <- match.arg(sig_metric)
+
   omnibus_df <- if (length(omnibus_rows)) {
-    df <- do.call(rbind,omnibus_rows)
-    df$p_omnibus_adj <- pmin(df$p_omnibus*nrow(df),1)
-    df$significant   <- df$p_omnibus_adj < 0.05
-    df[order(df$p_omnibus),]
+    df <- do.call(rbind, omnibus_rows)
+
+    # ── Bonferroni (backward-compat, per trait) ──────────────────────────────
+    df$p_omnibus_adj <- NA_real_
+    for (tr in unique(df$trait)) {
+      idx_tr <- which(df$trait == tr)
+      df$p_omnibus_adj[idx_tr] <- pmin(df$p_omnibus[idx_tr] * length(idx_tr), 1)
+    }
+
+    # ── BH-FDR (per trait) ───────────────────────────────────────────────────
+    df$p_omnibus_fdr <- NA_real_
+    for (tr in unique(df$trait)) {
+      idx_tr <- which(df$trait == tr)
+      df$p_omnibus_fdr[idx_tr] <- stats::p.adjust(df$p_omnibus[idx_tr], method = "BH")
+    }
+
+    # ── simpleM Meff (per trait, global scope across all tested blocks) ──────
+    # Use the block-level omnibus p-values as the input vector.
+    # Meff is estimated from a block-summary correlation matrix derived from
+    # the haplotype feature matrix (one PC1 per block), consistent with
+    # test_block_haplotypes() block-level Meff.
+    # For estimate_diplotype_effects() we use a simpler approximation:
+    # the number of tested blocks per trait as Meff (worst-case Bonferroni)
+    # unless the hap_mat is available to compute actual LD-based Meff.
+    df$p_omnibus_simplem       <- NA_real_
+    df$p_omnibus_simplem_sidak <- NA_real_
+
+    for (tr in unique(df$trait)) {
+      idx_tr <- which(df$trait == tr)
+      n_tr   <- length(idx_tr)
+      # Meff from eigenspectrum of the haplotype dosage correlation matrix,
+      # using the same block-summary approach as test_block_haplotypes.
+      meff_tr <- tryCatch({
+        # hap_mat was built above and is in scope
+        col_blocks_hm <- sub("_hap\\d+$", "", colnames(hap_mat))
+        X_bsum <- .make_block_summary_matrix(hap_mat, col_blocks_hm)
+        .compute_simplem_meff_matrix(
+          X_bsum, percent_cut = meff_percent_cut, max_cols = meff_max_cols
+        )$meff
+      }, error = function(e) n_tr)
+      if (!is.finite(meff_tr) || meff_tr < 1L) meff_tr <- n_tr
+
+      df$p_omnibus_simplem[idx_tr] <-
+        .adjust_p_simplem_bonf(df$p_omnibus[idx_tr], rep(meff_tr, n_tr))
+      df$p_omnibus_simplem_sidak[idx_tr] <-
+        .adjust_p_simplem_sidak(df$p_omnibus[idx_tr], rep(meff_tr, n_tr))
+    }
+
+    # ── Significance flag using chosen sig_metric ────────────────────────────
+    df$significant <- switch(sig_metric_dip,
+                             p_omnibus_adj          = df$p_omnibus_adj          < sig_threshold,
+                             p_omnibus_fdr          = df$p_omnibus_fdr          < sig_threshold,
+                             p_omnibus_simplem      = df$p_omnibus_simplem      < sig_threshold,
+                             p_omnibus_simplem_sidak= df$p_omnibus_simplem_sidak< sig_threshold
+    )
+
+    df[order(df$p_omnibus), ]
   } else data.frame()
 
   .log("Done. Diplotype means:",nrow(means_df),"| Allele pairs:",nrow(dom_df),

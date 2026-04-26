@@ -57,6 +57,76 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development"></a></h2>
 <div class="section level3">
+<h3 id="enhancement-pc-model-selection-and-expanded-plot-outputs-in-test_block_haplotypes-0-3-1-9000">Enhancement: PC model selection and expanded plot outputs in test_block_haplotypes()<a class="anchor" aria-label="anchor" href="#enhancement-pc-model-selection-and-expanded-plot-outputs-in-test_block_haplotypes-0-3-1-9000"></a></h3>
+<p><code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code> now supports automatic selection of the number of population structure covariates (n_pcs) via a new BIC/lambda/hybrid optimisation framework, and produces three new diagnostic plots in PDF format.</p>
+<p><strong>New parameters:</strong></p>
+<ul><li>
+<code>optimize_pcs = FALSE</code> — when <code>TRUE</code>, fits REML null models for <code>n_pcs = 0..optimize_pcs_max</code> and selects the value minimising the score criterion chosen by <code>optimize_method</code>. Uses only the first trait (GRM is shared across traits). When <code>FALSE</code> (default), <code>n_pcs</code> is used directly.</li>
+<li>
+<code>optimize_pcs_max = 10L</code> — upper bound on the number of PCs evaluated during optimisation.</li>
+<li>
+<code>optimize_method = c("bic_lambda", "bic", "lambda")</code> — criterion for PC model selection (only used when <code>optimize_pcs = TRUE</code>):
+<ul><li>
+<code>"bic"</code> — minimise BIC of the null REML model: <code>−2·logLik + k·log(n)</code>, where k = intercept + n_pcs + σ²_g + σ²_e.</li>
+<li>
+<code>"lambda"</code> — minimise |λ_GC − 1|, where λ is estimated from a fast 500-allele scan on GRM-corrected residuals. Most directly targets genomic control calibration.</li>
+<li>
+<code>"bic_lambda"</code> (<strong>default</strong>, recommended for GWAS) — hybrid score: |λ − 1| + 0.01 × scaled_BIC. Minimises inflation/deflation while BIC breaks ties toward the simpler (fewer PCs) model.</li>
+</ul></li>
+</ul><p><strong>New return element:</strong></p>
+<ul><li>
+<code>$pc_model_selection</code> — <code>data.frame</code> with one row per k tested: <code>n_pcs</code>, <code>BIC</code>, <code>lambda_gc</code>, <code>score</code>, <code>selected</code>. Printed by <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and visible in the run log. <code>NULL</code> when <code>optimize_pcs = FALSE</code>.</li>
+</ul><p><strong>Plot changes (breaking):</strong></p>
+<p>All plots now saved as <strong>PDF</strong> instead of PNG. Three plots are produced per run:</p>
+<ul><li>
+<code>manhattan_&lt;trait&gt;.pdf</code> — unchanged content, format changed to PDF.</li>
+<li>
+<code>qq_&lt;trait&gt;.pdf</code> — unchanged content, format changed to PDF.</li>
+<li>
+<code>pca_grm.pdf</code> — <strong>new</strong>: individuals in PC1 × PC2 space (GRM eigenvectors), coloured by the first trait’s phenotype using a blue-white-red diverging palette. Subtitle reports the number of PCs used in the model.</li>
+<li>
+<code>grm_scree.pdf</code> — <strong>new</strong>: scree plot of GRM eigenvalues (up to PC30), with the selected PC cutoff highlighted in red and the cumulative variance curve overlaid as a dashed line. When <code>optimize_pcs = TRUE</code>, the subtitle reports the selection criterion, selected k, and lambda_GC.</li>
+</ul><p><strong>Breaking change note:</strong> any downstream code that expected <code>manhattan_*.png</code> or <code>qq_*.png</code> file names must be updated to use the <code>.pdf</code> extension.</p>
+</div>
+<div class="section level3">
+<h3 id="enhancement-full-multiple-testing-correction-set-in-estimate_diplotype_effects-0-3-1-9000">Enhancement: full multiple-testing correction set in estimate_diplotype_effects()<a class="anchor" aria-label="anchor" href="#enhancement-full-multiple-testing-correction-set-in-estimate_diplotype_effects-0-3-1-9000"></a></h3>
+<p><code><a href="../reference/estimate_diplotype_effects.html">estimate_diplotype_effects()</a></code> now computes the same four correction columns as <code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code>, making the two modules symmetric. The <code>significant</code> flag is now driven by a user-selected criterion rather than always using plain Bonferroni.</p>
+<p><strong>New parameters:</strong></p>
+<ul><li>
+<code>sig_threshold = 0.05</code> — significance cutoff applied to the p-value selected by <code>sig_metric</code>.</li>
+<li>
+<code>sig_metric = c("p_omnibus_adj", "p_omnibus_fdr", "p_omnibus_simplem", "p_omnibus_simplem_sidak")</code> — which correction drives the <code>significant</code> flag:
+<ul><li>
+<code>"p_omnibus_adj"</code> — plain Bonferroni × n_blocks_per_trait (old default, retained for backward compatibility).</li>
+<li>
+<code>"p_omnibus_fdr"</code> — Benjamini-Hochberg FDR.</li>
+<li>
+<code>"p_omnibus_simplem"</code> — simpleM Bonferroni-style: min(p × Meff, 1), where Meff is estimated from the block-summary PC1 eigenspectrum.</li>
+<li>
+<code>"p_omnibus_simplem_sidak"</code> (<strong>recommended</strong>) — simpleM Šidák-style: 1 − (1 − p)^Meff. Consistent with <code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code>.</li>
+</ul></li>
+<li>
+<code>meff_percent_cut = 0.995</code> — variance threshold for simpleM Meff estimation.</li>
+<li>
+<code>meff_max_cols = 1000L</code> — chunk size for large eigendecompositions.</li>
+</ul><p><strong>New output columns in <code>$omnibus_tests</code></strong> (all always present):</p>
+<table class="table"><colgroup><col width="38%"><col width="61%"></colgroup><thead><tr><th>Column</th>
+<th>Description</th>
+</tr></thead><tbody><tr><td><code>p_omnibus_adj</code></td>
+<td>Plain Bonferroni × n_blocks (unchanged)</td>
+</tr><tr><td><code>p_omnibus_fdr</code></td>
+<td>BH-FDR per trait</td>
+</tr><tr><td><code>p_omnibus_simplem</code></td>
+<td>simpleM Bonferroni-style: min(p × Meff, 1)</td>
+</tr><tr><td><code>p_omnibus_simplem_sidak</code></td>
+<td>simpleM Šidák-style: 1 − (1−p)^Meff</td>
+</tr><tr><td><code>Meff</code></td>
+<td>Effective number of independent tests (block-summary PC1 eigenspectrum)</td>
+</tr></tbody></table></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-1">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-1"></a></h2>
+<div class="section level3">
 <h3 id="new-feature-block_match--position-in-compare_block_effects-and-compare_gwas_effects-0-3-1-9000">New feature: block_match = “position” in compare_block_effects() and compare_gwas_effects()<a class="anchor" aria-label="anchor" href="#new-feature-block_match--position-in-compare_block_effects-and-compare_gwas_effects-0-3-1-9000"></a></h3>
 <p>Both cross-population comparison functions now support matching LD blocks between populations by <strong>genomic interval overlap</strong> rather than by <code>block_id</code> string equality.</p>
 <p><strong>Why this matters.</strong> LD block boundaries are population-specific: the same causal QTL region may be carved into a 100 kb block in Population A and a 130 kb block in Population B, producing different <code>block_id</code> strings (<code>"block_1_10000_85000"</code> vs <code>"block_1_10000_91000"</code>). With the default <code>block_match = "id"</code>, these would not be compared — the block appears as Pop1-only and the replication signal is lost.</p>
@@ -79,7 +149,7 @@
 </div>
 </div>
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-1">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-1"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-2">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-2"></a></h2>
 <div class="section level3">
 <h3 id="new-function-compare_gwas_effects-0-3-1-9000">New function: compare_gwas_effects()<a class="anchor" aria-label="anchor" href="#new-function-compare_gwas_effects-0-3-1-9000"></a></h3>
 <p>Cross-population effect concordance from <strong>external GWAS results</strong>. Complements <code><a href="../reference/compare_block_effects.html">compare_block_effects()</a></code> for users who ran association analysis outside LDxBlocks (GAPIT, TASSEL, FarmCPU, PLINK, or any other tool).</p>
@@ -97,7 +167,7 @@
 </div>
 </div>
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-2">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-2"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development-3">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development-3"></a></h2>
 <div class="section level3">
 <h3 id="new-function-compare_block_effects-0-3-1-9000">New function: compare_block_effects()<a class="anchor" aria-label="anchor" href="#new-function-compare_block_effects-0-3-1-9000"></a></h3>
 <p>Cross-population haplotype effect concordance. Takes two <code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code> result objects and returns per-block statistics for systematic GWAS replication:</p>

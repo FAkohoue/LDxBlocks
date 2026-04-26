@@ -577,7 +577,7 @@ assoc_sm <- test_block_haplotypes(
   haplotypes       = haps,
   blues            = blues_vec,
   blocks           = blocks,
-  n_pcs            = 3L,                 # Q+K model
+  n_pcs            = 3L,                 # Q+K model (used when optimize_pcs = FALSE)
   sig_metric       = "p_simplem_sidak",  # simpleM Šidák correction
   meff_scope       = "chromosome",       # recommended: separate Meff per chr
   meff_percent_cut = 0.995,              # 99.5% variance threshold (Gao default)
@@ -593,6 +593,30 @@ head(assoc_sm$allele_tests[order(assoc_sm$allele_tests$p_wald),
                             c("block_id","allele","effect","SE",
                               "p_wald","p_simplem","p_simplem_sidak","Meff")], 5)
 
+# Automatic PC selection — let the data choose n_pcs via BIC/lambda hybrid
+# Recommended when lambda_GC is far from 1.0 with a fixed n_pcs.
+assoc_opt <- test_block_haplotypes(
+  haplotypes       = haps,
+  blues            = blues_vec,
+  blocks           = blocks,
+  optimize_pcs     = TRUE,              # triggers BIC/lambda model selection
+  optimize_pcs_max = 10L,              # test k = 0..10
+  optimize_method  = "bic_lambda",     # recommended: |lambda-1| + 0.01*BIC
+  sig_metric       = "p_simplem_sidak",
+  meff_scope       = "chromosome",
+  plot             = TRUE,             # saves PDF plots including pca_grm.pdf
+  out_dir          = "results",        # and grm_scree.pdf
+  verbose          = TRUE
+)
+
+# Inspect selection table
+print(assoc_opt$pc_model_selection)
+#  n_pcs     BIC lambda_gc  score selected
+#      0  1234.1     1.021 0.0210    FALSE
+#      1  1231.5     1.015 0.0150    FALSE
+#      2  1230.8     1.003 0.0033    FALSE
+#      3  1232.1     0.999 0.0011     TRUE   <-- selected
+
 # Multi-trait: all traits share the same GRM
 assoc_mt <- test_block_haplotypes(
   haplotypes = haps,
@@ -607,13 +631,29 @@ assoc_mt <- test_block_haplotypes(
 ```
 
 [`estimate_diplotype_effects()`](https://FAkohoue.github.io/LDxBlocks/reference/estimate_diplotype_effects.md)
-decomposes phenotypic variation into additive and dominance components:
+now supports the same correction set as
+[`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md).
+All five p-value columns are always present in `$omnibus_tests`;
+`sig_metric` controls which drives the `significant` flag:
 
 ``` r
 dip <- estimate_diplotype_effects(
-  haplotypes = haps, blues = blues_vec, blocks = blocks,
-  min_n_diplotype = 3L, verbose = FALSE
+  haplotypes       = haps,
+  blues            = blues_vec,
+  blocks           = blocks,
+  min_n_diplotype  = 3L,
+  sig_metric       = "p_omnibus_simplem_sidak",  # recommended
+  meff_percent_cut = 0.995,
+  verbose          = FALSE
 )
+
+# All five columns always present:
+# p_omnibus_adj | p_omnibus_fdr | p_omnibus_simplem | p_omnibus_simplem_sidak | Meff
+head(dip$omnibus_tests[, c("block_id","trait","F_stat","p_omnibus",
+                            "p_omnibus_fdr","p_omnibus_simplem_sidak",
+                            "Meff","significant")], 5)
+
+# Blocks showing overdominance (heterosis candidates)
 dip$dominance_table[dip$dominance_table$overdominance,
                     c("block_id","allele_A","allele_B","a","d","d_over_a")]
 ```

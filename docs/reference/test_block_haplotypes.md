@@ -69,6 +69,9 @@ test_block_haplotypes(
   meff_scope = c("chromosome", "global", "block"),
   meff_percent_cut = 0.995,
   meff_max_cols = 1000L,
+  optimize_pcs = FALSE,
+  optimize_pcs_max = 10L,
+  optimize_method = c("bic_lambda", "bic", "lambda"),
   plot = FALSE,
   out_dir = ".",
   verbose = TRUE
@@ -102,7 +105,8 @@ test_block_haplotypes(
   Integer (`>= 0`) or `NULL`. Number of haplotype-GRM eigenvectors to
   include as fixed-effect population structure covariates. `0L`
   (default): pure GRM / EMMAX. `1-10`: Q+K model. `NULL`: auto-selected
-  from the GRM scree-plot elbow, capped at 10.
+  from the GRM scree-plot elbow, capped at 10. Ignored when
+  `optimize_pcs = TRUE`.
 
 - top_n:
 
@@ -182,6 +186,39 @@ test_block_haplotypes(
   Integer. Maximum columns per eigendecomposition block when computing
   \\M\_{\mathrm{eff}}\\. Larger groups are chunked and summed. Default
   `1000L`.
+
+- optimize_pcs:
+
+  Logical. When `TRUE`, automatically selects `n_pcs` by fitting REML
+  null models for `k = 0, 1, ..., optimize_pcs_max` and choosing the
+  value that minimises the criterion set by `optimize_method`. Selection
+  uses only the first trait (the haplotype GRM is shared across all
+  traits). Default `FALSE`: `n_pcs` is used directly.
+
+- optimize_pcs_max:
+
+  Integer. Upper bound on the number of PCs evaluated when
+  `optimize_pcs = TRUE`. Default `10L`.
+
+- optimize_method:
+
+  Character. Criterion for PC model selection when
+  `optimize_pcs = TRUE`. One of:
+
+  - `"bic_lambda"` (**default, recommended**) - hybrid score:
+    \\\|\lambda\_{GC} - 1\| + 0.01 \times \tilde{BIC}\\, where
+    \\\tilde{BIC}\\ is the BIC scaled to \\\[0,1\]\\ across all k
+    values. Minimises genomic inflation while BIC breaks ties toward
+    fewer PCs.
+
+  - `"bic"` - minimise the REML BIC of the null model: \\-2 \cdot \log
+    L + k\_{params} \cdot \log n\\.
+
+  - `"lambda"` - minimise \\\|\lambda\_{GC} - 1\|\\ alone, where
+    \\\lambda\_{GC}\\ is estimated from a fast 500-allele scan on
+    GRM-corrected residuals.
+
+  Ignored when `optimize_pcs = FALSE`.
 
 - plot:
 

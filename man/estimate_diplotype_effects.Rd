@@ -13,6 +13,11 @@ estimate_diplotype_effects(
   id_col = "id",
   blue_col = "blue",
   blue_cols = NULL,
+  sig_threshold = 0.05,
+  sig_metric = c("p_omnibus_adj", "p_omnibus_fdr", "p_omnibus_simplem",
+    "p_omnibus_simplem_sidak"),
+  meff_percent_cut = 0.995,
+  meff_max_cols = 1000L,
   verbose = TRUE
 )
 }
@@ -54,6 +59,36 @@ data frames. Default \code{"blue"}.}
 
 \item{blue_cols}{Character vector. Phenotype column names for multi-trait
 data frames. Default \code{NULL}.}
+
+\item{sig_threshold}{Numeric in (0, 1]. Significance cutoff applied to the
+p-value chosen by \code{sig_metric}. Default \code{0.05}.}
+
+\item{sig_metric}{Character. Which p-value drives the \code{significant}
+flag in \code{$omnibus_tests}. One of:
+\itemize{
+  \item \code{"p_omnibus_adj"} (default) - plain Bonferroni:
+    \eqn{\min(p \times n_{blocks},\,1)}, computed per trait.
+    Retained for backward compatibility.
+  \item \code{"p_omnibus_fdr"} - Benjamini-Hochberg FDR per trait.
+  \item \code{"p_omnibus_simplem"} - simpleM Bonferroni-style:
+    \eqn{\min(p \times M_{\mathrm{eff}},\,1)}, where
+    \eqn{M_{\mathrm{eff}}} is estimated from the eigenspectrum of the
+    block-summary PC1 matrix.
+  \item \code{"p_omnibus_simplem_sidak"} - simpleM Sidak-style:
+    \eqn{1-(1-p)^{M_{\mathrm{eff}}}}. Recommended: consistent with
+    \code{\link{test_block_haplotypes}}.
+}
+All four p-value columns are always present in \code{$omnibus_tests}
+regardless of this choice.}
+
+\item{meff_percent_cut}{Numeric in (0, 1). Proportion of variance explained
+by the retained PCs in the simpleM eigendecomposition used to estimate
+\eqn{M_{\mathrm{eff}}} for \code{sig_metric = "p_omnibus_simplem"} or
+\code{"p_omnibus_simplem_sidak"}. Default \code{0.995} (99.5\%),
+following the original simpleM recommendation (Gao et al. 2008).}
+
+\item{meff_max_cols}{Integer. Maximum columns per eigendecomposition chunk
+when estimating \eqn{M_{\mathrm{eff}}}. Default \code{1000L}.}
 
 \item{verbose}{Logical. \code{TRUE} (default) prints progress per trait.}
 }
