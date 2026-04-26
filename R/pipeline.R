@@ -211,6 +211,17 @@
 ) {
   .msg <- function(...) if (verbose) message("[phased cache] ", ...)
 
+  # Fingerprint: phased VCF path + mtime + target SNP count + sample count.
+  # Built FIRST so it can be hashed for the stem name.
+  vcf_mtime <- tryCatch(file.info(phased_vcf)$mtime, error = function(e) NA)
+  curr_fp <- list(
+    phased_vcf       = normalizePath(phased_vcf, mustWork = FALSE),
+    vcf_mtime        = as.character(vcf_mtime),
+    n_snps_target    = nrow(snp_info_filtered),
+    n_samples_target = length(sample_ids_target),
+    bigmemory_type   = bigmemory_type
+  )
+
   # Hash the fingerprint to produce a stable, collision-safe stem name.
   # Different VCF files / SNP sets / samples get different stems, so
   # stale backends from prior runs cannot silently be reattached.
@@ -232,15 +243,6 @@
              hap2 = paste0(stem_base, "_hap2"),
              dos  = paste0(stem_base, "_dos"))
 
-  # Fingerprint: phased VCF path + mtime + target SNP count + sample count
-  vcf_mtime <- tryCatch(file.info(phased_vcf)$mtime, error = function(e) NA)
-  curr_fp <- list(
-    phased_vcf       = normalizePath(phased_vcf, mustWork = FALSE),
-    vcf_mtime        = as.character(vcf_mtime),
-    n_snps_target    = nrow(snp_info_filtered),
-    n_samples_target = length(sample_ids_target),
-    bigmemory_type   = bigmemory_type
-  )
 
   # Check whether all cache files exist and fingerprint matches
   all_desc_ok <- all(file.exists(paste0(stems, ".desc")))
