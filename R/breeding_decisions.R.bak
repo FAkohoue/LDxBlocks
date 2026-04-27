@@ -40,11 +40,11 @@
 #' @param allele_effects Data frame specifying known per-allele additive effects.
 #'   \strong{Required columns:}
 #'   \itemize{
-#'     \item \code{block_id} (character) - Block identifier matching
+#'     \item \code{block_id} (character) — Block identifier matching
 #'       \code{names(haplotypes)}.
-#'     \item \code{allele} (character) - Haplotype allele string matching the
+#'     \item \code{allele} (character) — Haplotype allele string matching the
 #'       strings in \code{haplotypes[[block_id]]}.
-#'     \item \code{allele_effect} (numeric) - Effect size. Positive = allele
+#'     \item \code{allele_effect} (numeric) — Effect size. Positive = allele
 #'       increases trait value; negative = decreases it. Units are the same
 #'       as the phenotype scale used to estimate effects.
 #'   }
@@ -86,7 +86,7 @@
 #'     haplotype scores. When \code{normalize = TRUE}, scaled to [0, 1] where
 #'     1.0 = the individual with the most favourable genome-wide haplotype
 #'     combination in the panel and 0.0 = the least favourable. When
-#'     \code{normalize = FALSE}, units are phenotype units x allele dosage.}
+#'     \code{normalize = FALSE}, units are phenotype units × allele dosage.}
 #'   \item{\code{n_blocks_scored}}{Integer. Number of LD blocks for which at
 #'     least one allele effect was available in \code{allele_effects} and
 #'     at least one allele passed \code{min_freq}. Maximum possible value
@@ -103,7 +103,7 @@
 #'   \item{\code{score_<block_id>}}{Numeric. One column per scored LD block,
 #'     named \code{score_} followed by the block identifier (e.g.
 #'     \code{score_block_1_1000_103000}). Contains the raw per-block score for
-#'     each individual (effect x dosage sum across alleles). Zero when the
+#'     each individual (effect × dosage sum across alleles). Zero when the
 #'     individual carries no alleles with known effects at that block. Used to
 #'     identify which genomic regions drive an individual's stacking index.}
 #' }
@@ -171,7 +171,7 @@ score_favorable_haplotypes <- function(
     ae_bn <- allele_effects[allele_effects$block_id == bn, ]
     if (!nrow(ae_bn)) next
 
-    # -- Allele frequency filter ---------------------------------------------
+    # ── Allele frequency filter ─────────────────────────────────────────────
     # For phased data hap[ind] = "gamete1|gamete2". The frequency filter must
     # operate on GAMETES (same level as allele_effects$allele), not on full
     # diplotype strings.  For unphased data hap[ind] is already the allele.
@@ -260,7 +260,7 @@ score_favorable_haplotypes <- function(
 #' redundant (same alleles at all blocks), and which blocks should be
 #' targeted in crossing schemes.
 #'
-#' The output includes one row per (individual x block x allele) combination,
+#' The output includes one row per (individual × block × allele) combination,
 #' including rows where the individual carries 0 copies of an allele. This
 #' ensures that all candidates can be compared on the same rows for any
 #' given block.
@@ -283,9 +283,9 @@ score_favorable_haplotypes <- function(
 #'   leaves \code{allele_effect} as \code{NA} throughout.
 #'   \strong{Required columns when not \code{NULL}:}
 #'   \itemize{
-#'     \item \code{block_id} (character) - matching \code{names(haplotypes)}.
-#'     \item \code{allele} (character) - matching haplotype allele strings.
-#'     \item \code{allele_effect} (numeric) - effect value per allele.
+#'     \item \code{block_id} (character) — matching \code{names(haplotypes)}.
+#'     \item \code{allele} (character) — matching haplotype allele strings.
+#'     \item \code{allele_effect} (numeric) — effect value per allele.
 #'   }
 #'   Accepts the output of \code{\link{decompose_block_effects}} directly.
 #'   For \code{\link{test_block_haplotypes}} output, filter to one trait
@@ -306,11 +306,11 @@ score_favorable_haplotypes <- function(
 #'   indicate missing genotype data. Individuals with this string at a block
 #'   are skipped for that block (no rows emitted). Default \code{"."}.
 #'
-#' @return Data frame in long format. One row per individual x block x allele
+#' @return Data frame in long format. One row per individual × block × allele
 #'   combination, including rows where \code{dosage = 0} (allele absent).
 #'   Sorted ascending by \code{id}, \code{CHR}, \code{start_bp}, then
 #'   descending by \code{dosage} (so carried alleles appear before absent ones
-#'   for each individual-block combination). Contains 10 columns:
+#'   for each individual–block combination). Contains 10 columns:
 #' \describe{
 #'   \item{\code{id}}{Character. Individual identifier.}
 #'   \item{\code{block_id}}{Character. LD block identifier matching
@@ -324,7 +324,7 @@ score_favorable_haplotypes <- function(
 #'     the individual: 0 = absent; 1 = one copy (heterozygous for phased data,
 #'     or present for unphased data); 2 = two copies (homozygous, phased data
 #'     only). For unphased input (no \code{"|"} in strings), dosage is always
-#'     0 or 1 - the two chromosomes cannot be distinguished, so an individual
+#'     0 or 1 — the two chromosomes cannot be distinguished, so an individual
 #'     matching this allele string exactly receives dosage 1 regardless of
 #'     whether they are truly homozygous or heterozygous.}
 #'   \item{\code{allele_freq}}{Numeric in [0, 1]. Population frequency of this
@@ -332,7 +332,7 @@ score_favorable_haplotypes <- function(
 #'     as \code{table(valid_haplotypes) / length(valid_haplotypes)} before
 #'     any \code{candidate_ids} filtering is applied.}
 #'   \item{\code{allele_effect}}{Numeric or \code{NA}. Effect value from
-#'     \code{allele_effects} if supplied and the allele-block combination
+#'     \code{allele_effects} if supplied and the allele–block combination
 #'     is matched; \code{NA} otherwise.}
 #'   \item{\code{is_rare}}{Logical. \code{TRUE} when
 #'     \code{allele_freq < 0.10}. Convenience flag for filtering the inventory
