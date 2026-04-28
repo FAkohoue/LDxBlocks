@@ -783,6 +783,79 @@ multiple haplotype alleles), `effect_correlation` and Cochran Q are
 always `NA`. Replication is judged by direction agreement and
 `meta_p ≤ 0.05`.
 
+### 13.10 Within-block and between-block epistasis detection
+
+LDxBlocks v0.3.1 adds three epistasis functions that all operate on
+GRM-corrected REML residuals from the same null model as
+[`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md).
+
+**Within-block SNP interaction scan** (`scan_block_epistasis`): tests
+all C(p,2) SNP pairs inside significant blocks for the interaction term
+aaij in y = mu + ai*xi + aj*xj + aaij*(xi*xj) + e. Corrected by
+Bonferroni and simpleM Sidak within each block; `sig_metric` controls
+which drives the `significant` flag.
+
+**Between-block trans-haplotype scan**
+(`scan_block_by_block_epistasis`): tests significant haplotype alleles
+against every allele at all other blocks. Identifies genetic background
+dependence at haplotype resolution — a form of epistasis that
+single-block and single-SNP analyses cannot detect.
+
+**Single-block fine-mapping** (`fine_map_epistasis_block`): identifies
+the specific interacting SNP pair within a block. Auto-dispatches to
+exhaustive pairwise scan (p \<= 200 SNPs) or LASSO with interaction
+terms (p \> 200 SNPs).
+
+``` r
+# Within-block epistasis (restricted to significant_omnibus blocks)
+epi_within <- scan_block_epistasis(
+  assoc              = assoc,
+  geno_matrix        = res$geno_matrix,
+  snp_info           = snp_info,
+  blocks             = blocks,
+  blues              = blues_list,
+  haplotypes         = haps,
+  trait              = "BL",
+  sig_metric         = "p_simplem_sidak",
+  max_snps_per_block = 300L
+)
+print(epi_within)
+epi_within$results[epi_within$results$significant, ]
+
+# Between-block trans-haplotype epistasis
+epi_between <- scan_block_by_block_epistasis(
+  assoc      = assoc,
+  haplotypes = haps,
+  blues      = blues_list,
+  blocks     = blocks,
+  trait      = "BL"
+)
+print(epi_between)
+
+# Fine-map a single block
+# y_resid must be pre-computed from the REML null model
+fine <- fine_map_epistasis_block(
+  block_id    = "block_12_1054210_1086071",
+  geno_matrix = res$geno_matrix,
+  snp_info    = snp_info,
+  blocks      = blocks,
+  y_resid     = my_reml_residuals,
+  method      = "auto"
+)
+head(fine)
+```
+
+**Statistical note.** With n=204 individuals and Bonferroni correction
+over ~300,000 within-block pairs, the detection threshold is
+approximately p \< 1.7 × 10^-7 per block. Power to detect pairwise SNP
+epistasis at this threshold is low unless the interaction effect is
+large (\|aa\| \> ~0.3 SD). The between-block trans-haplotype scan is
+better powered because each haplotype dosage column aggregates multi-SNP
+variation, reducing the effective number of tests while increasing the
+signal-to-noise ratio per test.
+
+------------------------------------------------------------------------
+
 ## 14. References
 
 - Kim S-A et al. (2018). *Bioinformatics* **34**(4):588-596.

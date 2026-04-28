@@ -67,6 +67,7 @@
     - 10.16. [Breeding decision tools](#1016-breeding-decision-tools)
     - 10.17. [Cross-population effect concordance (haplotype)](#1017-cross-population-effect-concordance)
     - 10.18. [Cross-population effect concordance (external GWAS)](#1018-cross-population-effect-concordance-external-gwas)
+    - 10.19. [Within-block and between-block epistasis detection](#1019-within-block-and-between-block-epistasis-detection)
 11. [Parameter auto-tuning](#11-parameter-auto-tuning)
 12. [Scale strategies and backends](#12-scale-strategies-and-backends)
     - 12.1. [The LDxBlocks_backend interface](#121-the-ldxblocksbackend-interface)
@@ -832,6 +833,84 @@ print(conc)
 > (default) to reuse `snp_info_pop1`. When populations have different marker
 > sets, supply `snp_info_pop2` explicitly.
 
+### 10.19. Within-block and between-block epistasis detection
+
+LDxBlocks provides three functions for epistasis detection that extend the
+haplotype association framework. All operate on GRM-corrected REML residuals
+from the same null model as `test_block_haplotypes()`, ensuring
+population-structure-corrected tests throughout.
+
+**`scan_block_epistasis()`** tests all C(p,2) SNP pairs within each
+significant block for pairwise interaction on GRM-corrected REML residuals.
+The model for each pair is:
+
+> y = μ + aᵢxᵢ + aⱼxⱼ + aaᵢⱼ(xᵢ × xⱼ) + ε
+
+Restricting to significant blocks avoids the genome-wide explosion: for 15
+significant blocks with ~200 SNPs each, the total number of tests is ~300,000
+rather than ~4.4 billion. Multiple testing is corrected by Bonferroni and
+simpleM Sidak within each block, where Meff is estimated from the eigenspectrum
+of the pairwise interaction column matrix.
+
+**`scan_block_by_block_epistasis()`** is a trans-haplotype epistasis scan
+that tests each significant haplotype allele against every allele at all
+other blocks. This is conceptually analogous to a trans-eQTL scan but for
+phenotypic haplotype interactions — it detects genetic background dependence
+where a resistance haplotype at one locus only functions in the presence of a
+specific background at another locus. For 25 significant alleles × 17,943
+total alleles, the scan involves ~450,000 tests corrected by Bonferroni.
+
+**`fine_map_epistasis_block()`** fine-maps a single block by identifying the
+specific interacting SNP pairs. For blocks with p ≤ 200 SNPs it runs an
+exhaustive pairwise scan. For larger blocks it uses LASSO with pairwise
+interaction terms (`glmnet::cv.glmnet()`, `lambda.1se`), which avoids the
+multiple-testing burden while identifying the most influential pairs.
+
+```r
+# Within-block epistasis scan (significant blocks only)
+epi_within <- scan_block_epistasis(
+  assoc              = assoc,          # test_block_haplotypes() result
+  geno_matrix        = res$geno_matrix,
+  snp_info           = snp_info,
+  blocks             = blocks,
+  blues              = blues_list,
+  haplotypes         = haps,
+  trait              = "BL",
+  sig_blocks         = NULL,           # NULL = use significant_omnibus blocks
+  max_snps_per_block = 300L,
+  sig_metric         = "p_simplem_sidak",
+  sig_threshold      = 0.05
+)
+print(epi_within)
+epi_within$results[epi_within$results$significant, ]
+epi_within$scan_summary
+
+# Between-block trans-haplotype epistasis scan
+epi_between <- scan_block_by_block_epistasis(
+  assoc         = assoc,
+  haplotypes    = haps,
+  blues         = blues_list,
+  blocks        = blocks,
+  trait         = "BL",
+  sig_alleles   = NULL,    # NULL = significant alleles from assoc
+  sig_threshold = 0.05
+)
+print(epi_between)
+epi_between$results[epi_between$results$significant, ]
+
+# Fine-map a single block (auto-dispatches: pairwise or LASSO)
+fine <- fine_map_epistasis_block(
+  block_id   = "block_12_1054210_1086071",
+  geno_matrix = res$geno_matrix,
+  snp_info    = snp_info,
+  blocks      = blocks,
+  y_resid     = my_reml_residuals,   # from .fit_null_reml() or null model
+  method      = "auto",              # pairwise <= 200 SNPs, lasso otherwise
+  sig_threshold = 0.05
+)
+head(fine)
+```
+
 ---
 
 ## 11. Parameter auto-tuning
@@ -1094,6 +1173,9 @@ result <- run_ldx_pipeline(
 | `estimate_diplotype_effects()` | Additive (a) and dominance (d) effects per block. Returns `LDxBlocks_diplotype`. |
 | `compare_block_effects()` | Cross-population haplotype effect concordance. Computes IVW meta-analytic effects, Cochran Q heterogeneity, I² inconsistency, direction agreement, and replication flag per block. New `block_match` parameter: `"id"` (default, backward-compatible) matches by `block_id` string; `"position"` matches by genomic interval overlap (IoU ≥ `overlap_min`, default 0.50) — handles different LD block boundaries between populations. `boundary_overlap_ratio` is automatically computed (not user-set); `boundary_overlap_warn` (default 0.80) controls `boundary_warning`. Output `match_type` column: `"exact"` / `"position"` / `"pop1_only"`. Returns `LDxBlocks_effect_concordance`. |
 | `compare_gwas_effects()` | Cross-population concordance from **external GWAS results** (GAPIT, TASSEL, FarmCPU, PLINK, etc.). Accepts raw GWAS data frames or pre-mapped `define_qtl_regions()` output. Derives SE from z-score when absent. `block_match = "position"` handles different block boundaries between populations (same as `compare_block_effects()`). One lead SNP per block; `effect_correlation` and Cochran Q are NA. Same output class as `compare_block_effects()`. |
+| `scan_block_epistasis()` | Within-block pairwise SNP epistasis scan. Tests all C(p,2) SNP pairs within significant blocks on GRM-corrected REML residuals. Model: y = mu + a_i*x_i + a_j*x_j + aa_ij*(x_i*x_j) + e. Corrected via Bonferroni and simpleM Sidak within each block (Meff from interaction column eigenspectrum). `sig_metric` controls which correction drives the `significant` flag. Returns `LDxBlocks_epistasis`. |
+| `scan_block_by_block_epistasis()` | Trans-haplotype between-block epistasis scan. Tests significant haplotype alleles against all other block alleles: O(n_sig x n_total_alleles) tests corrected by Bonferroni. Identifies genetic background dependence that single-block analyses cannot detect. Returns `LDxBlocks_block_epistasis`. |
+| `fine_map_epistasis_block()` | Single-block epistasis fine-mapping. Dispatches to exhaustive pairwise scan (p <= 200 SNPs) or LASSO interaction search via `glmnet` (p > 200 SNPs). Requires pre-computed REML residuals (`y_resid`). |
 
 ### 14.9. Breeding decision tools
 

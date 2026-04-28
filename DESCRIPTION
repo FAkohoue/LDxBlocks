@@ -76,6 +76,19 @@ Description: Fast, scalable linkage disequilibrium (LD) block detection for
     differ between populations due to different ancestral LD structures. The
     match_type output column reports 'exact', 'position' (IoU >= overlap_min,
     default 0.50), or 'pop1_only' for every block.
+    Three epistasis detection functions extend the haplotype association
+    layer: within-block pairwise SNP interaction scan on GRM-corrected REML
+    residuals (scan_block_epistasis; tests all C(p,2) SNP pairs within
+    significant blocks; corrected via Bonferroni and simpleM Sidak within
+    each block); trans-haplotype between-block epistasis scan testing
+    significant haplotype alleles against all other block alleles
+    (scan_block_by_block_epistasis; O(n_sig x n_total_alleles) tests,
+    Bonferroni corrected); and single-block epistasis fine-mapping with
+    adaptive method dispatch -- exhaustive pairwise scan for blocks with
+    p <= 200 SNPs, LASSO interaction search via glmnet for larger blocks
+    (fine_map_epistasis_block). All three functions operate on the same
+    GRM-corrected REML residuals as test_block_haplotypes(), ensuring
+    consistent population-structure correction across the inference pipeline.
     LD decay analysis (compute_ld_decay) estimates the distance at which r2
     or rV2 drops below a critical threshold per chromosome, using a
     memory-efficient position-first random sampling strategy and optional
@@ -123,6 +136,7 @@ Suggests:
     bigmemory,
     future.apply,
     ggplot2,
+    glmnet,
     usethis,
     knitr,
     rmarkdown,

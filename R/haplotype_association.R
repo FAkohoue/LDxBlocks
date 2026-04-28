@@ -1177,15 +1177,47 @@ test_block_haplotypes <- function(
 
   # -- Optional Manhattan, QQ, and PCA plots -----------------------------------
   if (isTRUE(plot) && nrow(allele_df) > 0) {
+    # Derive the actual significance threshold line from allele_df:
+    # use the minimum alpha applied across chromosomes for the chosen sig_metric.
+    # This ensures the red line on the Manhattan plot matches exactly the
+    # threshold that determined the `significant` flags.
+    sig_alpha_actual <- if (sig_metric == "p_simplem_sidak" &&
+                            "alpha_simplem_sidak" %in% names(allele_df)) {
+      min(allele_df$alpha_simplem_sidak, na.rm = TRUE)
+    } else if (sig_metric == "p_simplem" &&
+               "alpha_simplem" %in% names(allele_df)) {
+      min(allele_df$alpha_simplem, na.rm = TRUE)
+    } else if (sig_metric == "p_fdr") {
+      sig_threshold   # FDR threshold is the same as sig_threshold
+    } else {
+      sig_threshold   # p_wald: user-supplied threshold
+    }
+
+    # Suggestive threshold: Bonferroni for 1 expected false positive across
+    # all tests (Dudbridge & Gusnanto 2008, PLOS Genetics).
+    # = 1 / Meff  for simpleM-corrected analyses
+    # = 1 / n_tests  for raw Wald
+    # This is the standard "suggestive" line in human GWAS literature and
+    # is scientifically justified: it is the p-value at which you expect
+    # exactly one false positive in the scan.
+    n_eff_plot <- if (sig_metric %in% c("p_simplem_sidak", "p_simplem") &&
+                      "Meff" %in% names(allele_df)) {
+      max(allele_df$Meff, na.rm = TRUE)   # largest per-chromosome Meff
+    } else {
+      nrow(allele_df)                     # total tests (conservative)
+    }
+    sugg_alpha_actual <- 1 / n_eff_plot
+
     .plot_assoc_results(
-      allele_df     = allele_df,
-      sig_threshold = sig_threshold,
-      out_dir       = out_dir,
-      verbose       = verbose,
-      eig           = eig,              # for PCA + scree plots
-      n_pcs_used    = n_pcs_used,
-      blues_list    = blues_list,       # trait values for PC colouring
-      pc_model_sel  = pc_model_sel      # model selection table for scree subtitle
+      allele_df        = allele_df,
+      sig_alpha        = sig_alpha_actual,   # replaces raw sig_threshold
+      sugg_alpha       = sugg_alpha_actual,  # 1/Meff suggestive line
+      out_dir          = out_dir,
+      verbose          = verbose,
+      eig              = eig,
+      n_pcs_used       = n_pcs_used,
+      blues_list       = blues_list,
+      pc_model_sel     = pc_model_sel
     )
   }
 
@@ -1216,7 +1248,8 @@ test_block_haplotypes <- function(
 # ==============================================================================
 
 .plot_assoc_results <- function(allele_df,
-                                sig_threshold    = 0.05,
+                                sig_alpha        = 0.05,   # actual threshold used for significant flags
+                                sugg_alpha       = NULL,   # suggestive threshold (1/Meff); NULL = omit
                                 out_dir          = ".",
                                 verbose          = TRUE,
                                 eig              = NULL,
@@ -1389,8 +1422,13 @@ test_block_haplotypes <- function(
     df$CHR        <- factor(as.character(df$CHR), levels = chr_order)
     df$log10p     <- -log10(df$p_wald)
     df$Significant <- ifelse(df$significant, "Above threshold", "Below threshold")
-    sig_line  <- -log10(sig_threshold)
-    sugg_line <- max(0, sig_line - 1)
+    # sig_line: -log10 of the actual threshold applied to the significant flags
+    sig_line  <- -log10(max(sig_alpha, .Machine$double.eps))
+    # sugg_line: -log10(1/Meff) -- 1 expected false positive across the scan
+    # (Dudbridge & Gusnanto 2008). Only shown when sugg_alpha > sig_alpha.
+    sugg_line <- if (!is.null(sugg_alpha) && is.finite(sugg_alpha) &&
+                     sugg_alpha > sig_alpha) -log10(sugg_alpha) else NULL
+    y_max <- max(df$log10p, sig_line + 0.5, na.rm = TRUE) * 1.05
 
     # -- Manhattan --------------------------------------------------------------
     p_manh <- ggplot2::ggplot(
@@ -1398,40 +1436,32 @@ test_block_haplotypes <- function(
       ggplot2::geom_jitter(
         data  = df[df$Significant == "Below threshold", ],
         alpha = 0.5, width = 0.42, size = 0.8) +
+      # Significant points: filled diamond marker, no allele-name legend
       ggplot2::geom_jitter(
-        data  = df[df$Significant == "Above threshold", ],
-        ggplot2::aes(shape = allele),
-        alpha = 0.85, width = 0.42, size = 2.2) +
+        data   = df[df$Significant == "Above threshold", ],
+        shape  = 23, fill = "#800000", colour = "white",
+        alpha  = 0.9, width = 0.42, size = 2.8) +
       ggplot2::scale_colour_manual(values = chrom_colors, guide = "none") +
-      ggplot2::scale_shape_manual(
-        name   = "Haplotype allele",
-        values = seq(0, max(0, length(unique(df$allele[df$significant])) - 1))) +
-      ggplot2::geom_hline(yintercept = sig_line,  colour = "red",
-                          linetype = "solid",  linewidth = 0.4) +
-      ggplot2::geom_hline(yintercept = sugg_line, colour = "blue",
-                          linetype = "dotted", linewidth = 0.3) +
+      ggplot2::geom_hline(yintercept = sig_line, colour = "red",
+                          linetype = "solid", linewidth = 0.5) +
       ggplot2::scale_x_discrete(expand = ggplot2::expansion(add = 0.5)) +
       ggplot2::scale_y_continuous(
         expand = ggplot2::expansion(0),
-        limits = c(0, max(df$log10p, sig_line + 1) * 1.05),
+        limits = c(0, y_max),
         breaks = scales::pretty_breaks(n = 6)
       ) +
       ggplot2::labs(
         title    = paste0("Manhattan plot - ", tr),
-        subtitle = paste0(nrow(df), " haplotype allele tests | ",
-                          "threshold p = ", sig_threshold, " | ",
-                          sum(df$significant, na.rm = TRUE), " significant"),
+        subtitle = sprintf("%d haplotype allele tests | %d significant",
+                           nrow(df), sum(df$significant, na.rm = TRUE)),
         x = "Chromosome",
         y = expression(-log[10](italic(p)))
       ) +
       ggplot2::theme_classic(base_size = 11) +
-      ggplot2::guides(shape = ggplot2::guide_legend(
-        nrow = 2, override.aes = list(size = 3))) +
       ggplot2::theme(
         plot.title       = ggplot2::element_text(face = "bold"),
         plot.subtitle    = ggplot2::element_text(size = 9, colour = "grey40"),
-        legend.title     = ggplot2::element_text(size = 9, face = "bold"),
-        legend.position  = "bottom",
+        legend.position  = "none",
         axis.title.x     = ggplot2::element_blank(),
         axis.text.x      = ggplot2::element_text(size = 8, face = "bold"),
         axis.ticks.x     = ggplot2::element_blank(),
@@ -1441,6 +1471,13 @@ test_block_haplotypes <- function(
         panel.grid.major = ggplot2::element_blank(),
         panel.grid.minor = ggplot2::element_blank()
       )
+
+    # Add suggestive line (1/Meff -- 1 expected false positive) if defined
+    if (!is.null(sugg_line)) {
+      p_manh <- p_manh +
+        ggplot2::geom_hline(yintercept = sugg_line, colour = "#e67e22",
+                            linetype = "dashed", linewidth = 0.4)
+    }
 
     # -- QQ ---------------------------------------------------------------------
     n_p    <- nrow(df)

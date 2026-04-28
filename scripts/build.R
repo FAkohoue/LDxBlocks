@@ -80,9 +80,7 @@ list.files("pkgdown/favicon")
 # 1. Remove the installed package so no old DLL can be loaded by mistake.
 remove.packages("LDxBlocks")
 
-
 unlink(file.path(.libPaths()[1], "00LOCK-LDxBlocks"), recursive = TRUE)
-
 
 # 2. Delete the compiled DLL from the source tree (src/*.so / src/*.dll).
 #    Do this BEFORE the restart so there is nothing to unload conflicts with.
@@ -91,7 +89,6 @@ unlink(file.path(.libPaths()[1], "00LOCK-LDxBlocks"), recursive = TRUE)
 # 3. Restart R.  All loaded DLLs are released, file locks are cleared.
 .rs.restartR()
 # -- after restart, continue in SESSION B --------------------------------------
-
 
 
 
@@ -123,15 +120,9 @@ devtools::install()
 
 # 6. Run the test suite.  All C++ symbols are now registered in the
 #    installed DLL, so load_all() will find them.
-
-devtools::test(filter = "haplotypes")
-devtools::test(filter = "extensions")
-devtools::test(filter = "association")
-devtools::test(filter = "association-stress")
-
 devtools::test()
 
-#devtools::test(filter = "association")
+#devtools::test(filter = "epistasis")
 
 # 7. Full CRAN check (run after tests pass).
 devtools::check()

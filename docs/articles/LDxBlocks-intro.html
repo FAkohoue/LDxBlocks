@@ -47,11 +47,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-large-scale.html">Large-Scale Analysis: GDS and PLINK BED Backends</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-phasing.html">Statistical Phasing with Beagle 5.x in LDxBlocks</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-workflow.html">LDxBlocks Workflow: From Genotype File to Haplotype Features</a></li>
   </ul>
 </li>
@@ -59,7 +55,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
-    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.2">LDxBlocks 0.3.2 (development)</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -883,6 +880,75 @@ GWAS data frames plus block tables (convenience path).</p>
 multiple haplotype alleles), <code>effect_correlation</code> and Cochran
 Q are always <code>NA</code>. Replication is judged by direction
 agreement and <code>meta_p ≤ 0.05</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="within-block-and-between-block-epistasis-detection">13.10 Within-block and between-block epistasis detection<a class="anchor" aria-label="anchor" href="#within-block-and-between-block-epistasis-detection"></a>
+</h3>
+<p>LDxBlocks v0.3.1 adds three epistasis functions that all operate on
+GRM-corrected REML residuals from the same null model as
+<code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code>.</p>
+<p><strong>Within-block SNP interaction scan</strong>
+(<code>scan_block_epistasis</code>): tests all C(p,2) SNP pairs inside
+significant blocks for the interaction term aaij in y = mu + ai<em>xi +
+aj</em>xj + aaij<em>(xi</em>xj) + e. Corrected by Bonferroni and simpleM
+Sidak within each block; <code>sig_metric</code> controls which drives
+the <code>significant</code> flag.</p>
+<p><strong>Between-block trans-haplotype scan</strong>
+(<code>scan_block_by_block_epistasis</code>): tests significant
+haplotype alleles against every allele at all other blocks. Identifies
+genetic background dependence at haplotype resolution — a form of
+epistasis that single-block and single-SNP analyses cannot detect.</p>
+<p><strong>Single-block fine-mapping</strong>
+(<code>fine_map_epistasis_block</code>): identifies the specific
+interacting SNP pair within a block. Auto-dispatches to exhaustive
+pairwise scan (p &lt;= 200 SNPs) or LASSO with interaction terms (p &gt;
+200 SNPs).</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Within-block epistasis (restricted to significant_omnibus blocks)</span></span>
+<span><span class="va">epi_within</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/scan_block_epistasis.html">scan_block_epistasis</a></span><span class="op">(</span></span>
+<span>  assoc              <span class="op">=</span> <span class="va">assoc</span>,</span>
+<span>  geno_matrix        <span class="op">=</span> <span class="va">res</span><span class="op">$</span><span class="va">geno_matrix</span>,</span>
+<span>  snp_info           <span class="op">=</span> <span class="va">snp_info</span>,</span>
+<span>  blocks             <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  blues              <span class="op">=</span> <span class="va">blues_list</span>,</span>
+<span>  haplotypes         <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  trait              <span class="op">=</span> <span class="st">"BL"</span>,</span>
+<span>  sig_metric         <span class="op">=</span> <span class="st">"p_simplem_sidak"</span>,</span>
+<span>  max_snps_per_block <span class="op">=</span> <span class="fl">300L</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">epi_within</span><span class="op">)</span></span>
+<span><span class="va">epi_within</span><span class="op">$</span><span class="va">results</span><span class="op">[</span><span class="va">epi_within</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">significant</span>, <span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Between-block trans-haplotype epistasis</span></span>
+<span><span class="va">epi_between</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/scan_block_by_block_epistasis.html">scan_block_by_block_epistasis</a></span><span class="op">(</span></span>
+<span>  assoc      <span class="op">=</span> <span class="va">assoc</span>,</span>
+<span>  haplotypes <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  blues      <span class="op">=</span> <span class="va">blues_list</span>,</span>
+<span>  blocks     <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  trait      <span class="op">=</span> <span class="st">"BL"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">epi_between</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Fine-map a single block</span></span>
+<span><span class="co"># y_resid must be pre-computed from the REML null model</span></span>
+<span><span class="va">fine</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fine_map_epistasis_block.html">fine_map_epistasis_block</a></span><span class="op">(</span></span>
+<span>  block_id    <span class="op">=</span> <span class="st">"block_12_1054210_1086071"</span>,</span>
+<span>  geno_matrix <span class="op">=</span> <span class="va">res</span><span class="op">$</span><span class="va">geno_matrix</span>,</span>
+<span>  snp_info    <span class="op">=</span> <span class="va">snp_info</span>,</span>
+<span>  blocks      <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  y_resid     <span class="op">=</span> <span class="va">my_reml_residuals</span>,</span>
+<span>  method      <span class="op">=</span> <span class="st">"auto"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">fine</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Statistical note.</strong> With n=204 individuals and
+Bonferroni correction over ~300,000 within-block pairs, the detection
+threshold is approximately p &lt; 1.7 × 10^-7 per block. Power to detect
+pairwise SNP epistasis at this threshold is low unless the interaction
+effect is large (|aa| &gt; ~0.3 SD). The between-block trans-haplotype
+scan is better powered because each haplotype dosage column aggregates
+multi-SNP variation, reducing the effective number of tests while
+increasing the signal-to-noise ratio per test.</p>
+<hr>
 </div>
 </div>
 <div class="section level2">

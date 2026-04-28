@@ -1,3 +1,51 @@
+## LDxBlocks 0.3.2.9000 (development)
+
+### New module: epistasis detection
+
+Three new exported functions implement within-block and between-block epistasis
+detection. All operate on GRM-corrected REML residuals from the same null model
+as `test_block_haplotypes()`, ensuring population-structure-corrected tests
+throughout.
+
+**`scan_block_epistasis()`** — Within-block pairwise SNP epistasis scan.
+
+Tests all C(p, 2) SNP pairs within significant blocks for the interaction term
+`aa_ij` in `y = mu + ai*xi + aj*xj + aa_ij*(xi*xj) + e`. Restricted to
+significant blocks (controlled by `sig_blocks`) to avoid the genome-wide
+combinatorial explosion. Multiple-testing correction: Bonferroni and simpleM
+Sidak within each block; `Meff` estimated from the eigenspectrum of the
+pairwise interaction column matrix. The `sig_metric` parameter (default
+`"p_simplem_sidak"`) controls which correction drives the `significant` flag.
+Output columns: `p_wald`, `p_bonf`, `p_simplem`, `p_simplem_sidak`, `Meff`,
+`significant`, `significant_bonf`, `significant_simplem`, `significant_simplem_sidak`.
+Returns `LDxBlocks_epistasis`.
+
+**`scan_block_by_block_epistasis()`** — Trans-haplotype between-block epistasis scan.
+
+Tests significant haplotype alleles against every allele at all other blocks:
+O(n_sig × n_total_alleles) tests, Bonferroni corrected. Identifies genetic
+background dependence where a resistance haplotype at one locus only functions
+in the presence of a specific background at another locus — a form of epistasis
+that single-block and single-SNP analyses cannot detect. With 25 significant
+alleles × 17,943 total alleles this scan involves ~450,000 tests.
+Returns `LDxBlocks_block_epistasis`.
+
+**`fine_map_epistasis_block()`** — Single-block epistasis fine-mapping.
+
+Identifies the specific interacting SNP pairs within one block. Dispatches to
+exhaustive pairwise scan for blocks with p ≤ 200 SNPs (`method = "pairwise"`),
+or LASSO with pairwise interaction terms via `glmnet::cv.glmnet()` at
+`lambda.1se` for larger blocks (`method = "lasso"`). `method = "auto"` (default)
+selects automatically. Requires pre-computed REML residuals (`y_resid`).
+
+**Shared internal helpers added:** `.fit_null_reml()`, `.pairwise_interaction_scan()`.
+
+**`glmnet` added to `Suggests`** (required only for `fine_map_epistasis_block(method = "lasso")`).
+
+**43 new tests** in `tests/testthat/test-epistasis.R`.
+
+---
+
 ## LDxBlocks 0.3.1.9000 (development)
 
 ### Enhancement: PC model selection and expanded plot outputs in test_block_haplotypes()

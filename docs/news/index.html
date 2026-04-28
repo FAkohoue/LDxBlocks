@@ -25,17 +25,14 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-large-scale.html">Large-Scale Analysis: GDS and PLINK BED Backends</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-phasing.html">Statistical Phasing with Beagle 5.x in LDxBlocks</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-workflow.html">LDxBlocks Workflow: From Genotype File to Haplotype Features</a></li>
   </ul></li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
-    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.2">LDxBlocks 0.3.2 (development)</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -54,6 +51,22 @@
       <small>Source: <a href="https://github.com/FAkohoue/LDxBlocks/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.2.9000" id="ldxblocks-0329000-development">LDxBlocks 0.3.2.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0329000-development"></a></h2>
+<div class="section level3">
+<h3 id="new-module-epistasis-detection-0-3-2-9000">New module: epistasis detection<a class="anchor" aria-label="anchor" href="#new-module-epistasis-detection-0-3-2-9000"></a></h3>
+<p>Three new exported functions implement within-block and between-block epistasis detection. All operate on GRM-corrected REML residuals from the same null model as <code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code>, ensuring population-structure-corrected tests throughout.</p>
+<p><strong><code><a href="../reference/scan_block_epistasis.html">scan_block_epistasis()</a></code></strong> — Within-block pairwise SNP epistasis scan.</p>
+<p>Tests all C(p, 2) SNP pairs within significant blocks for the interaction term <code>aa_ij</code> in <code>y = mu + ai*xi + aj*xj + aa_ij*(xi*xj) + e</code>. Restricted to significant blocks (controlled by <code>sig_blocks</code>) to avoid the genome-wide combinatorial explosion. Multiple-testing correction: Bonferroni and simpleM Sidak within each block; <code>Meff</code> estimated from the eigenspectrum of the pairwise interaction column matrix. The <code>sig_metric</code> parameter (default <code>"p_simplem_sidak"</code>) controls which correction drives the <code>significant</code> flag. Output columns: <code>p_wald</code>, <code>p_bonf</code>, <code>p_simplem</code>, <code>p_simplem_sidak</code>, <code>Meff</code>, <code>significant</code>, <code>significant_bonf</code>, <code>significant_simplem</code>, <code>significant_simplem_sidak</code>. Returns <code>LDxBlocks_epistasis</code>.</p>
+<p><strong><code><a href="../reference/scan_block_by_block_epistasis.html">scan_block_by_block_epistasis()</a></code></strong> — Trans-haplotype between-block epistasis scan.</p>
+<p>Tests significant haplotype alleles against every allele at all other blocks: O(n_sig × n_total_alleles) tests, Bonferroni corrected. Identifies genetic background dependence where a resistance haplotype at one locus only functions in the presence of a specific background at another locus — a form of epistasis that single-block and single-SNP analyses cannot detect. With 25 significant alleles × 17,943 total alleles this scan involves ~450,000 tests. Returns <code>LDxBlocks_block_epistasis</code>.</p>
+<p><strong><code><a href="../reference/fine_map_epistasis_block.html">fine_map_epistasis_block()</a></code></strong> — Single-block epistasis fine-mapping.</p>
+<p>Identifies the specific interacting SNP pairs within one block. Dispatches to exhaustive pairwise scan for blocks with p ≤ 200 SNPs (<code>method = "pairwise"</code>), or LASSO with pairwise interaction terms via <code><a href="https://glmnet.stanford.edu/reference/cv.glmnet.html" class="external-link">glmnet::cv.glmnet()</a></code> at <code>lambda.1se</code> for larger blocks (<code>method = "lasso"</code>). <code>method = "auto"</code> (default) selects automatically. Requires pre-computed REML residuals (<code>y_resid</code>).</p>
+<p><strong>Shared internal helpers added:</strong> <code>.fit_null_reml()</code>, <code>.pairwise_interaction_scan()</code>.</p>
+<p><strong><code>glmnet</code> added to <code>Suggests</code></strong> (required only for <code>fine_map_epistasis_block(method = "lasso")</code>).</p>
+<p><strong>43 new tests</strong> in <code>tests/testthat/test-epistasis.R</code>.</p>
+<hr></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.1.9000" id="ldxblocks-0319000-development">LDxBlocks 0.3.1.9000 (development)<a class="anchor" aria-label="anchor" href="#ldxblocks-0319000-development"></a></h2>
 <div class="section level3">

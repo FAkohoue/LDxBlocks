@@ -35,6 +35,7 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/estimate_diplotype_effects.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/export_candidate_regions.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/extract_haplotypes.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/fine_map_epistasis_block.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/get_V_inv_sqrt.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/harmonize_haplotypes.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/index.html</loc></url>
@@ -64,6 +65,8 @@
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_prediction.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/run_haplotype_stability.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/run_ldx_pipeline.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/scan_block_by_block_epistasis.html</loc></url>
+<url><loc>https://FAkohoue.github.io/LDxBlocks/reference/scan_block_epistasis.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/scan_diversity_windows.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/score_favorable_haplotypes.html</loc></url>
 <url><loc>https://FAkohoue.github.io/LDxBlocks/reference/summarise_blocks.html</loc></url>

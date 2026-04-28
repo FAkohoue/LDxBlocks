@@ -677,6 +677,112 @@ head(conc_raw$concordance[, c("block_id","lead_snp_pop1","lead_snp_pop2",
                                 "se_derived_pop1","replicated")])
 ```
 
+## Epistasis detection
+
+Within-block and between-block epistasis functions operate on
+GRM-corrected REML residuals from the same null model as
+[`test_block_haplotypes()`](https://FAkohoue.github.io/LDxBlocks/reference/test_block_haplotypes.md),
+ensuring population-structure-corrected tests throughout.
+
+### Within-block pairwise SNP interaction scan
+
+``` r
+# Scan all C(p,2) SNP pairs within significant blocks
+# Tests H0: aa_ij = 0  in  y = mu + ai*xi + aj*xj + aa_ij*(xi*xj) + e
+# Corrected by Bonferroni AND simpleM Sidak within each block
+epi_within <- scan_block_epistasis(
+  assoc              = assoc,          # test_block_haplotypes() result
+  geno_matrix        = geno_matrix,
+  snp_info           = snp_info,
+  blocks             = blocks,
+  blues              = blues,
+  haplotypes         = haps,
+  trait              = "YLD",
+  sig_blocks         = NULL,           # uses significant_omnibus blocks
+  max_snps_per_block = 300L,           # exhaustive up to 300 SNPs/block
+  sig_metric         = "p_simplem_sidak",
+  sig_threshold      = 0.05
+)
+
+# Output: class LDxBlocks_epistasis
+print(epi_within)
+
+# Significant interacting pairs
+epi_within$results[epi_within$results$significant, ]
+
+# Per-block summary: n_snps, n_pairs, n_significant, min_p
+epi_within$scan_summary
+
+# All correction columns always present
+# p_wald | p_bonf | p_simplem | p_simplem_sidak | Meff
+# significant | significant_bonf | significant_simplem | significant_simplem_sidak
+```
+
+### Between-block trans-haplotype epistasis scan
+
+``` r
+# Tests significant haplotype alleles x all other blocks
+# O(n_sig x n_total_alleles) tests -- tractable at WGS scale
+# Identifies genetic background dependence: a haplotype at block A
+# only functions in the presence of a specific haplotype at block B
+epi_between <- scan_block_by_block_epistasis(
+  assoc      = assoc,
+  haplotypes = haps,
+  blues      = blues,
+  blocks     = blocks,
+  trait      = "YLD",
+  sig_alleles = NULL,    # NULL = uses significant alleles from assoc
+  sig_threshold = 0.05
+)
+
+print(epi_between)
+epi_between$results[epi_between$results$significant, ]
+
+# Results columns:
+# block_i, allele_i, block_j, allele_j, CHR_i, CHR_j, same_chr
+# aa_effect, SE, t_stat, p_wald, p_bonf, significant
+```
+
+### Single-block epistasis fine-mapping
+
+``` r
+# Fine-map specific interacting SNP pairs within one block.
+# Requires pre-computed REML residuals from the null model.
+# method = "auto": pairwise scan for p <= 200 SNPs, LASSO for larger blocks.
+
+# Pre-compute residuals (example using the null model from test_block_haplotypes)
+feat <- build_haplotype_feature_matrix(haps, min_freq = 0.05,
+                                        encoding = "additive_012")$matrix
+G_grm <- compute_haplotype_grm(feat)
+common <- intersect(rownames(G_grm), names(blues))
+y  <- blues[common]
+fit <- rrBLUP::mixed.solve(y = y, K = G_grm[common, common], method = "REML")
+y_resid <- y - as.numeric(fit$beta) - fit$u[common]
+
+# Exhaustive pairwise scan for blocks with <= 200 SNPs
+fine <- fine_map_epistasis_block(
+  block_id    = "block_12_1054210_1086071",
+  geno_matrix = geno_matrix,
+  snp_info    = snp_info,
+  blocks      = blocks,
+  y_resid     = y_resid,
+  method      = "auto"   # pairwise <= 200 SNPs, lasso otherwise
+)
+head(fine)
+
+# Columns (pairwise): SNP_i, SNP_j, POS_i, POS_j, dist_bp,
+#                     aa_effect, SE, t_stat, p_wald, p_bonf, significant
+# Columns (lasso):   SNP_i, SNP_j, POS_i, POS_j, dist_bp, lasso_coef, selected
+```
+
+> **Statistical note.** With typical WGS sample sizes (n \< 300), the
+> detection threshold for within-block Bonferroni correction over C(p,2)
+> pairs is stringent. The between-block trans-haplotype scan is better
+> powered because each haplotype dosage column aggregates multi-SNP
+> variation, providing a stronger signal-to-noise ratio per test.
+
+------------------------------------------------------------------------
+
 ## Session information
 
 ``` r

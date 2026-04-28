@@ -47,11 +47,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-large-scale.html">Large-Scale Analysis: GDS and PLINK BED Backends</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-phasing.html">Statistical Phasing with Beagle 5.x in LDxBlocks</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/LDxBlocks-workflow.html">LDxBlocks Workflow: From Genotype File to Haplotype Features</a></li>
   </ul>
 </li>
@@ -59,7 +55,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
 <li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
-    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1 (development)</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.2">LDxBlocks 0.3.2 (development)</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.1">LDxBlocks 0.3.1</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/FAkohoue/LDxBlocks/releases/tag/v0.3.0">LDxBlocks 0.3.0</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../news/index.html">Changelog</a></li>
@@ -87,7 +84,7 @@
                         <h4 data-toc-skip class="author">LDxBlocks
 Development Team</h4>
             
-            <h4 data-toc-skip class="date">2026-04-27</h4>
+            <h4 data-toc-skip class="date">2026-04-28</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/FAkohoue/LDxBlocks/blob/HEAD/vignettes/LDxBlocks-workflow.Rmd" class="external-link"><code>vignettes/LDxBlocks-workflow.Rmd</code></a></small>
       <div class="d-none name"><code>LDxBlocks-workflow.Rmd</code></div>
@@ -774,9 +771,117 @@ PLINK), use <code><a href="../reference/compare_gwas_effects.html">compare_gwas_
 </div>
 </div>
 <div class="section level2">
+<h2 id="epistasis-detection">Epistasis detection<a class="anchor" aria-label="anchor" href="#epistasis-detection"></a>
+</h2>
+<p>Within-block and between-block epistasis functions operate on
+GRM-corrected REML residuals from the same null model as
+<code><a href="../reference/test_block_haplotypes.html">test_block_haplotypes()</a></code>, ensuring
+population-structure-corrected tests throughout.</p>
+<div class="section level3">
+<h3 id="within-block-pairwise-snp-interaction-scan">Within-block pairwise SNP interaction scan<a class="anchor" aria-label="anchor" href="#within-block-pairwise-snp-interaction-scan"></a>
+</h3>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Scan all C(p,2) SNP pairs within significant blocks</span></span>
+<span><span class="co"># Tests H0: aa_ij = 0  in  y = mu + ai*xi + aj*xj + aa_ij*(xi*xj) + e</span></span>
+<span><span class="co"># Corrected by Bonferroni AND simpleM Sidak within each block</span></span>
+<span><span class="va">epi_within</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/scan_block_epistasis.html">scan_block_epistasis</a></span><span class="op">(</span></span>
+<span>  assoc              <span class="op">=</span> <span class="va">assoc</span>,          <span class="co"># test_block_haplotypes() result</span></span>
+<span>  geno_matrix        <span class="op">=</span> <span class="va">geno_matrix</span>,</span>
+<span>  snp_info           <span class="op">=</span> <span class="va">snp_info</span>,</span>
+<span>  blocks             <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  blues              <span class="op">=</span> <span class="va">blues</span>,</span>
+<span>  haplotypes         <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  trait              <span class="op">=</span> <span class="st">"YLD"</span>,</span>
+<span>  sig_blocks         <span class="op">=</span> <span class="cn">NULL</span>,           <span class="co"># uses significant_omnibus blocks</span></span>
+<span>  max_snps_per_block <span class="op">=</span> <span class="fl">300L</span>,           <span class="co"># exhaustive up to 300 SNPs/block</span></span>
+<span>  sig_metric         <span class="op">=</span> <span class="st">"p_simplem_sidak"</span>,</span>
+<span>  sig_threshold      <span class="op">=</span> <span class="fl">0.05</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Output: class LDxBlocks_epistasis</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">epi_within</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Significant interacting pairs</span></span>
+<span><span class="va">epi_within</span><span class="op">$</span><span class="va">results</span><span class="op">[</span><span class="va">epi_within</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">significant</span>, <span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Per-block summary: n_snps, n_pairs, n_significant, min_p</span></span>
+<span><span class="va">epi_within</span><span class="op">$</span><span class="va">scan_summary</span></span>
+<span></span>
+<span><span class="co"># All correction columns always present</span></span>
+<span><span class="co"># p_wald | p_bonf | p_simplem | p_simplem_sidak | Meff</span></span>
+<span><span class="co"># significant | significant_bonf | significant_simplem | significant_simplem_sidak</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="between-block-trans-haplotype-epistasis-scan">Between-block trans-haplotype epistasis scan<a class="anchor" aria-label="anchor" href="#between-block-trans-haplotype-epistasis-scan"></a>
+</h3>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Tests significant haplotype alleles x all other blocks</span></span>
+<span><span class="co"># O(n_sig x n_total_alleles) tests -- tractable at WGS scale</span></span>
+<span><span class="co"># Identifies genetic background dependence: a haplotype at block A</span></span>
+<span><span class="co"># only functions in the presence of a specific haplotype at block B</span></span>
+<span><span class="va">epi_between</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/scan_block_by_block_epistasis.html">scan_block_by_block_epistasis</a></span><span class="op">(</span></span>
+<span>  assoc      <span class="op">=</span> <span class="va">assoc</span>,</span>
+<span>  haplotypes <span class="op">=</span> <span class="va">haps</span>,</span>
+<span>  blues      <span class="op">=</span> <span class="va">blues</span>,</span>
+<span>  blocks     <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  trait      <span class="op">=</span> <span class="st">"YLD"</span>,</span>
+<span>  sig_alleles <span class="op">=</span> <span class="cn">NULL</span>,    <span class="co"># NULL = uses significant alleles from assoc</span></span>
+<span>  sig_threshold <span class="op">=</span> <span class="fl">0.05</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">epi_between</span><span class="op">)</span></span>
+<span><span class="va">epi_between</span><span class="op">$</span><span class="va">results</span><span class="op">[</span><span class="va">epi_between</span><span class="op">$</span><span class="va">results</span><span class="op">$</span><span class="va">significant</span>, <span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Results columns:</span></span>
+<span><span class="co"># block_i, allele_i, block_j, allele_j, CHR_i, CHR_j, same_chr</span></span>
+<span><span class="co"># aa_effect, SE, t_stat, p_wald, p_bonf, significant</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="single-block-epistasis-fine-mapping">Single-block epistasis fine-mapping<a class="anchor" aria-label="anchor" href="#single-block-epistasis-fine-mapping"></a>
+</h3>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Fine-map specific interacting SNP pairs within one block.</span></span>
+<span><span class="co"># Requires pre-computed REML residuals from the null model.</span></span>
+<span><span class="co"># method = "auto": pairwise scan for p &lt;= 200 SNPs, LASSO for larger blocks.</span></span>
+<span></span>
+<span><span class="co"># Pre-compute residuals (example using the null model from test_block_haplotypes)</span></span>
+<span><span class="va">feat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_haplotype_feature_matrix.html">build_haplotype_feature_matrix</a></span><span class="op">(</span><span class="va">haps</span>, min_freq <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>                                        encoding <span class="op">=</span> <span class="st">"additive_012"</span><span class="op">)</span><span class="op">$</span><span class="va">matrix</span></span>
+<span><span class="va">G_grm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compute_haplotype_grm.html">compute_haplotype_grm</a></span><span class="op">(</span><span class="va">feat</span><span class="op">)</span></span>
+<span><span class="va">common</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sets.html" class="external-link">intersect</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">G_grm</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">blues</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">y</span>  <span class="op">&lt;-</span> <span class="va">blues</span><span class="op">[</span><span class="va">common</span><span class="op">]</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">rrBLUP</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/rrBLUP/man/mixed.solve.html" class="external-link">mixed.solve</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">y</span>, K <span class="op">=</span> <span class="va">G_grm</span><span class="op">[</span><span class="va">common</span>, <span class="va">common</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"REML"</span><span class="op">)</span></span>
+<span><span class="va">y_resid</span> <span class="op">&lt;-</span> <span class="va">y</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">beta</span><span class="op">)</span> <span class="op">-</span> <span class="va">fit</span><span class="op">$</span><span class="va">u</span><span class="op">[</span><span class="va">common</span><span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Exhaustive pairwise scan for blocks with &lt;= 200 SNPs</span></span>
+<span><span class="va">fine</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fine_map_epistasis_block.html">fine_map_epistasis_block</a></span><span class="op">(</span></span>
+<span>  block_id    <span class="op">=</span> <span class="st">"block_12_1054210_1086071"</span>,</span>
+<span>  geno_matrix <span class="op">=</span> <span class="va">geno_matrix</span>,</span>
+<span>  snp_info    <span class="op">=</span> <span class="va">snp_info</span>,</span>
+<span>  blocks      <span class="op">=</span> <span class="va">blocks</span>,</span>
+<span>  y_resid     <span class="op">=</span> <span class="va">y_resid</span>,</span>
+<span>  method      <span class="op">=</span> <span class="st">"auto"</span>   <span class="co"># pairwise &lt;= 200 SNPs, lasso otherwise</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">fine</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Columns (pairwise): SNP_i, SNP_j, POS_i, POS_j, dist_bp,</span></span>
+<span><span class="co">#                     aa_effect, SE, t_stat, p_wald, p_bonf, significant</span></span>
+<span><span class="co"># Columns (lasso):   SNP_i, SNP_j, POS_i, POS_j, dist_bp, lasso_coef, selected</span></span></code></pre></div>
+<blockquote>
+<p><strong>Statistical note.</strong> With typical WGS sample sizes (n
+&lt; 300), the detection threshold for within-block Bonferroni
+correction over C(p,2) pairs is stringent. The between-block
+trans-haplotype scan is better powered because each haplotype dosage
+column aggregates multi-SNP variation, providing a stronger
+signal-to-noise ratio per test.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div class="section level2">
 <h2 id="session-information">Session information<a class="anchor" aria-label="anchor" href="#session-information"></a>
 </h2>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; R version 4.5.0 (2025-04-11 ucrt)</span></span>
 <span><span class="co">#&gt; Platform: x86_64-w64-mingw32/x64</span></span>
