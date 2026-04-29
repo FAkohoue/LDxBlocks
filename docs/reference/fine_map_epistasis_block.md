@@ -33,6 +33,8 @@ fine_map_epistasis_block(
   method = c("auto", "pairwise", "lasso"),
   min_freq = 0.05,
   sig_threshold = 0.05,
+  sig_metric = c("p_simplem_sidak", "p_simplem", "p_bonf", "p_fdr"),
+  meff_percent_cut = 0.995,
   lasso_nfolds = 5L,
   verbose = TRUE
 )

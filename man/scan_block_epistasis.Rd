@@ -16,7 +16,7 @@ scan_block_epistasis(
   min_freq = 0.05,
   max_snps_per_block = 300L,
   sig_threshold = 0.05,
-  sig_metric = c("p_simplem_sidak", "p_simplem", "p_bonf"),
+  sig_metric = c("p_simplem_sidak", "p_simplem", "p_bonf", "p_fdr"),
   meff_percent_cut = 0.995,
   id_col = "id",
   blue_col = "blue",

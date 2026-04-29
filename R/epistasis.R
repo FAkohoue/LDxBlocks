@@ -251,7 +251,7 @@ scan_block_epistasis <- function(
     min_freq         = 0.05,
     max_snps_per_block = 300L,
     sig_threshold    = 0.05,
-    sig_metric       = c("p_simplem_sidak", "p_simplem", "p_bonf"),
+    sig_metric       = c("p_simplem_sidak", "p_simplem", "p_bonf", "p_fdr"),
     meff_percent_cut = 0.995,
     id_col           = "id",
     blue_col         = "blue",
@@ -429,6 +429,7 @@ scan_block_epistasis <- function(
     # -- Multiple testing correction within block -----------------------------
     # Bonferroni (always computed)
     scan_df$p_bonf <- pmin(scan_df$p_wald * n_pairs, 1)
+    scan_df$p_fdr  <- stats::p.adjust(scan_df$p_wald, method = "BH")
 
     # simpleM on the pairwise interaction columns (Meff from eigenspectrum)
     # Build the interaction column matrix for Meff estimation
@@ -452,13 +453,15 @@ scan_block_epistasis <- function(
     scan_df$p_simplem               <- .adjust_p_simplem_bonf(scan_df$p_wald, meff_blk)
     scan_df$p_simplem_sidak         <- .adjust_p_simplem_sidak(scan_df$p_wald, meff_blk)
     scan_df$significant_bonf        <- scan_df$p_bonf        < sig_threshold
+    scan_df$significant_fdr         <- scan_df$p_fdr         < sig_threshold
     scan_df$significant_simplem     <- scan_df$p_simplem      < sig_threshold
     scan_df$significant_simplem_sidak <- scan_df$p_simplem_sidak < sig_threshold
     # Primary significant flag: driven by sig_metric
     scan_df$significant <- switch(sig_metric,
-                                  p_simplem_sidak = scan_df$significant_simplem_sidak,
-                                  p_simplem       = scan_df$significant_simplem,
-                                  p_bonf          = scan_df$significant_bonf
+                                  p_simplem_sidak = !is.na(scan_df$significant_simplem_sidak) & scan_df$significant_simplem_sidak,
+                                  p_simplem       = !is.na(scan_df$significant_simplem)       & scan_df$significant_simplem,
+                                  p_bonf          = !is.na(scan_df$significant_bonf)          & scan_df$significant_bonf,
+                                  p_fdr           = !is.na(scan_df$significant_fdr)           & scan_df$significant_fdr
     )
 
     # Add metadata
@@ -478,8 +481,8 @@ scan_block_epistasis <- function(
     col_order <- c("block_id","CHR","start_bp","end_bp","trait",
                    "SNP_i","SNP_j","POS_i","POS_j","dist_bp",
                    "aa_effect","SE","t_stat","p_wald",
-                   "Meff","p_bonf","p_simplem","p_simplem_sidak",
-                   "significant","significant_bonf",
+                   "Meff","p_bonf","p_fdr","p_simplem","p_simplem_sidak",
+                   "significant","significant_bonf","significant_fdr",
                    "significant_simplem","significant_simplem_sidak")
     scan_df <- scan_df[, intersect(col_order, names(scan_df)), drop = FALSE]
     scan_df <- scan_df[order(scan_df$p_wald), ]
@@ -583,6 +586,8 @@ scan_block_by_block_epistasis <- function(
     min_freq      = 0.05,
     top_n         = NULL,
     sig_threshold = 0.05,
+    sig_metric    = c("p_simplem_sidak", "p_simplem", "p_bonf", "p_fdr"),
+    meff_percent_cut = 0.995,
     id_col        = "id",
     blue_col      = "blue",
     verbose       = TRUE
@@ -590,6 +595,7 @@ scan_block_by_block_epistasis <- function(
   if (!inherits(assoc, "LDxBlocks_haplotype_assoc"))
     stop("assoc must be output of test_block_haplotypes().", call. = FALSE)
 
+  sig_metric <- match.arg(sig_metric)
   .log <- function(...) if (verbose) message(sprintf("[epi_block_x_block] %s", paste0(...)))
 
   # -- Resolve trait and blues -------------------------------------------------
@@ -782,8 +788,25 @@ scan_block_by_block_epistasis <- function(
 
   results_df <- if (k > 0L) {
     df <- do.call(rbind, result_rows[seq_len(k)])
-    df$p_bonf   <- pmin(df$p_wald * n_tests, 1)
-    df$significant <- df$p_bonf < sig_threshold
+    df$p_bonf  <- pmin(df$p_wald * n_tests, 1)
+    df$p_fdr   <- stats::p.adjust(df$p_wald, method = "BH")
+    # simpleM Meff from eigenspectrum of all tested interaction columns
+    # Use the haplotype dosage matrix already in scope (hap_sub)
+    meff_bb <- tryCatch(
+      .compute_simplem_meff_matrix(
+        hap_sub, percent_cut = meff_percent_cut, max_cols = 1000L)$meff,
+      error = function(e) n_tests
+    )
+    if (!is.finite(meff_bb) || meff_bb < 1L) meff_bb <- n_tests
+    df$Meff            <- meff_bb
+    df$p_simplem       <- .adjust_p_simplem_bonf(df$p_wald, meff_bb)
+    df$p_simplem_sidak <- .adjust_p_simplem_sidak(df$p_wald, meff_bb)
+    df$significant <- switch(sig_metric,
+                             p_simplem_sidak = !is.na(df$p_simplem_sidak) & df$p_simplem_sidak < sig_threshold,
+                             p_simplem       = !is.na(df$p_simplem)       & df$p_simplem       < sig_threshold,
+                             p_bonf          = !is.na(df$p_bonf)          & df$p_bonf          < sig_threshold,
+                             p_fdr           = !is.na(df$p_fdr)           & df$p_fdr           < sig_threshold
+    )
     df[order(df$p_wald), ]
   } else data.frame()
   rownames(results_df) <- NULL
@@ -857,10 +880,13 @@ fine_map_epistasis_block <- function(
     method        = c("auto", "pairwise", "lasso"),
     min_freq      = 0.05,
     sig_threshold = 0.05,
+    sig_metric    = c("p_simplem_sidak", "p_simplem", "p_bonf", "p_fdr"),
+    meff_percent_cut = 0.995,
     lasso_nfolds  = 5L,
     verbose       = TRUE
 ) {
-  method <- match.arg(method)
+  method     <- match.arg(method)
+  sig_metric <- match.arg(sig_metric)
   .log  <- function(...) if (verbose) message(sprintf("[fine_map_epi] %s", paste0(...)))
 
   # Normalise block table
@@ -947,17 +973,35 @@ fine_map_epistasis_block <- function(
       .log("No pairs passed variance filter.")
       return(data.frame())
     }
-    scan_df$p_bonf     <- pmin(scan_df$p_wald * n_pairs, 1)
-    scan_df$significant <- scan_df$p_bonf < sig_threshold
-    scan_df$POS_i      <- pos_map[scan_df$col_i]
-    scan_df$POS_j      <- pos_map[scan_df$col_j]
-    scan_df$dist_bp    <- abs(scan_df$POS_j - scan_df$POS_i)
+    scan_df$p_bonf  <- pmin(scan_df$p_wald * n_pairs, 1)
+    scan_df$p_fdr   <- stats::p.adjust(scan_df$p_wald, method = "BH")
+    # simpleM Meff from eigenspectrum of interaction columns
+    meff_fm <- tryCatch(
+      .compute_simplem_meff_matrix(
+        G_blk, percent_cut = meff_percent_cut, max_cols = 1000L)$meff,
+      error = function(e) n_pairs
+    )
+    if (!is.finite(meff_fm) || meff_fm < 1L) meff_fm <- n_pairs
+    scan_df$Meff            <- meff_fm
+    scan_df$p_simplem       <- .adjust_p_simplem_bonf(scan_df$p_wald, meff_fm)
+    scan_df$p_simplem_sidak <- .adjust_p_simplem_sidak(scan_df$p_wald, meff_fm)
+    scan_df$significant <- switch(sig_metric,
+                                  p_simplem_sidak = !is.na(scan_df$p_simplem_sidak) & scan_df$p_simplem_sidak < sig_threshold,
+                                  p_simplem       = !is.na(scan_df$p_simplem)       & scan_df$p_simplem       < sig_threshold,
+                                  p_bonf          = !is.na(scan_df$p_bonf)          & scan_df$p_bonf          < sig_threshold,
+                                  p_fdr           = !is.na(scan_df$p_fdr)           & scan_df$p_fdr           < sig_threshold
+    )
+    scan_df$POS_i   <- pos_map[scan_df$col_i]
+    scan_df$POS_j   <- pos_map[scan_df$col_j]
+    scan_df$dist_bp <- abs(scan_df$POS_j - scan_df$POS_i)
     names(scan_df)[names(scan_df) == "col_i"] <- "SNP_i"
     names(scan_df)[names(scan_df) == "col_j"] <- "SNP_j"
     col_order <- c("SNP_i","SNP_j","POS_i","POS_j","dist_bp",
-                   "aa_effect","SE","t_stat","p_wald","p_bonf","significant")
+                   "aa_effect","SE","t_stat","p_wald",
+                   "Meff","p_bonf","p_fdr","p_simplem","p_simplem_sidak",
+                   "significant")
     scan_df <- scan_df[, intersect(col_order, names(scan_df)), drop = FALSE]
-    .log("Significant pairs (Bonferroni): ",
+    .log("Significant pairs (", sig_metric, "): ",
          sum(scan_df$significant, na.rm = TRUE))
     return(scan_df[order(scan_df$p_wald), ])
 

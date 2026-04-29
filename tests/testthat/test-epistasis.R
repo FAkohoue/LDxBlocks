@@ -461,7 +461,7 @@ test_that("scan_block_epistasis: sig_metric=p_simplem_sidak -> significant agree
   if (nrow(res$results) > 0L) {
     df <- res$results
     expect_equal(df$significant,
-                 df$p_simplem_sidak < 0.05)
+                 !is.na(df$p_simplem_sidak) & df$p_simplem_sidak < 0.05)
   }
 })
 
@@ -480,7 +480,7 @@ test_that("scan_block_epistasis: sig_metric=p_bonf -> significant agrees", {
   )
   if (nrow(res$results) > 0L) {
     df <- res$results
-    expect_equal(df$significant, df$p_bonf < 0.05)
+    expect_equal(df$significant, !is.na(df$p_bonf) & df$p_bonf < 0.05)
   }
 })
 
@@ -917,6 +917,7 @@ test_that("fine_map_epistasis_block: significant flag consistent with p_bonf", {
     blocks        = .blk_epi,
     y_resid       = .y_resid_epi,
     method        = "pairwise",
+    sig_metric    = "p_bonf",   # test Bonferroni flag specifically
     sig_threshold = 0.05,
     verbose       = FALSE
   )
