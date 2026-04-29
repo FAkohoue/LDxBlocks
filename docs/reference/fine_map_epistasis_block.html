@@ -170,7 +170,22 @@ are available:</p>
 
 
 <dt id="arg-sig-threshold">sig_threshold<a class="anchor" aria-label="anchor" href="#arg-sig-threshold"></a></dt>
-<dd><p>Numeric. Significance threshold. Default <code>0.05</code>.</p></dd>
+<dd><p>Numeric. Significance threshold applied to the
+p-value chosen by <code>sig_metric</code>. Default <code>0.05</code>.</p></dd>
+
+
+<dt id="arg-sig-metric">sig_metric<a class="anchor" aria-label="anchor" href="#arg-sig-metric"></a></dt>
+<dd><p>Character. Which p-value drives the <code>significant</code>
+flag in pairwise output. One of <code>"p_simplem_sidak"</code> (default,
+recommended), <code>"p_simplem"</code>, <code>"p_bonf"</code>, or <code>"p_fdr"</code>.
+All four p-value columns are always present regardless of this choice.
+Ignored for the <code>"lasso"</code> method (which returns <code>lasso_coef</code>
+and <code>selected</code> instead of p-values).</p></dd>
+
+
+<dt id="arg-meff-percent-cut">meff_percent_cut<a class="anchor" aria-label="anchor" href="#arg-meff-percent-cut"></a></dt>
+<dd><p>Numeric in (0, 1). Variance threshold for simpleM
+eigendecomposition. Default <code>0.995</code>.</p></dd>
 
 
 <dt id="arg-lasso-nfolds">lasso_nfolds<a class="anchor" aria-label="anchor" href="#arg-lasso-nfolds"></a></dt>

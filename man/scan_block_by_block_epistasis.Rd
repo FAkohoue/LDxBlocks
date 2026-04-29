@@ -40,7 +40,18 @@ identifying the query alleles. \code{NULL} (default) uses all
 
 \item{top_n}{Integer or \code{NULL}. Alleles per block in feature matrix.}
 
-\item{sig_threshold}{Numeric. Significance threshold. Default \code{0.05}.}
+\item{sig_threshold}{Numeric. Significance threshold applied to the
+p-value chosen by \code{sig_metric}. Default \code{0.05}.}
+
+\item{sig_metric}{Character. Which p-value drives the \code{significant}
+flag. One of \code{"p_simplem_sidak"} (default, recommended),
+\code{"p_simplem"}, \code{"p_bonf"}, or \code{"p_fdr"}.
+All four p-value columns are always present in the output regardless
+of this choice.}
+
+\item{meff_percent_cut}{Numeric in (0, 1). Variance threshold for simpleM
+eigendecomposition when estimating \eqn{M_{\mathrm{eff}}}.
+Default \code{0.995} (99.5\%), following Gao et al. (2008).}
 
 \item{id_col}{Character. ID column when blues is a data frame.}
 

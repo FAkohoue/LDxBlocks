@@ -73,7 +73,22 @@ fine_map_epistasis_block(
 
 - sig_threshold:
 
-  Numeric. Significance threshold. Default `0.05`.
+  Numeric. Significance threshold applied to the p-value chosen by
+  `sig_metric`. Default `0.05`.
+
+- sig_metric:
+
+  Character. Which p-value drives the `significant` flag in pairwise
+  output. One of `"p_simplem_sidak"` (default, recommended),
+  `"p_simplem"`, `"p_bonf"`, or `"p_fdr"`. All four p-value columns are
+  always present regardless of this choice. Ignored for the `"lasso"`
+  method (which returns `lasso_coef` and `selected` instead of
+  p-values).
+
+- meff_percent_cut:
+
+  Numeric in (0, 1). Variance threshold for simpleM eigendecomposition.
+  Default `0.995`.
 
 - lasso_nfolds:
 

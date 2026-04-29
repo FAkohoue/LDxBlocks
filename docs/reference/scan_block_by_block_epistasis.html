@@ -148,7 +148,22 @@ identifying the query alleles. <code>NULL</code> (default) uses all
 
 
 <dt id="arg-sig-threshold">sig_threshold<a class="anchor" aria-label="anchor" href="#arg-sig-threshold"></a></dt>
-<dd><p>Numeric. Significance threshold. Default <code>0.05</code>.</p></dd>
+<dd><p>Numeric. Significance threshold applied to the
+p-value chosen by <code>sig_metric</code>. Default <code>0.05</code>.</p></dd>
+
+
+<dt id="arg-sig-metric">sig_metric<a class="anchor" aria-label="anchor" href="#arg-sig-metric"></a></dt>
+<dd><p>Character. Which p-value drives the <code>significant</code>
+flag. One of <code>"p_simplem_sidak"</code> (default, recommended),
+<code>"p_simplem"</code>, <code>"p_bonf"</code>, or <code>"p_fdr"</code>.
+All four p-value columns are always present in the output regardless
+of this choice.</p></dd>
+
+
+<dt id="arg-meff-percent-cut">meff_percent_cut<a class="anchor" aria-label="anchor" href="#arg-meff-percent-cut"></a></dt>
+<dd><p>Numeric in (0, 1). Variance threshold for simpleM
+eigendecomposition when estimating \(M_{\mathrm{eff}}\).
+Default <code>0.995</code> (99.5%), following Gao et al. (2008).</p></dd>
 
 
 <dt id="arg-id-col">id_col<a class="anchor" aria-label="anchor" href="#arg-id-col"></a></dt>

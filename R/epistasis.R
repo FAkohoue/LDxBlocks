@@ -551,7 +551,16 @@ scan_block_epistasis <- function(
 #'   \code{significant = TRUE} rows from \code{assoc$allele_tests}.
 #' @param min_freq Numeric. Minimum allele frequency. Default \code{0.05}.
 #' @param top_n Integer or \code{NULL}. Alleles per block in feature matrix.
-#' @param sig_threshold Numeric. Significance threshold. Default \code{0.05}.
+#' @param sig_threshold Numeric. Significance threshold applied to the
+#'   p-value chosen by \code{sig_metric}. Default \code{0.05}.
+#' @param sig_metric Character. Which p-value drives the \code{significant}
+#'   flag. One of \code{"p_simplem_sidak"} (default, recommended),
+#'   \code{"p_simplem"}, \code{"p_bonf"}, or \code{"p_fdr"}.
+#'   All four p-value columns are always present in the output regardless
+#'   of this choice.
+#' @param meff_percent_cut Numeric in (0, 1). Variance threshold for simpleM
+#'   eigendecomposition when estimating \eqn{M_{\mathrm{eff}}}.
+#'   Default \code{0.995} (99.5\%), following Gao et al. (2008).
 #' @param id_col Character. ID column when blues is a data frame.
 #' @param blue_col Character. Phenotype column when blues is a data frame.
 #' @param verbose Logical. Default \code{TRUE}.
@@ -857,7 +866,16 @@ scan_block_by_block_epistasis <- function(
 #' @param method Character. One of \code{"pairwise"}, \code{"lasso"},
 #'   \code{"auto"}. Default \code{"auto"}.
 #' @param min_freq Numeric. Minimum MAF. Default \code{0.05}.
-#' @param sig_threshold Numeric. Significance threshold. Default \code{0.05}.
+#' @param sig_threshold Numeric. Significance threshold applied to the
+#'   p-value chosen by \code{sig_metric}. Default \code{0.05}.
+#' @param sig_metric Character. Which p-value drives the \code{significant}
+#'   flag in pairwise output. One of \code{"p_simplem_sidak"} (default,
+#'   recommended), \code{"p_simplem"}, \code{"p_bonf"}, or \code{"p_fdr"}.
+#'   All four p-value columns are always present regardless of this choice.
+#'   Ignored for the \code{"lasso"} method (which returns \code{lasso_coef}
+#'   and \code{selected} instead of p-values).
+#' @param meff_percent_cut Numeric in (0, 1). Variance threshold for simpleM
+#'   eigendecomposition. Default \code{0.995}.
 #' @param lasso_nfolds Integer. CV folds for glmnet lambda selection.
 #'   Default \code{5L}.
 #' @param verbose Logical. Default \code{TRUE}.

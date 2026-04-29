@@ -37,7 +37,18 @@ fine_map_epistasis_block(
 
 \item{min_freq}{Numeric. Minimum MAF. Default \code{0.05}.}
 
-\item{sig_threshold}{Numeric. Significance threshold. Default \code{0.05}.}
+\item{sig_threshold}{Numeric. Significance threshold applied to the
+p-value chosen by \code{sig_metric}. Default \code{0.05}.}
+
+\item{sig_metric}{Character. Which p-value drives the \code{significant}
+flag in pairwise output. One of \code{"p_simplem_sidak"} (default,
+recommended), \code{"p_simplem"}, \code{"p_bonf"}, or \code{"p_fdr"}.
+All four p-value columns are always present regardless of this choice.
+Ignored for the \code{"lasso"} method (which returns \code{lasso_coef}
+and \code{selected} instead of p-values).}
+
+\item{meff_percent_cut}{Numeric in (0, 1). Variance threshold for simpleM
+eigendecomposition. Default \code{0.995}.}
 
 \item{lasso_nfolds}{Integer. CV folds for glmnet lambda selection.
 Default \code{5L}.}

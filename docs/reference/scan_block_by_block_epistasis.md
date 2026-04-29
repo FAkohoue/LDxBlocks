@@ -77,7 +77,21 @@ scan_block_by_block_epistasis(
 
 - sig_threshold:
 
-  Numeric. Significance threshold. Default `0.05`.
+  Numeric. Significance threshold applied to the p-value chosen by
+  `sig_metric`. Default `0.05`.
+
+- sig_metric:
+
+  Character. Which p-value drives the `significant` flag. One of
+  `"p_simplem_sidak"` (default, recommended), `"p_simplem"`, `"p_bonf"`,
+  or `"p_fdr"`. All four p-value columns are always present in the
+  output regardless of this choice.
+
+- meff_percent_cut:
+
+  Numeric in (0, 1). Variance threshold for simpleM eigendecomposition
+  when estimating \\M\_{\mathrm{eff}}\\. Default `0.995` (99.5%),
+  following Gao et al. (2008).
 
 - id_col:
 
