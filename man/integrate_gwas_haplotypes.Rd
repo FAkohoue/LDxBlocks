@@ -27,7 +27,7 @@ Data frame with one row per block that appears in at least one of
   the input sources, with columns:
   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
   \code{n_snps}, \code{has_gwas_hit} (logical),
-  \code{lead_snp}, \code{lead_p}, \code{lead_beta},
+  \code{lead_marker}, \code{lead_p}, \code{lead_beta},
   \code{n_sig_markers}, \code{is_important} (logical, scaled var >= 0.9),
   \code{var_scaled}, \code{He}, \code{sweep_flag},
   \code{is_diverse} (logical, He >= He_threshold),

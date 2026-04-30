@@ -55,7 +55,7 @@ rank_haplotype_blocks(
 Data frame with one row per block, sorted by evidence strength, with
 columns: `block_id`, `CHR`, `start_bp`, `end_bp`, `n_snps`, `He`,
 `n_eff_alleles`, `freq_dominant`, `sweep_flag`, `is_diverse`,
-`has_gwas_hit` (if `qtl_regions` supplied), `lead_snp`, `lead_beta`,
+`has_gwas_hit` (if `qtl_regions` supplied), `lead_marker`, `lead_beta`,
 `n_sig_markers` (if `qtl_regions` supplied), `var_scaled`,
 `is_important` (if `pred_result` supplied), `use_case`, `rank_score`,
 `recommendation`.

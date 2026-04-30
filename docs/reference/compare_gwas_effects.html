@@ -216,7 +216,7 @@ the most robust cross-population replication targets.</p>
 <dl><dt id="arg-qtl-pop-">qtl_pop1<a class="anchor" aria-label="anchor" href="#arg-qtl-pop-"></a></dt>
 <dd><p>Data frame. Output of <code><a href="define_qtl_regions.html">define_qtl_regions</a></code> for
 population 1 (discovery). Required columns: <code>block_id</code>, <code>CHR</code>,
-<code>start_bp</code>, <code>end_bp</code>, <code>lead_snp</code>, <code>lead_p</code>,
+<code>start_bp</code>, <code>end_bp</code>, <code>lead_marker</code>, <code>lead_p</code>,
 <code>lead_beta</code>. Optional: <code>traits</code>, <code>pleiotropic</code>.
 Ignored when <code>gwas_pop1</code> is supplied instead.</p></dd>
 
@@ -344,7 +344,7 @@ Default <code>0.80</code>.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A named list of class <code>c("LDxBlocks_effect_concordance", "list")</code>
   with the same structure as <code><a href="compare_block_effects.html">compare_block_effects</a></code>. Additional
-  columns in <code>$concordance</code> specific to GWAS input:</p><ul><li><p><code>lead_snp_pop1</code>, <code>lead_snp_pop2</code> - lead SNP ID from
+  columns in <code>$concordance</code> specific to GWAS input:</p><ul><li><p><code>lead_marker_pop1</code>, <code>lead_marker_pop2</code> - lead SNP ID from
       each population (same SNP = same tag; different SNP = different LD
       tag, same region).</p></li>
 <li><p><code>lead_p_pop1</code>, <code>lead_p_pop2</code> - lead SNP p-values.</p></li>
@@ -354,7 +354,7 @@ Default <code>0.80</code>.</p></dd>
       pleiotropic in both populations (requires <code>pleiotropic</code> column
       in QTL tables).</p></li>
 </ul><p>The <code>$shared_alleles</code> data frame contains one row per block per trait
-  with <code>lead_snp</code> instead of <code>allele</code>, and <code>effect_pop1</code>,
+  with <code>lead_marker</code> instead of <code>allele</code>, and <code>effect_pop1</code>,
   <code>SE_pop1</code>, <code>effect_pop2</code>, <code>SE_pop2</code>, <code>direction_agree</code>,
   <code>ivw_effect</code>, <code>ivw_SE</code>.</p>
     </div>
@@ -435,41 +435,41 @@ meta-analysis. <em>Statistics in Medicine</em> <strong>21</strong>(11):1539-1558
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [compare_gwas_effects] Traits: trait</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> [compare_gwas_effects] Done. Blocks in both pops: 6 | Replicated (dir concordant + meta_p &lt;= 0.05): 6</span>
 <span class="r-in"><span><span class="va">conc2</span><span class="op">$</span><span class="va">concordance</span><span class="op">[</span><span class="va">conc2</span><span class="op">$</span><span class="va">concordance</span><span class="op">$</span><span class="va">replicated</span>, <span class="op">]</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                block_id CHR start_bp end_bp trait lead_snp_pop1 lead_snp_pop2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    block_1_1000_25027   1     1000  25027 trait        rs1005        rs1005</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2   block_1_81064_99022   1    81064  99022 trait        rs1048        rs1048</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 block_1_155368_179371   1   155368 179371 trait        rs1070        rs1070</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4    block_2_1000_30023   2     1000  30023 trait        rs2004        rs2004</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5  block_2_86236_105290   2    86236 105290 trait        rs2050        rs2050</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6    block_3_1000_19068   3     1000  19068 trait        rs3004        rs3004</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    lead_p_pop1  lead_p_pop2 se_derived_pop1 se_derived_pop2 n_alleles_pop1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 4.023280e-07 4.023280e-07            TRUE            TRUE              1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 3.493586e-07 3.493586e-07            TRUE            TRUE              1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 3.653110e-09 3.653110e-09            TRUE            TRUE              1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 1.726081e-05 1.726081e-05            TRUE            TRUE              1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 3.857636e-04 3.857636e-04            TRUE            TRUE              1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 2.215581e-02 2.215581e-02            TRUE            TRUE              1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   n_alleles_pop2 n_shared_alleles enough_shared effect_correlation</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1              1                1          TRUE                 NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2              1                1          TRUE                 NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3              1                1          TRUE                 NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4              1                1          TRUE                 NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5              1                1          TRUE                 NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6              1                1          TRUE                 NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   direction_agreement directionally_concordant meta_effect  meta_SE meta_z</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                   1                     TRUE    0.511102 0.071374 7.1609</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                   1                     TRUE    0.377802 0.053127 7.1112</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                   1                     TRUE    0.462585 0.056073 8.2496</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                   1                     TRUE    0.379837 0.067388 5.6366</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                   1                     TRUE    0.453007 0.090458 5.0079</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                   1                     TRUE    0.481742 0.149185 3.2292</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>         meta_p Q_stat Q_df Q_p I2 replicated both_pleiotropic</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 8.016005e-13     NA   NA  NA NA       TRUE            FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 1.150019e-12     NA   NA  NA NA       TRUE             TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 1.588641e-16     NA   NA  NA NA       TRUE            FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 1.734364e-08     NA   NA  NA NA       TRUE             TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 5.502050e-07     NA   NA  NA NA       TRUE             TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 1.241580e-03     NA   NA  NA NA       TRUE             TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                block_id CHR start_bp end_bp trait lead_marker_pop1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    block_1_1000_25027   1     1000  25027 trait           rs1005</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   block_1_81064_99022   1    81064  99022 trait           rs1048</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 block_1_155368_179371   1   155368 179371 trait           rs1070</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4    block_2_1000_30023   2     1000  30023 trait           rs2004</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  block_2_86236_105290   2    86236 105290 trait           rs2050</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6    block_3_1000_19068   3     1000  19068 trait           rs3004</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   lead_marker_pop2  lead_p_pop1  lead_p_pop2 se_derived_pop1 se_derived_pop2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1           rs1005 4.023280e-07 4.023280e-07            TRUE            TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2           rs1048 3.493586e-07 3.493586e-07            TRUE            TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3           rs1070 3.653110e-09 3.653110e-09            TRUE            TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4           rs2004 1.726081e-05 1.726081e-05            TRUE            TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5           rs2050 3.857636e-04 3.857636e-04            TRUE            TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6           rs3004 2.215581e-02 2.215581e-02            TRUE            TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   n_alleles_pop1 n_alleles_pop2 n_shared_alleles enough_shared</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1              1              1                1          TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2              1              1                1          TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3              1              1                1          TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4              1              1                1          TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5              1              1                1          TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6              1              1                1          TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   effect_correlation direction_agreement directionally_concordant meta_effect</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1                 NA                   1                     TRUE    0.511102</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2                 NA                   1                     TRUE    0.377802</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3                 NA                   1                     TRUE    0.462585</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4                 NA                   1                     TRUE    0.379837</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5                 NA                   1                     TRUE    0.453007</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6                 NA                   1                     TRUE    0.481742</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    meta_SE meta_z       meta_p Q_stat Q_df Q_p I2 replicated both_pleiotropic</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 0.071374 7.1609 8.016005e-13     NA   NA  NA NA       TRUE            FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 0.053127 7.1112 1.150019e-12     NA   NA  NA NA       TRUE             TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 0.056073 8.2496 1.588641e-16     NA   NA  NA NA       TRUE            FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 0.067388 5.6366 1.734364e-08     NA   NA  NA NA       TRUE             TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5 0.090458 5.0079 5.502050e-07     NA   NA  NA NA       TRUE             TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6 0.149185 3.2292 1.241580e-03     NA   NA  NA NA       TRUE             TRUE</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   boundary_overlap_ratio boundary_warning match_type</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1                      1            FALSE      exact</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2                      1            FALSE      exact</span>

@@ -66,9 +66,9 @@ define_qtl_regions(
 
 Data frame with one row per block containing significant markers:
 `block_id`, `CHR`, `start_bp`, `end_bp`, `n_snps_block`,
-`n_sig_markers`, `lead_snp`, `lead_p`, `lead_beta` (if BETA supplied),
-`sig_snps`, `sig_betas` (if BETA supplied), `traits`, `n_traits`,
-`pleiotropic`.
+`n_sig_markers`, `lead_marker`, `lead_p`, `lead_beta` (if BETA
+supplied), `sig_markers`, `sig_betas` (if BETA supplied), `traits`,
+`n_traits`, `pleiotropic`.
 
 ## Block effect estimation
 
@@ -84,7 +84,7 @@ LDxBlocks returns three complementary columns when `BETA` is present in
   Underestimates the block effect when multiple independent signals
   exist.
 
-- `sig_snps`:
+- `sig_markers`:
 
   Semicolon-separated IDs of all significant SNPs in the block. Pass
   these to a conditional/joint analysis tool (e.g. COJO, SuSiE, finemap)
@@ -93,9 +93,9 @@ LDxBlocks returns three complementary columns when `BETA` is present in
 - `sig_betas`:
 
   Semicolon-separated marginal BETA values for all significant SNPs
-  (same order as `sig_snps`). Their absolute values are an upper bound
-  on the true block effect because they include LD-induced inflation;
-  use `lead_beta` or joint analysis for calibrated estimates.
+  (same order as `sig_markers`). Their absolute values are an upper
+  bound on the true block effect because they include LD-induced
+  inflation; use `lead_beta` or joint analysis for calibrated estimates.
 
 For the biologically correct block-level effect, fit a haplotype model:
 [`build_haplotype_feature_matrix()`](https://FAkohoue.github.io/LDxBlocks/reference/build_haplotype_feature_matrix.md)

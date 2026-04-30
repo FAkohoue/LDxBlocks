@@ -2747,7 +2747,7 @@ print.LDxBlocks_effect_concordance <- function(x, ...) {
 #'
 #' @param qtl_pop1 Data frame. Output of \code{\link{define_qtl_regions}} for
 #'   population 1 (discovery). Required columns: \code{block_id}, \code{CHR},
-#'   \code{start_bp}, \code{end_bp}, \code{lead_snp}, \code{lead_p},
+#'   \code{start_bp}, \code{end_bp}, \code{lead_marker}, \code{lead_p},
 #'   \code{lead_beta}. Optional: \code{traits}, \code{pleiotropic}.
 #'   Ignored when \code{gwas_pop1} is supplied instead.
 #' @param qtl_pop2 Data frame. Output of \code{\link{define_qtl_regions}} for
@@ -2814,7 +2814,7 @@ print.LDxBlocks_effect_concordance <- function(x, ...) {
 #'   with the same structure as \code{\link{compare_block_effects}}. Additional
 #'   columns in \code{$concordance} specific to GWAS input:
 #'   \itemize{
-#'     \item \code{lead_snp_pop1}, \code{lead_snp_pop2} - lead SNP ID from
+#'     \item \code{lead_marker_pop1}, \code{lead_marker_pop2} - lead SNP ID from
 #'       each population (same SNP = same tag; different SNP = different LD
 #'       tag, same region).
 #'     \item \code{lead_p_pop1}, \code{lead_p_pop2} - lead SNP p-values.
@@ -2825,7 +2825,7 @@ print.LDxBlocks_effect_concordance <- function(x, ...) {
 #'       in QTL tables).
 #'   }
 #'   The \code{$shared_alleles} data frame contains one row per block per trait
-#'   with \code{lead_snp} instead of \code{allele}, and \code{effect_pop1},
+#'   with \code{lead_marker} instead of \code{allele}, and \code{effect_pop1},
 #'   \code{SE_pop1}, \code{effect_pop2}, \code{SE_pop2}, \code{direction_agree},
 #'   \code{ivw_effect}, \code{ivw_SE}.
 #'
@@ -2974,7 +2974,7 @@ compare_gwas_effects <- function(
 
   # -- Internal: normalise a QTL table (output of define_qtl_regions) ------
   .normalise_qtl <- function(qtl, pop_label) {
-    req <- c("block_id", "CHR", "start_bp", "end_bp", "lead_snp",
+    req <- c("block_id", "CHR", "start_bp", "end_bp", "lead_marker",
              "lead_p", "lead_beta")
     miss <- setdiff(req, names(qtl))
     if (length(miss))
@@ -3033,7 +3033,7 @@ compare_gwas_effects <- function(
            "Try a less stringent p_threshold.", call. = FALSE)
     # Carry over SE values (needed for IVW weighting)
     qtl1$lead_se <- vapply(seq_len(nrow(qtl1)), function(i) {
-      idx <- which(gwas1$SNP == qtl1$lead_snp[i])
+      idx <- which(gwas1$SNP == qtl1$lead_marker[i])
       if (length(idx)) gwas1$SE[idx[1]] else NA_real_
     }, numeric(1L))
 
@@ -3051,7 +3051,7 @@ compare_gwas_effects <- function(
       stop("No blocks with significant markers in ", pop2_name, ". ",
            "Try a less stringent p_threshold.", call. = FALSE)
     qtl2$lead_se <- vapply(seq_len(nrow(qtl2)), function(i) {
-      idx <- which(gwas2$SNP == qtl2$lead_snp[i])
+      idx <- which(gwas2$SNP == qtl2$lead_marker[i])
       if (length(idx)) gwas2$SE[idx[1]] else NA_real_
     }, numeric(1L))
 
@@ -3148,8 +3148,8 @@ compare_gwas_effects <- function(
         start_bp             = blk_start,
         end_bp               = blk_end,
         trait                = tr,
-        lead_snp_pop1        = if (nrow(r1)) r1$lead_snp[1] else NA_character_,
-        lead_snp_pop2        = if (nrow(r2)) r2$lead_snp[1] else NA_character_,
+        lead_marker_pop1        = if (nrow(r1)) r1$lead_marker[1] else NA_character_,
+        lead_marker_pop2        = if (nrow(r2)) r2$lead_marker[1] else NA_character_,
         lead_p_pop1          = if (nrow(r1)) r1$lead_p[1] else NA_real_,
         lead_p_pop2          = if (nrow(r2)) r2$lead_p[1] else NA_real_,
         # se_derived_pop1/pop2 is a POPULATION-LEVEL flag (did pop1/pop2 lack SE?)
@@ -3246,9 +3246,9 @@ compare_gwas_effects <- function(
         start_bp       = blk_start,
         end_bp         = blk_end,
         trait          = tr,
-        lead_snp       = paste(r1$lead_snp[1], r2$lead_snp[1], sep = " / "),
-        lead_snp_pop1  = r1$lead_snp[1],
-        lead_snp_pop2  = r2$lead_snp[1],
+        lead_marker       = paste(r1$lead_marker[1], r2$lead_marker[1], sep = " / "),
+        lead_marker_pop1  = r1$lead_marker[1],
+        lead_marker_pop2  = r2$lead_marker[1],
         effect_pop1    = round(e1,  6),
         SE_pop1        = round(se1, 6),
         p_wald_pop1    = r1$lead_p[1],

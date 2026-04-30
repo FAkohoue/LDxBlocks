@@ -293,7 +293,7 @@ qtl <- define_qtl_regions(
   trait_col    = "trait"
 )
 head(qtl[, c("block_id","CHR","n_snps_block","n_sig_markers",
-             "lead_snp","traits","pleiotropic")])
+             "lead_marker","traits","pleiotropic")])
 subset(qtl, pleiotropic)
 ```
 
@@ -639,7 +639,7 @@ conc_raw <- compare_gwas_effects(
 )
 
 # Same output class as compare_block_effects()
-# Extra columns: lead_snp_pop1/pop2, lead_p_pop1/pop2,
+# Extra columns: lead_marker_pop1/pop2, lead_p_pop1/pop2,
 #                se_derived_pop1/pop2, both_pleiotropic
 conc_gwas$concordance[conc_gwas$concordance$replicated, ]
 print(conc_gwas)

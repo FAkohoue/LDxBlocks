@@ -45,8 +45,8 @@ on both sides of each lead SNP position, adding columns
 \value{
 Data frame with one row per block containing significant markers:
   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
-  \code{n_snps_block}, \code{n_sig_markers}, \code{lead_snp},
-  \code{lead_p}, \code{lead_beta} (if BETA supplied), \code{sig_snps},
+  \code{n_snps_block}, \code{n_sig_markers}, \code{lead_marker},
+  \code{lead_p}, \code{lead_beta} (if BETA supplied), \code{sig_markers},
   \code{sig_betas} (if BETA supplied), \code{traits}, \code{n_traits},
   \code{pleiotropic}.
 }
@@ -66,11 +66,11 @@ present in \code{gwas_results}:
     proxy for the block effect -- assumes the lead SNP fully tags the
     causal variant. Underestimates the block effect when multiple
     independent signals exist.}
-  \item{\code{sig_snps}}{Semicolon-separated IDs of all significant SNPs
+  \item{\code{sig_markers}}{Semicolon-separated IDs of all significant SNPs
     in the block. Pass these to a conditional/joint analysis tool (e.g.
     COJO, SuSiE, finemap) to obtain independent within-block effects.}
   \item{\code{sig_betas}}{Semicolon-separated marginal BETA values for
-    all significant SNPs (same order as \code{sig_snps}). Their absolute
+    all significant SNPs (same order as \code{sig_markers}). Their absolute
     values are an upper bound on the true block effect because they
     include LD-induced inflation; use \code{lead_beta} or joint analysis
     for calibrated estimates.}

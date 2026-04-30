@@ -46,9 +46,9 @@ integrate_gwas_haplotypes(
 
 Data frame with one row per block that appears in at least one of the
 input sources, with columns: `block_id`, `CHR`, `start_bp`, `end_bp`,
-`n_snps`, `has_gwas_hit` (logical), `lead_snp`, `lead_p`, `lead_beta`,
-`n_sig_markers`, `is_important` (logical, scaled var \>= 0.9),
-`var_scaled`, `He`, `sweep_flag`, `is_diverse` (logical, He \>=
+`n_snps`, `has_gwas_hit` (logical), `lead_marker`, `lead_p`,
+`lead_beta`, `n_sig_markers`, `is_important` (logical, scaled var \>=
+0.9), `var_scaled`, `He`, `sweep_flag`, `is_diverse` (logical, He \>=
 He_threshold), `priority_score` (0-3), `recommendation` (character
 label). Sorted by `priority_score` descending, then `var_scaled`
 descending.

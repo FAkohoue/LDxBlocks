@@ -271,7 +271,7 @@
 #'                           ld_decay    = decay,
 #'                           p_threshold = NULL,
 #'                           trait_col   = "trait")
-#' qtl[, c("block_id", "lead_snp", "candidate_region_start",
+#' qtl[, c("block_id", "lead_marker", "candidate_region_start",
 #'          "candidate_region_end", "candidate_region_size_kb")]
 #' }
 #'

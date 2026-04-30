@@ -31,7 +31,7 @@ compare_gwas_effects(
 \arguments{
 \item{qtl_pop1}{Data frame. Output of \code{\link{define_qtl_regions}} for
 population 1 (discovery). Required columns: \code{block_id}, \code{CHR},
-\code{start_bp}, \code{end_bp}, \code{lead_snp}, \code{lead_p},
+\code{start_bp}, \code{end_bp}, \code{lead_marker}, \code{lead_p},
 \code{lead_beta}. Optional: \code{traits}, \code{pleiotropic}.
 Ignored when \code{gwas_pop1} is supplied instead.}
 
@@ -119,7 +119,7 @@ A named list of class \code{c("LDxBlocks_effect_concordance", "list")}
   with the same structure as \code{\link{compare_block_effects}}. Additional
   columns in \code{$concordance} specific to GWAS input:
   \itemize{
-    \item \code{lead_snp_pop1}, \code{lead_snp_pop2} - lead SNP ID from
+    \item \code{lead_marker_pop1}, \code{lead_marker_pop2} - lead SNP ID from
       each population (same SNP = same tag; different SNP = different LD
       tag, same region).
     \item \code{lead_p_pop1}, \code{lead_p_pop2} - lead SNP p-values.
@@ -130,7 +130,7 @@ A named list of class \code{c("LDxBlocks_effect_concordance", "list")}
       in QTL tables).
   }
   The \code{$shared_alleles} data frame contains one row per block per trait
-  with \code{lead_snp} instead of \code{allele}, and \code{effect_pop1},
+  with \code{lead_marker} instead of \code{allele}, and \code{effect_pop1},
   \code{SE_pop1}, \code{effect_pop2}, \code{SE_pop2}, \code{direction_agree},
   \code{ivw_effect}, \code{ivw_SE}.
 }

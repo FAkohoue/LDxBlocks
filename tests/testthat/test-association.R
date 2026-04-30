@@ -1,5 +1,5 @@
 ## tests/testthat/test-association.R
-## -----------------------------------------------------------------------------
+## ─────────────────────────────────────────────────────────────────────────────
 ## Tests for haplotype_association.R and breeding_decisions.R:
 ##   test_block_haplotypes()
 ##   estimate_diplotype_effects()
@@ -9,7 +9,7 @@
 ## All tests use the ldx_* example datasets plus small synthetic fixtures
 ## from helper.R. rrBLUP is required for the first two functions; tests
 ## are skipped automatically when the package is unavailable.
-## -----------------------------------------------------------------------------
+## ─────────────────────────────────────────────────────────────────────────────
 
 library(testthat)
 library(LDxBlocks)
@@ -19,7 +19,7 @@ data(ldx_snp_info, package = "LDxBlocks")
 data(ldx_blocks,   package = "LDxBlocks")
 data(ldx_blues,    package = "LDxBlocks")
 
-# -- Shared fixtures -----------------------------------------------------------
+# ── Shared fixtures ───────────────────────────────────────────────────────────
 
 .haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps = 5L)
 .blues_vec  <- setNames(ldx_blues$YLD, ldx_blues$id)
@@ -33,7 +33,7 @@ data(ldx_blues,    package = "LDxBlocks")
 .haps_s <- extract_haplotypes(.G_s, .si_s, .blk_s, min_snps = 3L)
 .blues_s <- make_blues(.G_s, seed = 9L)
 
-# -- Deterministic diplotype fixture (exercises estimate_diplotype_effects) ---
+# ── Deterministic diplotype fixture (exercises estimate_diplotype_effects) ───
 # 18 individuals x 1 block x 5 SNPs.
 # Exactly 6 AA, 6 AB, 6 BB diplotypes, ensuring dominance_table is non-empty.
 # Blues are set so: a = 0.5, d = 1.0, d/a = 2.0 -> overdominance.
@@ -88,9 +88,9 @@ local({
   .blues_dip <<- setNames(blues_dip, rownames(G_dip))
 })
 
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 # 1. test_block_haplotypes
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 
 test_that("test_block_haplotypes: returns LDxBlocks_haplotype_assoc", {
   skip_if_not_installed("rrBLUP")
@@ -329,7 +329,7 @@ test_that("test_block_haplotypes: n_tests is a positive integer (Bonferroni deno
   expect_gt(res$n_tests, 0L)
 })
 
-# -- simpleM correction tests --------------------------------------------------
+# ── simpleM correction tests ──────────────────────────────────────────────────
 
 test_that("test_block_haplotypes: simpleM columns present in allele_tests", {
   skip_if_not_installed("rrBLUP")
@@ -421,13 +421,13 @@ test_that("test_block_haplotypes: p_simplem_sidak in (0,1]", {
   expect_true(all(ps > 0 & ps <= 1 + 1e-10))
 })
 
-test_that("test_block_haplotypes: alpha_simplem_sidak <= alpha_simplem (Sidak < Bonferroni)", {
+test_that("test_block_haplotypes: alpha_simplem_sidak <= alpha_simplem (Šidák < Bonferroni)", {
   skip_if_not_installed("rrBLUP")
   res <- test_block_haplotypes(.haps, blues = .blues_vec,
                                blocks = ldx_blocks,
                                sig_metric = "p_simplem", verbose = FALSE)
   at <- res$allele_tests
-  # Sidak threshold <= Bonferroni threshold (Sidak is slightly less conservative)
+  # Šidák threshold <= Bonferroni threshold (Šidák is slightly less conservative)
   expect_true(all(at$alpha_simplem_sidak >= at$alpha_simplem - 1e-12))
 })
 
@@ -517,9 +517,9 @@ test_that("test_block_haplotypes: full ldx dataset, 9 blocks, n_pcs=0", {
   expect_true(all(res$block_tests$block_id %in% res$allele_tests$block_id))
 })
 
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 # 2. estimate_diplotype_effects
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 
 test_that("estimate_diplotype_effects: returns LDxBlocks_diplotype", {
   skip_if_not_installed("rrBLUP")
@@ -683,9 +683,9 @@ test_that("estimate_diplotype_effects: print method works", {
   expect_output(print(res), "LDxBlocks Diplotype Effect Results")
 })
 
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 # 3. score_favorable_haplotypes
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 
 # Build a minimal allele_effects table from the haplotype feature matrix
 .ae <- do.call(rbind, lapply(names(.haps), function(bn) {
@@ -787,9 +787,9 @@ test_that("score_favorable_haplotypes: min_freq=1 excludes all alleles -> zero s
   expect_true(all(res$stacking_index == 0))
 })
 
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 # 4. summarize_parent_haplotypes
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 
 test_that("summarize_parent_haplotypes: returns data.frame", {
   res <- summarize_parent_haplotypes(.haps)
@@ -887,11 +887,11 @@ test_that("summarize_parent_haplotypes: allele_effects with wrong columns errors
   )
 })
 
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 # 6. Gap-coverage: edge cases and alternative input paths
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 
-# -- Gap 1: estimate_diplotype_effects with PHASED input ----------------------
+# ── Gap 1: estimate_diplotype_effects with PHASED input ──────────────────────
 # Phased haplotypes use "|" separator strings; heterozygous is determined by
 # h1 != h2 (not by dosage containing "1"), so the code path through
 # infer_block_haplotypes differs from the unphased path.
@@ -973,7 +973,7 @@ test_that("estimate_diplotype_effects: phased input produces non-empty dominance
   )
 })
 
-# -- Gap 2: All-homozygous population -----------------------------------------
+# ── Gap 2: All-homozygous population ─────────────────────────────────────────
 # When all individuals are homozygous (dosage in {0,2} only), there are no AB
 # diplotypes. estimate_diplotype_effects must return empty dominance_table and
 # test_block_haplotypes must still produce allele_tests without error.
@@ -1037,7 +1037,7 @@ test_that("test_block_haplotypes: all-homozygous population runs without error",
   expect_s3_class(res, "LDxBlocks_haplotype_assoc")
 })
 
-# -- Gap 3: Degenerate GRM (all identical genotypes) --------------------------
+# ── Gap 3: Degenerate GRM (all identical genotypes) ──────────────────────────
 # When all individuals carry identical genotypes, the GRM is rank-deficient
 # (all entries equal). Both test_block_haplotypes and estimate_diplotype_effects
 # must handle this gracefully via their internal tryCatch on mixed.solve().
@@ -1059,7 +1059,7 @@ test_that("test_block_haplotypes: degenerate GRM handled gracefully", {
                         stringsAsFactors = FALSE)
   haps_deg <- extract_haplotypes(G_deg, si_deg, blk_deg, min_snps = 3L)
   blues_deg <- setNames(rnorm(n_ind), rownames(G_deg))
-  # Should not throw - degenerate GRM causes mixed.solve to fail,
+  # Should not throw — degenerate GRM causes mixed.solve to fail,
   # which is caught internally and the block is skipped
   expect_no_error(
     test_block_haplotypes(haps_deg, blues = blues_deg,
@@ -1077,7 +1077,7 @@ test_that("estimate_diplotype_effects: degenerate GRM handled gracefully", {
   )
 })
 
-# -- Gap 4: d/a edge cases -----------------------------------------------------
+# ── Gap 4: d/a edge cases ─────────────────────────────────────────────────────
 # a=0 (mean_AA == mean_BB): d_over_a must be NA, overdominance must be FALSE.
 # d=0 (no dominance, AB = midpoint): overdominance must be FALSE.
 
@@ -1127,14 +1127,14 @@ test_that("estimate_diplotype_effects: d=0 (no dominance) gives overdominance=FA
   }
 })
 
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 # compare_block_effects tests
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 
-# -- Shared fixtures for cross-population tests --------------------------------
+# ── Shared fixtures for cross-population tests ────────────────────────────────
 # Split the example dataset into two pseudo-populations for testing.
 # Population 1 = first 70 individuals; Population 2 = last 50 individuals.
-# Both use the same block definitions (ldx_blocks) - the recommended practice.
+# Both use the same block definitions (ldx_blocks) — the recommended practice.
 local({
   set.seed(42L)
   n   <- nrow(ldx_geno)
@@ -1352,11 +1352,11 @@ test_that("compare_block_effects: min_shared_alleles controls enough_shared flag
               label = "Stricter min_shared_alleles gives fewer blocks marked enough_shared")
 })
 
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 # compare_gwas_effects tests
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 
-# -- Shared GWAS fixtures ------------------------------------------------------
+# ── Shared GWAS fixtures ──────────────────────────────────────────────────────
 # Build two minimal external GWAS data frames that cover some ldx_blocks
 local({
   set.seed(99L)
@@ -1428,7 +1428,7 @@ test_that("compare_gwas_effects: concordance has all required columns", {
                 "meta_z","meta_p","replicated",
                 "boundary_overlap_ratio","boundary_warning")
   # GWAS-specific columns
-  gwas_cols <- c("lead_snp_pop1","lead_snp_pop2",
+  gwas_cols <- c("lead_marker_pop1","lead_marker_pop2",
                  "lead_p_pop1","lead_p_pop2",
                  "se_derived_pop1","se_derived_pop2")
   all_req <- c(std_cols, gwas_cols)
@@ -1469,7 +1469,7 @@ test_that("compare_gwas_effects: meta_p in (0,1] for blocks with data", {
 })
 
 test_that("compare_gwas_effects: SE derivation from BETA+P works when SE absent", {
-  # Remove SE column - function should derive it automatically
+  # Remove SE column — function should derive it automatically
   gwas_no_se <- gwas_A_raw[, setdiff(names(gwas_A_raw), "SE")]
   conc <- compare_gwas_effects(
     gwas_pop1     = gwas_no_se,
@@ -1527,7 +1527,7 @@ test_that("compare_gwas_effects: shared_alleles has required columns", {
     qtl_pop1 = qtl_A_raw, qtl_pop2 = qtl_B_raw, verbose = FALSE
   )
   if (nrow(conc$shared_alleles) > 0) {
-    req <- c("block_id","trait","lead_snp_pop1","lead_snp_pop2",
+    req <- c("block_id","trait","lead_marker_pop1","lead_marker_pop2",
              "effect_pop1","SE_pop1","p_wald_pop1",
              "effect_pop2","SE_pop2","p_wald_pop2",
              "direction_agree","ivw_effect","ivw_SE")
@@ -1601,11 +1601,11 @@ test_that("compare_gwas_effects: raw and pre-mapped paths give same block set", 
                sort(unique(conc_qtl$concordance$block_id)))
 })
 
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 # block_match = "position" tests
-# ==============================================================================
+# ══════════════════════════════════════════════════════════════════════════════
 
-# -- Simulate blocks with slightly different boundaries between populations ----
+# ── Simulate blocks with slightly different boundaries between populations ────
 local({
   # Build Pop A explicitly: use ORIGINAL ldx_blocks with block_id added.
   # Assign the COMPLETE data.frame with <<- (not column-by-column) to avoid
@@ -1644,7 +1644,7 @@ test_that(".match_blocks_by_position: finds matches for nudged boundaries", {
 })
 
 test_that(".match_blocks_by_position: match_type is 'exact' when IDs agree", {
-  # Same blocks - should all be 'exact'
+  # Same blocks — should all be 'exact'
   res <- LDxBlocks:::.match_blocks_by_position(ldx_blocks, ldx_blocks,
                                                overlap_min = 0.50)
   exact_rows <- res[!is.na(res$match_type) & res$match_type == "exact", ]

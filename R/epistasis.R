@@ -505,14 +505,16 @@ scan_block_epistasis <- function(
 
   .log("Done. Blocks scanned: ", length(sig_blocks),
        " | Total pairs: ", format(n_pairs_total, big.mark = ","),
-       " | Significant interactions: ",
+       " | Significant (", sig_metric, "): ",
        sum(results_df$significant, na.rm = TRUE))
 
   structure(
     list(results          = results_df,
          scan_summary     = summary_df,
          n_blocks_scanned = length(sig_blocks),
-         n_pairs_total    = n_pairs_total),
+         n_pairs_total    = n_pairs_total,
+         sig_metric        = sig_metric,
+         sig_threshold     = sig_threshold),
     class = "LDxBlocks_epistasis"
   )
 }
@@ -822,12 +824,14 @@ scan_block_by_block_epistasis <- function(
 
   n_sig_out <- sum(results_df$significant, na.rm = TRUE)
   .log("Done. Tests: ", format(n_tests, big.mark=","),
-       " | Significant (Bonferroni): ", n_sig_out)
+       " | Significant (", sig_metric, "): ", n_sig_out)
 
   structure(
     list(results       = results_df,
          n_tests       = n_tests,
-         n_sig_alleles = n_sig),
+         n_sig_alleles = n_sig,
+         sig_metric    = sig_metric,
+         sig_threshold = sig_threshold),
     class = "LDxBlocks_block_epistasis"
   )
 }
@@ -1108,8 +1112,9 @@ print.LDxBlocks_epistasis <- function(x, ...) {
   cat("  Blocks scanned  :", x$n_blocks_scanned, "\n")
   cat("  Total pairs     :", format(x$n_pairs_total, big.mark = ","), "\n")
   if (nrow(x$results) > 0) {
-    cat("  Significant pairs (Bonferroni):",
-        sum(x$results$significant, na.rm = TRUE), "\n")
+    sm_label <- if (!is.null(x$sig_metric)) x$sig_metric else "sig_metric"
+    cat("  Significant pairs (", sm_label, "):",
+        sum(x$results$significant, na.rm = TRUE), "\n", sep = "")
     if (nrow(x$scan_summary) > 0) {
       cat("  Per-block summary:\n")
       for (i in seq_len(nrow(x$scan_summary))) {
@@ -1131,8 +1136,9 @@ print.LDxBlocks_block_epistasis <- function(x, ...) {
   cat("  Query alleles   :", x$n_sig_alleles, "\n")
   cat("  Total tests     :", format(x$n_tests, big.mark = ","), "\n")
   if (nrow(x$results) > 0) {
-    cat("  Significant (Bonferroni):",
-        sum(x$results$significant, na.rm = TRUE), "\n")
+    sm_label_bb <- if (!is.null(x$sig_metric)) x$sig_metric else "sig_metric"
+    cat("  Significant (", sm_label_bb, "):",
+        sum(x$results$significant, na.rm = TRUE), "\n", sep = "")
     cat("  Top 5 interactions by p_wald:\n")
     top5 <- head(x$results[, c("block_i","allele_i","block_j","allele_j",
                                "aa_effect","p_wald","p_bonf")], 5)

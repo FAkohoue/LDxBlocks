@@ -668,11 +668,11 @@ conc_raw <- compare_gwas_effects(
 )
 
 # Extra output columns vs compare_block_effects():
-#   lead_snp_pop1/pop2  — which SNP tagged the block in each population
+#   lead_marker_pop1/pop2  — which SNP tagged the block in each population
 #   lead_p_pop1/pop2    — lead SNP p-values
 #   se_derived_pop1/pop2 — TRUE when SE was derived from z-score
 #   both_pleiotropic    — TRUE when block is pleiotropic in both populations
-head(conc_raw$concordance[, c("block_id","lead_snp_pop1","lead_snp_pop2",
+head(conc_raw$concordance[, c("block_id","lead_marker_pop1","lead_marker_pop2",
                                 "meta_effect","meta_p","direction_agreement",
                                 "se_derived_pop1","replicated")])
 ```

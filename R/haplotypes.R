@@ -908,11 +908,11 @@ compute_haplotype_diversity <- function(haplotypes, missing_string=".") {
 #'     proxy for the block effect -- assumes the lead SNP fully tags the
 #'     causal variant. Underestimates the block effect when multiple
 #'     independent signals exist.}
-#'   \item{\code{sig_snps}}{Semicolon-separated IDs of all significant SNPs
+#'   \item{\code{sig_markers}}{Semicolon-separated IDs of all significant SNPs
 #'     in the block. Pass these to a conditional/joint analysis tool (e.g.
 #'     COJO, SuSiE, finemap) to obtain independent within-block effects.}
 #'   \item{\code{sig_betas}}{Semicolon-separated marginal BETA values for
-#'     all significant SNPs (same order as \code{sig_snps}). Their absolute
+#'     all significant SNPs (same order as \code{sig_markers}). Their absolute
 #'     values are an upper bound on the true block effect because they
 #'     include LD-induced inflation; use \code{lead_beta} or joint analysis
 #'     for calibrated estimates.}
@@ -923,8 +923,8 @@ compute_haplotype_diversity <- function(haplotypes, missing_string=".") {
 #'
 #' @return Data frame with one row per block containing significant markers:
 #'   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
-#'   \code{n_snps_block}, \code{n_sig_markers}, \code{lead_snp},
-#'   \code{lead_p}, \code{lead_beta} (if BETA supplied), \code{sig_snps},
+#'   \code{n_snps_block}, \code{n_sig_markers}, \code{lead_marker},
+#'   \code{lead_p}, \code{lead_beta} (if BETA supplied), \code{sig_markers},
 #'   \code{sig_betas} (if BETA supplied), \code{traits}, \code{n_traits},
 #'   \code{pleiotropic}.
 #' @references
@@ -946,6 +946,10 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
   # Accept "Marker" as an alias for "SNP" (OptSLDP / GWAS convention)
   if (!"SNP" %in% names(gwas_results) && "Marker" %in% names(gwas_results))
     gwas_results$SNP <- gwas_results$Marker
+  # Detect whether markers are LDxBlocks block IDs or external GWAS SNP IDs.
+  # Block IDs always start with "block_"; rsIDs / SNP names never do.
+  marker_source <- if (any(grepl("^block_", gwas_results$SNP, perl = TRUE)))
+    "block_id" else "snp_id"
   miss <- setdiff(c("SNP","CHR","POS"),names(gwas_results))
   if (length(miss)) stop("gwas_results missing: ",paste(miss,collapse=","),call.=FALSE)
   gwas_results$CHR <- .norm_chr_hap(gwas_results$CHR)
@@ -1022,27 +1026,54 @@ define_qtl_regions <- function(gwas_results, blocks, snp_info,
         else 0L) else NA_integer_,
       n_snps_block  = nb,
       n_sig_markers = nrow(hits),
-      lead_snp      = hits$SNP[li],
+      lead_marker   = hits$SNP[li],
       lead_p        = if ("P" %in% names(hits)) hits$P[li] else NA_real_,
-      candidate_region_start = if (!is.null(decay_map)) as.integer(max(0, hits$POS[li] - (
-        if (ch %in% names(decay_map)) decay_map[[ch]]
-        else decay_map[["GENOME"]]))) else NA_integer_,
-      candidate_region_end   = if (!is.null(decay_map)) as.integer(hits$POS[li] + (
-        if (ch %in% names(decay_map)) decay_map[[ch]]
-        else decay_map[["GENOME"]])) else NA_integer_,
-      candidate_region_size_kb = if (!is.null(decay_map)) round(2 * (
-        if (ch %in% names(decay_map)) decay_map[[ch]]
-        else decay_map[["GENOME"]]) / 1000, 1) else NA_real_,
+      candidate_region_start = if (!is.null(decay_map)) {
+        as.integer(max(0, hits$POS[li] - (
+          if (ch %in% names(decay_map)) decay_map[[ch]]
+          else decay_map[["GENOME"]])))
+      } else as.integer(sb),
+      candidate_region_end   = if (!is.null(decay_map)) {
+        as.integer(hits$POS[li] + (
+          if (ch %in% names(decay_map)) decay_map[[ch]]
+          else decay_map[["GENOME"]]))
+      } else as.integer(eb),
+      candidate_region_size_kb = if (!is.null(decay_map)) {
+        round(2 * (if (ch %in% names(decay_map)) decay_map[[ch]]
+                   else decay_map[["GENOME"]]) / 1000, 1)
+      } else round((eb - sb) / 1000, 1),
       lead_beta     = if (has_beta) hits$BETA[li] else NA_real_,
-      sig_snps      = paste(hits$SNP, collapse = ";"),
+      sig_markers   = paste(hits$SNP, collapse = ";"),
       sig_betas     = if (has_beta) paste(round(hits$BETA, 6), collapse = ";") else NA_character_,
       traits        = paste(sort(traits), collapse = ","),
       n_traits      = length(traits),
       pleiotropic   = length(traits) > 1L,
+      marker_source = marker_source,
       stringsAsFactors = FALSE)
   }
   if (!length(rows)){message("[define_qtl_regions] No overlapping blocks.");return(data.frame())}
-  out <- do.call(rbind,rows); out[order(out$CHR,out$start_bp),]
+  out <- do.call(rbind, rows)
+
+  # When marker_source = "block_id" (LDxBlocks haplotype input):
+  # - lead_marker  = the significant haplotype block with lowest p-value
+  #                  whose search window overlaps this block. When ld_decay=NULL
+  #                  this equals block_id itself (the block IS the hit).
+  # - sig_markers  = semicolon-separated block IDs of all significant blocks
+  #                  whose search window overlaps this block.
+  # - n_sig_markers = count of those significant blocks (not individual SNPs).
+  # When marker_source = "snp_id" (external GWAS):
+  # - lead_marker, sig_markers, n_sig_markers refer to individual SNPs.
+  # The marker_source column always indicates which interpretation applies.
+  if (all(out$marker_source == "block_id")) {
+    # For clarity, expose n_sig_markers under a block-specific alias too.
+    # Both columns are identical in value; n_sig_markers retained for API compat.
+    out$n_sig_blocks_in_window <- out$n_sig_markers
+    # Flag rows where block_id == lead_marker (block is its own lead hit).
+    # True when ld_decay=NULL or when no other sig block falls in window.
+    out$is_primary_hit <- out$block_id == out$lead_marker
+  }
+
+  out[order(out$CHR, out$start_bp), ]
 }
 
 #' Build Haplotype Dosage Matrix for Genomic Prediction
@@ -2822,7 +2853,7 @@ run_haplotype_prediction <- function(geno_matrix,
 #'   the input sources, with columns:
 #'   \code{block_id}, \code{CHR}, \code{start_bp}, \code{end_bp},
 #'   \code{n_snps}, \code{has_gwas_hit} (logical),
-#'   \code{lead_snp}, \code{lead_p}, \code{lead_beta},
+#'   \code{lead_marker}, \code{lead_p}, \code{lead_beta},
 #'   \code{n_sig_markers}, \code{is_important} (logical, scaled var >= 0.9),
 #'   \code{var_scaled}, \code{He}, \code{sweep_flag},
 #'   \code{is_diverse} (logical, He >= He_threshold),
@@ -2897,7 +2928,7 @@ integrate_gwas_haplotypes <- function(qtl_regions,
     end_bp        = bi$end_bp,
     n_snps        = bi$n_snps,
     has_gwas_hit  = FALSE,
-    lead_snp      = NA_character_,
+    lead_marker      = NA_character_,
     lead_p        = NA_real_,
     lead_beta     = NA_real_,
     n_sig_markers = NA_integer_,
@@ -2923,7 +2954,7 @@ integrate_gwas_haplotypes <- function(qtl_regions,
           end_bp        = qr$end_bp,
           n_snps        = qr$n_snps_block,
           has_gwas_hit  = TRUE,
-          lead_snp      = qr$lead_snp,
+          lead_marker      = qr$lead_marker,
           lead_p        = if ("lead_p"    %in% names(qr)) qr$lead_p    else NA_real_,
           lead_beta     = if ("lead_beta" %in% names(qr)) qr$lead_beta else NA_real_,
           n_sig_markers = qr$n_sig_markers,
@@ -2936,7 +2967,7 @@ integrate_gwas_haplotypes <- function(qtl_regions,
         out <- rbind(out, new_row)
       } else {
         out$has_gwas_hit [idx] <- TRUE
-        out$lead_snp     [idx] <- qr$lead_snp
+        out$lead_marker     [idx] <- qr$lead_marker
         out$lead_p       [idx] <- if ("lead_p"    %in% names(qr)) qr$lead_p    else NA_real_
         out$lead_beta    [idx] <- if ("lead_beta" %in% names(qr)) qr$lead_beta else NA_real_
         out$n_sig_markers[idx] <- qr$n_sig_markers
@@ -3032,7 +3063,7 @@ integrate_gwas_haplotypes <- function(qtl_regions,
 #'   \code{end_bp}, \code{n_snps}, \code{He}, \code{n_eff_alleles},
 #'   \code{freq_dominant}, \code{sweep_flag}, \code{is_diverse},
 #'   \code{has_gwas_hit} (if \code{qtl_regions} supplied),
-#'   \code{lead_snp}, \code{lead_beta}, \code{n_sig_markers}
+#'   \code{lead_marker}, \code{lead_beta}, \code{n_sig_markers}
 #'   (if \code{qtl_regions} supplied),
 #'   \code{var_scaled}, \code{is_important}
 #'   (if \code{pred_result} supplied),
@@ -3111,14 +3142,14 @@ rank_haplotype_blocks <- function(diversity,
 
   # -- GWAS flag (binary: hit or no hit, p-value not used for ranking) --------
   out$has_gwas_hit  <- FALSE
-  out$lead_snp      <- NA_character_
+  out$lead_marker      <- NA_character_
   out$lead_beta     <- NA_real_
   out$n_sig_markers <- NA_integer_
 
   if (has_gwas) {
     qtl_match             <- match(out$block_id, qtl_regions$block_id)
     out$has_gwas_hit      <- !is.na(qtl_match)
-    out$lead_snp          <- qtl_regions$lead_snp     [qtl_match]
+    out$lead_marker          <- qtl_regions$lead_marker     [qtl_match]
     out$n_sig_markers     <- qtl_regions$n_sig_markers[qtl_match]
     if ("lead_beta" %in% names(qtl_regions))
       out$lead_beta       <- qtl_regions$lead_beta[qtl_match]

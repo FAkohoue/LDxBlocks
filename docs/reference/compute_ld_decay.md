@@ -385,15 +385,15 @@ qtl <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
                           ld_decay    = decay,
                           p_threshold = NULL,
                           trait_col   = "trait")
-qtl[, c("block_id", "lead_snp", "candidate_region_start",
+qtl[, c("block_id", "lead_marker", "candidate_region_start",
          "candidate_region_end", "candidate_region_size_kb")]
-#>                block_id lead_snp candidate_region_start candidate_region_end
-#> 1    block_1_1000_25027   rs1005                      0                44369
-#> 2   block_1_81064_99022   rs1048                  58031               136393
-#> 3 block_1_155368_179371   rs1070                 129829               208191
-#> 4    block_2_1000_30023   rs2004                      0                55303
-#> 5  block_2_86236_105290   rs2050                  49548               151352
-#> 6    block_3_1000_19068   rs3004                      0                33383
+#>                block_id lead_marker candidate_region_start candidate_region_end
+#> 1    block_1_1000_25027      rs1005                      0                44369
+#> 2   block_1_81064_99022      rs1048                  58031               136393
+#> 3 block_1_155368_179371      rs1070                 129829               208191
+#> 4    block_2_1000_30023      rs2004                      0                55303
+#> 5  block_2_86236_105290      rs2050                  49548               151352
+#> 6    block_3_1000_19068      rs3004                      0                33383
 #>   candidate_region_size_kb
 #> 1                     78.4
 #> 2                     78.4

@@ -761,11 +761,11 @@ PLINK), use <code><a href="../reference/compare_gwas_effects.html">compare_gwas_
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Extra output columns vs compare_block_effects():</span></span>
-<span><span class="co">#   lead_snp_pop1/pop2  — which SNP tagged the block in each population</span></span>
+<span><span class="co">#   lead_marker_pop1/pop2  — which SNP tagged the block in each population</span></span>
 <span><span class="co">#   lead_p_pop1/pop2    — lead SNP p-values</span></span>
 <span><span class="co">#   se_derived_pop1/pop2 — TRUE when SE was derived from z-score</span></span>
 <span><span class="co">#   both_pleiotropic    — TRUE when block is pleiotropic in both populations</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">conc_raw</span><span class="op">$</span><span class="va">concordance</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"lead_snp_pop1"</span>,<span class="st">"lead_snp_pop2"</span>,</span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">conc_raw</span><span class="op">$</span><span class="va">concordance</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"block_id"</span>,<span class="st">"lead_marker_pop1"</span>,<span class="st">"lead_marker_pop2"</span>,</span>
 <span>                                <span class="st">"meta_effect"</span>,<span class="st">"meta_p"</span>,<span class="st">"direction_agreement"</span>,</span>
 <span>                                <span class="st">"se_derived_pop1"</span>,<span class="st">"replicated"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
 </div>

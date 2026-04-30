@@ -104,11 +104,11 @@ qtl <- define_qtl_regions(
   p_threshold  = 1e-5,
   verbose      = FALSE
 )
-qtl[, c("block_id", "CHR", "lead_snp", "lead_p", "lead_beta", "n_sig_markers")]
-#>                block_id CHR lead_snp       lead_p lead_beta n_sig_markers
-#> 1    block_1_1000_25027   1   rs1005 4.023280e-07    0.2572             3
-#> 2   block_1_81064_99022   1   rs1048 3.493586e-07    0.2426             3
-#> 3 block_1_155368_179371   1   rs1070 3.653110e-09    0.3262             2
+qtl[, c("block_id", "CHR", "lead_marker", "lead_p", "lead_beta", "n_sig_markers")]
+#>                block_id CHR lead_marker       lead_p lead_beta n_sig_markers
+#> 1    block_1_1000_25027   1      rs1005 4.023280e-07    0.2572             3
+#> 2   block_1_81064_99022   1      rs1048 3.493586e-07    0.2426             3
+#> 3 block_1_155368_179371   1      rs1070 3.653110e-09    0.3262             2
 
 # Cross-population effect concordance from external GWAS results.
 # Here ldx_gwas is used for both populations; in practice these

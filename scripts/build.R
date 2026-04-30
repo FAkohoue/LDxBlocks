@@ -122,6 +122,9 @@ devtools::install()
 #    installed DLL, so load_all() will find them.
 devtools::test()
 
+devtools::test(filter = "association")
+devtools::test(filter = "haplotypes")
+devtools::test(filter = "ld-decay")
 #devtools::test(filter = "epistasis")
 
 # 7. Full CRAN check (run after tests pass).

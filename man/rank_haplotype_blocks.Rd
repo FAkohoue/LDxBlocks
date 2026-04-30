@@ -37,7 +37,7 @@ Data frame with one row per block, sorted by evidence strength,
   \code{end_bp}, \code{n_snps}, \code{He}, \code{n_eff_alleles},
   \code{freq_dominant}, \code{sweep_flag}, \code{is_diverse},
   \code{has_gwas_hit} (if \code{qtl_regions} supplied),
-  \code{lead_snp}, \code{lead_beta}, \code{n_sig_markers}
+  \code{lead_marker}, \code{lead_beta}, \code{n_sig_markers}
   (if \code{qtl_regions} supplied),
   \code{var_scaled}, \code{is_important}
   (if \code{pred_result} supplied),

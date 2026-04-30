@@ -126,8 +126,8 @@ on both sides of each lead SNP position, adding columns
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Data frame with one row per block containing significant markers:
   <code>block_id</code>, <code>CHR</code>, <code>start_bp</code>, <code>end_bp</code>,
-  <code>n_snps_block</code>, <code>n_sig_markers</code>, <code>lead_snp</code>,
-  <code>lead_p</code>, <code>lead_beta</code> (if BETA supplied), <code>sig_snps</code>,
+  <code>n_snps_block</code>, <code>n_sig_markers</code>, <code>lead_marker</code>,
+  <code>lead_p</code>, <code>lead_beta</code> (if BETA supplied), <code>sig_markers</code>,
   <code>sig_betas</code> (if BETA supplied), <code>traits</code>, <code>n_traits</code>,
   <code>pleiotropic</code>.</p>
     </div>
@@ -144,14 +144,14 @@ present in <code>gwas_results</code>:</p><dl><dt><code>lead_beta</code></dt>
     causal variant. Underestimates the block effect when multiple
     independent signals exist.</p></dd>
 
-  <dt><code>sig_snps</code></dt>
+  <dt><code>sig_markers</code></dt>
 <dd><p>Semicolon-separated IDs of all significant SNPs
     in the block. Pass these to a conditional/joint analysis tool (e.g.
     COJO, SuSiE, finemap) to obtain independent within-block effects.</p></dd>
 
   <dt><code>sig_betas</code></dt>
 <dd><p>Semicolon-separated marginal BETA values for
-    all significant SNPs (same order as <code>sig_snps</code>). Their absolute
+    all significant SNPs (same order as <code>sig_markers</code>). Their absolute
     values are an upper bound on the true block effect because they
     include LD-induced inflation; use <code>lead_beta</code> or joint analysis
     for calibrated estimates.</p></dd>

@@ -97,7 +97,7 @@ compare_gwas_effects(
   Data frame. Output of
   [`define_qtl_regions`](https://FAkohoue.github.io/LDxBlocks/reference/define_qtl_regions.md)
   for population 1 (discovery). Required columns: `block_id`, `CHR`,
-  `start_bp`, `end_bp`, `lead_snp`, `lead_p`, `lead_beta`. Optional:
+  `start_bp`, `end_bp`, `lead_marker`, `lead_p`, `lead_beta`. Optional:
   `traits`, `pleiotropic`. Ignored when `gwas_pop1` is supplied instead.
 
 - qtl_pop2:
@@ -225,8 +225,9 @@ the same structure as
 [`compare_block_effects`](https://FAkohoue.github.io/LDxBlocks/reference/compare_block_effects.md).
 Additional columns in `$concordance` specific to GWAS input:
 
-- `lead_snp_pop1`, `lead_snp_pop2` - lead SNP ID from each population
-  (same SNP = same tag; different SNP = different LD tag, same region).
+- `lead_marker_pop1`, `lead_marker_pop2` - lead SNP ID from each
+  population (same SNP = same tag; different SNP = different LD tag,
+  same region).
 
 - `lead_p_pop1`, `lead_p_pop2` - lead SNP p-values.
 
@@ -237,7 +238,7 @@ Additional columns in `$concordance` specific to GWAS input:
   both populations (requires `pleiotropic` column in QTL tables).
 
 The `$shared_alleles` data frame contains one row per block per trait
-with `lead_snp` instead of `allele`, and `effect_pop1`, `SE_pop1`,
+with `lead_marker` instead of `allele`, and `effect_pop1`, `SE_pop1`,
 `effect_pop2`, `SE_pop2`, `direction_agree`, `ivw_effect`, `ivw_SE`.
 
 ## References
@@ -318,41 +319,41 @@ conc2 <- compare_gwas_effects(
 #> [compare_gwas_effects] Traits: trait
 #> [compare_gwas_effects] Done. Blocks in both pops: 6 | Replicated (dir concordant + meta_p <= 0.05): 6
 conc2$concordance[conc2$concordance$replicated, ]
-#>                block_id CHR start_bp end_bp trait lead_snp_pop1 lead_snp_pop2
-#> 1    block_1_1000_25027   1     1000  25027 trait        rs1005        rs1005
-#> 2   block_1_81064_99022   1    81064  99022 trait        rs1048        rs1048
-#> 3 block_1_155368_179371   1   155368 179371 trait        rs1070        rs1070
-#> 4    block_2_1000_30023   2     1000  30023 trait        rs2004        rs2004
-#> 5  block_2_86236_105290   2    86236 105290 trait        rs2050        rs2050
-#> 6    block_3_1000_19068   3     1000  19068 trait        rs3004        rs3004
-#>    lead_p_pop1  lead_p_pop2 se_derived_pop1 se_derived_pop2 n_alleles_pop1
-#> 1 4.023280e-07 4.023280e-07            TRUE            TRUE              1
-#> 2 3.493586e-07 3.493586e-07            TRUE            TRUE              1
-#> 3 3.653110e-09 3.653110e-09            TRUE            TRUE              1
-#> 4 1.726081e-05 1.726081e-05            TRUE            TRUE              1
-#> 5 3.857636e-04 3.857636e-04            TRUE            TRUE              1
-#> 6 2.215581e-02 2.215581e-02            TRUE            TRUE              1
-#>   n_alleles_pop2 n_shared_alleles enough_shared effect_correlation
-#> 1              1                1          TRUE                 NA
-#> 2              1                1          TRUE                 NA
-#> 3              1                1          TRUE                 NA
-#> 4              1                1          TRUE                 NA
-#> 5              1                1          TRUE                 NA
-#> 6              1                1          TRUE                 NA
-#>   direction_agreement directionally_concordant meta_effect  meta_SE meta_z
-#> 1                   1                     TRUE    0.511102 0.071374 7.1609
-#> 2                   1                     TRUE    0.377802 0.053127 7.1112
-#> 3                   1                     TRUE    0.462585 0.056073 8.2496
-#> 4                   1                     TRUE    0.379837 0.067388 5.6366
-#> 5                   1                     TRUE    0.453007 0.090458 5.0079
-#> 6                   1                     TRUE    0.481742 0.149185 3.2292
-#>         meta_p Q_stat Q_df Q_p I2 replicated both_pleiotropic
-#> 1 8.016005e-13     NA   NA  NA NA       TRUE            FALSE
-#> 2 1.150019e-12     NA   NA  NA NA       TRUE             TRUE
-#> 3 1.588641e-16     NA   NA  NA NA       TRUE            FALSE
-#> 4 1.734364e-08     NA   NA  NA NA       TRUE             TRUE
-#> 5 5.502050e-07     NA   NA  NA NA       TRUE             TRUE
-#> 6 1.241580e-03     NA   NA  NA NA       TRUE             TRUE
+#>                block_id CHR start_bp end_bp trait lead_marker_pop1
+#> 1    block_1_1000_25027   1     1000  25027 trait           rs1005
+#> 2   block_1_81064_99022   1    81064  99022 trait           rs1048
+#> 3 block_1_155368_179371   1   155368 179371 trait           rs1070
+#> 4    block_2_1000_30023   2     1000  30023 trait           rs2004
+#> 5  block_2_86236_105290   2    86236 105290 trait           rs2050
+#> 6    block_3_1000_19068   3     1000  19068 trait           rs3004
+#>   lead_marker_pop2  lead_p_pop1  lead_p_pop2 se_derived_pop1 se_derived_pop2
+#> 1           rs1005 4.023280e-07 4.023280e-07            TRUE            TRUE
+#> 2           rs1048 3.493586e-07 3.493586e-07            TRUE            TRUE
+#> 3           rs1070 3.653110e-09 3.653110e-09            TRUE            TRUE
+#> 4           rs2004 1.726081e-05 1.726081e-05            TRUE            TRUE
+#> 5           rs2050 3.857636e-04 3.857636e-04            TRUE            TRUE
+#> 6           rs3004 2.215581e-02 2.215581e-02            TRUE            TRUE
+#>   n_alleles_pop1 n_alleles_pop2 n_shared_alleles enough_shared
+#> 1              1              1                1          TRUE
+#> 2              1              1                1          TRUE
+#> 3              1              1                1          TRUE
+#> 4              1              1                1          TRUE
+#> 5              1              1                1          TRUE
+#> 6              1              1                1          TRUE
+#>   effect_correlation direction_agreement directionally_concordant meta_effect
+#> 1                 NA                   1                     TRUE    0.511102
+#> 2                 NA                   1                     TRUE    0.377802
+#> 3                 NA                   1                     TRUE    0.462585
+#> 4                 NA                   1                     TRUE    0.379837
+#> 5                 NA                   1                     TRUE    0.453007
+#> 6                 NA                   1                     TRUE    0.481742
+#>    meta_SE meta_z       meta_p Q_stat Q_df Q_p I2 replicated both_pleiotropic
+#> 1 0.071374 7.1609 8.016005e-13     NA   NA  NA NA       TRUE            FALSE
+#> 2 0.053127 7.1112 1.150019e-12     NA   NA  NA NA       TRUE             TRUE
+#> 3 0.056073 8.2496 1.588641e-16     NA   NA  NA NA       TRUE            FALSE
+#> 4 0.067388 5.6366 1.734364e-08     NA   NA  NA NA       TRUE             TRUE
+#> 5 0.090458 5.0079 5.502050e-07     NA   NA  NA NA       TRUE             TRUE
+#> 6 0.149185 3.2292 1.241580e-03     NA   NA  NA NA       TRUE             TRUE
 #>   boundary_overlap_ratio boundary_warning match_type
 #> 1                      1            FALSE      exact
 #> 2                      1            FALSE      exact

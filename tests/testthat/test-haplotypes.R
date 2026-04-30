@@ -10,7 +10,7 @@ data(ldx_snp_info, package = "LDxBlocks")
 data(ldx_blocks,   package = "LDxBlocks")
 data(ldx_gwas,     package = "LDxBlocks")
 
-# -- extract_haplotypes (unphased) ---------------------------------------------
+# ── extract_haplotypes (unphased) ─────────────────────────────────────────────
 
 test_that("extract_haplotypes: list length equals qualifying blocks", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
@@ -76,7 +76,7 @@ test_that("extract_haplotypes: NA genotype becomes na_char in string", {
   expect_false(any(grepl(".", haps[[1]][-1], fixed=TRUE)))
 })
 
-# -- extract_haplotypes (phased) -----------------------------------------------
+# ── extract_haplotypes (phased) ───────────────────────────────────────────────
 
 test_that("extract_haplotypes: phased strings contain '|' separator", {
   # Build a minimal phased list from the dosage matrix
@@ -108,7 +108,7 @@ test_that("extract_haplotypes: phased string has two equal-width gametes", {
   expect_equal(nchar(parts[2]), bi$n_snps[1])
 })
 
-# -- compute_haplotype_diversity -----------------------------------------------
+# ── compute_haplotype_diversity ───────────────────────────────────────────────
 
 test_that("compute_haplotype_diversity: returns required columns", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
@@ -189,14 +189,14 @@ test_that("compute_haplotype_diversity: monomorphic block gives He=0, Shannon=0"
   if (!is.na(div$Shannon)) expect_equal(div$Shannon, 0.0, tolerance=1e-10)
 })
 
-# -- define_qtl_regions --------------------------------------------------------
+# ── define_qtl_regions ────────────────────────────────────────────────────────
 
 test_that("define_qtl_regions: returns data.frame with required columns", {
   qtl <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
                             p_threshold=NULL, trait_col="trait")
   expect_s3_class(qtl, "data.frame")
   req <- c("block_id","CHR","start_bp","end_bp","n_snps_block",
-           "n_sig_markers","lead_snp","lead_p","sig_snps",
+           "n_sig_markers","lead_marker","lead_p","sig_markers",
            "traits","n_traits","pleiotropic")
   expect_true(all(req %in% names(qtl)))
 })
@@ -237,7 +237,7 @@ test_that("define_qtl_regions: absent trait column falls back to single trait", 
 })
 
 test_that("define_qtl_regions: p_threshold filters markers", {
-  # Use a strict threshold - only markers with P < 1e-6.
+  # Use a strict threshold — only markers with P < 1e-6.
   # suppressMessages: if none pass the threshold the function emits a message;
   # the assertion still holds (0 <= positive).
   qtl_strict <- suppressMessages(
@@ -258,7 +258,7 @@ test_that("define_qtl_regions: output sorted by CHR then start_bp", {
   }
 })
 
-# -- extract_haplotypes: C++ coordinate accuracy -------------------------------
+# ── extract_haplotypes: C++ coordinate accuracy ───────────────────────────────
 
 test_that("extract_haplotypes: block_info bp coords match block table (unphased)", {
   # Verifies that retained_start_bp/end_bp from C++ are threaded correctly
@@ -308,7 +308,7 @@ test_that("extract_haplotypes: phased dosage strings decoded correctly from game
   }
 })
 
-# -- build_haplotype_feature_matrix -------------------------------------------
+# ── build_haplotype_feature_matrix ───────────────────────────────────────────
 
 test_that("build_haplotype_feature_matrix: correct dimensions for top_n=3", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
@@ -370,7 +370,7 @@ test_that("build_haplotype_feature_matrix: column names reference block IDs", {
     any(startsWith(colnames(feat), bn)), logical(1L))))
 })
 
-# -- output writers ------------------------------------------------------------
+# ── output writers ────────────────────────────────────────────────────────────
 
 test_that("write_haplotype_numeric: file exists and has correct orientation", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
@@ -463,7 +463,7 @@ test_that("write_haplotype_diversity: without summary has same rows as div", {
   unlink(tmp)
 })
 
-# -- New diversity metrics (n_eff_alleles, sweep_flag) -------------------------
+# ── New diversity metrics (n_eff_alleles, sweep_flag) ─────────────────────────
 
 test_that("compute_haplotype_diversity: includes n_eff_alleles and sweep_flag", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
@@ -484,15 +484,15 @@ test_that("compute_haplotype_diversity: n_eff_alleles <= n_haplotypes", {
   expect_true(all(div$n_eff_alleles[ok] <= div$n_haplotypes[ok] + 1e-6))
 })
 
-# -- define_qtl_regions: new output columns ------------------------------------
+# ── define_qtl_regions: new output columns ────────────────────────────────────
 
-test_that("define_qtl_regions: returns sig_snps and lead_p columns", {
+test_that("define_qtl_regions: returns sig_markers and lead_p columns", {
   qtl <- define_qtl_regions(ldx_gwas, ldx_blocks, ldx_snp_info,
                             p_threshold=NULL, trait_col="trait")
-  expect_true("sig_snps" %in% names(qtl))
-  expect_true("lead_p"   %in% names(qtl))
-  # sig_snps contains semicolon-separated SNP IDs
-  expect_true(all(nchar(qtl$sig_snps) > 0))
+  expect_true("sig_markers" %in% names(qtl))
+  expect_true("lead_p"      %in% names(qtl))
+  # sig_markers contains semicolon-separated SNP IDs
+  expect_true(all(nchar(qtl$sig_markers) > 0))
 })
 
 test_that("define_qtl_regions: lead_beta present when BETA supplied", {
@@ -515,7 +515,7 @@ test_that("define_qtl_regions: lead_beta NA when no BETA column", {
   expect_true(all(is.na(qtl$lead_beta)))
 })
 
-# -- rank_haplotype_blocks -----------------------------------------------------
+# ── rank_haplotype_blocks ─────────────────────────────────────────────────────
 
 test_that("rank_haplotype_blocks: use case 1 (diversity only) works", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
@@ -555,7 +555,7 @@ test_that("rank_haplotype_blocks: top_n_blocks limits output rows", {
   expect_equal(nrow(res$ranked_blocks), 3L)
 })
 
-# -- integrate_gwas_haplotypes -------------------------------------------------
+# ── integrate_gwas_haplotypes ─────────────────────────────────────────────────
 
 test_that("integrate_gwas_haplotypes: returns priority_score 0-3", {
   haps <- extract_haplotypes(ldx_geno, ldx_snp_info, ldx_blocks, min_snps=5)
@@ -583,7 +583,7 @@ test_that("integrate_gwas_haplotypes: returns priority_score 0-3", {
                 TRUE)  # just check no errors; ordering is by score desc
 })
 
-# -- build_hap_strings_cpp integration (via extract_haplotypes) ----------------
+# ── build_hap_strings_cpp integration (via extract_haplotypes) ────────────────
 # These tests verify that the C++ haplotype string builder (replacing the R
 # vapply loop) produces identical output to the reference R implementation.
 
